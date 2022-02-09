@@ -208,11 +208,11 @@ public final class RuntimeCodeInfoAccess {
 
     static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {
         InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
-        releaseMemory(info, notifyGC);
+        freePartially(info, notifyGC);
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
-    private static void releaseMemory(CodeInfo info, boolean notifyGC) {
+    private static void freePartially(CodeInfo info, boolean notifyGC) {
         CodeInfoImpl impl = cast(info);
         assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
         if (notifyGC) {
@@ -226,7 +226,7 @@ public final class RuntimeCodeInfoAccess {
         releaseCodeMemory(impl.getCodeStart(), impl.getCodeAndDataMemorySize());
         /*
          * Note that we must not null-out any CodeInfo metadata as it can be accessed in a stack
-         * walk even when CodeInfo data is already partially freed.
+         * walk even when the CodeInfo data is already partially freed.
          */
         CodeInfoAccess.setState(info, CodeInfo.STATE_PARTIALLY_FREED);
     }
@@ -236,7 +236,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
+    private static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
         CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()));
     }
 
@@ -253,7 +253,7 @@ public final class RuntimeCodeInfoAccess {
         InstalledCodeObserverSupport.removeObserversOnTearDown(getCodeObserverHandles(info));
 
         assert ((CodeInfoTether) UntetheredCodeInfoAccess.getTetherUnsafe(info)).getCount() == 1 : "CodeInfo tether must not be referenced by non-teardown code.";
-        releaseMethodInfoMemory(info, true);
+        free(info, true);
     }
 
     public interface NonmovableArrayAction {
@@ -270,15 +270,22 @@ public final class RuntimeCodeInfoAccess {
     };
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    public static void releaseMethodInfoMemory(CodeInfo info, boolean notifyGC) {
+    public static void free(CodeInfo info, boolean notifyGC) {
+        CodeInfoImpl impl = cast(info);
+        if (CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION) {
+            freePartially(info, notifyGC);
+        }
+
         if (notifyGC) {
             // Notify the GC as long as the object data is still valid.
             Heap.getHeap().getRuntimeCodeInfoGCSupport().unregisterRuntimeCodeInfo(info);
         }
 
-        if (!cast(info).getAllObjectsAreInImageHeap()) {
+        if (!impl.getAllObjectsAreInImageHeap()) {
             forEachArray(info, RELEASE_ACTION);
         }
+
+        impl.setState(CodeInfo.STATE_FREED);
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
     }
 

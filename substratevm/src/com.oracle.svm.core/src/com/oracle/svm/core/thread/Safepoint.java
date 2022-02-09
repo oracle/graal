@@ -882,7 +882,7 @@ public final class Safepoint {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected UnsignedWord getSafepointId() {
+        public UnsignedWord getSafepointId() {
             return safepointId;
         }
 
