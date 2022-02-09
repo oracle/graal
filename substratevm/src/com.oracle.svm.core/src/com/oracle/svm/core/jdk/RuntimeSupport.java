@@ -163,27 +163,4 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         InProgress,
         Done
     }
-
-    /*
-     * GR-36109: the following methods are for compatibility with legacy code and to be removed.
-     */
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addStartupHook(Runnable hook) {
-        addHook(startupHooks, firstIsolate -> hook.run());
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addShutdownHook(Runnable hook) {
-        addHook(shutdownHooks, firstIsolate -> hook.run());
-    }
-
-    public void addInitializationHook(Runnable hook) {
-        addHook(initializationHooks, firstIsolate -> hook.run());
-    }
-
-    public void addTearDownHook(Runnable hook) {
-        addHook(tearDownHooks, firstIsolate -> hook.run());
-    }
-
 }
