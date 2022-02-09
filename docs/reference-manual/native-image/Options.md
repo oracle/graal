@@ -89,7 +89,7 @@ and linking
 * `--tool:chromeinspector`: add debugging support to a GraalVM supported language
 * `--tool:insightheap`: snapshot a region of image heap during the execution
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like VS Code
-* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](../reference-manual/embedding/sandbox-options.md)
+* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](../embedding/sandbox-options.md)
 * `--tool:profiler`: add profiling support to a GraalVM supported language
 
 The `--language:nodejs`, `--language:python`, `--language:ruby`, `--language:R`, `--language:wasm`, and `--language:llvm` polyglot macro options become available once the corresponding languages are added to the base GraalVM installation (see the [GraalVM Updater](../graalvm-updater.md) guide).
