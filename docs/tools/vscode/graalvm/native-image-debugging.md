@@ -30,9 +30,7 @@ Debugger attachment is enabled by adding a separate configuration, **Native Imag
 
 ### Create and Build the Demo
 
-The demo is a simple Maven-based Java factorial calculator that uses the [Native Build Tools for GraalVM Native Image](https://graalvm.github.io/native-build-tools/latest/index.html).
-[The Native Build Tools project provides the Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) which adds support for building and testing native images using Apache Maven™.
-This plugin first checks if you have GraalVM and Native Image installed properly, and then makes use of Maven profiles to enable building and testing.
+The demo is a simple Java factorial calculator that uses the [Native Build Tools for GraalVM Native Image](https://graalvm.github.io/native-build-tools/latest/index.html), which provides support for building and testing native executables using Apache Maven™ and Gradle.
 
 The Maven _pom.xml_ file is extended with a native profile, which makes building a native executable easier (read more about Maven Profiles [here](https://maven.apache.org/guides/introduction/introduction-to-profiles.html)).
 To add debug information, the `<buildArg>` tags are used in the native profile configuration to pass parameters to the `native-image` build process:
