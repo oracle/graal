@@ -47,7 +47,8 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -58,19 +59,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class PolyglotManagementDispatch extends AbstractManagementDispatch {
+final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerDispatch {
 
     static final Object[] EMPTY_ARRAY = new Object[0];
 
-    PolyglotManagementDispatch(PolyglotImpl engineImpl) {
+    PolyglotExecutionListenerDispatch(PolyglotImpl engineImpl) {
         super(engineImpl);
     }
-
-    // implementation for org.graalvm.polyglot.management.ExecutionListener
 
     @Override
     public void closeExecutionListener(Object impl) {
@@ -82,77 +79,13 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         }
     }
 
-    @Override
-    public List<Value> getExecutionEventInputValues(Object impl) {
-        try {
-            return ((Event) impl).getInputValues();
-        } catch (Throwable t) {
-            throw wrapException(impl, t);
-        }
-    }
-
-    @Override
-    public String getExecutionEventRootName(Object impl) {
-        try {
-            return ((Event) impl).getRootName();
-        } catch (Throwable t) {
-            throw wrapException(impl, t);
-        }
-    }
-
-    @Override
-    public Value getExecutionEventReturnValue(Object impl) {
-        try {
-            return ((Event) impl).getReturnValue();
-        } catch (Throwable t) {
-            throw wrapException(impl, t);
-        }
-    }
-
-    @Override
-    public SourceSection getExecutionEventLocation(Object impl) {
-        return ((Event) impl).getLocation();
-    }
-
-    @Override
-    public PolyglotException getExecutionEventException(Object impl) {
-        return ((Event) impl).getException();
-    }
-
-    @Override
-    public boolean isExecutionEventExpression(Object impl) {
-        return hasTag(impl, StandardTags.ExpressionTag.class);
-    }
-
-    @Override
-    public boolean isExecutionEventStatement(Object impl) {
-        return hasTag(impl, StandardTags.StatementTag.class);
-    }
-
-    @Override
-    public boolean isExecutionEventRoot(Object impl) {
-        return hasTag(impl, StandardTags.RootTag.class);
-    }
-
-    private static boolean hasTag(Object impl, Class<? extends Tag> tag) {
-        try {
-            return ((Event) impl).getContext().hasTag(tag);
-        } catch (Throwable t) {
-            throw wrapException(impl, t);
-        }
-    }
-
     private static RuntimeException wrapException(PolyglotEngineImpl engine, Throwable t) {
         return PolyglotImpl.guestToHostException(engine, t);
     }
 
-    private static RuntimeException wrapException(Object impl, Throwable t) {
-        return wrapException(((DefaultNode) impl).config.engine, t);
-    }
-
     static class ListenerImpl {
 
-        final AbstractManagementDispatch managementDispatch;
+        final AbstractPolyglotImpl.AbstractExecutionEventDispatch executionEventDispatch;
         final PolyglotEngineImpl engine;
         final Consumer<ExecutionEvent> onEnter;
         final Consumer<ExecutionEvent> onReturn;
@@ -164,12 +97,12 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         volatile EventBinding<?> binding;
         volatile boolean closing;
 
-        ListenerImpl(AbstractManagementDispatch managementDispatch, PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
+        ListenerImpl(AbstractPolyglotImpl.AbstractExecutionEventDispatch executionEventDispatch, PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
                         Consumer<ExecutionEvent> onReturn,
                         boolean collectInputValues,
                         boolean collectReturnValues,
                         boolean collectExceptions) {
-            this.managementDispatch = managementDispatch;
+            this.executionEventDispatch = executionEventDispatch;
             this.engine = engine;
             this.onEnter = onEnter;
             this.onReturn = onReturn;
@@ -195,6 +128,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
         PolyglotException getException();
 
+        PolyglotEngineImpl getEngine();
     }
 
     static final class DynamicEvent implements Event {
@@ -235,6 +169,10 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
             return node.context;
         }
 
+        @Override
+        public PolyglotEngineImpl getEngine() {
+            return node.getEngine();
+        }
     }
 
     static class ProfilingNode extends AbstractNode implements Event {
@@ -376,7 +314,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
             PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
-            config.onReturn.accept(config.management.newExecutionEvent(config.managementDispatch, new DynamicEvent(this, inputValues, null, ex)));
+            config.onReturn.accept(config.management.newExecutionEvent(config.executionEventDispatch, new DynamicEvent(this, inputValues, null, ex)));
         }
 
     }
@@ -420,7 +358,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         AbstractNode(ListenerImpl config, EventContext context) {
             this.config = config;
             this.context = context;
-            this.cachedEvent = config.management.newExecutionEvent(config.managementDispatch, this);
+            this.cachedEvent = config.management.newExecutionEvent(config.executionEventDispatch, this);
         }
 
         public String getRootName() {
@@ -469,7 +407,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeReturnAllocate(List<Value> inputValues, Value returnValue) {
-            config.onReturn.accept(config.management.newExecutionEvent(config.managementDispatch, new DynamicEvent(this, inputValues, returnValue, null)));
+            config.onReturn.accept(config.management.newExecutionEvent(config.executionEventDispatch, new DynamicEvent(this, inputValues, returnValue, null)));
         }
 
         public final SourceSection getLocation() {
@@ -494,6 +432,11 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
         public final EventContext getContext() {
             return context;
+        }
+
+        @Override
+        public final PolyglotEngineImpl getEngine() {
+            return config.engine;
         }
     }
 

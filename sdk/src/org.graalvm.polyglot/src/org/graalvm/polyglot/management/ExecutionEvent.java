@@ -46,7 +46,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 /**
  * An execution event object passed to an execution listener consumer. Execution event instances
@@ -58,10 +58,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch
  */
 public final class ExecutionEvent {
 
-    final AbstractManagementDispatch dispatch;
+    final AbstractPolyglotImpl.AbstractExecutionEventDispatch dispatch;
     final Object receiver;
 
-    ExecutionEvent(AbstractManagementDispatch dispatch, Object receiver) {
+    ExecutionEvent(AbstractPolyglotImpl.AbstractExecutionEventDispatch dispatch, Object receiver) {
         this.dispatch = dispatch;
         this.receiver = receiver;
     }
