@@ -60,59 +60,61 @@ def list_jars(path):
     return jars
 
 
+force_buildtime_init_slf4j_1_7_73 = '--initialize-at-build-time=org.slf4j,org.apache.log4j'
+force_runtime_init_netty_4_1_72 = '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
 _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',  # mis-initialized from netty
-                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                            force_buildtime_init_slf4j_1_7_73,
+                            force_runtime_init_netty_4_1_72
                           ],
     'chi-square'        : [
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                           force_buildtime_init_slf4j_1_7_73,
+                           force_runtime_init_netty_4_1_72
                           ],
     'finagle-chirper'   : [
-                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                            force_buildtime_init_slf4j_1_7_73,
+                            force_runtime_init_netty_4_1_72
                           ],
     'finagle-http'      : [
-                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                            force_buildtime_init_slf4j_1_7_73,
+                            force_runtime_init_netty_4_1_72
                           ],
     'log-regression'    : [
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                           force_buildtime_init_slf4j_1_7_73,
+                           force_runtime_init_netty_4_1_72
                           ],
     'movie-lens'        : [
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                           force_buildtime_init_slf4j_1_7_73,
+                           force_runtime_init_netty_4_1_72
                           ],
     'dec-tree'          : [
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                           force_buildtime_init_slf4j_1_7_73,
+                           force_runtime_init_netty_4_1_72
                           ],
     'page-rank'         : [
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                           force_buildtime_init_slf4j_1_7_73,
+                           force_runtime_init_netty_4_1_72
                           ],
     'naive-bayes'       : [
                             '--report-unsupported-elements-at-runtime',
-                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                            force_buildtime_init_slf4j_1_7_73,
+                            force_runtime_init_netty_4_1_72
                           ],
     'gauss-mix'       :   [
                             '--report-unsupported-elements-at-runtime',
-                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                            force_buildtime_init_slf4j_1_7_73,
+                            force_runtime_init_netty_4_1_72
                           ],
     'neo4j-analytics':    [
                             '--report-unsupported-elements-at-runtime',
-                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
-                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                            force_buildtime_init_slf4j_1_7_73,
+                            force_runtime_init_netty_4_1_72
                           ],
     'dotty'             : [
                             '-H:+AllowJRTFileSystem'
@@ -280,9 +282,11 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def extra_run_arg(self, benchmark, args, image_run_args):
         run_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
         if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
-            # Before Renaissance 0.14.0, we had all dependencies on a classpath. As of Renaissance 0.14.0, we use
-            # the standalone mode which, requires building a classpath for a scala-dotty on a runtime. For that
-            # purpose, we are specifying a path to a fatjar.
+            # Before Renaissance 0.14.0, mx was manually placing all dependencies on the same classpath at build time
+            # and at run time. As of Renaissance 0.14.0, we use the standalone mode which uses the classpath defined
+            # in the manifest file at build time only. Dotty is a special benchmark since it also needs to know
+            # this classpath at runtime to be able to perform compilations. The location of the fatjar must then be
+            # explicitly passed also to the final image.
             return ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))] + run_args
         else:
 
