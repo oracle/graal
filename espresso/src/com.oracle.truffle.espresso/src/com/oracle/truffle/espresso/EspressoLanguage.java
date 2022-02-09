@@ -176,13 +176,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
         if (exitMode == ExitMode.NATURAL) {
-            context.destroyVM(false); // Let truffle handle hard stop of threads.
+            // Wait for ongoing threads to finish.
+            context.destroyVM(false);
         } else {
             context.prepareDispose();
             try {
-                context.doExit(0);
-            } catch (EspressoExitException e) {
-                // Expected. Suppress. We do not want to throw during context closing.
+                // Here we give a chance for our threads to exit gracefully in guest code before
+                // Truffle kicks in with host thread deaths.
+                context.doExit(exitCode);
+            } catch (AbstractTruffleException e) {
+                // Expected. Suppress.
             } finally {
                 context.cleanupNativeEnv(); // This must be done here in case of a hard exit.
             }
@@ -191,8 +194,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        if (!context.getEnv().getContext().isClosed()) {
+        if (!context.isTruffleClosed()) {
             // If context is closed, we cannot run any guest code for cleanup.
+            context.prepareDispose();
             context.cleanupNativeEnv();
         }
         long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();

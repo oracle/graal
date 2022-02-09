@@ -969,7 +969,7 @@ public final class EspressoContext {
         return shutdownManager.isClosing();
     }
 
-    public boolean isClosed() {
+    public boolean isTruffleClosed() {
         return getEnv().getContext().isClosed();
     }
 
