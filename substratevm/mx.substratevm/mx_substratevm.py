@@ -207,13 +207,13 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'helloworld_debug',
-    'helloworld_devmode',
+    'helloworld_quickbuild',
     'debuginfotest',
-    'debuginfotest_devmode',
+    'debuginfotest_quickbuild',
     'test',
-    'test_devmode',
+    'test_quickbuild',
     'js',
-    'js_devmode',
+    'js_quickbuild',
     'build',
     'benchmarktest',
     "nativeimagehelp",
@@ -328,11 +328,11 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     clinittest([])
 
 
-def truffle_unittest_task(devmode=False):
+def truffle_unittest_task(quickbuild=False):
     truffle_build_args = ['--build-args', '--macro:truffle',
                                 '-H:MaxRuntimeCompileMethods=5000',
                                 '-H:+TruffleCheckBlackListedMethods']
-    if devmode:
+    if quickbuild:
         truffle_build_args += DEVMODE_FLAGS
 
     truffle_args = truffle_build_args + ['--run-args', '--very-verbose', '--enable-timing']
@@ -343,7 +343,7 @@ def truffle_unittest_task(devmode=False):
     # Regular Truffle tests that can run with isolated compilation
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
                      'com.oracle.truffle.api.test.polyglot.ContextPolicyTest']
-    if not devmode:
+    if not quickbuild:
         truffle_tests.append('com.oracle.truffle.api.test.TruffleSafepointTest')
 
     native_unittest(truffle_tests + truffle_args)
@@ -365,7 +365,7 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(['-H:GenerateDebugInfo=1'], flightrecorder=False)
 
-    with Task('image demos devmode', tasks, tags=[GraalTags.helloworld_devmode]) as t:
+    with Task('image demos quickbuild', tasks, tags=[GraalTags.helloworld_quickbuild]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(DEVMODE_FLAGS, flightrecorder=False)
@@ -380,7 +380,7 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
 
-    with Task('native unittests devmode', tasks, tags=[GraalTags.test_devmode]) as t:
+    with Task('native unittests quickbuild', tasks, tags=[GraalTags.test_quickbuild]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task(DEVMODE_FLAGS)
@@ -390,10 +390,10 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 truffle_unittest_task()
 
-    with Task('Run Truffle unittests with SVM image with devmode', tasks, tags=["svmjunit_devmode"]) as t:
+    with Task('Run Truffle unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                truffle_unittest_task(devmode=True)
+                truffle_unittest_task(quickbuild=True)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
@@ -406,7 +406,7 @@ def svm_gate_body(args, tasks):
                                         '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
-    with Task('Run Truffle NFI unittests with SVM image with devmode', tasks, tags=["svmjunit_devmode"]) as t:
+    with Task('Run Truffle NFI unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
@@ -447,7 +447,7 @@ def svm_gate_body(args, tasks):
                 test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(jslib, [('octane-richards', 1000, 100, 300)])
 
-    with Task('JavaScript with devmode', tasks, tags=[GraalTags.js_devmode]) as t:
+    with Task('JavaScript with quickbuild', tasks, tags=[GraalTags.js_quickbuild]) as t:
         if t:
             config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
                                          dynamicimports=['/' + svm_suite().name, '/graal-js'])

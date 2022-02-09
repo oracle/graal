@@ -48,7 +48,7 @@ _suite = mx.suite('vm')
 class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
-    substratevm_devmode = 'substratevm-devmode'
+    substratevm_quickbuild = 'substratevm-quickbuild'
     sulong = 'sulong'
     graal_js_all = 'graal-js'
     graal_js_smoke = 'graal-js-smoke'
@@ -284,7 +284,7 @@ def gate_body(args, tasks):
         mx.warn("Skipping libgraal tests: component not enabled")
 
     gate_substratevm(tasks)
-    gate_substratevm(tasks, devmode=True)
+    gate_substratevm(tasks, quickbuild=True)
     gate_sulong(tasks)
     gate_python(tasks)
     gate_svm_sl_tck(tasks)
@@ -306,13 +306,13 @@ def graalvm_svm():
             yield native_image
     return native_image_context, svm.extensions
 
-def gate_substratevm(tasks, devmode=False):
+def gate_substratevm(tasks, quickbuild=False):
     tag = VmGateTasks.substratevm
     name = 'Run Truffle host interop tests on SVM'
     extra_build_args = []
-    if devmode:
-        tag = VmGateTasks.substratevm_devmode
-        name += ' with devmode'
+    if quickbuild:
+        tag = VmGateTasks.substratevm_quickbuild
+        name += ' with quickbuild'
         extra_build_args = ['-Ob']
 
     with Task(name, tasks, tags=[tag]) as t:

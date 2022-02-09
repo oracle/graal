@@ -21,10 +21,10 @@
     ],
   },
 
-  local gate_svm_js_devmode = svm_common + {
+  local gate_svm_js_quickbuild = svm_common + {
     run: [
       svm_clone_js_benchmarks,
-      svm_cmd_gate + ["build,js_devmode"],
+      svm_cmd_gate + ["build,js_quickbuild"],
     ],
   },
 
@@ -49,8 +49,8 @@
     common.darwin_amd64 + common.oraclejdk17 + gate_svm_js {
       name: "gate-svm-darwin-js",
     },
-    common.darwin_amd64 + common.oraclejdk17 + gate_svm_js_devmode {
-      name: "gate-svm-darwin-js-devmode",
+    common.darwin_amd64 + common.oraclejdk17 + gate_svm_js_quickbuild {
+      name: "gate-svm-darwin-js-quickbuild",
     },
     common.linux_amd64 + common.oraclejdk11 + svm_common + maven + svm_unittest + {
       name: "gate-svm-build-ce-11",
@@ -97,10 +97,10 @@
       ],
     },
     common.windows_amd64 + common.oraclejdk17 + common.devkits["windows-jdk17"] + svm_common + svm_unittest + {
-      name: "gate-svm-windows-basics-devmode",
+      name: "gate-svm-windows-basics-quickbuild",
       timelimit: "1:30:00",
       run: [
-        svm_cmd_gate + ["build,helloworld_devmode,test_devmode,svmjunit_devmode"],
+        svm_cmd_gate + ["build,helloworld_quickbuild,test_quickbuild,svmjunit_quickbuild"],
       ],
     },
   ],

@@ -403,14 +403,14 @@ local devkits = common_json.devkits;
     timelimit: '45:00',
   },
 
-  libgraal_compiler_devmode: self.libgraal_compiler + {
+  libgraal_compiler_quickbuild: self.libgraal_compiler + {
     run: [
       # enable economy mode building with with the -Ob flag
       libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea', '-Ob']),
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
   },
-  libgraal_truffle_devmode: self.libgraal_truffle + {
+  libgraal_truffle_quickbuild: self.libgraal_truffle + {
     run: [
       # enable economy mode building with with the -Ob flag
       libgraal_build(['-J-ea', '-ea', '-Ob']),
@@ -605,8 +605,8 @@ local devkits = common_json.devkits;
     self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_11 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-11-linux-amd64' },
     self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_17 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
 
-    self.gate_vm_linux_amd64 + self.libgraal_compiler_devmode + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-devmode-17-linux-amd64' },
-    self.gate_vm_linux_amd64 + self.libgraal_truffle_devmode + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-devmode-17-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-quickbuild-17-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_truffle_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-quickbuild-17-linux-amd64' },
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
      run: [
