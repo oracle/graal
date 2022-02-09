@@ -432,10 +432,6 @@ public final class UnimplementedGraalIntrinsics {
         return JavaVersionUtil.JAVA_SPEC >= 12;
     }
 
-    private static boolean isJDK13OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 13;
-    }
-
     private static boolean isJDK14OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 14;
     }
