@@ -122,7 +122,6 @@ public class FloatingDivTest extends GraalCompilerTest {
     public static int snippet4(int a, @SuppressWarnings("unused") int b) {
         int i = 0;
         for (; i < a; i++) {
-            // GraalDirectives.controlFlowAnchor();
             GraalDirectives.sideEffect();
         }
         int res1 = i / 100000;

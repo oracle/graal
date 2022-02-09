@@ -66,8 +66,13 @@ public final class IntegerStamp extends PrimitiveStamp {
     private final long upperBound;
     private final long downMask;
     private final long upMask;
+    private final boolean canBeZero;
 
     private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask) {
+        this(bits, lowerBound, upperBound, downMask, upMask, true);
+    }
+
+    private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask, boolean canBeZero) {
         super(bits, OPS);
 
         this.lowerBound = lowerBound;
@@ -81,6 +86,9 @@ public final class IntegerStamp extends PrimitiveStamp {
         assert (upMask & CodeUtil.mask(bits)) == upMask : this;
         // Check for valid masks or the empty encoding
         assert (downMask & ~upMask) == 0 || (upMask == 0 && downMask == CodeUtil.mask(bits)) : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
+        boolean valuesCanContainZero = contains(0);
+        valuesCanContainZero &= canBeZero;
+        this.canBeZero = valuesCanContainZero;
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
@@ -88,6 +96,10 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+        return create(bits, lowerBoundInput, upperBoundInput, downMask, upMask, true);
+    }
+
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask, boolean canBeZero) {
         assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
 
         // Set lower bound, use masks to make it more precise
@@ -126,7 +138,11 @@ public final class IntegerStamp extends PrimitiveStamp {
             }
         }
 
-        return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask);
+        return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask, canBeZero);
+    }
+
+    public boolean canBeZero() {
+        return canBeZero;
     }
 
     private static long significantBit(long bits, long value) {
@@ -343,7 +359,9 @@ public final class IntegerStamp extends PrimitiveStamp {
             if (lowerBound == upperBound) {
                 str.append(" [").append(lowerBound).append(']');
             } else if (lowerBound != CodeUtil.minValue(getBits()) || upperBound != CodeUtil.maxValue(getBits())) {
-                str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
+                str.append(" [").append(lowerBound);
+                str.append(" - ");
+                str.append(upperBound).append(']');
             }
             if (downMask != 0) {
                 str.append(" \u21ca");
@@ -356,19 +374,22 @@ public final class IntegerStamp extends PrimitiveStamp {
         } else {
             str.append("<empty>");
         }
+        if (!canBeZero) {
+            str.append(" {!=0}");
+        }
         return str.toString();
     }
 
-    private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask) {
+    private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask, boolean newCanBeZero) {
         assert getBits() == other.getBits();
         if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0 || (newUpMask == 0 && (newLowerBound > 0 || newUpperBound < 0))) {
             return empty();
-        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask) {
+        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask && canBeZero == newCanBeZero) {
             return this;
-        } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newDownMask == other.downMask && newUpMask == other.upMask) {
+        } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newDownMask == other.downMask && newUpMask == other.upMask && newCanBeZero == other.canBeZero) {
             return other;
         } else {
-            return IntegerStamp.create(getBits(), newLowerBound, newUpperBound, newDownMask, newUpMask);
+            return IntegerStamp.create(getBits(), newLowerBound, newUpperBound, newDownMask, newUpMask, canBeZero);
         }
     }
 
@@ -384,7 +405,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             return this;
         }
         IntegerStamp other = (IntegerStamp) otherStamp;
-        return createStamp(other, Math.max(upperBound, other.upperBound), Math.min(lowerBound, other.lowerBound), downMask & other.downMask, upMask | other.upMask);
+        return createStamp(other, Math.max(upperBound, other.upperBound), Math.min(lowerBound, other.lowerBound), downMask & other.downMask, upMask | other.upMask, canBeZero || other.canBeZero);
     }
 
     @Override
@@ -397,7 +418,8 @@ public final class IntegerStamp extends PrimitiveStamp {
         long newLowerBound = Math.max(lowerBound, other.lowerBound);
         long newUpperBound = Math.min(upperBound, other.upperBound);
         long newUpMask = upMask & other.upMask;
-        return createStamp(other, newUpperBound, newLowerBound, newDownMask, newUpMask);
+        boolean newCanBeZero = canBeZero && other.canBeZero;
+        return createStamp(other, newUpperBound, newLowerBound, newDownMask, newUpMask, newCanBeZero);
     }
 
     @Override
@@ -461,7 +483,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             return false;
         }
         IntegerStamp other = (IntegerStamp) obj;
-        if (lowerBound != other.lowerBound || upperBound != other.upperBound || downMask != other.downMask || upMask != other.upMask) {
+        if (lowerBound != other.lowerBound || upperBound != other.upperBound || downMask != other.downMask || upMask != other.upMask || canBeZero != other.canBeZero) {
             return false;
         }
         return super.equals(other);

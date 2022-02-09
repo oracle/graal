@@ -39,7 +39,10 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -62,6 +65,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -73,18 +77,27 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.NonTrappingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
+import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
+import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -101,6 +114,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.MembarNode.FenceKind;
+import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
@@ -313,6 +327,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
+            } else if (n instanceof IntegerDivRemNode) {
+                lowerIntegerDivRem((IntegerDivRemNode) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
                 // at the LIR level
@@ -1230,6 +1246,75 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 return new NarrowNode(value, 16);
         }
         return value;
+    }
+
+    protected void lowerIntegerDivRem(IntegerDivRemNode n, LoweringTool tool) {
+        if (n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
+            // TODO: unimplemented
+            return;
+        }
+        if (n.getY().isConstant() && n.getY().asJavaConstant().asLong() == 0) {
+            // always trap
+            return;
+        }
+        if (!GraalOptions.FloatingDivNodes.getValue(n.getOptions())) {
+            return;
+        }
+        if (n.getZeroCheck() != null) {
+            return;
+        }
+        final StructuredGraph graph = n.graph();
+        final IntegerStamp yStamp = (IntegerStamp) n.getY().stamp(NodeView.DEFAULT);
+        LogicNode conditionDivisor = graph.addOrUniqueWithInputs(
+                        CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(yStamp.getBits(), 0), tool.getConstantReflection()));
+        if (conditionDivisor instanceof LogicConstantNode) {
+            boolean val = ((LogicConstantNode) conditionDivisor).getValue();
+            if (val) {
+                // stamp always is zero
+                return;
+            } else {
+                // stamp never is zero, let canon later handle it
+            }
+        }
+        GuardingNode guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
+        IntegerStamp stampWithout0 = IntegerStamp.create(yStamp.getBits(), yStamp.lowerBound(), yStamp.upperBound(), yStamp.downMask(), yStamp.upMask(), false);
+        stampWithout0.toString();
+        ValueNode zeroCheckedDivisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+
+        ValueNode x = n.getX();
+        ValueNode y = zeroCheckedDivisor;
+
+        boolean dividendChecked = false;
+        if (SignedDivNode.divCanOverflow(x, y)) {
+            IntegerStamp dividendStamp = (IntegerStamp) x.stamp(NodeView.DEFAULT);
+            ConstantNode minVal = ConstantNode.forIntegerBits(yStamp.getBits(), NumUtil.minValue(yStamp.getBits()));
+            LogicNode conditionDividend = graph.addOrUniqueWithInputs(CompareNode.createAnyCompareNode(Condition.GT, n.getX(), minVal, tool.getConstantReflection()));
+            GuardingNode guard2 = tool.createGuard(n, conditionDividend, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, false,
+                            null);
+            int bits = yStamp.getBits();
+            IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
+            x = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
+            assert !SignedDivNode.divCanOverflow(x, y);
+            guard = MultiGuardNode.combine(guard, guard2);
+        } else {
+            dividendChecked = true;
+        }
+
+        ValueNode divRem = null;
+        if (n instanceof SignedDivNode) {
+            divRem = graph.addOrUnique(FloatingIntegerDivNode.create(x, y, NodeView.DEFAULT, guard));
+
+        } else if (n instanceof SignedRemNode) {
+            divRem = graph.addOrUnique(FloatingIntegerRemNode.create(x, y, NodeView.DEFAULT, guard));
+        } else {
+            // do nothing with it
+            return;
+        }
+        n.replaceAtUsages(divRem);
+        graph.replaceFixedWithFloating(n, divRem);
+        if (dividendChecked && divRem instanceof NonTrappingIntegerDivRemNode<?>) {
+            ((NonTrappingIntegerDivRemNode<?>) divRem).setDividendOverflowChecked();
+        }
     }
 
     protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);

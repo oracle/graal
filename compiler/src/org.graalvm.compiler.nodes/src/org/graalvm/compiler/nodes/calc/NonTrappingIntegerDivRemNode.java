@@ -58,9 +58,18 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
 
+    /**
+     * TODO Loop Stamps and divisors.
+     */
+    private boolean dividendOverflowChecked;
+
     @Override
     public GuardingNode getGuard() {
         return guard;
+    }
+
+    public void setDividendOverflowChecked() {
+        this.dividendOverflowChecked = true;
     }
 
     @Override
@@ -71,16 +80,19 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     private boolean canTrap() {
         IntegerStamp yStamp = (IntegerStamp) y.stamp(NodeView.DEFAULT);
-        return yStamp.contains(0);
+        return yStamp.canBeZero();
     }
 
-    private boolean canOverflow() {
+    public boolean canOverflow() {
+        if (dividendOverflowChecked) {
+            return false;
+        }
         return SignedDivNode.divCanOverflow(x, y);
     }
 
     @Override
     public boolean verify() {
-        GraalError.guarantee(!(canTrap() && canOverflow()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never trap");
+        GraalError.guarantee((!canTrap() && !canOverflow()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never trap");
         return super.verify();
     }
 }

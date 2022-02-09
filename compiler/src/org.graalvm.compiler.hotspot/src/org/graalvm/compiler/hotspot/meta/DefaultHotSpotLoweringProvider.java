@@ -116,7 +116,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.debug.StringToBytesNode;
@@ -467,9 +466,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 stringToBytesSnippets.lower((StringToBytesNode) n, tool);
             }
-        } else if (n instanceof IntegerDivRemNode) {
-            // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
-            // zero and the MIN_VALUE / -1 cases.
         } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
             /* No lowering, we generate LIR directly for these nodes. */
         } else if (n instanceof ClassGetHubNode) {
