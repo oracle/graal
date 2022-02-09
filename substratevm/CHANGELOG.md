@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 22.1.0
+* (GR-36568) Add "Quick build" mode, enabled through option `-Ob`, for quicker native image builds.
 * (GR-35898) Improved handling of static synchronized methods: the lock is no longer stored in the secondary monitor map, but in the mutable DynamicHubCompanion object.
 * Remove support for JDK8. As a result, `JDK8OrEarlier` and `JDK11OrLater` have been deprecated and will be removed in a future release.
 * (GR-26814) Red Hat added support for the GC pause-related JFR events (`GCPhasePause`, `GCPhasePauseLevel*`) to the serial GC.
