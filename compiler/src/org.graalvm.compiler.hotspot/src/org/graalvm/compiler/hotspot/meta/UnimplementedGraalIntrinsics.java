@@ -375,11 +375,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                             "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
-            // See JDK-8207146.
-            String oopName = isJDK12OrHigher() ? "Reference" : "Object";
-            add(toBeInvestigated,
-                            "sun/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
-
             add(toBeInvestigated,
                             "java/lang/Thread.onSpinWait()V",
                             "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");

@@ -988,7 +988,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMValueRef buildAbs(LLVMValueRef a) {
-        return buildIntrinsicOp("abs", a);
+        return buildIntrinsicOp("abs", a, constantBoolean(false));
     }
 
     public LLVMValueRef buildFabs(LLVMValueRef a) {
