@@ -49,6 +49,7 @@ import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -264,14 +265,15 @@ public final class ClassRedefinition {
                     // if there is a currently loaded class under that name
                     // we have to replace that in the class loader registry etc.
                     // otherwise, don't eagerly define the new class
-                    Symbol<Symbol.Type> type = context.getTypes().fromName(classInfo.getName());
-                    ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
-                    Klass loadedKlass = classRegistry.findLoadedKlass(type);
+                    ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+                    Symbol<Symbol.Type> type = env.getTypes().fromName(classInfo.getName());
+                    ClassRegistry classRegistry = env.getRegistries().getClassRegistry(classInfo.getClassLoader());
+                    Klass loadedKlass = classRegistry.findLoadedKlass(env, type);
                     if (loadedKlass != null) {
                         // OK, we have to define the new klass instance and
                         // inject it under the existing JDWP ID
-                        classRegistry.onInnerClassRemoved(type);
-                        ObjectKlass newKlass = classRegistry.defineKlass(type, classInfo.getBytes());
+                        classRegistry.onInnerClassRemoved(env, type);
+                        ObjectKlass newKlass = classRegistry.defineKlass(env, type, classInfo.getBytes());
                         packet.info.setKlass(newKlass);
                     }
                     return 0;
@@ -737,14 +739,16 @@ public final class ClassRedefinition {
             // 4. update the JDWP refType ID for the klass instance
             // 5. replace/record a classloader constraint for the new type and klass combination
 
+            ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+
             Symbol<Symbol.Name> newName = packet.info.getName();
-            Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
+            Symbol<Symbol.Type> newType = env.getTypes().fromName(newName);
 
             oldKlass.patchClassName(newName, newType);
-            ClassRegistry classRegistry = context.getRegistries().getClassRegistry(packet.info.getClassLoader());
-            classRegistry.onClassRenamed(oldKlass);
+            ClassRegistry classRegistry = env.getRegistries().getClassRegistry(packet.info.getClassLoader());
+            classRegistry.onClassRenamed(env, oldKlass);
 
-            InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
+            InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), env.getMeta().java_lang_Class_name);
         }
         if (packet.classChange == ClassChange.CLASS_HIERARCHY_CHANGED) {
             oldKlass.removeAsSubType();

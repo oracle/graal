@@ -24,13 +24,17 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Names;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -45,16 +49,13 @@ public interface ClassLoadingEnv {
     TruffleLogger getLogger();
     JavaVersion getJavaVersion();
     EspressoOptions.SpecCompliancyMode getSpecCompliancyMode();
+    Classpath getClasspath();
     boolean needsVerify(StaticObject loader);
     boolean isLoaderBootOrPlatform(StaticObject loader);
     int unboxInteger(StaticObject obj);
     float unboxFloat(StaticObject obj);
     long unboxLong(StaticObject obj);
     double unboxDouble(StaticObject obj);
-    RuntimeException generateClassCircularityError();
-    RuntimeException generateIncompatibleClassChangeError(String msg);
-    RuntimeException generateSecurityException(String msg);
-    RuntimeException wrapIntoClassDefNotFoundError(EspressoException e);
 
     abstract class CommonEnv implements ClassLoadingEnv {
         private final EspressoLanguage language;
@@ -87,37 +88,46 @@ public interface ClassLoadingEnv {
             context = ctx;
         }
 
+        public EspressoContext getContext() {
+            return context;
+        }
+
         public Meta getMeta() {
-            return context.getMeta();
+            return getContext().getMeta();
         }
 
         public ClassRegistries getRegistries() {
-            return context.getRegistries();
+            return getContext().getRegistries();
         }
 
         @Override
         public TimerCollection getTimers() {
-            return context.getTimers();
+            return getContext().getTimers();
         }
 
         @Override
         public TruffleLogger getLogger() {
-            return context.getLogger();
+            return getContext().getLogger();
         }
 
         @Override
         public JavaVersion getJavaVersion() {
-            return context.getJavaVersion();
+            return getContext().getJavaVersion();
         }
 
         @Override
         public EspressoOptions.SpecCompliancyMode getSpecCompliancyMode() {
-            return context.SpecCompliancyMode;
+            return getContext().SpecCompliancyMode;
+        }
+
+        @Override
+        public Classpath getClasspath() {
+            return getContext().getBootClasspath();
         }
 
         @Override
         public boolean needsVerify(StaticObject loader) {
-            return context.needsVerify(loader);
+            return getContext().needsVerify(loader);
         }
 
         @Override
@@ -147,22 +157,21 @@ public interface ClassLoadingEnv {
             return getMeta().unboxDouble(obj);
         }
 
-        @Override
+
+        // TODO remove all under
+
         public RuntimeException generateClassCircularityError() {
             throw getMeta().throwException(getMeta().java_lang_ClassCircularityError);
         }
 
-        @Override
         public RuntimeException generateIncompatibleClassChangeError(String msg) {
             return getMeta().throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, msg);
         }
 
-        @Override
         public RuntimeException generateSecurityException(String msg) {
             return getMeta().throwExceptionWithMessage(getMeta().java_lang_SecurityException, msg);
         }
 
-        @Override
         public RuntimeException wrapIntoClassDefNotFoundError(EspressoException e) {
             Meta meta = getMeta();
             if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
@@ -176,12 +185,45 @@ public interface ClassLoadingEnv {
     }
 
     class WithoutContext extends CommonEnv {
-        private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID);
-        private final JavaVersion javaVersion;
 
-        public WithoutContext(EspressoLanguage language, JavaVersion version) {
+        public static class Options {
+            private final TruffleLogger logger;
+            private final JavaVersion javaVersion;
+            private final Classpath classpath;
+            private EspressoOptions.SpecCompliancyMode specCompliancyMode;
+            private boolean needsVerify;
+
+            public Options(JavaVersion version, Classpath cp) {
+                this(version, cp, TruffleLogger.getLogger(EspressoLanguage.ID));
+            }
+
+            public Options(JavaVersion version, Classpath cp, TruffleLogger loggerOverride) {
+                javaVersion = version;
+                classpath = cp;
+                logger = loggerOverride;
+                specCompliancyMode = EspressoOptions.SpecCompliancy.getDefaultValue();
+                EspressoOptions.VerifyMode defaultVerifyMode = EspressoOptions.Verify.getDefaultValue();
+                needsVerify = defaultVerifyMode != EspressoOptions.VerifyMode.NONE;
+            }
+
+            public void enableVerify() {
+                this.needsVerify = true;
+            }
+
+            public void complancyModeOverride(EspressoOptions.SpecCompliancyMode specCompliancyMode) {
+                this.specCompliancyMode = specCompliancyMode;
+            }
+        }
+
+        private final Options options;
+
+        public WithoutContext(EspressoLanguage language, JavaVersion version, Classpath cp) {
+            this(language, new Options(version, cp));
+        }
+
+        public WithoutContext(EspressoLanguage language, Options opts) {
             super(language);
-            javaVersion = version;
+            options = opts;
         }
 
         @Override
@@ -191,23 +233,27 @@ public interface ClassLoadingEnv {
 
         @Override
         public TruffleLogger getLogger() {
-            return logger;
+            return options.logger;
         }
 
         @Override
         public JavaVersion getJavaVersion() {
-            return javaVersion;
+            return options.javaVersion;
         }
 
         @Override
         public EspressoOptions.SpecCompliancyMode getSpecCompliancyMode() {
-            return EspressoOptions.SpecCompliancy.getDefaultValue();
+            return options.specCompliancyMode;
+        }
+
+        @Override
+        public Classpath getClasspath() {
+            return options.classpath;
         }
 
         @Override
         public boolean needsVerify(StaticObject loader) {
-            EspressoOptions.VerifyMode defaultVerifyMode = EspressoOptions.Verify.getDefaultValue();
-            return defaultVerifyMode != EspressoOptions.VerifyMode.NONE;
+            return options.needsVerify;
         }
 
         @Override
@@ -215,45 +261,48 @@ public interface ClassLoadingEnv {
             return StaticObject.isNull(loader);
         }
 
-        // TODO
         @Override
         public int unboxInteger(StaticObject obj) {
-            return 0;
+            assert !StaticObject.isNull(obj);
+            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Integer);
+            try {
+                return InteropLibrary.getUncached().asInt(obj);
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere();
+            }
         }
 
         @Override
         public float unboxFloat(StaticObject obj) {
-            return 0;
+            assert !StaticObject.isNull(obj);
+            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Float);
+            try {
+                return InteropLibrary.getUncached().asFloat(obj);
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere();
+            }
         }
 
         @Override
         public long unboxLong(StaticObject obj) {
-            return 0;
+            assert !StaticObject.isNull(obj);
+            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Long);
+            try {
+                return InteropLibrary.getUncached().asLong(obj);
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere();
+            }
         }
 
         @Override
         public double unboxDouble(StaticObject obj) {
-            return 0;
-        }
-
-        @Override
-        public RuntimeException generateClassCircularityError() {
-            return EspressoError.shouldNotReachHere("Class circularity detected");
-        }
-
-        @Override
-        public RuntimeException generateIncompatibleClassChangeError(String msg) {
-            return null;    // TODO
-        }
-
-        @Override
-        public RuntimeException generateSecurityException(String msg) {
-            return EspressoError.shouldNotReachHere(msg);
-        }
-
-        @Override
-        public RuntimeException wrapIntoClassDefNotFoundError(EspressoException e) {
-            return e;
+            assert !StaticObject.isNull(obj);
+            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Double);
+            try {
+                return InteropLibrary.getUncached().asDouble(obj);
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere();
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -64,24 +65,47 @@ public final class GuestClassRegistry extends ClassRegistry {
     private final Method addClass;
 
     public GuestClassRegistry(EspressoContext context, @JavaType(ClassLoader.class) StaticObject classLoader) {
-        super(context);
+        super(context.getLanguage().getNewLoaderId());
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
         this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
         this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
-        if (getJavaVersion().modulesEnabled()) {
-            StaticObject unnamedModule = getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
+        if (context.getJavaVersion().modulesEnabled()) {
+            StaticObject unnamedModule = context.getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
             initUnnamedModule(unnamedModule);
-            getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
+            context.getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
         }
     }
 
     @Override
-    public Klass loadKlassImpl(Symbol<Type> type) {
+    public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.SecurityException {
+        ObjectKlass klass = performLoadKlass(env, type, info);
+        return klass.getLinkedKlass().getParserKlass();
+    }
+
+    @Override
+    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError {
+        ObjectKlass klass = performLoadKlass(env, type, info);
+        return klass.getLinkedKlass();
+    }
+
+    private ObjectKlass performLoadKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+        if (!(env instanceof ClassLoadingEnv.InContext)) {
+            throw EspressoError.shouldNotReachHere("This registry cannot load classes in no-context environment");
+        }
+        ClassLoadingEnv.InContext contextEnv = (ClassLoadingEnv.InContext) env;
+        Klass klass = loadKlassImpl(contextEnv, type, info);
+        return (ObjectKlass) klass;
+    }
+
+    @Override
+    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
         assert StaticObject.notNull(classLoader);
-        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
+        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, env.getMeta().toGuestString(Types.binaryName(type)));
         Klass klass = guestClass.getMirrorKlass();
-        getRegistries().recordConstraint(type, klass, getClassLoader());
+        env.getRegistries().recordConstraint(type, klass, getClassLoader());
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
         assert previous == null || previous.klass() == klass;
@@ -95,8 +119,9 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @SuppressWarnings("sync-override")
     @Override
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
-        ObjectKlass klass = super.defineKlass(typeOrNull, bytes, info);
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.IncompatibleClassChangeError {
+        ObjectKlass klass = super.defineKlass(env, typeOrNull, bytes, info);
         // Register class in guest CL. Mimics HotSpot behavior.
         if (info.addedToRegistry()) {
             addClass.invokeDirect(classLoader, klass.mirror());

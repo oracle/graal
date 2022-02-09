@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -106,8 +107,9 @@ public final class Target_sun_misc_Unsafe {
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap(language);
         // Inherit host class's protection domain.
         ClassRegistry.ClassDefinitionInfo info = new ClassRegistry.ClassDefinitionInfo(pd, hostKlass, patches);
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(meta.getContext());
 
-        ObjectKlass k = meta.getRegistries().defineKlass(null, bytes, hostKlass.getDefiningClassLoader(), info);
+        ObjectKlass k = meta.getRegistries().defineKlass(env, null, bytes, hostKlass.getDefiningClassLoader(), info);
 
         // Initialize, because no one else will.
         k.safeInitialize();
@@ -223,7 +225,8 @@ public final class Target_sun_misc_Unsafe {
                     @Inject Meta meta) {
         byte[] buf = guestBuf.unwrap(language);
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(meta.getContext());
+        Klass klass = env.getRegistries().defineKlass(env, env.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
         return klass.mirror();
     }
 

@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -317,8 +318,9 @@ public final class JDWPContextImpl implements JDWPContext {
 
             StaticObject classLoader = objectKlass.getDefiningClassLoader();
             for (Symbol<Symbol.Name> nestedType : nestedTypeNames) {
-                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(nestedType.toString());
-                KlassRef loadedKlass = context.getRegistries().findLoadedClass(type, classLoader);
+                ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+                Symbol<Symbol.Type> type = env.getTypes().fromClassGetName(nestedType.toString());
+                KlassRef loadedKlass = env.getRegistries().findLoadedClass(env, type, classLoader);
                 if (loadedKlass != null && loadedKlass != klass) {
                     result.add(loadedKlass);
                 }

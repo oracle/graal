@@ -67,7 +67,7 @@ public final class ClassRegistries {
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
-        this.bootClassRegistry = new BootClassRegistry(context);
+        this.bootClassRegistry = new BootClassRegistry(context.getLanguage().getNewLoaderId());
         this.constraints = new LoadingConstraints(context);
     }
 
@@ -127,11 +127,11 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass findLoadedClass(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader) {
+    public Klass findLoadedClass(ClassLoadingEnv.InContext env, Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = findLoadedClass(context.getTypes().getElementalType(type), classLoader);
+            Klass elemental = findLoadedClass(env, context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
@@ -140,7 +140,7 @@ public final class ClassRegistries {
 
         ClassRegistry registry = getClassRegistry(classLoader);
         assert registry != null;
-        return registry.findLoadedKlass(type);
+        return registry.findLoadedKlass(env, type);
     }
 
     @TruffleBoundary
@@ -217,30 +217,33 @@ public final class ClassRegistries {
      * .
      */
     @TruffleBoundary
-    public Klass loadKlass(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain)
+            throws EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.SecurityException {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader, protectionDomain);
+            Klass elemental = loadKlass(env, context.getTypes().getElementalType(type), classLoader, protectionDomain);
             if (elemental == null) {
                 return null;
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.loadKlass(type, protectionDomain);
+        return registry.loadKlass(env, type, protectionDomain);
     }
 
     @TruffleBoundary
-    public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) {
-        return defineKlass(type, bytes, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader)
+            throws EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.SecurityException {
+        return defineKlass(env, type, bytes, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     @TruffleBoundary
-    public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.SecurityException {
         assert classLoader != null;
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.defineKlass(type, bytes, info);
+        return registry.defineKlass(env, type, bytes, info);
     }
 
     public BootClassRegistry getBootClassRegistry() {

@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.TruffleLogger;
@@ -41,7 +42,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -219,8 +219,9 @@ public final class Substitutions implements ContextAccess {
                 if (!substitutorFactory.isValidFor(methodToSubstitute.getJavaVersion())) {
                     return null;
                 }
+                ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(methodToSubstitute.getContext());
                 StaticObject classLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
-                if (forceValid || ClassRegistry.loaderIsBootOrPlatform(classLoader, methodToSubstitute.getMeta())) {
+                if (forceValid || env.isLoaderBootOrPlatform(classLoader)) {
                     return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, methodToSubstitute));
                 }
 

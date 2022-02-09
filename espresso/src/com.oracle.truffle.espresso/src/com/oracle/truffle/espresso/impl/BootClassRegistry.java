@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
@@ -48,6 +48,10 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("BCL loadKlassCacheHits");
     private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
+    public BootClassRegistry(int loaderID) {
+        super(loaderID);
+    }
+
     @Override
     protected void loadKlassCountInc() {
         loadKlassCount.inc();
@@ -60,27 +64,44 @@ public final class BootClassRegistry extends ClassRegistry {
 
     private final Map<String, String> packageMap = new ConcurrentHashMap<>();
 
-    public BootClassRegistry(EspressoContext context) {
-        super(context);
-    }
-
     @Override
-    @SuppressWarnings("try")
-    public Klass loadKlassImpl(Symbol<Type> type) {
-        if (Types.isPrimitive(type)) {
-            return null;
+    public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.SecurityException {
+        if (Types.isArray(type)) {
+            throw EspressoError.shouldNotReachHere("Array type provided to loadParserKlass");
         }
-        ClasspathFile classpathFile;
-        try (DebugCloseable scope = BOOT_KLASS_READ.scope(getContext().getTimers())) {
-            classpathFile = getContext().getBootClasspath().readClassFile(type);
+
+        ParserKlass parserKlass;
+        synchronized (type) {
+            ClasspathFile classpathFile = getClasspathFile(env, type);
             if (classpathFile == null) {
                 return null;
             }
+            parserKlass = createParserKlass(env, classpathFile.contents, type, info);
         }
+
+        return parserKlass;
+    }
+
+    @Override
+    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError {
+        ParserKlass parserKlass = loadParserKlass(env, type, info);
+        return parserKlass != null ? createLinkedKlass(env, parserKlass, info) : null;
+    }
+
+    @Override
+    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
+            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.IncompatibleClassChangeError {
+        ClasspathFile classpathFile = getClasspathFile(env, type);
+        if (classpathFile == null) {
+            return null;
+        }
+
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
-        ObjectKlass result = defineKlass(type, classpathFile.contents);
-        getRegistries().recordConstraint(type, result, getClassLoader());
+        ObjectKlass result = defineKlass(env, type, classpathFile.contents);
+        env.getRegistries().recordConstraint(type, result, getClassLoader());
         packageMap.put(result.getRuntimePackage().toString(), classpathFile.classpathEntry.path());
         return result;
     }
@@ -99,5 +120,9 @@ public final class BootClassRegistry extends ClassRegistry {
     @Override
     public @JavaType(ClassLoader.class) StaticObject getClassLoader() {
         return StaticObject.NULL;
+    }
+
+    private ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
+        return !Types.isPrimitive(type) ? env.getClasspath().readClassFile(type) : null;
     }
 }

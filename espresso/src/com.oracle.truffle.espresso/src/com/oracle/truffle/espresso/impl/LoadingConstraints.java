@@ -75,9 +75,10 @@ final class LoadingConstraints implements ContextAccess {
      */
     @SuppressWarnings("try")
     void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
         try (DebugCloseable constraints = CONSTRAINTS.scope(getContext().getTimers())) {
-            Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
-            Klass k2 = getContext().getRegistries().findLoadedClass(type, loader2);
+            Klass k1 = getContext().getRegistries().findLoadedClass(env, type, loader1);
+            Klass k2 = getContext().getRegistries().findLoadedClass(env, type, loader2);
             checkOrAdd(type, getKlassID(k1), getKlassID(k2), getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
         }
     }
