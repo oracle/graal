@@ -77,6 +77,7 @@ public class HeapSnapshotVerifier {
         info("Verifying the heap snapshot...");
         analysisModified = false;
         heapPatched = false;
+        int reachableTypesBefore = bb.getUniverse().getReachableTypes();
         iterations++;
         scannedObjects.reset();
         ObjectScanner objectScanner = new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
@@ -85,10 +86,16 @@ public class HeapSnapshotVerifier {
         objectScanner.scanBootImageHeapRoots();
         executor.complete();
         executor.shutdown();
+        int verificationReachableTypes = bb.getUniverse().getReachableTypes() - reachableTypesBefore;
         if (heapPatched) {
             info("Heap verification patched the heap snapshot.");
         } else {
             info("Heap verification didn't find any heap snapshot modifications.");
+        }
+        if (verificationReachableTypes > 0) {
+            info("Heap verification made " + verificationReachableTypes + " new types reachable.");
+        } else {
+            info("Heap verification didn't make any new types reachable.");
         }
         if (analysisModified) {
             info("Heap verification modified the analysis state. Executing an additional analysis iteration.");
@@ -96,19 +103,10 @@ public class HeapSnapshotVerifier {
             info("Heap verification didn't modify the analysis state. Heap state stabilized after " + iterations + " iterations.");
             info("Exiting analysis.");
         }
-        return analysisModified;
+        return analysisModified || verificationReachableTypes > 0;
     }
 
     protected void scanTypes(@SuppressWarnings("unused") ObjectScanner objectScanner) {
-    }
-
-    public boolean checkTypes() {
-        for (AnalysisType t : bb.getUniverse().getTypes()) {
-            if (t.isReachable() && !initializationInfoComputed(t)) {
-                throw AnalysisError.shouldNotReachHere("Type is not initialized " + t.getName());
-            }
-        }
-        return true;
     }
 
     public void cleanupAfterAnalysis() {
@@ -224,80 +222,62 @@ public class HeapSnapshotVerifier {
             Object object = constantAsObject(bb, value);
             Class<?> objectClass = object.getClass();
             if (objectClass.equals(Class.class)) {
-                /*
-                 * Ensure that java.lang.Class constants are fully initialized and scanned. If a
-                 * type is marked as reachable during the verification then it's class
-                 * initialization info will be missing since
-                 * ClassInitializationFeature.buildClassInitializationInfo() hasn't processed it
-                 * yet.
-                 */
+                /* Ensure that java.lang.Class constants are scanned. */
                 AnalysisType type = bb.getMetaAccess().lookupJavaType((Class<?>) object);
-                if (!initializationInfoComputed(type)) {
-                    onNoInitInfoForClassConstant(type, reason);
-                } else {
-                    ensureTypeScanned(value, type, reason);
-                }
+                ensureTypeScanned(value, type, reason);
             } else {
                 /*
-                 * Ensure that the Class of any other constants are also fully initialized and
-                 * scanned. An object replacer can introduce new types which otherwise could be
-                 * missed by the verifier. For example
-                 * com.oracle.svm.hosted.annotation.AnnotationObjectReplacer creates annotation
-                 * proxy types on the fly for constant annotation objects.
+                 * Ensure that the Class of any other constants are also scanned. An object replacer
+                 * can introduce new types which otherwise could be missed by the verifier. For
+                 * example com.oracle.svm.hosted.annotation.AnnotationObjectReplacer creates
+                 * annotation proxy types on the fly for constant annotation objects.
                  */
                 AnalysisType type = bb.getMetaAccess().lookupJavaType(objectClass);
-                if (!initializationInfoComputed(type)) {
-                    onNoInitInfoForObjectType(value, type, reason);
-                } else {
-                    ensureTypeScanned(bb.getConstantReflectionProvider().asJavaClass(type), type, reason);
-                }
+                ensureTypeScanned(value, bb.getConstantReflectionProvider().asJavaClass(type), type, reason);
             }
         }
 
-        private void ensureTypeScanned(JavaConstant value, AnalysisType type, ScanReason reason) {
+        private void ensureTypeScanned(JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
+            ensureTypeScanned(null, typeConstant, type, reason);
+        }
+
+        private void ensureTypeScanned(JavaConstant object, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
             AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable " + type.toJavaName());
-            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(value);
+            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(typeConstant);
             /* Make sure the DynamicHub value is scanned. */
             if (task == null) {
-                onNoTaskForClassConstant(value, reason);
-                scanner.toImageHeapObject(value, reason, null);
+                onNoTaskForClassConstant(type, reason);
+                scanner.toImageHeapObject(typeConstant, reason, null);
                 heapPatched = true;
             } else {
                 if (task.isDone()) {
                     JavaConstant snapshot = task.guardedGet().getObject();
-                    if (!Objects.equals(snapshot, value)) {
-                        throw error(reason, "Value mismatch for class constant snapshot: %s %n new value: %s %n", snapshot, value);
+                    if (!Objects.equals(snapshot, typeConstant)) {
+                        throw error(reason, "Value mismatch for class constant snapshot: %s %n new value: %s %n", snapshot, typeConstant);
                     }
                 } else {
-                    /* If there is a task for the hub it should have been triggered. */
-                    throw error(reason, "Snapshot not yet computed for class constant %n new value: %s %n", value);
+                    onTaskForClassConstantNotDone(object, type, reason);
+                    task.ensureDone();
                 }
             }
         }
     }
 
-    protected boolean initializationInfoComputed(@SuppressWarnings("unused") AnalysisType type) {
-        return true;
-    }
-
-    private void onNoInitInfoForClassConstant(AnalysisType type, ScanReason reason) {
+    private void onNoTaskForClassConstant(AnalysisType type, ScanReason reason) {
         analysisModified = true;
         if (printAll()) {
-            warning(reason, "No initialization info computed for class constant %s %n", type.toJavaName());
+            warning(reason, "No snapshot task found for class constant %s %n", type.toJavaName());
         }
     }
 
-    private void onNoInitInfoForObjectType(JavaConstant object, AnalysisType type, ScanReason reason) {
+    private void onTaskForClassConstantNotDone(JavaConstant object, AnalysisType type, ScanReason reason) {
         analysisModified = true;
         if (printAll()) {
-            warning(reason, "No initialization info computed for class %s of object %s %n", type.toJavaName(), object);
-        }
-    }
-
-    private void onNoTaskForClassConstant(JavaConstant value, ScanReason reason) {
-        analysisModified = true;
-        if (printAll()) {
-            warning(reason, "No snapshot task found for class constant %s %n", value);
+            if (object != null) {
+                warning(reason, "Snapshot not yet computed for class %s of object %s %n", type.toJavaName(), object);
+            } else {
+                warning(reason, "Snapshot not yet computed for class constant %n new value: %s %n", type.toJavaName());
+            }
         }
     }
 

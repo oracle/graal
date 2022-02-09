@@ -388,10 +388,6 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    protected JavaConstant interceptArrayElement(JavaConstant elementValue) {
-        return elementValue;
-    }
-
     void onObjectReachable(ImageHeapObject imageHeapObject) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapObject.getObject());
         imageHeap.add(objectType, imageHeapObject);
