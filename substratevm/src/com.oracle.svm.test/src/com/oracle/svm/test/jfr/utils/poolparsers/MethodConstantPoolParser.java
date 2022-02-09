@@ -28,7 +28,7 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 import org.junit.Assert;
 
@@ -39,9 +39,9 @@ public class MethodConstantPoolParser extends ConstantPoolParser {
         int numberOfMethods = input.readInt();
         for (int i = 0; i < numberOfMethods; i++) {
             addFoundId(input.readLong()); // MethodId.
-            addExpectedId(JfrTypes.Class, input.readLong()); // ClassId.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // MethodName.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // Descriptor.
+            addExpectedId(JfrType.Class, input.readLong()); // ClassId.
+            addExpectedId(JfrType.Symbol, input.readLong()); // MethodName.
+            addExpectedId(JfrType.Symbol, input.readLong()); // Descriptor.
             Assert.assertTrue("Modifier value is not correct!", input.readInt() >= 0); // Modifier.
             input.readBoolean(); // Hidden.
         }

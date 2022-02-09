@@ -65,6 +65,7 @@ import jdk.jfr.internal.jfc.JFC;
 public class JfrManager {
     private static final String DEFAULT_JFC_NAME = "default";
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
     final boolean hostedEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)

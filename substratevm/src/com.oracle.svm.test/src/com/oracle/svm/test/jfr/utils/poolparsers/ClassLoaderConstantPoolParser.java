@@ -26,7 +26,7 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 import java.io.IOException;
@@ -38,8 +38,8 @@ public class ClassLoaderConstantPoolParser extends ConstantPoolParser {
         int numberOfClassLoaders = input.readInt();
         for (int i = 0; i < numberOfClassLoaders; i++) {
             addFoundId(input.readLong()); // ClassLoaderId.
-            addExpectedId(JfrTypes.Class, input.readLong()); // ClassId.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // ClassLoaderName.
+            addExpectedId(JfrType.Class, input.readLong()); // ClassId.
+            addExpectedId(JfrType.Symbol, input.readLong()); // ClassLoaderName.
         }
     }
 }

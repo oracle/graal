@@ -34,7 +34,7 @@ import java.util.HashMap;
 
 import com.oracle.svm.core.jfr.JfrChunkWriter;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 
 import com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ClassLoaderConstantPoolParser;
@@ -58,19 +58,19 @@ public class JFRFileParser {
     static {
         supportedConstantPools = new HashMap<>();
 
-        supportedConstantPools.put(JfrTypes.Class.getId(), new ClassConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.ClassLoader.getId(), new ClassLoaderConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.Package.getId(), new PackageConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.Module.getId(), new ModuleConstantPoolParser());
+        supportedConstantPools.put(JfrType.Class.getId(), new ClassConstantPoolParser());
+        supportedConstantPools.put(JfrType.ClassLoader.getId(), new ClassLoaderConstantPoolParser());
+        supportedConstantPools.put(JfrType.Package.getId(), new PackageConstantPoolParser());
+        supportedConstantPools.put(JfrType.Module.getId(), new ModuleConstantPoolParser());
 
-        supportedConstantPools.put(JfrTypes.Symbol.getId(), new SymbolConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.Method.getId(), new MethodConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.StackTrace.getId(), new StacktraceConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.FrameType.getId(), new FrameTypeConstantPoolParser());
+        supportedConstantPools.put(JfrType.Symbol.getId(), new SymbolConstantPoolParser());
+        supportedConstantPools.put(JfrType.Method.getId(), new MethodConstantPoolParser());
+        supportedConstantPools.put(JfrType.StackTrace.getId(), new StacktraceConstantPoolParser());
+        supportedConstantPools.put(JfrType.FrameType.getId(), new FrameTypeConstantPoolParser());
 
-        supportedConstantPools.put(JfrTypes.Thread.getId(), new ThreadConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.ThreadGroup.getId(), new ThreadGroupConstantPoolParser());
-        supportedConstantPools.put(JfrTypes.ThreadState.getId(), new ThreadStateConstantPoolParser());
+        supportedConstantPools.put(JfrType.Thread.getId(), new ThreadConstantPoolParser());
+        supportedConstantPools.put(JfrType.ThreadGroup.getId(), new ThreadGroupConstantPoolParser());
+        supportedConstantPools.put(JfrType.ThreadState.getId(), new ThreadStateConstantPoolParser());
     }
 
     public static HashMap<Long, ConstantPoolParser> getSupportedConstantPools() {

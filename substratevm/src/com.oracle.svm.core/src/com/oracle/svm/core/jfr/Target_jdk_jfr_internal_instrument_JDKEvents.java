@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
 
-@TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents", onlyWith = JfrEnabled.class)
+@TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_instrument_JDKEvents {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] eventClasses = {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,24 +27,39 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
- * Used to serialize all predefined frame types into the chunk.
+ * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
  */
-public class JfrFrameTypeSerializer implements JfrConstantPool {
+public enum JfrEvent {
+    ThreadStart("jdk.ThreadStart"),
+    ThreadEnd("jdk.ThreadEnd"),
+    DataLoss("jdk.DataLoss"),
+    ClassLoadingStatistics("jdk.ClassLoadingStatistics"),
+    InitialEnvironmentVariable("jdk.InitialEnvironmentVariable"),
+    InitialSystemProperty("jdk.InitialSystemProperty"),
+    JavaThreadStatistics("jdk.JavaThreadStatistics"),
+    JVMInformation("jdk.JVMInformation"),
+    OSInformation("jdk.OSInformation"),
+    PhysicalMemory("jdk.PhysicalMemory"),
+    ExecutionSample("jdk.ExecutionSample"),
+    NativeMethodSample("jdk.NativeMethodSample"),
+    GCPhasePauseEvent("jdk.GCPhasePause"),
+    GCPhasePauseLevel1Event("jdk.GCPhasePauseLevel1"),
+    GCPhasePauseLevel2Event("jdk.GCPhasePauseLevel2"),
+    GCPhasePauseLevel3Event("jdk.GCPhasePauseLevel3"),
+    GCPhasePauseLevel4Event("jdk.GCPhasePauseLevel4");
+
+    private final long id;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrFrameTypeSerializer() {
+    JfrEvent(String name) {
+        this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
     }
 
-    @Override
-    public int write(JfrChunkWriter writer) {
-        writer.writeCompressedLong(JfrType.FrameType.getId());
-
-        JfrFrameType[] values = JfrFrameType.values();
-        writer.writeCompressedLong(values.length);
-        for (int i = 0; i < values.length; i++) {
-            writer.writeCompressedInt(i);
-            writer.writeString(values[i].getText());
-        }
-        return NON_EMPTY;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getId() {
+        return id;
     }
 }

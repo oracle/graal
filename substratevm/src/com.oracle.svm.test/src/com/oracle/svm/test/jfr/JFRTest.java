@@ -29,13 +29,13 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
 import com.oracle.svm.test.jfr.utils.JFR;
 import com.oracle.svm.test.jfr.utils.JFRFileParser;
 import com.oracle.svm.test.jfr.utils.LocalJFR;
@@ -51,7 +51,7 @@ public abstract class JFRTest {
 
     @BeforeClass
     public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || HasJfrSupport.get());
     }
 
     @Before

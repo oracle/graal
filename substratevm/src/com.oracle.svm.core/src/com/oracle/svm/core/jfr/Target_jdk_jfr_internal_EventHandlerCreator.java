@@ -30,7 +30,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.internal.handlers.EventHandler;
 
-@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = JfrEnabled.class)
+@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_EventHandlerCreator {
     @Substitute
     @SuppressWarnings("static-method")
