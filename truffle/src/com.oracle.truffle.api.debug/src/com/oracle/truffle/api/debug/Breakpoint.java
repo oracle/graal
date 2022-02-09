@@ -270,20 +270,26 @@ public class Breakpoint {
      *
      * @since 0.9
      */
-    public synchronized void setEnabled(boolean enabled) {
-        if (disposed) {
-            // cannot enable disposed breakpoints
-            return;
-        }
-        if (this.enabled != enabled) {
-            if (!sessions.isEmpty()) {
-                if (enabled) {
-                    install();
-                } else {
-                    uninstall();
-                }
+    public void setEnabled(boolean enabled) {
+        boolean doInstall = false;
+        synchronized (this) {
+            if (disposed) {
+                // cannot enable disposed breakpoints
+                return;
             }
-            this.enabled = enabled;
+            if (this.enabled != enabled) {
+                if (!sessions.isEmpty()) {
+                    doInstall = true;
+                }
+                this.enabled = enabled;
+            }
+        }
+        if (doInstall) {
+            if (enabled) {
+                install();
+            } else {
+                uninstall();
+            }
         }
     }
 
@@ -620,10 +626,14 @@ public class Breakpoint {
         return global;
     }
 
-    synchronized void sessionClosed(DebuggerSession d) {
-        this.sessions.remove(d);
-        sessionsAssumptionInvalidate();
-        if (this.sessions.isEmpty()) {
+    void sessionClosed(DebuggerSession d) {
+        boolean doUninstall;
+        synchronized (this) {
+            this.sessions.remove(d);
+            sessionsAssumptionInvalidate();
+            doUninstall = this.sessions.isEmpty();
+        }
+        if (doUninstall) {
             uninstall();
         }
     }
@@ -673,17 +683,19 @@ public class Breakpoint {
     }
 
     private void uninstall() {
-        assert Thread.holdsLock(this);
-        EventBinding<?> binding = breakpointBinding;
-        breakpointBinding = null;
-        for (DebuggerSession s : sessions) {
-            s.allBindings.remove(binding);
+        EventBinding<?> binding;
+        synchronized (this) {
+            binding = breakpointBinding;
+            breakpointBinding = null;
+            for (DebuggerSession s : sessions) {
+                s.allBindings.remove(binding);
+            }
+            breakpointBindingReady = false;
+            getAndSetSourceBinding(null);
         }
-        breakpointBindingReady = false;
         if (binding != null) {
             binding.dispose();
         }
-        getAndSetSourceBinding(null);
     }
 
     /**
@@ -775,7 +787,7 @@ public class Breakpoint {
                 }
                 if (internalCompliant) {
                     synchronized (this) {
-                        while (!breakpointBindingReady) {
+                        while (breakpointBinding != null && !breakpointBindingReady) {
                             // We need to wait here till we have the binding ready.
                             // DebuggerSession.collectDebuggerNodes() would not find the
                             // breakpoint's node otherwise.
