@@ -774,12 +774,6 @@ public abstract class VMThreads {
             }
         }
 
-        // This method will be removed in GR-34435.
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setStatusIgnoreSafepoints() {
-            SafepointBehavior.markThreadAsCrashed();
-        }
-
         public static boolean isValidStatus(int status) {
             return status > STATUS_ILLEGAL && status <= MAX_STATUS;
         }
