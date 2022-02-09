@@ -173,30 +173,6 @@
     ]
   },
   {
-    "name" : "com.oracle.svm.core.jdk.Resources",
-    "methods" : [
-        { "name" : "createURL" ,
-          "parameterTypes" : [
-            "java.lang.String"
-        ]},
-        { "name" : "createURL" ,
-          "parameterTypes" : [
-            "java.lang.String",
-            "int"
-        ]}
-    ]
-  },
-    {
-    "name" : "com.oracle.svm.core.jdk.ResourcesHelper",
-    "methods" : [
-        { "name" : "urlToResource" ,
-          "parameterTypes" : [
-            "java.lang.String",
-            "java.net.URL"
-        ]}
-    ]
-  },
-  {
     "name" : "com.oracle.svm.core.handles.ObjectHandlesImpl",
     "allDeclaredMethods" : true,
     "justification" : "Internal SVM implementation of JNI object handles"
