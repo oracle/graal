@@ -388,7 +388,12 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
         return 'parse'
 
     def extra_image_build_argument(self, benchmark, args):
-        return ['-H:NativeLinkerOption=-lharfbuzz'] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+        # Older JDK versions would need -H:NativeLinkerOption=libharfbuzz as an extra build argument.
+        expectedJdkVersion = mx.VersionSpec("11.0.13")
+        if mx.get_jdk().version < expectedJdkVersion:
+            mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
+
+        return super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
