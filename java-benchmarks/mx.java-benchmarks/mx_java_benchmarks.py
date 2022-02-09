@@ -350,21 +350,24 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
     def extra_image_build_argument(self, benchmark, args):
-        return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
                 '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
-                '-J-Dvertx.disableDnsResolver=true,'
+                '-J-Dvertx.disableDnsResolver=true',
                 '-J-Dio.netty.leakDetection.level=DISABLED',
-                '-J-Dio.netty.allocator.maxOrder=1',
+                '-J-Dio.netty.allocator.maxOrder=3',
                 '-J-Duser.language=en',
                 '-J-Duser.country=US',
                 '-J-Dfile.encoding=UTF-8',
-                '--initialize-at-build-time=',
+                '-H:-ParseOnce',
+                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
                 '-H:+JNI',
                 '-H:+AllowFoldMethods',
+                '-J-Djava.awt.headless=true',
                 '-H:FallbackThreshold=0',
                 '-H:+ReportExceptionStackTraces',
-                '-H:-AddAllCharsets',
+                '-H:+AddAllCharsets',
                 '-H:EnableURLProtocols=http',
                 '-H:NativeLinkerOption=-no-pie',
                 '-H:-UseServiceLoaderFeature',
@@ -373,7 +376,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.7"
+        return "1.0.8"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -383,6 +386,9 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
 
     def serviceEndpoint(self):
         return 'parse'
+
+    def extra_image_build_argument(self, benchmark, args):
+        return ['-H:NativeLinkerOption=-lharfbuzz'] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
@@ -402,7 +408,7 @@ mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.2"
+        return "1.0.3"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
