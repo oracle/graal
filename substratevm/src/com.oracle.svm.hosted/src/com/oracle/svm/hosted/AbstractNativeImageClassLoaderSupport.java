@@ -108,7 +108,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     protected abstract List<Path> applicationModulePath();
 
-    protected abstract Optional<? extends Object> findModule(String moduleName);
+    protected abstract Optional<Module> findModule(String moduleName);
 
     private HostedOptionParser hostedOptionParser;
     private OptionValues parsedHostedOptions;

@@ -428,7 +428,7 @@ public final class ImageClassLoader {
         return classLoaderSupport.getMainClassFromModule(module);
     }
 
-    public Optional<? extends Object> findModule(String moduleName) {
+    public Optional<Module> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
     }
 
