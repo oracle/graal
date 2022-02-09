@@ -53,14 +53,12 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -603,16 +601,6 @@ public abstract class PlatformThreads {
         return startData;
     }
 
-    /** GR-36413: for compatibility with legacy code, to be removed. Call prepareStart instead. */
-    protected static void prepareStartData(Thread thread, ThreadStartData startData) {
-        startData.setIsolate(CurrentIsolate.getIsolate());
-        startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
-
-        if (!thread.isDaemon()) {
-            nonDaemonThreads.incrementAndGet();
-        }
-    }
-
     protected void undoPrepareStartOnError(Thread thread, ThreadStartData startData) {
         if (!thread.isDaemon()) {
             undoPrepareNonDaemonStartOnError();
@@ -971,34 +959,6 @@ public abstract class PlatformThreads {
                 lock.unlock();
             }
             readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
-        }
-    }
-}
-
-final class LegacyPlatformThreads extends PlatformThreads {
-    @Override
-    protected boolean doStartThread(Thread thread, long stackSize) {
-        ImageSingletons.lookup(JavaThreads.class).doStartThread(thread, stackSize);
-        return true;
-    }
-
-    @Override
-    protected void setNativeName(Thread thread, String name) {
-        ImageSingletons.lookup(JavaThreads.class).setNativeName(thread, name);
-    }
-
-    @Override
-    protected void yieldCurrent() {
-        ImageSingletons.lookup(JavaThreads.class).yield();
-    }
-}
-
-@AutomaticFeature
-final class LegacyPlatformThreadsFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(PlatformThreads.class)) {
-            ImageSingletons.add(PlatformThreads.class, new LegacyPlatformThreads());
         }
     }
 }

@@ -29,7 +29,7 @@ package com.oracle.svm.core.posix.thread;
  *
  * @see PosixPlatformThreads
  */
-public class PosixJavaThreads {
-    protected PosixJavaThreads() {
+public final class PosixJavaThreads {
+    private PosixJavaThreads() {
     }
 }
