@@ -228,6 +228,8 @@ import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.bytecode.Bytecodes.TABLESWITCH;
 import static org.graalvm.compiler.bytecode.Bytecodes.WIDE;
 import static org.graalvm.compiler.core.common.GraalOptions.SupportJsrBytecodes;
+import static org.graalvm.compiler.java.BciBlockMapping.Options.DuplicateIrreducibleLoops;
+import static org.graalvm.compiler.java.BciBlockMapping.Options.MaxDuplicationFactor;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -306,7 +308,7 @@ public class BciBlockMapping implements JavaMethodContext {
     public static class Options {
         @Option(help = "When enabled, some limited amount of duplication will be performed in order compile code containing irreducible loops.")//
         public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(true);
-        @Option(help = "How much duplication can happen because of irreducible loops before bailing out.", type = OptionType.Expert)//
+        @Option(help = "Amount of block duplication to perform as factor of original number of blocks to handle irreducible loops before bailing out.", type = OptionType.Expert)//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
     }
 
@@ -1710,10 +1712,13 @@ public class BciBlockMapping implements JavaMethodContext {
                 blocksNotYetAssignedId--;
                 if (blocksNotYetAssignedId < 0) {
                     // this should only happen if duplication is active
-                    assert Options.DuplicateIrreducibleLoops.getValue(debug.getOptions());
+                    OptionValues options = debug.getOptions();
+                    assert DuplicateIrreducibleLoops.getValue(options);
                     duplicateBlocks += newDuplicateBlocks;
-                    if (duplicateBlocks > postJsrBlockCount * Options.MaxDuplicationFactor.getValue(debug.getOptions())) {
-                        throw new PermanentBailoutException("Non-reducible loop requires too much duplication");
+                    double factor = MaxDuplicationFactor.getValue(options);
+                    if (duplicateBlocks > postJsrBlockCount * factor) {
+                        throw new PermanentBailoutException("Non-reducible loop requires too much duplication. " +
+                                        "Setting " + MaxDuplicationFactor.getName() + " to a value higher than " + factor + " may resolve this.");
                     }
                     // there are new duplicate blocks, re-number
                     debug.log(DebugContext.INFO_LEVEL, "Re-numbering blocks to make room for duplicates (old length: %d; new blocks: %d)", blocks.length, newDuplicateBlocks);
