@@ -99,7 +99,7 @@ final class HostContext {
         }
     }, this);
 
-    final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<Map<List<Class<?>>, AdapterResult>>() {
+    final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<>() {
         @Override
         protected Map<List<Class<?>>, AdapterResult> computeValue(Class<?> type) {
             return new ConcurrentHashMap<>();

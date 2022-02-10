@@ -179,7 +179,7 @@ public class StackTraceTest {
         CallTarget test = createCallTarget(new TestCallNode(null) {
             @Override
             Object execute(VirtualFrame frame) {
-                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     @SuppressWarnings("deprecation")
                     public Object visitFrame(FrameInstance frameInstance) {
 
@@ -218,7 +218,7 @@ public class StackTraceTest {
 
             @Override
             Object execute(VirtualFrame frame) {
-                Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
                         visitCount++;
                         return "foobar";
@@ -228,7 +228,7 @@ public class StackTraceTest {
                 Assert.assertEquals("foobar", result);
 
                 visitCount = 0;
-                result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
                         visitCount++;
                         if (visitCount == 2) {

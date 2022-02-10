@@ -1069,7 +1069,7 @@ public class FileSystemsTest {
                 visitor.assertConsumed();
                 // TestVisitor cannot be used for SKIP_SIBLINGS due to random order of files on file
                 // system
-                FileVisitor<TruffleFile> fileVisitor = new FileVisitor<TruffleFile>() {
+                FileVisitor<TruffleFile> fileVisitor = new FileVisitor<>() {
 
                     private boolean skipReturned;
                     private Set<TruffleFile> importantFiles;

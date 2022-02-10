@@ -278,7 +278,7 @@ public final class MemoryFileSystem implements FileSystem {
         final byte[] origData = blocks.get(inode);
         final byte[] data = write && options.contains(StandardOpenOption.TRUNCATE_EXISTING) ? EMPTY : Arrays.copyOf(origData, origData.length);
         final long inodeFin = inode;
-        final BiConsumer<byte[], Long> syncAction = new BiConsumer<byte[], Long>() {
+        final BiConsumer<byte[], Long> syncAction = new BiConsumer<>() {
             @Override
             public void accept(byte[] t, Long u) {
                 blocks.put(inodeFin, Arrays.copyOf(t, (int) u.longValue()));
@@ -286,7 +286,7 @@ public final class MemoryFileSystem implements FileSystem {
         };
         final boolean readFin = read;
         final boolean writeFin = write;
-        final BiConsumer<byte[], Long> metaSyncAction = new BiConsumer<byte[], Long>() {
+        final BiConsumer<byte[], Long> metaSyncAction = new BiConsumer<>() {
             @Override
             public void accept(byte[] t, Long u) {
                 final long time = System.currentTimeMillis();
@@ -299,7 +299,7 @@ public final class MemoryFileSystem implements FileSystem {
                 }
             }
         };
-        final BiConsumer<byte[], Long> closeAction = new BiConsumer<byte[], Long>() {
+        final BiConsumer<byte[], Long> closeAction = new BiConsumer<>() {
             @Override
             public void accept(byte[] t, Long u) {
                 if (deleteOnClose) {
@@ -535,7 +535,7 @@ public final class MemoryFileSystem implements FileSystem {
 
         @Override
         public Iterator<Path> iterator() {
-            return new Iterator<Path>() {
+            return new Iterator<>() {
                 private final Iterator<? extends String> delegate = names.iterator();
 
                 @Override
@@ -1094,7 +1094,7 @@ public final class MemoryFileSystem implements FileSystem {
 
         @Override
         public Iterator<Path> iterator() {
-            return new Iterator<Path>() {
+            return new Iterator<>() {
 
                 private final Iterator<Path> delegateIt = delegate.iterator();
 

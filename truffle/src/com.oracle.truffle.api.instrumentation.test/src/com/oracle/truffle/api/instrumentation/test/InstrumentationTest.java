@@ -2211,7 +2211,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(Env env) {
-            env.registerService(new Supplier<Object>() {
+            env.registerService(new Supplier<>() {
                 @Override
                 public Object get() {
                     return env.getPolyglotBindings();
