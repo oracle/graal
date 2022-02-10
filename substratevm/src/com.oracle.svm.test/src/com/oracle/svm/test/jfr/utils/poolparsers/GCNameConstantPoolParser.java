@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-public class TestClassEvent extends JFRTest {
+import java.io.IOException;
+
+public class GCNameConstantPoolParser extends ConstantPoolParser {
 
     @Override
-    public String[] getTestEvents() {
-        return new String[]{
-                        ClassEvent.class.toString()
-        };
-    }
-
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfGCNames = input.readInt();
+        for (int i = 0; i < numberOfGCNames; i++) {
+            addFoundId(input.readInt()); // Id.
+            Assert.assertFalse("GC name is empty!", input.readUTF().isEmpty());
+        }
     }
 }

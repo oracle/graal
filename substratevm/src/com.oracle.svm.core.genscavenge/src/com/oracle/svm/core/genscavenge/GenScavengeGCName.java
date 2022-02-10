@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,25 +23,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.genscavenge;
 
-package com.oracle.svm.test.jfr;
+import com.oracle.svm.core.heap.GCName;
+import com.oracle.svm.core.SubstrateOptions;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+final class GenScavengeGCName extends GCName {
+    public static final GCName GenScavenge;
 
-public class TestClassEvent extends JFRTest {
-
-    @Override
-    public String[] getTestEvents() {
-        return new String[]{
-                        ClassEvent.class.toString()
-        };
+    static {
+        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+            GenScavenge = new GenScavengeGCName("epsilon");
+        } else {
+            assert SubstrateOptions.UseSerialGC.getValue();
+            GenScavenge = new GenScavengeGCName("serial");
+        }
     }
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+    private GenScavengeGCName(String name) {
+        super(name);
     }
 }

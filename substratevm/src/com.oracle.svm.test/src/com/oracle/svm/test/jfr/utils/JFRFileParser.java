@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,8 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ClassLoaderConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.FrameTypeConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.GCCauseConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.GCNameConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
@@ -71,6 +73,9 @@ public class JFRFileParser {
         supportedConstantPools.put(JfrType.Thread.getId(), new ThreadConstantPoolParser());
         supportedConstantPools.put(JfrType.ThreadGroup.getId(), new ThreadGroupConstantPoolParser());
         supportedConstantPools.put(JfrType.ThreadState.getId(), new ThreadStateConstantPoolParser());
+
+        supportedConstantPools.put(JfrType.GCName.getId(), new GCNameConstantPoolParser());
+        supportedConstantPools.put(JfrType.GCCause.getId(), new GCCauseConstantPoolParser());
     }
 
     public static HashMap<Long, ConstantPoolParser> getSupportedConstantPools() {

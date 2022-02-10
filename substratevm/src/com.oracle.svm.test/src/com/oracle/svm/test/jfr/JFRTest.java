@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -40,12 +39,13 @@ import com.oracle.svm.test.jfr.utils.JFR;
 import com.oracle.svm.test.jfr.utils.JFRFileParser;
 import com.oracle.svm.test.jfr.utils.LocalJFR;
 
+import java.util.HashSet;
 import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
 
 /** Base class for JFR unit tests. */
 public abstract class JFRTest {
-
     protected JFR jfr;
     protected Recording recording;
 
@@ -58,7 +58,12 @@ public abstract class JFRTest {
     public void startRecording() {
         try {
             jfr = new LocalJFR();
-            recording = jfr.startRecording(getClass().getName());
+            recording = jfr.createRecording(getClass().getName());
+
+            String[] events = getTestEvents();
+            setupEvents(events);
+
+            jfr.startRecording(recording);
         } catch (Exception e) {
             Assert.fail("Fail to start recording! Cause: " + e.getMessage());
         }
@@ -68,14 +73,57 @@ public abstract class JFRTest {
     public void endRecording() {
         try {
             jfr.endRecording(recording);
-            try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-                assertNotNull(recordingFile);
-                JFRFileParser.parse(recording);
-            } finally {
-                jfr.cleanupRecording(recording);
-            }
         } catch (Exception e) {
             Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
+        }
+
+        try {
+            checkRecording();
+        } finally {
+            try {
+                jfr.cleanupRecording(recording);
+            } catch (Exception e) {
+                Assert.fail("Fail to cleanup recording! Cause: " + e.getMessage());
+            }
+        }
+    }
+
+    protected void setupEvents(String[] events) {
+        if (events != null) {
+            for (String event : events) {
+                recording.enable(event);
+            }
+        }
+    }
+
+    // List events that expects to be recorded
+    public abstract String[] getTestEvents();
+
+    protected void checkEvents() {
+        HashSet<String> seenEvents = new HashSet<>();
+
+        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
+            while (recordingFile.hasMoreEvents()) {
+                RecordedEvent event = recordingFile.readEvent();
+                String eventName = event.getEventType().getName();
+                seenEvents.add(eventName);
+            }
+        } catch (Exception e) {
+            Assert.fail("Failed to read events: " + e.getMessage());
+        }
+
+        for (String name : getTestEvents()) {
+            if (!seenEvents.contains(name)) {
+                Assert.fail("Event: " + name + " not found in recording");
+            }
+        }
+    }
+
+    protected void checkRecording() throws AssertionError {
+        try {
+            JFRFileParser.parse(recording);
+        } catch (Exception e) {
+            Assert.fail("Failed to parse recording: " + e.getMessage());
         }
     }
 }

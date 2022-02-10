@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,22 +26,20 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
 import org.junit.Test;
 
-public class TestClassEvent extends JFRTest {
-
+public class TestGCEvents extends JFRTest {
     @Override
     public String[] getTestEvents() {
         return new String[]{
-                        ClassEvent.class.toString()
+                        "jdk.GarbageCollection",
+                        "jdk.GCPhasePause",
+                        "jdk.GCPhasePauseLevel1"
         };
     }
 
     @Test
     public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+        System.gc();
     }
 }

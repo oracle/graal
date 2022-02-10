@@ -30,12 +30,11 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jfr.JfrBuffer;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.VMError;
@@ -44,12 +43,44 @@ class JfrGCEventSupport {
     private static final int MAX_PHASE_LEVEL = 4;
     private static int currentPhase;
 
+    public static long getTicks() {
+        if (!HasJfrSupport.get()) {
+            return 0;
+        }
+        return JfrTicks.elapsedTicks();
+    }
+
     public static long startGCPhasePause() {
         if (!HasJfrSupport.get()) {
             return 0;
         }
         pushPhase();
         return JfrTicks.elapsedTicks();
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    public static void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
+        if (!HasJfrSupport.get()) {
+            return;
+        }
+
+        long end = JfrTicks.elapsedTicks();
+        long pauseTime = end - start;
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.GarbageCollection)) {
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
+            JfrNativeEventWriter.beginEventWrite(data, false);
+            JfrNativeEventWriter.putLong(data, JfrEvent.GarbageCollection.getId());
+            JfrNativeEventWriter.putLong(data, start);
+            JfrNativeEventWriter.putLong(data, pauseTime);
+            JfrNativeEventWriter.putLong(data, gcEpoch.rawValue());
+            JfrNativeEventWriter.putLong(data, GenScavengeGCName.GenScavenge.getId());
+            JfrNativeEventWriter.putLong(data, cause.getId());
+            JfrNativeEventWriter.putLong(data, pauseTime);  // sum of pause
+            JfrNativeEventWriter.putLong(data, pauseTime);  // longest pause
+            JfrNativeEventWriter.endEventWrite(data, false);
+        }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -62,9 +93,8 @@ class JfrGCEventSupport {
         JfrEvent event = getGCPhasePauseEvent(level);
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(event)) {
             long end = JfrTicks.elapsedTicks();
-            JfrBuffer buffer = ((JfrThreadLocal) SubstrateJVM.getThreadLocal()).getNativeBuffer();
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initialize(data, buffer);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, event.getId());

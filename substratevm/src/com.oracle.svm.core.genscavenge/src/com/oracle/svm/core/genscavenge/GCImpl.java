@@ -209,7 +209,7 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            long startTicks = JfrGCEventSupport.startGCPhasePause();
+            long startTicks = JfrGCEventSupport.getTicks();
             try {
                 outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
                 if (outOfMemory) {
@@ -223,7 +223,7 @@ public final class GCImpl implements GC {
                     }
                 }
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), cause.getName(), startTicks);
+                JfrGCEventSupport.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
             }
         } finally {
             nav.close();
