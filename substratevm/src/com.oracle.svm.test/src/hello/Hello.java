@@ -234,4 +234,6 @@ public class Hello {
         System.out.println(String.format("q = %g\n", q));
         System.out.println(String.format("t = %s\n", t));
     }
+
+    final static java.util.function.Supplier<String> lambda = () -> "lambdaText";
 }

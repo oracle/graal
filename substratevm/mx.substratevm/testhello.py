@@ -270,6 +270,14 @@ def test():
     checker = Checker("info func greet", rexp)
     checker.check(exec_string)
 
+    # look up lambda method
+    exec_string = execute("info func Hello$$Lambda")
+    rexp = [r'All functions matching regular expression "Hello\$\$Lambda":',
+            r"File hello/Hello\.java:",
+            r"%sjava\.lang\.Object \*hello\.Hello\$\$Lambda\$%s[\./][^:]+::get\(hello\.Hello\$\$Lambda\$%s[\./]%s \*\);"%(maybe_spaces_pattern, digits_pattern, digits_pattern, wildcard_pattern)]
+    checker = Checker("info func Hello$$Lambda", rexp)
+    checker.check(exec_string)
+
     # step into method call
     execute("step")
 
@@ -466,6 +474,7 @@ def test():
             r"%sstatic void inlineReceiveConstants\(byte, int, long, java\.lang\.String \*, float, double\);"%spaces_pattern,
             r"%sstatic void inlineTailRecursion\(int\);"%spaces_pattern,
             r"%sstatic void inlineTo\(int\);"%spaces_pattern,
+            r"%sstatic java\.lang\.String \* lambda\$static\$%s\(void\);"%(spaces_pattern, digits_pattern),
             r"%spublic:"%spaces_pattern,
             r"%sstatic void main\(java\.lang\.String\[\] \*\);"%spaces_pattern,
             r"%sprivate:"%spaces_pattern,
