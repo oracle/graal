@@ -883,13 +883,13 @@ public class HotSpotGraphBuilderPlugins {
                         "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
             @Override
             protected Object[] getConstantArguments(ResolvedJavaMethod targetMethod) {
-                Object[] constantArguments = new Object[4];
                 ResolvedJavaType declaringClass = targetMethod.getDeclaringClass();
-                constantArguments[0] = declaringClass;
-                constantArguments[1] = HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA;");
-                constantArguments[2] = HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA2;");
-                constantArguments[3] = HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA5;");
-                return constantArguments;
+                return new Object[]{
+                                declaringClass,
+                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA;"),
+                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA2;"),
+                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA5;")
+                };
             }
 
             @Override
