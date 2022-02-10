@@ -29,8 +29,6 @@ import static jdk.vm.ci.code.BytecodeFrame.AFTER_EXCEPTION_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION_ENCODING;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -86,7 +84,6 @@ public class IntrinsicContext {
         assert bytecodeProvider != null;
         this.compilationContext = compilationContext;
         this.allowPartialIntrinsicArgumentMismatch = allowPartialIntrinsicArgumentMismatch;
-        assert !isCompilationRoot() || method.hasBytecodes() : "Cannot root compile intrinsic for native or abstract method " + method.format("%H.%n(%p)");
     }
 
     /**
@@ -134,14 +131,6 @@ public class IntrinsicContext {
         return compilationContext.equals(INLINE_AFTER_PARSING);
     }
 
-    public boolean isCompilationRoot() {
-        return compilationContext.equals(ROOT_COMPILATION) || compilationContext.equals(ROOT_COMPILATION_ENCODING);
-    }
-
-    public boolean isIntrinsicEncoding() {
-        return compilationContext.equals(ROOT_COMPILATION_ENCODING);
-    }
-
     public NodeSourcePosition getNodeSourcePosition() {
         return nodeSourcePosition;
     }
@@ -164,17 +153,7 @@ public class IntrinsicContext {
         /**
          * An intrinsic is being processed when inlining an {@link Invoke} in an existing graph.
          */
-        INLINE_AFTER_PARSING,
-
-        /**
-         * An intrinsic is the root of compilation.
-         */
-        ROOT_COMPILATION,
-
-        /**
-         * An intrinsic is the root of a compilation done for graph encoding.
-         */
-        ROOT_COMPILATION_ENCODING
+        INLINE_AFTER_PARSING
     }
 
     /**
