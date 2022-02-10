@@ -184,7 +184,7 @@ insight.on('enter', function(ev) {
 });
 ```
 
-Run it on top of [sieve.js](../../vm/benchmarks/agentscript/sieve.js).
+Run it on top of [sieve.js](../../../vm/benchmarks/agentscript/sieve.js).
 It is a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers:
 
 ```bash
@@ -312,7 +312,7 @@ The only change is the R language. All the other GraalVM Insight features and [A
 
 ## Insight into C Code
 
-Not only it is possible to interpret dynamic languages, but with the help of the [GraalVM's LLI implementation](../../reference-manual/polyglot-programming.md/llvm/README.md), one can mix in even statically compiled programs written in **C**, **C++**, **Fortran**, **Rust**, etc.
+Not only it is possible to interpret dynamic languages, but with the help of the [GraalVM's LLI implementation](../../reference-manual/llvm/README.md), one can mix in even statically compiled programs written in **C**, **C++**, **Fortran**, **Rust**, etc.
 
 Take, for examle, a long running program like [sieve.c](https://github.com/oracle/graal/blob/master/vm/tests/all/agentscript/agent-sieve.c), which contains never-ending `for` loop in `main` method. You would like to give it some execution quota.
 
@@ -602,7 +602,7 @@ insight.on('enter', function(ev) {
 insight.on('close', dumpCount);
 ```
 
-Use the script on fifty iterations of the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
+Use the script on fifty iterations of the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
 Repeating the computation fifty times gives the runtime a chance to warm up and properly optimize.
 Here is the optimal run:
 
@@ -632,7 +632,7 @@ The `count++` invocation becomes a natural part of the application at all the pl
 GraalVM Insight is capable to access local variables, almost "for free".
 GraalVM Insight code, accessing local variables, blends with the actual function code defining them and there is no visible slowdown.
 
-This can be demonstrated with this [sieve.js](../../vm/benchmarks/agentscript/sieve.js) algorithm to compute hundred thousand of prime numbers.
+This can be demonstrated with this [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) algorithm to compute hundred thousand of prime numbers.
 It keeps the found prime numbers in a linked list constructed via following function:
 
 ```js
@@ -751,7 +751,7 @@ insight.on('return', (ctx, frame) => {
 ```
 
 Save the code snippet as a `dump.js` file.
-Get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and launch it as:
+Get the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) file and launch it as:
 
 ```bash
 graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
@@ -764,7 +764,7 @@ Inspect the generated `.hprof` file with regular tools like [VisualVM](https://w
 
 ![Heap Inspect](img/Insight-HeapInspect.png)
 
-The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) script.
+The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) script.
 The function has just computed one hundred thousand (count available in variable `cnt`) prime numbers.
 The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
 The rest of the linked list is hidden (only references up to depth `10` were requested) behind `unreachable` object.
