@@ -677,7 +677,7 @@ Only one language library can be loaded during GraalVM's lifetime.
 This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely Javascript was created first, only Javascript will be available in isolated languages.
 
 ### Passing Native Image Runtime Options
-Engines running in an isolate can make use of [native image runtime options](../native-image/HostedvsRuntimeOptions/) by passing `--engine.IsolateOption.<option>` to the engine builder.
+Engines running in an isolate can make use of [native image runtime options](../native-image/HostedvsRuntimeOptions.md) by passing `--engine.IsolateOption.<option>` to the engine builder.
 For example, this can be used to limit the maximum heap memory used by an engine by setting the maximum heap size for the isolate via `--engine.IsolateOption.MaxHeapSize=128m`:
 
 ```java
