@@ -117,22 +117,22 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 @AutomaticFeature
 public class JfrFeature implements Feature {
-
-    private final boolean hostedEnabled;
-
-    public JfrFeature() {
-        hostedEnabled = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
-    }
+    /*
+     * Note that we could initialize the native part of JFR at image build time and that the native
+     * code sets the FlightRecorder option as a side effect. Therefore, we must ensure that we check
+     * the value of the option before it can be affected by image building.
+     */
+    private static final boolean HOSTED_ENABLED = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         boolean systemSupported = osSupported();
-        if (hostedEnabled && !systemSupported) {
+        if (HOSTED_ENABLED && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
                             "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
         }
         boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
-        if (hostedEnabled && !runtimeEnabled) {
+        if (HOSTED_ENABLED && !runtimeEnabled) {
             System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                             "This can affect the measurements because it can can make the image larger and image build time longer.");
             runtimeEnabled = true;
@@ -173,7 +173,7 @@ public class JfrFeature implements Feature {
         List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
 
-        ImageSingletons.add(JfrManager.class, new JfrManager(hostedEnabled));
+        ImageSingletons.add(JfrManager.class, new JfrManager(HOSTED_ENABLED));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
@@ -183,7 +183,7 @@ public class JfrFeature implements Feature {
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
-        if (hostedEnabled) {
+        if (HOSTED_ENABLED) {
             RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");
             rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", "Allow FlightRecorder to be used at image build time");
