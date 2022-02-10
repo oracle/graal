@@ -24,26 +24,11 @@
  */
 package org.graalvm.compiler.replacements;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-
 // JaCoCo Exclude
 
 /**
- * Substitutions for {@link java.lang.String} methods.
+ * Intrinsics for use by {@link StringUTF16Snippets} and {@link StringLatin1Snippets}.
  */
-public class StringSubstitutions {
-
-    /**
-     * Will be intrinsified with an {@link InvocationPlugin} to a {@link LoadFieldNode}.
-     */
-    public static native byte[] getValue(String s);
-
+public class StringHelperIntrinsics {
     public static native byte getByte(byte[] value, int i);
-
-    public static native int getCoder(String s);
-
-    public static boolean isCompactString(String s) {
-        return getCoder(s) == 0;
-    }
 }

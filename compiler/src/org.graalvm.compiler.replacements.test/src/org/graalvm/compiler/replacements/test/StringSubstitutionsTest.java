@@ -26,7 +26,6 @@ package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.junit.Test;
 
@@ -34,7 +33,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tests {@link StringSubstitutions}.
+ * Tests String intrinsics.
  */
 public class StringSubstitutionsTest extends MethodSubstitutionTest {
 

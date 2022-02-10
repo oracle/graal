@@ -28,9 +28,9 @@ package org.graalvm.compiler.replacements;
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
-import static org.graalvm.compiler.replacements.StringSubstitutions.getByte;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayIndexScale;
+import static org.graalvm.compiler.replacements.StringHelperIntrinsics.getByte;
 
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;

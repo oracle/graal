@@ -137,7 +137,6 @@ import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
@@ -291,26 +290,7 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        Registration sr = new Registration(plugins, StringSubstitutions.class);
-        sr.register(new InlineOnlyInvocationPlugin("getValue", String.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                ValueNode object = b.nullCheckedValue(value);
-                b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                                b.getOptions(), b.getAssumptions(), object, field, false, false));
-                return true;
-            }
-        });
-        sr.register(new InlineOnlyInvocationPlugin("getCoder", String.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
-                b.addPush(JavaKind.Int, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                                b.getOptions(), b.getAssumptions(), value, field, false, false));
-                return true;
-            }
-        });
+        Registration sr = new Registration(plugins, StringHelperIntrinsics.class);
         sr.register(new InlineOnlyInvocationPlugin("getByte", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
