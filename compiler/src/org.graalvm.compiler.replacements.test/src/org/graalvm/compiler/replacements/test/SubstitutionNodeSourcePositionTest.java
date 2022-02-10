@@ -31,19 +31,13 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import java.util.List;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.debug.BlackholeNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -59,52 +53,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * marker frame.
  */
 public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
-
-    private static class TestMethod {
-
-        public static int test(int i) {
-            return i;
-        }
-    }
-
-    @ClassSubstitution(TestMethod.class)
-    public static class TestMethodSubstitution {
-
-        @MethodSubstitution
-        public static int test(int i) {
-            blackhole(i);
-            return i;
-        }
-
-        @Node.NodeIntrinsic(BlackholeNode.class)
-        private static native void blackhole(int i);
-    }
-
-    @Override
-    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        new PluginFactory_SubstitutionNodeSourcePositionTest().registerPlugins(invocationPlugins, null);
-        ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, TestMethod.class, getReplacements(), bytecodeProvider);
-        r.registerMethodSubstitution(TestMethodSubstitution.class, "test", int.class);
-        super.registerInvocationPlugins(invocationPlugins);
-    }
-
-    public int methodSubstitution() {
-        return TestMethod.test(42);
-    }
-
-    @Test
-    public void testMethodSubstitution() {
-        // @formatter:off
-        // Expect mappings of the form:
-        //   at org.graalvm.compiler.replacements.test.SubstitutionNodeSourcePositionTest$TestMethodSubstitution.blackhole(int) [bci: -1]
-        //   at org.graalvm.compiler.replacements.test.SubstitutionNodeSourcePositionTest$TestMethodSubstitution.test(SubstitutionNodeSourcePositionTest.java:71) [bci: 1] Substitution
-        //   at org.graalvm.compiler.replacements.test.SubstitutionNodeSourcePositionTest$TestMethod.test(int) [bci: -1]
-        //   at org.graalvm.compiler.replacements.test.SubstitutionNodeSourcePositionTest.methodSubstitution(SubstitutionNodeSourcePositionTest.java:89) [bci: 2]
-        // @formatter:on
-        Assume.assumeFalse(UseEncodedGraphs.getValue(getInitialOptions()));
-        checkMappings("methodSubstitution", true, TestMethod.class, "test");
-    }
 
     public void snippetLowering(String[] array, String value) {
         array[0] = value;

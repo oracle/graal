@@ -46,14 +46,12 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -183,37 +181,6 @@ public class EncodedSnippets {
         visitor.accept(snippetEncoding);
         visitor.accept(snippetNodeClasses);
         visitor.accept(graphDatas);
-    }
-
-    @SuppressWarnings("try")
-    StructuredGraph getMethodSubstitutionGraph(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, HotSpotReplacementsImpl replacements, IntrinsicContext.CompilationContext context,
-                    StructuredGraph.AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
-        IntrinsicContext.CompilationContext contextToUse = context;
-        if (context == IntrinsicContext.CompilationContext.ROOT_COMPILATION) {
-            contextToUse = IntrinsicContext.CompilationContext.ROOT_COMPILATION_ENCODING;
-        }
-        GraphData data = graphDatas.get(plugin.toString() + contextToUse);
-        if (data == null) {
-            throw GraalError.shouldNotReachHere("plugin graph not found: " + plugin + " with " + contextToUse);
-        }
-
-        ResolvedJavaType accessingClass = replacements.getProviders().getMetaAccess().lookupJavaType(plugin.getDeclaringClass());
-        Providers providers = replacements.getProviders();
-        EncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, data.getStartOffset(null), snippetObjects, snippetNodeClasses,
-                        methodKey(original), accessingClass, original.getDeclaringClass());
-
-        try (DebugContext debug = replacements.openDebugContext("LibGraal", original, options)) {
-            StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions).cancellable(cancellable).method(original).setIsSubstitution(true).build();
-            try (DebugContext.Scope scope = debug.scope("LibGraal.DecodeMethodSubstitution", result)) {
-                PEGraphDecoder graphDecoder = new SubstitutionGraphDecoder(providers, result, replacements, null, original, contextToUse, encodedGraph, true);
-                graphDecoder.decode(original, result.isSubstitution(), encodedGraph.trackNodeSourcePosition());
-                postDecode(debug, result, original);
-                assert result.verify();
-                return result;
-            } catch (Throwable t) {
-                throw debug.handle(t);
-            }
-        }
     }
 
     /**
@@ -366,7 +333,7 @@ public class EncodedSnippets {
     static class SubstitutionGraphDecoder extends PEGraphDecoder {
         private final ResolvedJavaMethod method;
         private final EncodedGraph encodedGraph;
-        private IntrinsicContext intrinsic;
+        private final IntrinsicContext intrinsic;
         private final boolean mustSucceed;
 
         SubstitutionGraphDecoder(Providers providers, StructuredGraph result, HotSpotReplacementsImpl replacements, ParameterPlugin parameterPlugin, ResolvedJavaMethod method,
@@ -377,12 +344,11 @@ public class EncodedSnippets {
             this.method = method;
             this.encodedGraph = encodedGraph;
             this.mustSucceed = mustSucceed;
-            intrinsic = new IntrinsicContext(method, null, replacements.getDefaultReplacementBytecodeProvider(), context, false);
+            this.intrinsic = new IntrinsicContext(method, null, replacements.getDefaultReplacementBytecodeProvider(), context, false);
         }
 
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod,
-                        MethodSubstitutionPlugin plugin,
                         BytecodeProvider intrinsicBytecodeProvider,
                         boolean isSubstitution,
                         boolean trackNodeSourcePosition) {

@@ -46,8 +46,6 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
@@ -197,7 +195,6 @@ public class InvocationPlugins {
 
         private final Type declaringType;
         private final Replacements replacements;
-        private final BytecodeProvider bytecodeProvider;
         private boolean allowOverwrite;
 
         public Class<?> getReceiverType() {
@@ -220,7 +217,6 @@ public class InvocationPlugins {
             this.plugins = plugins;
             this.declaringType = declaringType;
             this.replacements = null;
-            this.bytecodeProvider = null;
         }
 
         /**
@@ -236,23 +232,6 @@ public class InvocationPlugins {
             this.plugins = plugins;
             this.declaringType = declaringType;
             this.replacements = replacements;
-            this.bytecodeProvider = replacements != null ? replacements.getDefaultReplacementBytecodeProvider() : null;
-        }
-
-        /**
-         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
-         * given class.
-         *
-         * @param plugins where to register the plugins
-         * @param declaringType the class declaring the methods for which plugins will be registered
-         *            via this object
-         * @param replacements the current Replacements provider
-         */
-        public Registration(InvocationPlugins plugins, Type declaringType, Replacements replacements, BytecodeProvider bytecodeProvider) {
-            this.plugins = plugins;
-            this.declaringType = declaringType;
-            this.replacements = replacements;
-            this.bytecodeProvider = bytecodeProvider;
         }
 
         /**
@@ -267,7 +246,6 @@ public class InvocationPlugins {
             this.plugins = plugins;
             this.declaringType = new OptionalLazySymbol(declaringClassName);
             this.replacements = null;
-            this.bytecodeProvider = null;
         }
 
         /**
@@ -283,7 +261,6 @@ public class InvocationPlugins {
             this.plugins = plugins;
             this.declaringType = new OptionalLazySymbol(declaringClassName);
             this.replacements = replacements;
-            this.bytecodeProvider = replacements != null ? replacements.getDefaultReplacementBytecodeProvider() : null;
         }
 
         /**
@@ -310,65 +287,6 @@ public class InvocationPlugins {
          */
         public void registerConditional(boolean isEnabled, InvocationPlugin plugin) {
             replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(declaringType, plugin, allowOverwrite);
-            }
-        }
-
-        /**
-         * Registers a plugin that implements a method based on the bytecode of a substitute method.
-         *
-         * @param substituteDeclaringClass the class declaring the substitute method
-         * @param name the name of both the original and substitute method
-         * @param argumentTypes the argument types of the method. Element 0 of this array must be
-         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
-         *            is non-static. Upon returning, element 0 will have been rewritten to
-         *            {@code declaringClass}
-         */
-        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Type... argumentTypes) {
-            registerMethodSubstitution(substituteDeclaringClass, name, name, argumentTypes);
-        }
-
-        /**
-         * Registers a plugin that implements a method based on the bytecode of a substitute method.
-         *
-         * @param substituteDeclaringClass the class declaring the substitute method
-         * @param name the name of the original method
-         * @param substituteName the name of the substitute method
-         * @param argumentTypes the argument types of the method. Element 0 of this array must be
-         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
-         *            is non-static. Upon returning, element 0 will have been rewritten to
-         *            {@code declaringClass}
-         */
-        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
-            doMethodSubstitutionRegistration(false, true, substituteDeclaringClass, name, substituteName, argumentTypes);
-        }
-
-        /**
-         * Registers a plugin that implements a method based on the bytecode of a substitute method
-         * that is conditionally enabled. This ensures that {@code Replacements} is aware of this
-         * plugin.
-         *
-         * @param isEnabled whether the plugin is enabled in the current compiler
-         * @param substituteDeclaringClass the class declaring the substitute method
-         * @param name the name of the original method
-         * @param substituteName the name of the substitute method
-         * @param argumentTypes the argument types of the method. Element 0 of this array must be
-         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
-         *            is non-static. Upon returning, element 0 will have been rewritten to
-         *            {@code declaringClass}
-         */
-        public void registerConditionalMethodSubstitution(boolean isEnabled, Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
-            doMethodSubstitutionRegistration(true, isEnabled, substituteDeclaringClass, name, substituteName, argumentTypes);
-        }
-
-        private void doMethodSubstitutionRegistration(boolean isConditional, boolean isEnabled, Class<?> substituteDeclaringClass, String name, String substituteName, Type[] argumentTypes) {
-            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(this, bytecodeProvider, name, substituteDeclaringClass, substituteName, argumentTypes);
-            replacements.registerMethodSubstitution(plugin);
-            if (isConditional) {
-                // Notify Replacements about the plugin even if it's not current enabled
-                replacements.registerConditionalPlugin(plugin);
-            }
             if (isEnabled) {
                 plugins.register(declaringType, plugin, allowOverwrite);
             }
@@ -1111,12 +1029,6 @@ public class InvocationPlugins {
             if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
                 return true;
             }
-            if (plugin instanceof MethodSubstitutionPlugin) {
-                MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
-                Method substitute = msplugin.getJavaSubstitute();
-                assert substitute.getAnnotation(MethodSubstitution.class) != null : format("Substitute method must be annotated with @%s: %s", MethodSubstitution.class.getSimpleName(), substitute);
-                return true;
-            }
             int arguments = plugin.getArgumentsSize();
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments,
                             plugin.getMethodNameWithArgumentsDescriptor());
@@ -1153,7 +1065,7 @@ public class InvocationPlugins {
                 }
             } else {
                 if (resolveMethod(declaringClass, plugin) == null && !plugin.isOptional()) {
-                    throw new NoSuchMethodError(String.format("%s.%s%s", declaringClass.getName(), plugin.getMethodNameWithArgumentsDescriptor()));
+                    throw new NoSuchMethodError(String.format("%s.%s", declaringClass.getName(), plugin.getMethodNameWithArgumentsDescriptor()));
                 }
             }
             return true;

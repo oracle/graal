@@ -271,7 +271,6 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -392,7 +391,6 @@ import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
-import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
@@ -2378,139 +2376,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
         }
         return false;
-    }
-
-    /**
-     * Inline a method substitution graph. This is necessary for libgraal as substitutions only
-     * exist as encoded graphs and can't be parsed directly into the caller.
-     */
-    @Override
-    @SuppressWarnings("try")
-    public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        if (receiver != null) {
-            receiver.get();
-        }
-
-        WithExceptionNode withException = null;
-        boolean insertExceptionEdge = false;
-        FixedWithNextNode replacee = lastInstr;
-        try (DebugContext.Scope a = debug.scope("instantiate", substituteGraph)) {
-            // Inline the snippet nodes, replacing parameters with the given args in the process
-            StartNode entryPointNode = substituteGraph.start();
-            FixedNode firstCFGNode = entryPointNode.next();
-            StructuredGraph replaceeGraph = replacee.graph();
-            Mark mark = replaceeGraph.getMark();
-            try (InliningScope inlineScope = new IntrinsicScope(this, targetMethod, args)) {
-
-                EconomicMap<Node, Node> replacementsMap = EconomicMap.create(Equivalence.IDENTITY);
-                for (ParameterNode param : substituteGraph.getNodes(ParameterNode.TYPE)) {
-                    replacementsMap.put(param, args[param.index()]);
-                }
-                replacementsMap.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
-
-                debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "Before inlining method substitution %s", substituteGraph.method());
-                UnmodifiableEconomicMap<Node, Node> duplicates = inlineMethodSubstitution(replaceeGraph, substituteGraph, replacementsMap);
-
-                FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-                replacee.setNext(firstCFGNodeDuplicate);
-                debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining method substitution %s", substituteGraph.method());
-
-                // Handle partial intrinsic exits
-                for (Node node : graph.getNewNodes(mark)) {
-                    if (node instanceof Invoke) {
-                        Invoke invoke = (Invoke) node;
-                        if (invoke.bci() == BytecodeFrame.UNKNOWN_BCI) {
-                            invoke.setBci(bci());
-                        }
-                    } else if (node instanceof ForeignCall) {
-                        ForeignCall call = (ForeignCall) node;
-                        if (call.bci() == BytecodeFrame.UNKNOWN_BCI) {
-                            call.setBci(bci());
-                            if (call.stateAfter() != null && call.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-                                call.setStateAfter(inlineScope.stateBefore);
-                            }
-                        }
-                    }
-
-                    if (node instanceof WithExceptionNode) {
-                        /**
-                         * The graphs for MethodSubstitutions are produced assuming that exceptions
-                         * must be dispatched. If the calling context doesn't want exception then
-                         * convert back into a non throwing node
-                         */
-                        assert withException == null : "at most one exception edge expected";
-                        withException = (WithExceptionNode) node;
-                        BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
-                        if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
-                            // Exception edge should be removed
-                            withException.replaceWithNonThrowing();
-                        } else {
-                            // Disconnnect exception edge
-                            insertExceptionEdge = true;
-                            withException.killExceptionEdge();
-                        }
-                    }
-                }
-
-                ArrayList<ReturnToCallerData> calleeReturnDataList = new ArrayList<>();
-                for (ReturnNode n : substituteGraph.getNodes(ReturnNode.TYPE)) {
-                    ReturnNode returnNode = (ReturnNode) duplicates.get(n);
-                    FixedWithNextNode predecessor = (FixedWithNextNode) returnNode.predecessor();
-                    calleeReturnDataList.add(new ReturnToCallerData(returnNode.result(), predecessor));
-                    predecessor.setNext(null);
-                    returnNode.safeDelete();
-                }
-
-                // Merge multiple returns
-                processCalleeReturn(targetMethod, inlineScope, calleeReturnDataList);
-
-                // Exiting this scope causes processing of the placeholder frame states.
-            }
-
-            if (insertExceptionEdge) {
-                // Connect exception edge into main graph
-                AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
-                withException.setExceptionEdge(exceptionEdge);
-            }
-
-            debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
-            return true;
-        } catch (Throwable t) {
-            throw debug.handle(t);
-        }
-    }
-
-    private static UnmodifiableEconomicMap<Node, Node> inlineMethodSubstitution(StructuredGraph replaceeGraph, StructuredGraph snippet,
-                    EconomicMap<Node, Node> replacementsMap) {
-        try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
-            InliningLog log = replaceeGraph.getInliningLog();
-            if (oldNode == null) {
-                log.trackNewCallsite(newNode);
-            }
-        })) {
-            StartNode entryPointNode = snippet.start();
-            ArrayList<Node> nodes = new ArrayList<>(snippet.getNodeCount());
-            for (Node node : snippet.getNodes()) {
-                if (node != entryPointNode && node != entryPointNode.stateAfter()) {
-                    nodes.add(node);
-                }
-            }
-            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacementsMap);
-            if (scope != null) {
-                replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
-            }
-            return duplicates;
-        }
-    }
-
-    @Override
-    public boolean intrinsify(BytecodeProvider intrinsicBytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        if (receiver != null) {
-            receiver.get();
-        }
-        boolean res = inline(targetMethod, substitute, intrinsicBytecodeProvider, args);
-        assert res : "failed to inline " + substitute;
-        return res;
     }
 
     private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, BytecodeProvider intrinsicBytecodeProvider, ValueNode[] args) {

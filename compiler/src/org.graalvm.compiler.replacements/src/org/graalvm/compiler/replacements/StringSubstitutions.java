@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
@@ -33,7 +32,6 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 /**
  * Substitutions for {@link java.lang.String} methods.
  */
-@ClassSubstitution(String.class)
 public class StringSubstitutions {
 
     /**
