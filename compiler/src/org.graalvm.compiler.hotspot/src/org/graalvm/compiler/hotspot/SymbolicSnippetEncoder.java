@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.EncodedSnippets.methodKey;
+import static org.graalvm.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 
 import java.lang.reflect.Executable;
@@ -125,7 +126,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -139,8 +139,8 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * method references into a symbolic form that can be resolved at graph decode time using
  * {@link SymbolicJVMCIReference}.
  *
- * This class only exists when {@link jdk.vm.ci.services.Services#IS_BUILDING_NATIVE_IMAGE} is true
- * or the option {@link org.graalvm.compiler.core.common.GraalOptions#UseEncodedGraphs} is enabled.
+ * An instance of this class only exist when
+ * {@link jdk.vm.ci.services.Services#IS_BUILDING_NATIVE_IMAGE} is true.
  */
 public class SymbolicSnippetEncoder {
 
@@ -1052,21 +1052,6 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    private static boolean isGraalClass(ResolvedJavaType type) {
-        return isGraalClass(MetaUtil.internalNameToJava(type.getName(), true, true));
-    }
-
-    private static boolean isGraalClass(Class<?> clazz) {
-        return isGraalClass(clazz.getName());
-    }
-
-    private static boolean isGraalClass(String className) {
-        return className.contains("jdk.vm.ci") ||
-                        className.contains("org.graalvm.") ||
-                        className.contains("com.oracle.graal") ||
-                        className.contains("com.oracle.truffle");
-    }
-
     private static final Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
 
     private static synchronized SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
@@ -1182,7 +1167,7 @@ public class SymbolicSnippetEncoder {
      * Returns a proxy {@link MetaAccessProvider} that can log types which are looked up during
      * normal processing. This is used to ensure that types needed for libgraal are available.
      */
-    public MetaAccessProvider noticeTypes(MetaAccessProvider metaAccess) {
+    public static MetaAccessProvider noticeTypes(MetaAccessProvider metaAccess) {
         return new MetaAccessProviderDelegate(metaAccess);
     }
 }

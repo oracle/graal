@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 
 import java.util.BitSet;
 
@@ -52,7 +51,9 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for
@@ -73,16 +74,13 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return (HotSpotProviders) super.getProviders();
     }
 
-    public void maybeInitializeEncoder(OptionValues options) {
+    public void maybeInitializeEncoder() {
         if (IS_IN_NATIVE_IMAGE) {
             return;
         }
-        if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
-            synchronized (HotSpotReplacementsImpl.class) {
-                if (snippetEncoder == null) {
-                    snippetEncoder = new SymbolicSnippetEncoder(this);
-                }
-            }
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            assert snippetEncoder == null;
+            snippetEncoder = new SymbolicSnippetEncoder(this);
         }
     }
 
@@ -130,7 +128,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         if (!IS_IN_NATIVE_IMAGE) {
             assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
             if (registeredSnippets.add(method)) {
-                if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
+                if (IS_BUILDING_NATIVE_IMAGE) {
                     snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);
                 }
             }
@@ -196,7 +194,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
-        if (IS_IN_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
+        if (IS_IN_NATIVE_IMAGE) {
             maybeEncodeSnippets(options);
 
             // Snippets graphs can contain foreign object references and
@@ -224,16 +222,34 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     public ResolvedJavaMethod findSnippetMethod(ResolvedJavaMethod thisMethod) {
-        if (!IS_IN_NATIVE_IMAGE && snippetEncoder != null) {
+        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
+            if (snippetEncoder == null) {
+                throw new GraalError("findSnippetMethod called before initialization of Replacements");
+            }
             return snippetEncoder.findSnippetMethod(thisMethod);
         }
         return null;
     }
 
     public static MetaAccessProvider noticeTypes(MetaAccessProvider metaAccess) {
-        if (!IS_IN_NATIVE_IMAGE && snippetEncoder != null) {
-            return snippetEncoder.noticeTypes(metaAccess);
+        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
+            return SymbolicSnippetEncoder.noticeTypes(metaAccess);
         }
         return metaAccess;
+    }
+
+    static boolean isGraalClass(ResolvedJavaType type) {
+        return isGraalClass(MetaUtil.internalNameToJava(type.getName(), true, true));
+    }
+
+    static boolean isGraalClass(Class<?> clazz) {
+        return isGraalClass(clazz.getName());
+    }
+
+    static boolean isGraalClass(String className) {
+        return className.contains("jdk.vm.ci") ||
+                        className.contains("org.graalvm.") ||
+                        className.contains("com.oracle.graal") ||
+                        className.contains("com.oracle.truffle");
     }
 }

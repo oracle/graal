@@ -26,7 +26,7 @@ package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.runtime.JVMCI.getRuntime;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
+import static org.graalvm.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.util.Map;
@@ -174,7 +174,11 @@ public class EncodedSnippets {
     }
 
     ResolvedJavaType lookupSnippetType(Class<?> clazz) {
-        return snippetTypes.get(clazz);
+        SnippetResolvedJavaType type = snippetTypes.get(clazz);
+        if (type == null && isGraalClass(clazz)) {
+            throw new GraalError("Missing graal class " + clazz);
+        }
+        return type;
     }
 
     public void visitImmutable(Consumer<Object> visitor) {
@@ -282,7 +286,7 @@ public class EncodedSnippets {
         if (args != null) {
             MetaAccessProvider meta = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
             SnippetReflectionProvider snippetReflection = replacements.snippetReflection;
-            if (IS_IN_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
+            if (IS_IN_NATIVE_IMAGE) {
                 snippetReflection = new LibGraalSnippetReflectionProvider(snippetReflection);
             }
             parameterPlugin = new ConstantBindingParameterPlugin(args, meta, snippetReflection);

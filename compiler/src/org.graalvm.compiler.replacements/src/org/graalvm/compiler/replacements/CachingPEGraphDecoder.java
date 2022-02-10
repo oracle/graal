@@ -25,7 +25,6 @@
 package org.graalvm.compiler.replacements;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -97,7 +96,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     @SuppressWarnings("try")
     private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution) {
         StructuredGraph graphToEncode;
-        if (isSubstitution && (UseEncodedGraphs.getValue(options) || IS_IN_NATIVE_IMAGE)) {
+        if (isSubstitution && IS_IN_NATIVE_IMAGE) {
             throw GraalError.shouldNotReachHere("dead path");
         } else {
             graphToEncode = buildGraph(method, intrinsicBytecodeProvider, isSubstitution);

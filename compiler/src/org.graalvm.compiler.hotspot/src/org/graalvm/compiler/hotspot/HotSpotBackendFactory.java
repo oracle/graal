@@ -179,7 +179,7 @@ public abstract class HotSpotBackendFactory {
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(target, providers, snippetReflection, bytecodeProvider);
                 providers = replacements.getProviders();
-                replacements.maybeInitializeEncoder(options);
+                replacements.maybeInitializeEncoder();
             }
             GraphBuilderConfiguration.Plugins plugins;
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {

@@ -26,7 +26,6 @@ package org.graalvm.compiler.replacements.test;
 
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 
 import java.util.List;
 
@@ -39,7 +38,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -70,7 +68,6 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
         //
         // The precise snippet bytecodes don't matter, just ensure that some actually appear after
         // lowering.
-        Assume.assumeFalse(UseEncodedGraphs.getValue(getInitialOptions()));
         checkMappings("snippetLowering", true, SubstitutionNodeSourcePositionTest.class, "snippetLowering");
     }
 
