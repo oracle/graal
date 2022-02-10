@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
@@ -83,16 +84,27 @@ public final class Continuation {
             StackOverflowCheck.singleton().setState(overflowCheckState);
         }
         try {
-            enter0(isContinue);
+            enter0(this, isContinue);
         } finally {
             overflowCheckState = StackOverflowCheck.singleton().getState();
             StackOverflowCheck.singleton().setState(stateBefore);
         }
     }
 
+    /** See {@link #yield0} for what this method does. */
+    @StubCallingConvention
+    @NeverInline("Keep the frame with the saved registers.")
+    private static void enter0(Continuation self, boolean isContinue) {
+        self.enter1(isContinue);
+    }
+
+    /**
+     * @return {@link Object} because we return here via {@link KnownIntrinsics#farReturn} which
+     *         passes an object result.
+     */
     @NeverInline("access stack pointer")
     @Uninterruptible(reason = "write stack", calleeMustBe = false)
-    private void enter0(boolean isContinue) {
+    private Object enter1(boolean isContinue) {
         Pointer currentSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer currentIP = KnownIntrinsics.readReturnAddress();
 
@@ -113,12 +125,15 @@ public final class Continuation {
             this.sp = currentSP;
             this.ip = currentIP;
             KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), storedIP, false);
+            throw VMError.shouldNotReachHere();
+
         } else {
             assert this.sp.isNull() && this.ip.isNull() && this.stored == null;
             this.sp = currentSP;
             this.ip = currentIP;
 
             enter0();
+            return null;
         }
     }
 
@@ -136,8 +151,27 @@ public final class Continuation {
         return thunk.preemptStatus;
     }
 
+    int yield() {
+        return yield0(this);
+    }
+
+    /**
+     * The callers can have live values in callee-saved registers which can be destroyed by the
+     * context we switch to. By using the stub calling convention, this method saves register values
+     * to the stack and restores them upon returning here via {@link KnownIntrinsics#farReturn}.
+     */
+    @StubCallingConvention
+    @NeverInline("Keep the frame with the saved registers.")
+    private static Integer yield0(Continuation self) {
+        return self.yield1();
+    }
+
+    /**
+     * @return {@link Integer} because we return here via {@link KnownIntrinsics#farReturn} and pass
+     *         boxed 0 as result code.
+     */
     @NeverInline("access stack pointer")
-    Integer yield() {
+    private Integer yield1() {
         Pointer leafSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer leafIP = KnownIntrinsics.readReturnAddress();
 
