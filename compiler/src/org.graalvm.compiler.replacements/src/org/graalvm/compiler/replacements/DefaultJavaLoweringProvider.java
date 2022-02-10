@@ -317,16 +317,29 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * potential safepoints and above it's uses.
          */
         for (Node use : n.usages().snapshot()) {
+            FixedNode fixed;
             if (use instanceof FixedNode) {
-                FixedNode fixed = (FixedNode) use;
-                StructuredGraph graph = n.graph();
-                GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
-                graph.addBeforeFixed(fixed, address);
-                AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
-                use.replaceFirstInput(n, add);
+                fixed = (FixedNode) use;
+
+            } else if (use instanceof ValuePhiNode) {
+                ValuePhiNode phi = (ValuePhiNode) use;
+                int inputPosition = 0;
+                while (inputPosition < phi.valueCount()) {
+                    if (phi.valueAt(inputPosition) == n) {
+                        break;
+                    }
+                    inputPosition++;
+                }
+                GraalError.guarantee(inputPosition < phi.valueCount(), "Failed to find expected input");
+                fixed = phi.merge().phiPredecessorAt(inputPosition);
             } else {
                 throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
             }
+            StructuredGraph graph = n.graph();
+            GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
+            graph.addBeforeFixed(fixed, address);
+            AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
+            use.replaceFirstInput(n, add);
         }
         GraphUtil.unlinkFixedNode(n);
         n.safeDelete();
