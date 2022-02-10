@@ -83,6 +83,7 @@ public final class PointsToOptionParser {
     public OptionValues parse(String[] args) {
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
+        analysisValues.clear();
         for (String arg : args) {
             boolean isAnalysisOption = false;
             isAnalysisOption |= parseOption(CommonOptionParser.HOSTED_OPTION_PREFIX, allAnalysisOptions, analysisValues, PLUS_MINUS, errors, arg, System.out);
