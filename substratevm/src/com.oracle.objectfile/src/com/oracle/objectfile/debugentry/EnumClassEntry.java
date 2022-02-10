@@ -28,11 +28,17 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugEnumTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import org.graalvm.compiler.debug.DebugContext;
 
 public class EnumClassEntry extends ClassEntry {
     public EnumClassEntry(String typeName, FileEntry fileEntry, int size) {
         super(typeName, fileEntry, size);
+    }
+
+    @Override
+    public DebugTypeKind typeKind() {
+        return DebugTypeKind.ENUM;
     }
 
     @Override

@@ -37,6 +37,7 @@ public class MethodEntry extends MemberEntry {
     static final int IN_RANGE = 1 << 1;
     static final int INLINED = 1 << 2;
     int flags;
+    final int vtableOffset;
     final String symbolName;
 
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
@@ -49,6 +50,7 @@ public class MethodEntry extends MemberEntry {
         this.paramNames = paramNames;
         this.symbolName = debugMethodInfo.symbolNameForMethod();
         this.flags = 0;
+        this.vtableOffset = debugMethodInfo.vtableOffset();
         if (debugMethodInfo.isDeoptTarget()) {
             setIsDeopt();
         }
@@ -123,7 +125,7 @@ public class MethodEntry extends MemberEntry {
      * to the original source file, thus it will be wrong for substituted methods. As a result when
      * setting a MethodEntry as isInRange we also make sure that its fileEntry reflects the file
      * info associated with the corresponding Range.
-     * 
+     *
      * @param debugInfoBase
      * @param debugMethodInfo
      */
@@ -151,6 +153,31 @@ public class MethodEntry extends MemberEntry {
                 fileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
             }
         }
+    }
+
+    /**
+     * Returns true if this is a newly introduced virtual method. Walks the class heirarchy looking
+     * methods that look like itself. This is an odd requirement, but used in the Windows CodeView
+     * output.
+     *
+     * @return true if this is a virtual method and is defined for the first time (from base class)
+     *         in the call heirarchy.
+     */
+    public boolean isFirstSighting() {
+        ClassEntry parentClass = ownerType().getSuperClass();
+        while (parentClass != null) {
+            for (MethodEntry method : parentClass.methods) {
+                if (this.equals(method)) {
+                    return false;
+                }
+            }
+            parentClass = parentClass.getSuperClass();
+        }
+        return true;
+    }
+
+    public int getVtableOffset() {
+        return vtableOffset;
     }
 
     public String getSymbolName() {

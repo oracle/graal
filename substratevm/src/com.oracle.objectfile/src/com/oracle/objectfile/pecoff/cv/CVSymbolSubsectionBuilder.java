@@ -29,7 +29,6 @@ package com.oracle.objectfile.pecoff.cv;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
-import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_NOTYPE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_VOID;
@@ -39,7 +38,6 @@ final class CVSymbolSubsectionBuilder {
     private final CVDebugInfo cvDebugInfo;
     private final CVSymbolSubsection cvSymbolSubsection;
     private CVLineRecordBuilder lineRecordBuilder;
-    private DebugContext debugContext = null;
 
     private boolean noMainFound = true;
 
@@ -55,9 +53,8 @@ final class CVSymbolSubsectionBuilder {
      * The CodeView symbol section Prolog is also a CVSymbolSubsection, but it is not build in this
      * class.
      */
-    void build(DebugContext theDebugContext) {
-        this.debugContext = theDebugContext;
-        this.lineRecordBuilder = new CVLineRecordBuilder(debugContext, cvDebugInfo);
+    void build() {
+        this.lineRecordBuilder = new CVLineRecordBuilder(cvDebugInfo);
         /* loop over all classes defined in this module. */
         for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
             build(classEntry);

@@ -38,7 +38,7 @@ final class CVSymbolSubsection extends CVSymbolRecord {
 
     private static final int SUBCMD_INITIAL_CAPACITY = 100;
 
-    private ArrayList<CVSymbolSubrecord> subcmds = new ArrayList<>(SUBCMD_INITIAL_CAPACITY);
+    private final ArrayList<CVSymbolSubrecord> subcmds = new ArrayList<>(SUBCMD_INITIAL_CAPACITY);
 
     CVSymbolSubsection(CVDebugInfo cvDebugInfo) {
         super(cvDebugInfo, CVDebugConstants.DEBUG_S_SYMBOLS);
@@ -66,7 +66,7 @@ final class CVSymbolSubsection extends CVSymbolRecord {
     public void logContents(DebugContext debugContext) {
         CVSectionImpl section = cvDebugInfo.getCVSymbolSection();
         for (CVSymbolSubrecord subcmd : subcmds) {
-            section.log(debugContext, "     [0x%08x]  %s", subcmd.getPos(), subcmd.toString());
+            section.log("     [0x%08x]  %s", subcmd.getPos(), subcmd.toString());
         }
     }
 

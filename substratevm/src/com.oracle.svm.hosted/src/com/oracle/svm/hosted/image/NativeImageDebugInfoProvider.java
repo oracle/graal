@@ -697,6 +697,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
+            public int vtableOffset() {
+                return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
+            }
+
+            @Override
             public int modifiers() {
                 return getOriginalModifiers(hostedMethod);
             }
@@ -980,6 +985,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int modifiers() {
             return getOriginalModifiers(hostedMethod);
         }
+
+        @Override
+        public int vtableOffset() {
+            return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
+        }
     }
 
     private static boolean filterLineInfoSourceMapping(SourceMapping sourceMapping) {
@@ -1190,6 +1200,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
+        @Override
+        public int vtableOffset() {
+            assert false;
+            return 0;
+        }
     }
 
     /**

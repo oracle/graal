@@ -219,6 +219,11 @@ public interface DebugInfoProvider {
          * @return true if this method has been compiled in as a deoptimization target
          */
         boolean isDeoptTarget();
+
+        /**
+         * @return the offset into the virtual function table for this method if virtual
+         */
+        int vtableOffset();
     }
 
     /**
