@@ -378,4 +378,17 @@ public class RubyTests extends RegexTestBase {
                         "            )", "x").getMember("groupCount").asInt());
         // Checkstyle: resume line length
     }
+
+    @Test
+    public void beginningAnchor() {
+        test("\\Ga", "", "a", 0, true, 0, 1);
+        test("\\Ga", "", "ba", 0, false);
+        test("\\Ga", "", "ba", 1, true, 1, 2);
+
+        test("\\Ga|\\Gb", "", "a", 0, true, 0, 1);
+        test("\\Ga|\\Gb", "", "b", 0, true, 0, 1);
+        test("\\Ga|\\Gb", "", "cab", 0, false);
+        test("\\Ga|\\Gb", "", "cab", 1, true, 1, 2);
+        test("\\Ga|\\Gb", "", "cab", 2, true, 2, 3);
+    }
 }

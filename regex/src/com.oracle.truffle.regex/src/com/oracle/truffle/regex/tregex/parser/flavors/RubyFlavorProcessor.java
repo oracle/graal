@@ -306,6 +306,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private final StringBuilder outPattern;
 
     /**
+     * Whether the regex starts with a \\G anchor, in which case it should be translated to a sticky
+     * ECMAScript regex.
+     */
+    private boolean startsWithBeginningAnchor;
+
+    /**
      * The global flags are the flags given when compiling the regular expression.
      */
     private final RubyFlags globalFlags;
@@ -403,6 +409,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         this.inFlags = source.getFlags();
         this.position = 0;
         this.outPattern = new StringBuilder(inPattern.length());
+        this.startsWithBeginningAnchor = false;
         this.globalFlags = new RubyFlags(inFlags);
         this.flagsStack = new LinkedList<>();
         this.lookbehindDepth = 0;
@@ -453,7 +460,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         // some of the ECMAScript regex escape sequences which are restricted to Unicode regexes.
         // It also lets us reason with a more rigid grammar (as the ECMAScript non-Unicode regexes
         // contain a lot of ambiguous syntactic constructions for backwards compatibility).
-        return new RegexSource(outPattern.toString(), globalFlags.isSticky() ? "suy" : "su", inSource.getOptions(), inSource.getSource());
+        String outFlags = globalFlags.isSticky() || startsWithBeginningAnchor ? "suy" : "su";
+        return new RegexSource(outPattern.toString(), outFlags, inSource.getOptions(), inSource.getSource());
     }
 
     private RubyFlags getLocalFlags() {
@@ -757,7 +765,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         scanForCaptureGroups();
 
         flagsStack.push(globalFlags);
-        disjunction();
+        disjunction(true);
         flagsStack.pop();
 
         if (!atEnd()) {
@@ -770,7 +778,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Disjunction, the topmost syntactic category, is a series of alternatives separated by
      * vertical bars.
      */
-    private void disjunction() {
+    private void disjunction(boolean toplevel) {
+        boolean beginningAnchor = beginningAnchor();
+        if (beginningAnchor && !toplevel) {
+            bailOut("\\G anchor is only supported in top-level alternatives");
+        }
+
         while (true) {
             alternative();
 
@@ -778,10 +791,42 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 emitSnippet("|");
                 lastTerm = TermCategory.None;
                 lastTermOutPosition = -1;
+
+                if (beginningAnchor() != beginningAnchor) {
+                    bailOut("\\G anchor is only supported when used at the start of all top-level alternatives");
+                }
             } else {
                 break;
             }
         }
+
+        if (beginningAnchor) {
+            assert toplevel;
+            startsWithBeginningAnchor = true;
+        }
+    }
+
+    private void disjunction() {
+        disjunction(false);
+    }
+
+    private boolean beginningAnchor() {
+        if (!match("\\G")) {
+            return false;
+        }
+        // Handle any (possibly multiple) quantifiers on the anchor
+        while (!atEnd() && (curChar() == '*' || curChar() == '+' || curChar() == '?' || curChar() == '{')) {
+            Quantifier quantifier = parseQuantifier(consumeChar());
+            if (quantifier == null) {
+                break;
+            }
+            if (quantifier.lower == 0) {
+                return false;
+            }
+        }
+        // Do not update lastTerm or lastTermOutPosition. This term cannot be followed by a
+        // quantifier, since we just parsed any following quantifiers.
+        return true;
     }
 
     /**
@@ -868,23 +913,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    /**
+     * Parses a string of literal characters starting with the {@code firstCodepoint}.
+     */
     private void string(int firstCodepoint) {
         codepointsBuffer.clear();
         codepointsBuffer.add(firstCodepoint);
-        string();
-    }
-
-    private void string(String prefix) {
-        codepointsBuffer.clear();
-        prefix.codePoints().forEach(codepointsBuffer::add);
-        string();
-    }
-
-    /**
-     * Parses a string of literal characters. Should be called via {@link #string(int)} or
-     * {@link #string(String)}, which both clear the {@link #codepointsBuffer}.
-     */
-    private void string() {
         int outPosition = outPattern.length();
 
         stringLoop: while (!atEnd() && curChar() != '|' && curChar() != ')') {
@@ -1133,7 +1167,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 emitSnippet("(?:$)");
                 return true;
             case 'G':
-                bailOut("\\G escape sequence is not supported");
+                bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
                 return true;
             case 'b':
                 if (getLocalFlags().isAscii()) {
@@ -1995,18 +2029,25 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private void quantifier(int ch) {
+        int start = position - 1;
+        Quantifier quantifier = parseQuantifier(ch);
+        if (quantifier != null) {
+            emitQuantifier(quantifier, start);
+        } else {
+            string(consumeChar());
+        }
+    }
+
     /**
      * Parses a quantifier whose first character is the argument {@code ch}.
      */
-    private void quantifier(int ch) {
-        Quantifier quantifier;
+    private Quantifier parseQuantifier(int ch) {
         int start = position - 1;
         if (ch == '{') {
             if (match("}") || match(",}")) {
-                // We did not find a complete quantifier, so we should just emit a string of
-                // matchers the individual characters.
-                string(inPattern.substring(start, position));
-                return;
+                position = start;
+                return null;
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
@@ -2025,10 +2066,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     canBeNonGreedy = false;
                 }
                 if (!match("}")) {
-                    // We did not find a complete quantifier, so we should just emit a string of
-                    // matchers the individual characters.
-                    string(inPattern.substring(start, position));
-                    return;
+                    position = start;
+                    return null;
                 }
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
@@ -2037,7 +2076,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 if (canBeNonGreedy && match("?")) {
                     greedy = false;
                 }
-                quantifier = new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
+                return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
                                 upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
                                 greedy);
             }
@@ -2066,9 +2105,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             } else if (match("+")) {
                 bailOut("possessive quantifiers not supported");
             }
-            quantifier = new Quantifier(lower, upper, greedy);
+            return new Quantifier(lower, upper, greedy);
         }
+    }
 
+    private void emitQuantifier(Quantifier quantifier, int start) {
         switch (lastTerm) {
             case None:
                 throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);

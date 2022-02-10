@@ -57,10 +57,9 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * <li>case-insensitive backreferences: In Ruby, case-insensitive matching has to be implemented by
  * case-folding. However, there is no way we can case-fold a backreference, since we don't know
  * which string it will match.</li>
- * <li>\G escape sequence: In Ruby regular expressions, \G can be used to assert that we are at some
- * special position that was marked by a previous execution of the regular expression on that input.
- * ECMAScript doesn't support assertions which check the current index against some reference
- * value.</li>
+ * <li>\G escape sequence: In Ruby regular expressions, \G can be used to assert that we are still
+ * at the initial index. TRegex only provides limited support for this feature by handling cases
+ * when \G appears at the beginning of all top-level alternatives.</li>
  * <li>\K keep command: This command can be used in Ruby regular expressions to modify the matcher's
  * state so that it deletes any characters matched so far and considers the current position as the
  * start of the reported match. There is no operator like this in ECMAScript that would allow one to
