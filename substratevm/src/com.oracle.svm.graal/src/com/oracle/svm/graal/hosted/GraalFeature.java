@@ -425,7 +425,7 @@ public final class GraalFeature implements Feature {
 
     private static void populateMatchRuleRegistry() {
         GraalSupport.get().setMatchRuleRegistry(new HashMap<>());
-        GraalConfiguration.instance().populateMatchRuleRegistry(GraalSupport.get().getMatchRuleRegistry());
+        GraalConfiguration.runtimeInstance().populateMatchRuleRegistry(GraalSupport.get().getMatchRuleRegistry());
     }
 
     @SuppressWarnings("unused")

@@ -255,7 +255,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         args.add("--trap-unreachable");
         args.add("-march=" + LLVMTargetSpecific.get().getLLVMArchName());
         args.addAll(LLVMTargetSpecific.get().getLLCAdditionalOptions());
-        args.add("-O" + SubstrateOptions.Optimize.getValue());
+        args.add("-O" + SubstrateOptions.optimizationLevel());
         args.add("-filetype=obj");
         args.add("-o");
         args.add(outputPath);

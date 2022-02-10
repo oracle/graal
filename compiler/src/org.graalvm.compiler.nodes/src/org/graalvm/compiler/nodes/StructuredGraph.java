@@ -913,6 +913,20 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         AbstractBeginNode next = node.next();
         AbstractBeginNode exceptionEdge = node.exceptionEdge();
         node.replaceAtUsagesAndDelete(replacement);
+
+        if (next instanceof LoopExitNode) {
+            // see LoopExitNode for special case with exception nodes
+            BeginNode newNextBegin = add(new BeginNode());
+            newNextBegin.setNext(next);
+            next = newNextBegin;
+        }
+        if (exceptionEdge instanceof LoopExitNode) {
+            // see LoopExitNode for special case with exception nodes
+            BeginNode newExceptionEdgeBegin = add(new BeginNode());
+            newExceptionEdgeBegin.setNext(exceptionEdge);
+            exceptionEdge = newExceptionEdgeBegin;
+        }
+
         replacement.setNext(next);
         replacement.setExceptionEdge(exceptionEdge);
     }

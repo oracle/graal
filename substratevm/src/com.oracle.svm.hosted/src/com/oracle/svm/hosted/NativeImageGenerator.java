@@ -174,6 +174,7 @@ import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
+import com.oracle.svm.core.graal.EconomyGraalConfiguration;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
@@ -814,6 +815,11 @@ public class NativeImageGenerator {
                     ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
                 }
 
+                if (SubstrateOptions.useEconomyCompilerConfig()) {
+                    HostedConfiguration.setInstanceIfEmpty(new EconomyHostedConfiguration());
+                    GraalConfiguration.setHostedInstanceIfEmpty(new EconomyGraalConfiguration());
+                }
+
                 /* Init the BuildPhaseProvider before any features need it. */
                 BuildPhaseProvider.init();
 
@@ -1035,7 +1041,7 @@ public class NativeImageGenerator {
         BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(aMetaAccess);
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
-        LoweringProvider aLoweringProvider = SubstrateLoweringProvider.create(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
+        LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
                         aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
@@ -1293,16 +1299,23 @@ public class NativeImageGenerator {
 
     public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection, boolean hosted) {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
-
-        OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
-        Suites suites = GraalConfiguration.instance().createSuites(options, hosted);
+        Suites suites;
+        if (hosted) {
+            suites = GraalConfiguration.hostedInstance().createSuites(HostedOptionValues.singleton(), hosted);
+        } else {
+            suites = GraalConfiguration.runtimeInstance().createSuites(RuntimeOptionValues.singleton(), hosted);
+        }
         return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, false);
     }
 
     public static Suites createFirstTierSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection, boolean hosted) {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
-        OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
-        Suites suites = GraalConfiguration.instance().createFirstTierSuites(options, hosted);
+        Suites suites;
+        if (hosted) {
+            suites = GraalConfiguration.hostedInstance().createFirstTierSuites(HostedOptionValues.singleton(), hosted);
+        } else {
+            suites = GraalConfiguration.runtimeInstance().createFirstTierSuites(RuntimeOptionValues.singleton(), hosted);
+        }
         return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, true);
     }
 
@@ -1315,9 +1328,11 @@ public class NativeImageGenerator {
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
 
+        final boolean economy = firstTier || SubstrateOptions.useEconomyCompilerConfig();
+
         ListIterator<BasePhase<? super HighTierContext>> position;
         if (hosted) {
-            position = GraalConfiguration.instance().createHostedInliners(highTier);
+            position = GraalConfiguration.hostedInstance().createHostedInliners(highTier);
         } else {
             /* Find the runtime inliner. */
             position = highTier.findPhase(InliningPhase.class);
@@ -1335,7 +1350,7 @@ public class NativeImageGenerator {
         lowTier.addBeforeLast(new OptimizeExceptionPathsPhase());
 
         BasePhase<CoreProviders> addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
-        if (firstTier) {
+        if (economy) {
             lowTier.findPhase(ExpandLogicPhase.class, true).add(addressLoweringPhase);
         } else {
             lowTier.findPhase(UseTrappingNullChecksPhase.class).add(addressLoweringPhase);
@@ -1359,11 +1374,10 @@ public class NativeImageGenerator {
             highTier.removePhase(InliningPhase.class);
 
             /* Remove phases that are not suitable for AOT compilation. */
-            highTier.findPhase(ConvertDeoptimizeToGuardPhase.class, true).remove();
-            midTier.findPhase(DeoptimizationGroupingPhase.class).remove();
-
+            highTier.removePhase(ConvertDeoptimizeToGuardPhase.class);
+            midTier.removePhase(DeoptimizationGroupingPhase.class);
         } else {
-            if (firstTier) {
+            if (economy) {
                 ListIterator<BasePhase<? super MidTierContext>> it = midTier.findPhase(FrameStateAssignmentPhase.class);
                 it.add(new CollectDeoptimizationSourcePositionsPhase());
 
@@ -1392,14 +1406,17 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("unused")
     public static LIRSuites createLIRSuites(FeatureHandler featureHandler, Providers providers, boolean hosted) {
-        LIRSuites lirSuites = GraalConfiguration.instance().createLIRSuites(hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton());
+        LIRSuites lirSuites;
 
         if (hosted) {
+            lirSuites = GraalConfiguration.hostedInstance().createLIRSuites(HostedOptionValues.singleton());
             /*
              * Even though this is a verification phase, we want it enabled all the time and not
              * just when assertions are enabled.
              */
             lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+        } else {
+            lirSuites = GraalConfiguration.runtimeInstance().createLIRSuites(RuntimeOptionValues.singleton());
         }
 
         /* Add phases that just perform assertion checking. */
@@ -1409,10 +1426,12 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("unused")
     public static LIRSuites createFirstTierLIRSuites(FeatureHandler featureHandler, Providers providers, boolean hosted) {
-        LIRSuites lirSuites = GraalConfiguration.instance().createFirstTierLIRSuites(hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton());
-
+        LIRSuites lirSuites;
         if (hosted) {
+            lirSuites = GraalConfiguration.hostedInstance().createFirstTierLIRSuites(HostedOptionValues.singleton());
             lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+        } else {
+            lirSuites = GraalConfiguration.runtimeInstance().createFirstTierLIRSuites(RuntimeOptionValues.singleton());
         }
 
         /* Add phases that just perform assertion checking. */

@@ -54,6 +54,7 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -139,18 +140,50 @@ public class SubstrateOptions {
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
-    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
-    public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<>(2) {
+    @Option(help = "Control native-image code optimizations: b - optimize for shortest build time, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
+    public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
         @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            SubstrateOptions.IncludeNodeSourcePositions.update(values, newValue < 1);
-            SubstrateOptions.AOTInline.update(values, newValue > 0);
-            SubstrateOptions.AOTTrivialInline.update(values, newValue > 0);
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            Integer oldLevel = parseOptimizationLevel(oldValue);
+            Integer newLevel = parseOptimizationLevel(newValue);
+            SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel < 1);
+            SubstrateOptions.AOTInline.update(values, newLevel > 0);
+            SubstrateOptions.AOTTrivialInline.update(values, newLevel > 0);
             if (optimizeValueUpdateHandler != null) {
-                optimizeValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
+                optimizeValueUpdateHandler.onValueUpdate(values, oldLevel, newLevel);
             }
         }
     };
+
+    private static Integer parseOptimizationLevel(String value) {
+        if (value == null) {
+            return null;
+        }
+        // Only allow 'b' or numeric optimization levels,
+        // throw a user error otherwise.
+        if (value.equals("b")) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException nfe) {
+            throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value)", value);
+        }
+    }
+
+    @Fold
+    public static Integer optimizationLevel() {
+        return parseOptimizationLevel(Optimize.getValue());
+    }
+
+    public static boolean useEconomyCompilerConfig(OptionValues options) {
+        return "b".equals(Optimize.getValue(options));
+    }
+
+    @Fold
+    public static boolean useEconomyCompilerConfig() {
+        return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
 
     public interface ValueUpdateHandler {
         void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue);

@@ -78,10 +78,15 @@ public class HostedConfiguration {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
-    public static void setDefaultIfEmpty() {
+    public static void setInstanceIfEmpty(HostedConfiguration config) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
+            ImageSingletons.add(HostedConfiguration.class, config);
+        }
+    }
 
+    public static void setDefaultIfEmpty() {
+        setInstanceIfEmpty(new HostedConfiguration());
+        if (!ImageSingletons.contains(CompressEncoding.class)) {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 

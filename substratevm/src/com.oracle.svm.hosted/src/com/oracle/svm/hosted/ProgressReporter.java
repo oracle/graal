@@ -184,6 +184,11 @@ public class ProgressReporter {
             showLinks = SubstrateOptions.BuildOutputLinks.getValue(options);
         }
         linkStrategy = showLinks ? new LinkyStrategy() : new LinklessStrategy();
+
+        if (SubstrateOptions.useEconomyCompilerConfig(options)) {
+            l().redBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
+            l().redBold().a("This feature should only be used during development and never for deployment.").reset().println();
+        }
     }
 
     public void setNumRuntimeCompiledMethods(int value) {

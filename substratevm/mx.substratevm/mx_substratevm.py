@@ -207,16 +207,19 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'helloworld_debug',
+    'helloworld_quickbuild',
     'debuginfotest',
+    'debuginfotest_quickbuild',
     'test',
+    'test_quickbuild',
     'js',
+    'js_quickbuild',
     'build',
     'benchmarktest',
     "nativeimagehelp",
     'muslcbuild',
     'hellomodule'
 ])
-
 
 def vm_native_image_path(config=None):
     return vm_executable_path('native-image', config)
@@ -308,6 +311,46 @@ native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
+DEVMODE_FLAGS = ['-Ob']
+
+
+def image_demo_task(extra_image_args=None, flightrecorder=True):
+    image_args = ['--output-path', svmbuild_dir()]
+    if extra_image_args is not None:
+        image_args += extra_image_args
+    javac_image(image_args)
+    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
+    helloworld(image_args + javac_command)
+    helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
+    if not mx.is_windows() and flightrecorder:
+        helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
+    cinterfacetutorial(extra_image_args)
+    clinittest([])
+
+
+def truffle_unittest_task(quickbuild=False):
+    truffle_build_args = ['--build-args', '--macro:truffle',
+                                '-H:MaxRuntimeCompileMethods=5000',
+                                '-H:+TruffleCheckBlackListedMethods']
+    if quickbuild:
+        truffle_build_args += DEVMODE_FLAGS
+
+    truffle_args = truffle_build_args + ['--run-args', '--very-verbose', '--enable-timing']
+    # ContextPreInitializationNativeImageTest can only run with its own image.
+    # See class javadoc for details.
+    native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
+
+    # Regular Truffle tests that can run with isolated compilation
+    truffle_tests = ['com.oracle.truffle.api.staticobject.test',
+                     'com.oracle.truffle.api.test.polyglot.ContextPolicyTest']
+    if not quickbuild:
+        truffle_tests.append('com.oracle.truffle.api.test.TruffleSafepointTest')
+
+    native_unittest(truffle_tests + truffle_args)
+
+    # White Box Truffle compilation tests that need access to compiler graphs.
+    compiler_args = truffle_args + ['-H:-SupportCompileInIsolates']
+    native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
 
 
 def svm_gate_body(args, tasks):
@@ -315,24 +358,17 @@ def svm_gate_body(args, tasks):
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                javac_image(['--output-path', svmbuild_dir()])
-                javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
-                helloworld(['--output-path', svmbuild_dir()] + javac_command)
-                helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
-                if not mx.is_windows():
-                    helloworld(['--output-path', svmbuild_dir(), '-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
-                cinterfacetutorial([])
-                clinittest([])
+                image_demo_task()
 
     with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
-                javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
-                helloworld(['--output-path', svmbuild_dir()] + javac_command)
-                helloworld(['--output-path', svmbuild_dir(), '--shared', '-H:GenerateDebugInfo=1'])  # Build and run helloworld as shared library
-                cinterfacetutorial(['-H:GenerateDebugInfo=1'])
-                clinittest([])
+                image_demo_task(['-H:GenerateDebugInfo=1'], flightrecorder=False)
+
+    with Task('image demos quickbuild', tasks, tags=[GraalTags.helloworld_quickbuild]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                image_demo_task(DEVMODE_FLAGS, flightrecorder=False)
 
     with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
@@ -344,26 +380,20 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
 
+    with Task('native unittests quickbuild', tasks, tags=[GraalTags.test_quickbuild]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                native_unittests_task(DEVMODE_FLAGS)
+
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
-            truffle_args = ['--build-args', '--macro:truffle',
-                                        '-H:MaxRuntimeCompileMethods=5000',
-                                        '-H:+TruffleCheckBlackListedMethods',
-                                        '--run-args', '--very-verbose', '--enable-timing']
-
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                # ContextPreInitializationNativeImageTest can only run with its own image.
-                # See class javadoc for details.
-                native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
+                truffle_unittest_task()
 
-                # Regular Truffle tests that can run with isolated compilation
-                native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest',
-                                 'com.oracle.truffle.api.staticobject.test',
-                                 'com.oracle.truffle.api.test.polyglot.ContextPolicyTest'] + truffle_args)
-
-                # White Box Truffle compilation tests that need access to compiler graphs.
-                compiler_args = truffle_args + ['-H:-SupportCompileInIsolates']
-                native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
+    with Task('Run Truffle unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                truffle_unittest_task(quickbuild=True)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
@@ -374,6 +404,17 @@ def svm_gate_body(args, tasks):
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
+                native_unittest(native_unittest_args)
+
+    with Task('Run Truffle NFI unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
+                                        '-H:MaxRuntimeCompileMethods=2000',
+                                        '-H:+TruffleCheckBlackListedMethods'] + DEVMODE_FLAGS + [
+                                            '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
     with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
@@ -406,12 +447,21 @@ def svm_gate_body(args, tasks):
                 test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(jslib, [('octane-richards', 1000, 100, 300)])
 
+    with Task('JavaScript with quickbuild', tasks, tags=[GraalTags.js_quickbuild]) as t:
+        if t:
+            config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
+                                         dynamicimports=['/' + svm_suite().name, '/graal-js'])
+            with native_image_context(IMAGE_ASSERTION_FLAGS + DEVMODE_FLAGS, config=config) as native_image:
+                jslib = build_js_lib(native_image)
+                test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
+                test_js(jslib, [('octane-richards', 1000, 100, 300)])
+
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule([])
 
 
-def native_unittests_task():
+def native_unittests_task(extra_build_args=None):
     if mx.is_windows():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
@@ -420,6 +470,8 @@ def native_unittests_task():
         '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
+    if extra_build_args is not None:
+        additional_build_args += extra_build_args
 
     if get_jdk().javaCompliance == '17':
         if mx.is_windows():

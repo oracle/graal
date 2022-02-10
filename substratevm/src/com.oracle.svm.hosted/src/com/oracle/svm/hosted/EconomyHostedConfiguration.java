@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.aarch64;
+package com.oracle.svm.hosted;
 
-import org.graalvm.compiler.core.aarch64.AArch64SuitesCreator;
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
+public class EconomyHostedConfiguration extends HostedConfiguration {
 
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
-
-import java.util.Arrays;
-
-public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
-    public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SuitesCreator(getHostedCompilerConfiguration(), Arrays.asList(SchedulePhase.class)),
-                        new AArch64SuitesCreator(new EconomyCompilerConfiguration(), Arrays.asList(SchedulePhase.class)));
+    public EconomyHostedConfiguration() {
     }
 }
