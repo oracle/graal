@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Collection;
-
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -264,6 +260,10 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collection;
+
 public class CommonNodeFactory {
 
     public CommonNodeFactory() {
@@ -279,6 +279,8 @@ public class CommonNodeFactory {
                 return LLVMAccessSymbolNodeGen.create((LLVMSymbol) value);
             } else if (value instanceof LLVMElemPtrSymbol) {
                 return LLVMAccessElemPtrSymbolNodeGen.create((LLVMElemPtrSymbol) value);
+            } else if (value instanceof LLVMThreadLocalSymbol) {
+                //return LLVMAccessThreadLocalSymbolNodeGen.create((LLVMThreadLocalSymbol) value);
             } else {
                 throw new AssertionError(value.getClass());
             }

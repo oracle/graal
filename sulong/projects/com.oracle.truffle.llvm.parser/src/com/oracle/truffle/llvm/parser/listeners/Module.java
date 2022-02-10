@@ -182,11 +182,15 @@ public final class Module implements ParserListener {
         }
 
         long visibility = Visibility.DEFAULT.getEncodedValue();
+        long threadLocal = 0;
         if (buffer.remaining() > 0) {
             visibility = buffer.read();
         }
+        if (buffer.remaining() > 0) {
+            threadLocal = buffer.read();
+        }
 
-        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, sectionName, linkage, visibility, scope.getSymbols(), initialiser, index.getAndIncrement());
+        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, sectionName, linkage, visibility, threadLocal, scope.getSymbols(), initialiser, index.getAndIncrement());
         assignNameFromStrTab(name, global);
         module.addGlobalVariable(global);
         scope.addSymbol(global, global.getType());

@@ -114,6 +114,9 @@ public final class LLVMContext {
     public final Object atomicInstructionsLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
+    private final List<Thread> allRunningThreads = new ArrayList<>();
+    private final List<CallTarget> tlGlobalInitializer = new ArrayList<>();
+
     @CompilationFinal private LLVMThreadingStack threadingStack;
     private Object[] mainArguments;     // effectively final after initialization
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
@@ -1016,6 +1019,30 @@ public final class LLVMContext {
     public synchronized void unregisterThread(LLVMThread thread) {
         runningThreads.remove(thread);
         assert !runningThreads.contains(thread);
+    }
+
+    public synchronized void registerLiveThread(Thread thread) {
+        assert !allRunningThreads.contains(thread);
+        allRunningThreads.add(thread);
+    }
+
+    public synchronized void unregisterLiveThread(Thread thread) {
+        allRunningThreads.remove(thread);
+        assert !allRunningThreads.contains(thread);
+    }
+
+    public List<Thread> getAllRunningThreads() {
+        return allRunningThreads;
+    }
+
+    public synchronized void addGlobalInitializer(CallTarget callTarget) {
+        assert !tlGlobalInitializer.contains(callTarget);
+        tlGlobalInitializer.add(callTarget);
+    }
+
+    public synchronized void removeGlobalInitializer(CallTarget callTarget) {
+        tlGlobalInitializer.remove(callTarget);
+        assert !tlGlobalInitializer.contains(callTarget);
     }
 
     @TruffleBoundary

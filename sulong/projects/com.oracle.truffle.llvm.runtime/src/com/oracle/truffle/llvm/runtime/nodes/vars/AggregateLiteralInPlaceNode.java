@@ -55,6 +55,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     @CompilationFinal(dimensions = 1) private final int[] sizes;
     @CompilationFinal(dimensions = 1) private final int[] bufferOffsets;
     @CompilationFinal(dimensions = 1) private final LLVMGlobal[] descriptors;
+    private final boolean isThreadLocal;
 
     private static final ByteArraySupport byteSupport = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? ByteArraySupport.bigEndian() : ByteArraySupport.littleEndian();
 
@@ -64,7 +65,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
      * i64 stores as appropriate), except for those covered by a node in {@code stores}. Every store
      * node has a corresponding entry in {@code offsets} and {@sizes}.
      */
-    public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes, int[] bufferOffsets, LLVMGlobal[] descriptors) {
+    public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes, int[] bufferOffsets, LLVMGlobal[] descriptors, boolean isThreadLocal) {
         assert offsets.length == stores.length + 1 && stores.length == sizes.length;
         assert offsets[offsets.length - 1] == data.length : "offsets is expected to have a trailing entry with the overall size";
         assert bufferOffsets.length == descriptors.length;
@@ -74,16 +75,28 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         this.offsets = offsets;
         this.bufferOffsets = bufferOffsets;
         this.descriptors = descriptors;
+        this.isThreadLocal = isThreadLocal;
+    }
+
+    public abstract void execute(VirtualFrame frame, Thread thread);
+
+    @Override
+    public final void execute(VirtualFrame frame) {
+        this.execute(frame, null);
     }
 
     @Specialization
     protected void initialize(VirtualFrame frame,
+                              Thread thread,
                     @Cached LLVMI8OffsetStoreNode storeI8,
                     @Cached LLVMI64OffsetStoreNode storeI64,
                     @Cached BranchProfile exception) {
+        assert isThreadLocal == (thread != null);
         LLVMContext context = getContext();
         writePrimitives(context, storeI8, storeI64, exception);
-        writeObjects(frame, context, exception);
+        if (!isThreadLocal) {
+            writeObjects(frame, context, exception);
+        }
     }
 
     private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, BranchProfile exception) {

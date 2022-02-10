@@ -49,10 +49,13 @@ public final class GlobalVariable extends GlobalValueSymbol {
 
     private final String sectionName;
 
-    private GlobalVariable(boolean isReadOnly, PointerType type, int align, String sectionName, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
+    private final boolean isThreadLocal;
+
+    private GlobalVariable(boolean isReadOnly, PointerType type, int align, String sectionName, Linkage linkage, Visibility visibility, boolean threadLocal, SymbolTable symbolTable, int value, int index) {
         super(type, linkage, visibility, symbolTable, value, index);
         this.isReadOnly = isReadOnly;
         this.align = align;
+        this.isThreadLocal = threadLocal;
         this.sectionName = sectionName;
     }
 
@@ -73,8 +76,12 @@ public final class GlobalVariable extends GlobalValueSymbol {
         return sectionName;
     }
 
-    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, String sectionName, long linkage, long visibility, SymbolTable symbolTable, int value, int index) {
-        return new GlobalVariable(isReadOnly, type, align, sectionName, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value, index);
+    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, String sectionName, long linkage, long visibility, long threadLocal, SymbolTable symbolTable, int value, int index) {
+        return new GlobalVariable(isReadOnly, type, align, sectionName, Linkage.decode(linkage), Visibility.decode(visibility),threadLocal > 0, symbolTable, value, index);
+    }
+
+    public boolean isThreadLocal() {
+        return isThreadLocal;
     }
 
     @Override

@@ -129,6 +129,21 @@ public class LLVMScope implements TruffleObject {
         return null;
     }
 
+    /**
+     * Lookup an elementPointerSymbol in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
+    @TruffleBoundary
+    public LLVMThreadLocalSymbol getGetLLVMThreadLocalSymbol(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isThreadLocalSymbol()) {
+            return symbol.asThreadLocalSymbol();
+        }
+        return null;
+    }
+
     @TruffleBoundary
     public void register(LLVMSymbol symbol) {
         LLVMSymbol existing = symbols.get(symbol.getName());

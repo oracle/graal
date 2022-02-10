@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalPointer;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -79,6 +80,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
 
     @Child private LLVMAllocateNode allocRoSection;
     @Child private LLVMAllocateNode allocRwSection;
+    @Child private LLVMAllocateNode allocTLSection;
 
     private final BranchProfile exception;
 
@@ -89,6 +91,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
     @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
     @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
     @CompilationFinal(dimensions = 1) private final LLVMSymbol[] globals;
+    @CompilationFinal(dimensions = 1) private final LLVMThreadLocalPointer[] threadLocalPointers;
+
 
     @Children private final AllocSymbolNode[] allocFuncs;
     @CompilationFinal(dimensions = 1) private final LLVMSymbol[] functions;
@@ -106,18 +110,20 @@ public final class InitializeSymbolsNode extends LLVMNode {
         this.globalLength = result.getSymbolTableSize();
         this.bitcodeID = result.getRuntime().getBitcodeID();
         this.moduleName = moduleName;
-
         this.exception = BranchProfile.create();
-
         // allocate all non-pointer types as two structs
         // one for read-only and one for read-write
         DataSection roSection = new DataSection(dataLayout);
         DataSection rwSection = new DataSection(dataLayout);
+        DataSection threadLocalSection = new DataSection(dataLayout);
         List<GlobalVariable> definedGlobals = result.getDefinedGlobals();
+        List<GlobalVariable> threadLocalGlobals = result.getThreadLocalGlobals();
         int globalsCount = definedGlobals.size();
+        int threadLocalGlobalsCount = threadLocalGlobals.size();
         this.globalOffsets = new int[globalsCount];
         this.globalIsReadOnly = new boolean[globalsCount];
         this.globals = new LLVMSymbol[globalsCount];
+        this.threadLocalPointers = new LLVMThreadLocalPointer[threadLocalGlobalsCount];
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.get(null).getCapability(LLVMIntrinsicProvider.class);
 
         for (int i = 0; i < globalsCount; i++) {
@@ -143,6 +149,19 @@ public final class InitializeSymbolsNode extends LLVMNode {
             globals[i] = symbol;
         }
 
+        // Thread local globals
+        for (int i = 0; i < threadLocalGlobalsCount; i++) {
+            GlobalVariable tlGlobals = threadLocalGlobals.get(i);
+            Type type = tlGlobals.getType().getPointeeType();
+            long offset = threadLocalSection.add(tlGlobals, type);
+            assert offset >= 0;
+            if (offset > Integer.MAX_VALUE) {
+                throw CompilerDirectives.shouldNotReachHere("globals section >2GB not supported");
+            }
+            LLVMSymbol symbol = fileScope.get(tlGlobals.getName());
+            threadLocalPointers[i] = new LLVMThreadLocalPointer(symbol, offset);
+        }
+
         /*
          * Functions are allocated based on whether they are intrinsic function, regular llvm
          * bitcode function, or eager llvm bitcode function.
@@ -166,6 +185,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
             }
             functions[i] = function;
         }
+
+        this.allocTLSection = threadLocalSection.getAllocateNode(nodeFactory, "tlglobals_struct", true);
         this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
         this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
     }
@@ -181,9 +202,11 @@ public final class InitializeSymbolsNode extends LLVMNode {
         }
         LLVMPointer roBase = allocOrNull(allocRoSection);
         LLVMPointer rwBase = allocOrNull(allocRwSection);
+        LLVMPointer tlgBase = allocOrNull(allocTLSection);
 
         allocGlobals(ctx, roBase, rwBase);
         allocFunctions(ctx);
+        allocTLGlobals(ctx, tlgBase);
 
         if (allocRoSection != null) {
             ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, nodeFactory);
@@ -192,6 +215,20 @@ public final class InitializeSymbolsNode extends LLVMNode {
             ctx.registerGlobals(rwBase, nodeFactory);
         }
         return roBase; // needed later to apply memory protection after initialization
+    }
+
+    public void allocTLGlobals(LLVMContext context, LLVMPointer tlgBase) {
+        // create the value for the globals
+        for (int i = 0; i < threadLocalPointers.length; i++) {
+            LLVMThreadLocalPointer pointer = threadLocalPointers[i];
+            LLVMSymbol symbol = pointer.getSymbol();
+            if (symbol == null) {
+                exception.enter();
+                throw new LLVMLinkerException(this, "Thread local global variable %s not found", pointer.getSymbol().getName());
+            }
+            context.initializeSymbol(symbol, LLVMManagedPointer.create(pointer));
+        }
+        LLVMLanguage.get(this).contextThreadLocal.get().addSection(tlgBase, bitcodeID);
     }
 
     private void allocGlobals(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {

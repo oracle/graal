@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -78,6 +79,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -137,6 +139,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private ContextExtensionKey<?>[] contextExtensions;
+
+    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal =  createContextThreadLocal(LLVMThreadLocalValue::new);
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
     @CompilationFinal private ByteArraySupport cachedByteArraySupport;
@@ -199,6 +203,33 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
+    public static class LLVMThreadLocalValue {
+
+        final LLVMContext context;
+        LLVMPointer[] pointer = new LLVMPointer[10];
+        final WeakReference<Thread> thread;
+
+        LLVMThreadLocalValue(LLVMContext context, Thread thread) {
+            this.context = context;
+            this.thread =  new WeakReference<>(thread);
+        }
+
+        public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
+            int index = bitcodeID.getId();
+            if (index >= pointer.length) {
+                int newLength = (index + 1) + ((index + 1) / 2);
+                pointer = Arrays.copyOf(pointer, newLength);
+            }
+            pointer[index] = sectionBase;
+        }
+
+        public LLVMPointer getSection(BitcodeID bitcodeID) {
+            int index = bitcodeID.getId();
+            assert index < pointer.length;
+            return pointer[index];
+        }
+    }
+
     private ContextExtension[] createContextExtensions(Env env) {
         ContextExtension[] ctxExts = new ContextExtension[contextExtensions.length];
         for (int i = 0; i < contextExtensions.length; i++) {
@@ -225,7 +256,18 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void initializeThread(LLVMContext context, Thread thread) {
+        // need to get the contextthreadlocal for this thread, which would call get and this would
+        // trigger the factory
         getCapability(PlatformCapability.class).initializeThread(context, thread);
+
+        // put it into context
+        context.registerLiveThread(thread);
+
+        // need to duplicate the thread local value for this thread.
+
+        LLVMThreadLocalValue value = contextThreadLocal.get(thread);
+        AggregateTLGlobalInPlaceNodeGen.c
+
     }
 
     public static LLDBSupport getLLDBSupport() {
@@ -621,6 +663,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (context.isInitialized()) {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
+
+        // need to dispose entry into context and free globals
     }
 
     @Override
