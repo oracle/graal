@@ -66,16 +66,16 @@ public class MetricFactory {
         }
     }
 
-    private IllegalArgumentException failureException(String name, Exception e) {
+    private static IllegalArgumentException failureException(String name, Exception e) {
         String appendix = e.getCause() != null ? ", caused by " + failureString(e.getCause()) : "";
         return new IllegalArgumentException("Unknown metric: " + name + " (" + failureString(e) + appendix + ")");
     }
 
-    private String failureString(Throwable e) {
+    private static String failureString(Throwable e) {
         return e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "<no message>");
     }
 
-    private String classNameFor(String metricName) {
+    private static String classNameFor(String metricName) {
         String[] words = metricName.split("-");
         StringBuilder result = new StringBuilder(Character.toUpperCase(words[0].charAt(0)) + words[0].substring(1));
         for (int i = 1; i < words.length; i++) {
