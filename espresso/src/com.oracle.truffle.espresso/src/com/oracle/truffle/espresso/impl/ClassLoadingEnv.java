@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public interface ClassLoadingEnv {
 
@@ -48,7 +49,7 @@ public interface ClassLoadingEnv {
     TimerCollection getTimers();
     TruffleLogger getLogger();
     JavaVersion getJavaVersion();
-    EspressoOptions.SpecCompliancyMode getSpecCompliancyMode();
+    EspressoOptions.SpecComplianceMode getSpecComplianceMode();
     Classpath getClasspath();
     boolean needsVerify(StaticObject loader);
     boolean isLoaderBootOrPlatform(StaticObject loader);
@@ -116,8 +117,8 @@ public interface ClassLoadingEnv {
         }
 
         @Override
-        public EspressoOptions.SpecCompliancyMode getSpecCompliancyMode() {
-            return getContext().SpecCompliancyMode;
+        public EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
+            return getContext().getLanguage().getSpecComplianceMode();
         }
 
         @Override
@@ -127,7 +128,7 @@ public interface ClassLoadingEnv {
 
         @Override
         public boolean needsVerify(StaticObject loader) {
-            return getContext().needsVerify(loader);
+            return MethodVerifier.needsVerify(getLanguage(), loader);
         }
 
         @Override
@@ -174,10 +175,10 @@ public interface ClassLoadingEnv {
 
         public RuntimeException wrapIntoClassDefNotFoundError(EspressoException e) {
             Meta meta = getMeta();
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
                 StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
                 throw meta.throwException(ncdfe);
             }
             return e;
@@ -190,7 +191,7 @@ public interface ClassLoadingEnv {
             private final TruffleLogger logger;
             private final JavaVersion javaVersion;
             private final Classpath classpath;
-            private EspressoOptions.SpecCompliancyMode specCompliancyMode;
+            private EspressoOptions.SpecComplianceMode specComplianceMode;
             private boolean needsVerify;
 
             public Options(JavaVersion version, Classpath cp) {
@@ -201,7 +202,7 @@ public interface ClassLoadingEnv {
                 javaVersion = version;
                 classpath = cp;
                 logger = loggerOverride;
-                specCompliancyMode = EspressoOptions.SpecCompliancy.getDefaultValue();
+                specComplianceMode = EspressoOptions.SpecCompliance.getDefaultValue();
                 EspressoOptions.VerifyMode defaultVerifyMode = EspressoOptions.Verify.getDefaultValue();
                 needsVerify = defaultVerifyMode != EspressoOptions.VerifyMode.NONE;
             }
@@ -210,8 +211,8 @@ public interface ClassLoadingEnv {
                 this.needsVerify = true;
             }
 
-            public void complancyModeOverride(EspressoOptions.SpecCompliancyMode specCompliancyMode) {
-                this.specCompliancyMode = specCompliancyMode;
+            public void complancyModeOverride(EspressoOptions.SpecComplianceMode specCompliancyMode) {
+                this.specComplianceMode = specCompliancyMode;
             }
         }
 
@@ -242,8 +243,8 @@ public interface ClassLoadingEnv {
         }
 
         @Override
-        public EspressoOptions.SpecCompliancyMode getSpecCompliancyMode() {
-            return options.specCompliancyMode;
+        public EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
+            return options.specComplianceMode;
         }
 
         @Override

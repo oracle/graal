@@ -50,46 +50,6 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    // TODO (ivan-ristovic): Remove
-    LinkedKlassFieldLayout(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(description.language);
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder(description.language);
-
-        FieldCounter fieldCounter = new FieldCounter(parserKlass, description.javaVersion);
-        int nextInstanceFieldIndex = 0;
-        int nextStaticFieldIndex = 0;
-        int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
-        int nextStaticFieldSlot = 0;
-
-        staticFields = new LinkedField[fieldCounter.staticFields];
-        instanceFields = new LinkedField[fieldCounter.instanceFields];
-
-        LinkedField.IdMode idMode = getIdMode(parserKlass);
-
-        for (ParserField parserField : parserKlass.getFields()) {
-            if (parserField.isStatic()) {
-                createAndRegisterLinkedField(parserKlass, parserField, nextStaticFieldSlot++, nextStaticFieldIndex++, idMode, staticBuilder, staticFields);
-            } else {
-                createAndRegisterLinkedField(parserKlass, parserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
-            }
-        }
-
-        for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
-            if (hiddenField.versionRange.contains(description.javaVersion)) {
-                ParserField hiddenParserField = new ParserField(ParserField.HIDDEN | hiddenField.additionalFlags, hiddenField.name, hiddenField.type, null);
-                createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
-            }
-        }
-
-        if (superKlass == null) {
-            instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
-        } else {
-            instanceShape = instanceBuilder.build(superKlass.getShape(false));
-        }
-        staticShape = staticBuilder.build(StaticObject.class, StaticObjectFactory.class);
-        fieldTableLength = nextInstanceFieldSlot;
-    }
-
     LinkedKlassFieldLayout(ClassLoadingEnv env, ParserKlass parserKlass, LinkedKlass superKlass) {
         StaticShape.Builder instanceBuilder = StaticShape.newBuilder(env.getLanguage());
         StaticShape.Builder staticBuilder = StaticShape.newBuilder(env.getLanguage());

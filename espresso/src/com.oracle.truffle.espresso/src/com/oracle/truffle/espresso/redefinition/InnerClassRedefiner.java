@@ -38,6 +38,7 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -88,7 +89,8 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(redefineInfo.getClassBytes(), context);
+                ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(env, redefineInfo.getClassBytes());
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName.toString());
                 if (matcher.matches()) {
                     // don't assume that associated old klass instance represents this redefineInfo

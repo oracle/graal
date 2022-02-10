@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -102,7 +103,8 @@ public abstract class ClassInfo {
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
         Symbol<Type> type = context.getTypes().fromName(name);
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, type, context);
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), definingLoader, type);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();

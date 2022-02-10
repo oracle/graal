@@ -204,13 +204,14 @@ public final class ClassRedefinition {
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
             StaticObject loader = klass.getDefiningClassLoader();
-            Types types = klass.getContext().getTypes();
-            parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()), context);
+            ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(klass.getContext());
+            Types types = env.getTypes();
+            parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()));
             if (hotSwapInfo.isPatched()) {
                 byte[] patched = hotSwapInfo.getPatchedBytes();
                 newParserKlass = parserKlass;
                 // we detect changes against the patched bytecode
-                parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()), context);
+                parserKlass = ClassfileParser.parse(env, new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()));
             }
             classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
             if (classChange == ClassChange.CLASS_HIERARCHY_CHANGED && detectedChange.getSuperKlass() != null) {
