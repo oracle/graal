@@ -138,9 +138,10 @@ $JAVA_HOME/bin/ruby --jvm --polyglot --experimental-options --insight=source-tra
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
+
 It is necessary to start the Ruby launcher with the `--polyglot` parameter, as the _source-tracing.js_ script remains written in JavaScript.
 
-A user can instrument any language on top of GraalVM, but also the Insight scripts can be written in any of the GraalVM supported languages (implemented with the [Truffle language implementation framework](../../truffle/docs/README.md)).
+A user can instrument any language on top of GraalVM, but also the Insight scripts can be written in any of the GraalVM supported languages (implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md)).
 
 1. Create the _source-tracing.rb_ Ruby file:
 ```ruby
