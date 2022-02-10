@@ -31,7 +31,7 @@ public interface ResourceDecompressor {
 
     interface StringsProvider {
         /**
-         * Provides the raw modified-utf8 string at the given offset
+         * Provides the raw modified-utf8 string at the given offset.
          */
         ByteBuffer getRawString(int offset);
         String getString(int offset);

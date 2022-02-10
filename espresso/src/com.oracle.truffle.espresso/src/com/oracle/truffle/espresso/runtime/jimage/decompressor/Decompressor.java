@@ -22,11 +22,10 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -40,9 +39,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 public final class Decompressor {
 
     private final Map<Integer, ResourceDecompressor> pluginsCache = new HashMap<>();
-
-    public Decompressor() {
-    }
 
     /**
      * Decompress a resource.
@@ -67,10 +63,15 @@ public final class Decompressor {
                     if (pluginName == null) {
                         throw new EspressoError("Decompressor plugin name not found");
                     }
-                    String storedContent = header.getStoredContent(provider);
+                    ByteBuffer storedContent = header.getStoredContent(provider);
                     Properties props = new Properties();
                     if (storedContent != null) {
-                        try (ByteArrayInputStream stream = new ByteArrayInputStream(storedContent.getBytes(StandardCharsets.UTF_8))) {
+                        try (ByteBufferInputStream stream = new ByteBufferInputStream(storedContent)) {
+                            // this API will guess the encoding from the InputStream
+                            // it will use a BOM and/or the <xml header and defaults to UTF8
+                            // The UTF8 reader actually only supports the UCS-2 subset of UTF8
+                            // so the raw 'modified utf8' bytes can be read directly
+                            // See jdk.internal.util.xml.impl.ReaderUTF8
                             props.loadFromXML(stream);
                         } catch (IOException e) {
                             throw new EspressoError("Error while loading decompressor properties", e);
@@ -87,5 +88,32 @@ public final class Decompressor {
             }
         } while (header != null);
         return currentContent;
+    }
+
+    private static final class ByteBufferInputStream extends InputStream {
+        private final ByteBuffer buffer;
+
+        private ByteBufferInputStream(ByteBuffer buffer) {
+            this.buffer = buffer;
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (!buffer.hasRemaining()) {
+                return -1;
+            }
+            return buffer.get() & 0xff;
+        }
+
+        @Override
+        public int read(byte[] bytes, int offset, int length) throws IOException {
+            int remaining = buffer.remaining();
+            if (remaining == 0) {
+                return -1;
+            }
+            int availableLength = Math.min(length, remaining);
+            buffer.get(bytes, offset, availableLength);
+            return availableLength;
+        }
     }
 }

@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
@@ -140,7 +141,7 @@ class JImageLibrary implements ContextAccess {
         execute(close, jimage);
     }
 
-    public byte[] getClassBytes(TruffleObject jimage, String name) {
+    public byte[] getClassBytes(TruffleObject jimage, ByteSequence name) {
         // Prepare calls
         ByteBuffer sizeBuffer = NativeUtils.allocateDirect(JavaKind.Long.getByteCount());
         TruffleObject sizePtr = NativeUtils.byteBufferPointer(sizeBuffer);
@@ -160,7 +161,7 @@ class JImageLibrary implements ContextAccess {
         return result;
     }
 
-    private long findLocation(TruffleObject jimage, TruffleObject sizePtr, String name) {
+    private long findLocation(TruffleObject jimage, TruffleObject sizePtr, ByteSequence name) {
         try (RawBuffer nameBuffer = RawBuffer.getNativeString(name)) {
             TruffleObject namePtr = nameBuffer.pointer();
             long location = (long) execute(findResource, jimage, emptyStringBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
@@ -169,7 +170,7 @@ class JImageLibrary implements ContextAccess {
                 return location;
             }
 
-            String pkg = packageFromName(name);
+            ByteSequence pkg = packageFromName(name);
             if (pkg == null) {
                 return 0;
             }
@@ -211,12 +212,12 @@ class JImageLibrary implements ContextAccess {
         }
     }
 
-    private static String packageFromName(String name) {
-        int lastSlash = name.lastIndexOf('/');
+    private static ByteSequence packageFromName(ByteSequence name) {
+        int lastSlash = name.lastIndexOf((byte) '/');
         if (lastSlash == -1) {
             return null;
         }
-        return name.substring(0, lastSlash);
+        return name.subSequence(0, lastSlash);
     }
 
     private Object execute(Object target, Object... args) {

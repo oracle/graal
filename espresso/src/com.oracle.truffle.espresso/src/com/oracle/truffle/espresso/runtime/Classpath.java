@@ -26,6 +26,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,12 +34,14 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class Classpath {
     public static final String JAVA_BASE = "java.base";
+    private static final byte[] CLASS_SUFFIX = ".class".getBytes(StandardCharsets.UTF_8);
 
     /**
      * Creates a classpath {@link Entry} from a given file system path.
@@ -93,10 +96,8 @@ public final class Classpath {
          * returned. Any IO exception that occurs when reading is silently ignored.
          *
          * @param archiveName name of the file in an archive with {@code '/'} as the separator
-         * @param fsPath a path relative to this entry with {@link File#separatorChar} as the
-         *            separator
          */
-        abstract ClasspathFile readFile(String archiveName, String fsPath);
+        abstract ClasspathFile readFile(ByteSequence archiveName);
 
         public boolean isDirectory() {
             return false;
@@ -118,7 +119,6 @@ public final class Classpath {
      * archive file.
      */
     static final class PlainFile extends Entry {
-
         private final File file;
 
         PlainFile(File file) {
@@ -126,7 +126,7 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
             return null;
         }
 
@@ -140,6 +140,7 @@ public final class Classpath {
      * Represents a classpath entry that is a path to an existing directory.
      */
     public static final class Directory extends Entry {
+        private static final boolean REPLACE_SEPARATOR = File.separatorChar != '/';
 
         private final File directory;
 
@@ -149,7 +150,11 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
+            String fsPath = archiveName.toString();
+            if (REPLACE_SEPARATOR) {
+                fsPath = fsPath.replace('/', File.separatorChar);
+            }
             final File file = new File(directory, fsPath);
             if (file.exists()) {
                 try {
@@ -196,15 +201,15 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
             final ZipFile zf = zipFile();
             if (zf == null) {
                 return null;
             }
             try {
-                final ZipEntry zipEntry = zf.getEntry(archiveName);
+                final ZipEntry zipEntry = zf.getEntry(archiveName.toString());
                 if (zipEntry != null) {
-                    return new ClasspathFile(readZipEntry(zf, zipEntry), this, fsPath);
+                    return new ClasspathFile(readZipEntry(zf, zipEntry), this, archiveName);
                 }
             } catch (IOException ioException) {
             }
@@ -241,12 +246,12 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
             byte[] classBytes = helper.getClassBytes(archiveName);
             if (classBytes == null) {
                 return null;
             }
-            return new ClasspathFile(classBytes, this, fsPath);
+            return new ClasspathFile(classBytes, this, archiveName);
         }
 
     }
@@ -313,30 +318,23 @@ public final class Classpath {
      *
      * @param type an internal class name (e.g. "Ljava/lang/Class;")
      * @return the contents of the file available on the classpath whose name is computed as
-     *         {@code className.replace('.', '/')}. If no such file is available on this class path
-     *         or if reading the file produces an IO exception, then null is returned.
-     */
-    public ClasspathFile readClassFile(Symbol<Type> type) {
-        String rawType = type.toString();
-        rawType = rawType.substring(1, rawType.length() - 1);
-        return readFile(rawType, ".class");
-    }
-
-    /**
-     * Searches for a file denoted by a given class name on this classpath and returns its contents
-     * in a byte array if found. Any IO exception that occurs when reading is silently ignored.
-     *
-     * @param className a fully qualified class name (e.g. "java.lang.Class")
-     * @param extension a file extension
-     * @return the contents of the file available on the classpath whose name is computed as
-     *         {@code className.replace('.', '/') + extension}. If no such file is available on this
+     *         {@code className.replace('.', '/') + ".class}. If no such file is available on this
      *         class path or if reading the file produces an IO exception, then null is returned.
      */
-    public ClasspathFile readFile(String className, String extension) {
-        final String archiveName = className.replace('.', '/') + extension;
-        final String fsPath = File.separatorChar == '/' ? archiveName : className.replace('.', File.separatorChar) + extension;
+    public ClasspathFile readClassFile(Symbol<Type> type) {
+        byte[] archiveNameBytes = new byte[type.length() - 2 + CLASS_SUFFIX.length];
+        for (int i = 1; i < type.length() - 1; i++) {
+            byte b = type.byteAt(i);
+            if (b == '.') {
+                archiveNameBytes[i - 1] = '/';
+            } else {
+                archiveNameBytes[i - 1] = b;
+            }
+        }
+        System.arraycopy(CLASS_SUFFIX, 0, archiveNameBytes, type.length() - 1, CLASS_SUFFIX.length);
+        ByteSequence archiveName = ByteSequence.wrap(archiveNameBytes);
         for (Entry entry : entries()) {
-            ClasspathFile classpathFile = entry.readFile(archiveName, fsPath);
+            ClasspathFile classpathFile = entry.readFile(archiveName);
             if (classpathFile != null) {
                 return classpathFile;
             }

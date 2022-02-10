@@ -30,7 +30,7 @@ import java.util.Objects;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Validation;
 
-public class ImageStringsReader implements ImageStrings {
+public class ImageStringsReader {
     public static final int HASH_MULTIPLIER = 0x01000193;
     public static final int POSITIVE_MASK = 0x7FFFFFFF;
 
@@ -40,66 +40,29 @@ public class ImageStringsReader implements ImageStrings {
         this.reader = Objects.requireNonNull(reader);
     }
 
-    @Override
-    public int match(int offset, String string, int stringOffset) {
+    public int match(int offset, ByteSequence string, int stringOffset) {
         return reader.match(offset, string, stringOffset);
     }
 
-    public static int hashCode(String s) {
+    public static int hashCode(ByteSequence s) {
         return hashCode(s, HASH_MULTIPLIER);
     }
 
-    public static int hashCode(String s, int seed) {
+    public static int hashCode(ByteSequence s, int seed) {
         return unmaskedHashCode(s, seed) & POSITIVE_MASK;
     }
 
-    public static int hashCode(String module, String name) {
+    public static int hashCode(ByteSequence module, ByteSequence name) {
         return hashCode(module, name, HASH_MULTIPLIER);
     }
 
-    public static int hashCode(String module, String name, int seed) {
+    public static int hashCode(ByteSequence module, ByteSequence name, int seed) {
         int value = seed;
         value = (value * HASH_MULTIPLIER) ^ ('/');
         value = unmaskedHashCode(module, value);
         value = (value * HASH_MULTIPLIER) ^ ('/');
         value = unmaskedHashCode(name, value);
         return value & POSITIVE_MASK;
-    }
-
-    public static int unmaskedHashCode(String s, int seed) {
-        int slen = s.length();
-        byte[] buffer = null;
-
-        int value = seed;
-        for (int i = 0; i < slen; i++) {
-            int uch = s.charAt(i);
-
-            if ((uch & ~0x7F) != 0) {
-                if (buffer == null) {
-                    buffer = new byte[8];
-                }
-                int mask = ~0x3F;
-                int n = 0;
-
-                do {
-                    buffer[n++] = (byte) (0x80 | (uch & 0x3F));
-                    uch >>= 6;
-                    mask >>= 1;
-                } while ((uch & mask) != 0);
-
-                buffer[n] = (byte) ((mask << 1) | uch);
-
-                do {
-                    value = (value * HASH_MULTIPLIER) ^ (buffer[n--] & 0xFF);
-                } while (0 <= n);
-            } else if (uch == 0) {
-                value = (value * HASH_MULTIPLIER) ^ (0xC0);
-                value = (value * HASH_MULTIPLIER) ^ (0x80);
-            } else {
-                value = (value * HASH_MULTIPLIER) ^ (uch);
-            }
-        }
-        return value;
     }
 
     public static int unmaskedHashCode(ByteSequence s, int seed) {
@@ -214,7 +177,7 @@ public class ImageStringsReader implements ImageStrings {
     }
 
     /* package-private */
-    static int stringFromByteBufferMatches(ByteBuffer buffer, int offset, String string, int stringOffset) {
+    static int stringFromByteBufferMatches(ByteBuffer buffer, int offset, ByteSequence string, int stringOffset) {
         // ASCII fast-path
         int limit = buffer.limit();
         int current = offset;
@@ -222,31 +185,17 @@ public class ImageStringsReader implements ImageStrings {
         int slen = string.length();
         while (current < limit) {
             byte ch = buffer.get(current);
-            if (ch <= 0) {
-                if (ch == 0) {
-                    // Match
-                    return current - offset;
-                }
-                // non-ASCII byte, run slow-path from current offset
-                break;
+            if (ch == 0) {
+                // Match
+                return current - offset;
             }
-            if (slen <= stringCurrent || string.charAt(stringCurrent) != (char) ch) {
+            if (stringCurrent >= slen || string.byteAt(stringCurrent) != ch) {
                 // No match
-                return -1;
+                break;
             }
             stringCurrent++;
             current++;
         }
-        // invariant: remainder of the string starting at current is non-ASCII,
-        // so return value from charsFromByteBufferLength will be negative
-        int length = -charsFromByteBufferLength(buffer, current);
-        char[] chars = new char[length];
-        charsFromByteBuffer(chars, buffer, current);
-        for (int i = 0; i < length; i++) {
-            if (string.charAt(stringCurrent++) != chars[i]) {
-                return -1;
-            }
-        }
-        return length;
+        return -1;
     }
 }

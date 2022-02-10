@@ -208,10 +208,6 @@ public class StringSharingDecompressor implements ResourceDecompressor {
         return NAME;
     }
 
-    public StringSharingDecompressor() {
-
-    }
-
     @Override
     public ByteBuffer decompress(StringsProvider reader, ByteBuffer content, long originalSize) {
         return normalize(reader, content, Math.toIntExact(originalSize));

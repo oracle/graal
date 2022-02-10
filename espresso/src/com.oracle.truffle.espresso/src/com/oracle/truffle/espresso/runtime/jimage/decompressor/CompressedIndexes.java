@@ -27,11 +27,14 @@ import java.nio.ByteBuffer;
 /**
  * Compressed indexes reader.
  */
-public class CompressedIndexes {
+public final class CompressedIndexes {
     private static final int COMPRESSED_FLAG = 1 << (Byte.SIZE - 1);
     private static final int HEADER_WIDTH = 3;
     private static final int HEADER_SHIFT = Byte.SIZE - HEADER_WIDTH;
     private static final int HEADER_VALUE_MASK = (1 << HEADER_SHIFT) - 1;
+
+    private CompressedIndexes() {
+    }
 
     public static int readInt(ByteBuffer cr) {
         // Get header byte.

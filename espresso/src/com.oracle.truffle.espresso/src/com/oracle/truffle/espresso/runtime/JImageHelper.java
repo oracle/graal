@@ -23,8 +23,10 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
+
 public interface JImageHelper {
     void close();
 
-    byte[] getClassBytes(String name);
+    byte[] getClassBytes(ByteSequence name);
 }

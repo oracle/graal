@@ -26,6 +26,8 @@ package com.oracle.truffle.espresso.runtime.jimage;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
+
 public class ImageLocation {
     private static final int ATTRIBUTE_END = 0;
     private static final int ATTRIBUTE_MODULE = 1;
@@ -70,15 +72,15 @@ public class ImageLocation {
      * A simpler verification would be {@code name.equals(getFullName())}, but by not creating the
      * full name and enabling early returns we allocate fewer objects.
      */
-    boolean verify(String name, ImageStrings strings) {
+    boolean verify(ByteSequence name, ImageStringsReader strings) {
         Objects.requireNonNull(name);
-        final int length = name.length();
+        int length = name.length();
         int index = 0;
         int moduleOffset = (int) attributes[ATTRIBUTE_MODULE];
         if (moduleOffset != 0 && length >= 1) {
             int moduleLen = strings.match(moduleOffset, name, 1);
             index = moduleLen + 1;
-            if (moduleLen < 0 || index >= length || name.charAt(0) != '/' || name.charAt(index++) != '/') {
+            if (moduleLen < 0 || index >= length || name.unsignedByteAt(0) != '/' || name.unsignedByteAt(index++) != '/') {
                 return false;
             }
         }
@@ -102,7 +104,7 @@ public class ImageLocation {
         return value;
     }
 
-    boolean verify(String module, String name, ImageStrings strings) {
+    boolean verify(ByteSequence module, ByteSequence name, ImageStringsReader strings) {
         Objects.requireNonNull(module);
         Objects.requireNonNull(name);
         return verifyName(module, name, 0, name.length(),
@@ -113,8 +115,8 @@ public class ImageLocation {
                         strings);
     }
 
-    private static boolean verifyName(String module, String name, int index, int length,
-                    int moduleOffset, int parentOffset, int baseOffset, int extOffset, ImageStrings strings) {
+    private static boolean verifyName(ByteSequence module, ByteSequence name, int index, int length,
+                    int moduleOffset, int parentOffset, int baseOffset, int extOffset, ImageStringsReader strings) {
         int currentIndex = index;
         if (moduleOffset != 0) {
             if (strings.match(moduleOffset, module, 0) != module.length()) {
@@ -127,7 +129,7 @@ public class ImageLocation {
                 return false;
             }
             currentIndex += parentLen;
-            if (currentIndex >= length || name.charAt(currentIndex++) != '/') {
+            if (currentIndex >= length || name.unsignedByteAt(currentIndex++) != '/') {
                 return false;
             }
         }
@@ -137,7 +139,7 @@ public class ImageLocation {
         }
         currentIndex += baseLen;
         if (extOffset != 0) {
-            if (currentIndex >= length || name.charAt(currentIndex++) != '.') {
+            if (currentIndex >= length || name.unsignedByteAt(currentIndex++) != '.') {
                 return false;
             }
 
@@ -151,7 +153,7 @@ public class ImageLocation {
     }
 
     long getAttribute(int kind) {
-        if (kind < ATTRIBUTE_END || ATTRIBUTE_COUNT <= kind) {
+        if (kind < ATTRIBUTE_END || kind >= ATTRIBUTE_COUNT) {
             throw new InternalError("Invalid jimage attribute kind: " + kind);
         }
         return attributes[kind];

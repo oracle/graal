@@ -57,12 +57,12 @@ public final class CompressedResourceHeader {
         return decompressorNameOffset;
     }
 
-    public String getStoredContent(ResourceDecompressor.StringsProvider provider) {
+    public ByteBuffer getStoredContent(ResourceDecompressor.StringsProvider provider) {
         Objects.requireNonNull(provider);
         if (contentOffset == -1) {
             return null;
         }
-        return provider.getString(contentOffset);
+        return provider.getRawString(contentOffset);
     }
 
     public long getUncompressedSize() {

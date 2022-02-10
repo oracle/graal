@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 
 import java.nio.ByteBuffer;
+import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 /**
@@ -43,7 +44,11 @@ final class ZipDecompressor implements ResourceDecompressor {
         Inflater inflater = new Inflater();
         inflater.setInput(content);
         ByteBuffer output = ByteBuffer.allocate(Math.toIntExact(originalSize)).order(content.order());
-        inflater.inflate(output);
+        try {
+            inflater.inflate(output);
+        } catch (DataFormatException e) {
+            throw new RuntimeException(e);
+        }
         boolean finished = inflater.finished();
         inflater.end();
         if (!finished) {

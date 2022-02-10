@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 
 public class NativeJImageHelper implements JImageHelper {
 
@@ -42,7 +43,7 @@ public class NativeJImageHelper implements JImageHelper {
     }
 
     @Override
-    public byte[] getClassBytes(String name) {
+    public byte[] getClassBytes(ByteSequence name) {
         return library.getClassBytes(jimage, name);
     }
 }

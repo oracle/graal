@@ -32,6 +32,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.runtime.jimage.decompressor.Decompressor;
 import com.oracle.truffle.espresso.runtime.jimage.decompressor.ResourceDecompressor;
 
@@ -88,10 +89,6 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         return new BasicImageReader(path, ByteOrder.nativeOrder());
     }
 
-    public ImageHeader getHeader() {
-        return header;
-    }
-
     private ImageHeader readHeader(IntBuffer buffer) throws IOException {
         ImageHeader result = ImageHeader.readFrom(buffer);
 
@@ -125,14 +122,6 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         return slice(buffer, offset, size).order(byteOrder).asIntBuffer();
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public ByteOrder getByteOrder() {
-        return byteOrder;
-    }
-
     @Override
     public void close() throws IOException {
         if (channel != null) {
@@ -140,11 +129,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         }
     }
 
-    public ImageStringsReader getStrings() {
-        return stringsReader;
-    }
-
-    public ImageLocation findLocation(String module, String path) {
+    public ImageLocation findLocation(ByteSequence module, ByteSequence path) {
         int index = getLocationIndex(module, path);
         if (index < 0) {
             return null;
@@ -157,7 +142,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         return attributes;
     }
 
-    public ImageLocation findLocation(String path) {
+    public ImageLocation findLocation(ByteSequence path) {
         int index = getLocationIndex(path);
         if (index < 0) {
             return null;
@@ -171,7 +156,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
 
     // Details of the algorithm used here can be found in
     // jdk.tools.jlink.internal.PerfectHashBuilder.
-    public int getLocationIndex(String path) {
+    public int getLocationIndex(ByteSequence path) {
         int count = header.getTableLength();
         int index = redirect.get(ImageStringsReader.hashCode(path) % count);
         if (index < 0) {
@@ -186,7 +171,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         }
     }
 
-    private int getLocationIndex(String module, String path) {
+    private int getLocationIndex(ByteSequence module, ByteSequence path) {
         int count = header.getTableLength();
         int index = redirect.get(ImageStringsReader.hashCode(module, path) % count);
         if (index < 0) {
@@ -222,7 +207,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         return ImageStringsReader.rawStringFromByteBuffer(strings, offset);
     }
 
-    public int match(int offset, String string, int stringOffset) {
+    public int match(int offset, ByteSequence string, int stringOffset) {
         if (offset < 0 || offset >= strings.limit()) {
             throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, strings.limit()));
         }

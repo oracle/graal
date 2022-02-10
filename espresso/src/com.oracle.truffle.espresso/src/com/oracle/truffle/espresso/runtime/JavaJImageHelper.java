@@ -24,13 +24,18 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.jimage.ImageLocation;
 
 public class JavaJImageHelper implements JImageHelper {
+    private static final ByteSequence PACKAGES_PREFIX = ByteSequence.wrap("/packages/".getBytes(StandardCharsets.UTF_8));
+    private static final ByteSequence JAVA_BASE = ByteSequence.wrap("java.base".getBytes(StandardCharsets.UTF_8));
+
     private final EspressoContext context;
     private final BasicImageReader reader;
 
@@ -49,7 +54,7 @@ public class JavaJImageHelper implements JImageHelper {
     }
 
     @Override
-    public byte[] getClassBytes(String name) {
+    public byte[] getClassBytes(ByteSequence name) {
         ImageLocation location = findLocation(name);
         if (location == null) {
             return null;
@@ -57,27 +62,27 @@ public class JavaJImageHelper implements JImageHelper {
         return reader.getResource(location);
     }
 
-    private ImageLocation findLocation(String name) {
+    private ImageLocation findLocation(ByteSequence name) {
         ImageLocation location = reader.findLocation(name);
         if (location != null) {
             return location;
         }
-        String pkg = packageFromName(name);
+        ByteSequence pkg = packageFromName(name);
         if (pkg == null) {
             return null;
         }
         if (!context.modulesInitialized()) {
-            location = reader.findLocation(Classpath.JAVA_BASE, name);
+            location = reader.findLocation(JAVA_BASE, name);
             if (location != null || !context.metaInitialized()) {
                 // During meta initialization, we rely on the fact that we do not succeed in
                 // finding certain classes in java.base (/ex: sun/misc/Unsafe).
                 return location;
             }
-            String module = packageToModule(pkg);
+            ByteBuffer module = packageToModule(pkg);
             if (module == null) {
                 return null;
             }
-            return reader.findLocation(module, name);
+            return reader.findLocation(ByteSequence.from(module), name);
         } else {
             Symbol<Symbol.Name> pkgSymbol = context.getNames().lookup(pkg);
             if (pkgSymbol == null) {
@@ -88,14 +93,13 @@ public class JavaJImageHelper implements JImageHelper {
                 return null;
             }
             Symbol<Symbol.Name> moduleName = pkgEntry.module().getName();
-            String moduleNameAsString = moduleName == null ? "" : moduleName.toString();
+            ByteSequence moduleNameAsString = moduleName == null ? ByteSequence.EMPTY : moduleName;
             return reader.findLocation(moduleNameAsString, name);
         }
     }
 
-    private String packageToModule(String pkg) {
-        String res = "/packages/" + pkg;
-        ImageLocation location = reader.findLocation(res);
+    private ByteBuffer packageToModule(ByteSequence pkg) {
+        ImageLocation location = reader.findLocation(PACKAGES_PREFIX.concat(pkg));
         if (location == null) {
             return null;
         }
@@ -110,14 +114,14 @@ public class JavaJImageHelper implements JImageHelper {
             buffer.position(buffer.position() + 4);
         }
         // same behaviour as native code: offset = 0 will be used if nothing is found
-        return reader.getString(offset);
+        return reader.getRawString(offset);
     }
 
-    private static String packageFromName(String name) {
-        int lastSlash = name.lastIndexOf('/');
+    private static ByteSequence packageFromName(ByteSequence name) {
+        int lastSlash = name.lastIndexOf((byte) '/');
         if (lastSlash == -1) {
             return null;
         }
-        return name.substring(0, lastSlash);
+        return name.subSequence(0, lastSlash);
     }
 }

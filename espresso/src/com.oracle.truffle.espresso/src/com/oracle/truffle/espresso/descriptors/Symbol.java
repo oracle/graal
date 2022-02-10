@@ -71,8 +71,7 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     Symbol(byte[] value) {
-        // hashCode must match ByteSequence.hashCodeOfRange.
-        this(value, Arrays.hashCode(value));
+        this(value, ByteSequence.hashOfRange(value, 0, value.length));
     }
 
     @SuppressWarnings("unchecked")
