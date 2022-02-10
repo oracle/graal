@@ -34,10 +34,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.ObjectHandle;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -45,7 +41,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -69,14 +64,13 @@ import com.oracle.svm.core.util.VMError;
  * @see <a href="https://openjdk.java.net/projects/loom/">Wiki and source code of Project Loom on
  *      which concepts of virtual threads, carrier threads, etc. are modeled</a>
  */
-public class JavaThreads {
+public final class JavaThreads {
     /** For Thread.nextThreadID(). */
     static final AtomicLong threadSeqNumber = new AtomicLong();
     /** For Thread.nextThreadNum(). */
     static final AtomicInteger threadInitNumber = new AtomicInteger();
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected JavaThreads() {
+    private JavaThreads() {
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -324,51 +318,5 @@ public class JavaThreads {
             return toTarget(Thread.currentThread()).lockHelper;
         }
         return PlatformThreads.lockHelper.get();
-    }
-
-    /**
-     *
-     * GR-34749: class {@link PlatformThreads} has been split off from JavaThreads for code specific
-     * to OS threads, but legacy code still subclasses JavaThreads to provide OS-specific
-     * implementations. We install {@link LegacyPlatformThreads} that calls the methods below. These
-     * methods and {@link LegacyPlatformThreads} should be removed once they are no longer needed.
-     *
-     */
-
-    @RawStructure
-    protected interface ThreadStartData extends PlatformThreads.ThreadStartData {
-    }
-
-    @SuppressWarnings("unused")
-    protected void prepareStartData(Thread thread, ThreadStartData startData) {
-        /*
-         * GR-36413: Call PlatformThreads.prepareStart instead. Delete this method and
-         * PlatformThreads.prepareStartData once they are no longer needed.
-         */
-        PlatformThreads.prepareStartData(thread, startData);
-    }
-
-    protected static void exit(Thread thread) {
-        PlatformThreads.exit(thread);
-    }
-
-    @SuppressWarnings("unused")
-    protected static void threadStartRoutine(ObjectHandle threadHandle) {
-        PlatformThreads.threadStartRoutine(threadHandle);
-    }
-
-    @SuppressWarnings("unused")
-    protected void doStartThread(Thread thread, long stackSize) {
-        throw VMError.shouldNotReachHere("Subclass PlatformThreads instead.");
-    }
-
-    @SuppressWarnings("unused")
-    protected void setNativeName(Thread thread, String name) {
-        throw VMError.shouldNotReachHere("Subclass PlatformThreads instead.");
-    }
-
-    @SuppressWarnings("unused")
-    protected void yield() {
-        throw VMError.shouldNotReachHere("Subclass PlatformThreads instead.");
     }
 }
