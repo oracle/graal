@@ -466,14 +466,13 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.5"
+        return "0.3.6"
 
     def applicationDist(self):
-        shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
-        return os.path.join(shopcartCache, "shopcart-" + self.version())
+        return mx.library("SHOPCART_" + self.version(), True).get_path(True)
 
     def applicationPath(self):
-        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
+        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + ".jar")
 
     def serviceEndpoint(self):
         return 'clients'
@@ -515,7 +514,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.2"
+        return "1.0.3"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
