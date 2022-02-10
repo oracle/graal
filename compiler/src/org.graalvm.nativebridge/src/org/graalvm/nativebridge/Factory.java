@@ -29,6 +29,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Marks a method as a double dispatch receiver factory. The factory method is used by the
+ * annotation processor to create a double dispatch receiver from an actual receiver transferred by
+ * a reference. The method annotated by {@link Factory} must be non-private static method taking an
+ * actual receiver parameter and returning the double dispatch receiver.
+ *
+ * @see DispatchResolver
+ * @see ReceiverResolver
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface Factory {

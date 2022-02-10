@@ -478,11 +478,13 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         static HotSpotToNativeMarshallerSnippets forData(DefinitionData data, MarshallerData marshallerData, Types types, TypeCache typeCache) {
             switch (marshallerData.kind) {
                 case VALUE:
-                    return new HotSpotToNativeMarshallerSnippets.DirectSnippets(marshallerData, types, typeCache);
+                    return new DirectSnippets(marshallerData, types, typeCache);
                 case REFERENCE:
-                    return new HotSpotToNativeMarshallerSnippets.ReferenceSnippets(data, marshallerData, types, typeCache);
+                    return new ReferenceSnippets(data, marshallerData, types, typeCache);
+                case RAW_REFERENCE:
+                    return new RawReferenceSnippets(marshallerData, types, typeCache);
                 case CUSTOM:
-                    return new HotSpotToNativeMarshallerSnippets.CustomSnippets(marshallerData, types, typeCache);
+                    return new CustomSnippets(marshallerData, types, typeCache);
                 default:
                     throw new IllegalArgumentException(String.valueOf(marshallerData.kind));
             }
@@ -682,6 +684,39 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                 } else {
                     return unmarshallNativeToHotSpotProxyInNative(currentBuilder, parameterName, jniEnvFieldName);
                 }
+            }
+        }
+
+        private static final class RawReferenceSnippets extends HotSpotToNativeMarshallerSnippets {
+
+            RawReferenceSnippets(MarshallerData marshallerData, Types types, TypeCache cache) {
+                super(marshallerData, types, cache);
+            }
+
+            @Override
+            TypeMirror getEndPointMethodParameterType(TypeMirror type) {
+                return cache.object;
+            }
+
+            @Override
+            CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence jniEnvFieldName) {
+                return formalParameter;
+            }
+
+            @Override
+            CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName) {
+                return new CodeBuilder(currentBuilder).invoke(parameterName, "rawValue").build();
+            }
+
+            @Override
+            CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+                CharSequence value = new CodeBuilder(currentBuilder).cast(types.getPrimitiveType(TypeKind.LONG), invocationSnippet).build();
+                return new CodeBuilder(currentBuilder).invokeStatic(cache.wordFactory, "pointer", value).build();
+            }
+
+            @Override
+            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+                return invocationSnippet;
             }
         }
 

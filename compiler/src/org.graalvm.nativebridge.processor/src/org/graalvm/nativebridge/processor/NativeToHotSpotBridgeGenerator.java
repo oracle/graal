@@ -612,6 +612,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                     return new DirectSnippets(marshallerData, types, typeCache);
                 case REFERENCE:
                     return new ReferenceSnippets(data, marshallerData, types, typeCache);
+                case RAW_REFERENCE:
+                    return new RawReferenceSnippets(marshallerData, types, typeCache);
                 case CUSTOM:
                     return new CustomSnippets(marshallerData, types, typeCache);
                 default:
@@ -838,6 +840,39 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                     CodeBuilder currentIsolateBuilder = new CodeBuilder(currentBuilder).invokeStatic(cache.nativeIsolate, "get", REFERENCE_ISOLATE_ADDRESS_NAME);
                     return unmarshallHotSpotToNativeProxyInHotSpot(currentBuilder, parameterName, currentIsolateBuilder.build());
                 }
+            }
+        }
+
+        private static final class RawReferenceSnippets extends NativeToHotSpotMarshallerSnippets {
+
+            RawReferenceSnippets(MarshallerData marshallerData, Types types, TypeCache cache) {
+                super(marshallerData, types, cache);
+            }
+
+            @Override
+            TypeMirror getEndPointMethodParameterType(TypeMirror type) {
+                return cache.object;
+            }
+
+            @Override
+            CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence jniEnvFieldName) {
+                CharSequence value = new CodeBuilder(currentBuilder).cast(types.getPrimitiveType(TypeKind.LONG), formalParameter).build();
+                return new CodeBuilder(currentBuilder).invokeStatic(cache.wordFactory, "pointer", value).build();
+            }
+
+            @Override
+            CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName) {
+                return parameterName;
+            }
+
+            @Override
+            CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+                return invocationSnippet;
+            }
+
+            @Override
+            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+                return new CodeBuilder(currentBuilder).invoke(invocationSnippet, "rawValue").build();
             }
         }
 

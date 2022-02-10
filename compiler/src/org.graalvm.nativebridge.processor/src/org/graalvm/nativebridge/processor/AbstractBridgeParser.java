@@ -628,8 +628,8 @@ abstract class AbstractBridgeParser {
         } else if (isPrimitiveArray(type)) {
             res = MarshallerData.annotatedArray(findDirectionModifiers(annotationMirrors));
         } else {
-            AnnotationMirror annotationMirror = findByReference(annotationMirrors);
-            if (annotationMirror != null) {
+            AnnotationMirror annotationMirror;
+            if ((annotationMirror = findByReference(annotationMirrors)) != null) {
                 DeclaredType referenceType = (DeclaredType) getAnnotationValue(annotationMirror, "value");
                 TypeElement referenceElement = (TypeElement) referenceType.asElement();
                 boolean useReceiverResolver = (boolean) getAnnotationValueWithDefaults(annotationMirror, "useReceiverResolver");
@@ -688,6 +688,11 @@ abstract class AbstractBridgeParser {
                 AnnotationMirror annotation = processor.getAnnotation(referenceElement,
                                 sameDirection ? myConfiguration.getHandledAnnotationType() : otherConfiguration.getHandledAnnotationType());
                 res = MarshallerData.reference(referenceType, annotation, useReceiverResolver, sameDirection, nonDefaultReceiver, factoryMethod);
+            } else if ((annotationMirror = findRawReference(annotationMirrors)) != null) {
+                if (!types.isSameType(type, typeCache.object)) {
+                    emitError(method, annotationMirror, "Parameter annotated by `%s` must have Object type.");
+                }
+                res = MarshallerData.RAW_REFERENCE;
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 String marshallerFieldName = marshallerName(type, annotations);
@@ -812,9 +817,17 @@ abstract class AbstractBridgeParser {
     }
 
     private AnnotationMirror findByReference(List<? extends AnnotationMirror> annotationMirrors) {
+        return findAnnotationMirror(annotationMirrors, typeCache.byReference);
+    }
+
+    private AnnotationMirror findRawReference(List<? extends AnnotationMirror> annotationMirrors) {
+        return findAnnotationMirror(annotationMirrors, typeCache.rawReference);
+    }
+
+    private AnnotationMirror findAnnotationMirror(List<? extends AnnotationMirror> annotationMirrors, DeclaredType annotationType) {
         for (AnnotationMirror mirror : annotationMirrors) {
             DeclaredType type = mirror.getAnnotationType();
-            if (types.isSameType(typeCache.byReference, type)) {
+            if (types.isSameType(annotationType, type)) {
                 return mirror;
             }
         }
@@ -1044,10 +1057,12 @@ abstract class AbstractBridgeParser {
         enum Kind {
             VALUE,
             REFERENCE,
-            CUSTOM
+            RAW_REFERENCE,
+            CUSTOM,
         }
 
         static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, true, null, null, null);
+        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, true, null, null, null);
 
         final Kind kind;
         final TypeMirror forType;
@@ -1249,6 +1264,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType object;
         final DeclaredType out;
         final DeclaredType override;
+        final DeclaredType rawReference;
         final DeclaredType receiverMethod;
         final DeclaredType receiverResolver;
         final DeclaredType string;
@@ -1299,6 +1315,7 @@ abstract class AbstractBridgeParser {
             this.object = (DeclaredType) processor.getType("java.lang.Object");
             this.out = (DeclaredType) processor.getType("org.graalvm.nativebridge.Out");
             this.override = (DeclaredType) processor.getType("java.lang.Override");
+            this.rawReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.RawReference");
             this.receiverMethod = (DeclaredType) processor.getType("org.graalvm.nativebridge.ReceiverMethod");
             this.receiverResolver = (DeclaredType) processor.getType("org.graalvm.nativebridge.ReceiverResolver");
             this.string = (DeclaredType) processor.getType("java.lang.String");
