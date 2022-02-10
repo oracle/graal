@@ -114,6 +114,8 @@ public class AnalysisUniverse implements Universe {
     private final SnippetReflectionProvider snippetReflection;
     private final AnalysisFactory analysisFactory;
 
+    private final AtomicInteger numReachableTypes = new AtomicInteger();
+
     private AnalysisType objectClass;
     private AnalysisType cloneableClass;
     private final JavaKind wordKind;
@@ -729,5 +731,13 @@ public class AnalysisUniverse implements Universe {
 
     public HeapSnapshotVerifier getHeapVerifier() {
         return heapVerifier;
+    }
+
+    public void notifyReachableType() {
+        numReachableTypes.incrementAndGet();
+    }
+
+    public int getReachableTypes() {
+        return numReachableTypes.get();
     }
 }

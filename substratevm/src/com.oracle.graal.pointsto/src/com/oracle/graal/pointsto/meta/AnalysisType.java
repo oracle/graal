@@ -463,6 +463,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     private void markReachable() {
         if (AtomicUtils.atomicMark(isReachable)) {
+            universe.notifyReachableType();
             universe.hostVM.checkForbidden(this, UsageKind.Reachable);
             if (isArray()) {
                 /*
