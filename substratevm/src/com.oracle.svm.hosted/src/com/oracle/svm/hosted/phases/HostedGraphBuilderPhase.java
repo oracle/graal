@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import static org.graalvm.compiler.java.BciBlockMapping.Options.MaxDuplicationFactor;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -124,14 +125,19 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     protected BciBlockMapping generateBlockMap() {
+        // Double effort expended to handle irreducible loops in AOT compilation
+        // since failure means native-image fails.
+        double factor = MaxDuplicationFactor.getValue(this.options);
+        OptionValues opts = new OptionValues(this.options, MaxDuplicationFactor, factor * 2);
+
         if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
             /*
              * Need to add blocks representing where deoptimization entrypoint nodes will be
              * inserted.
              */
-            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug(), false);
+            return HostedBciBlockMapping.create(stream, code, opts, graph.getDebug(), false);
         } else {
-            return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
+            return BciBlockMapping.create(stream, code, opts, graph.getDebug(), asyncExceptionLiveness());
         }
     }
 
