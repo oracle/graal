@@ -436,6 +436,10 @@ public class SymbolicSnippetEncoder {
     }
 
     synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+        if (HotSpotReplacementsImpl.snippetsAreEncoded()) {
+            throw new GraalError("Snippet encoding has already been done");
+        }
+
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         SnippetKey key = new SnippetKey(method, original, receiver);
         findSnippetMethod(method);

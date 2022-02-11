@@ -56,6 +56,7 @@ import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -89,6 +90,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
@@ -419,6 +421,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        DebugContext debug = impl.getBigBang().getDebug();
 
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
@@ -429,6 +432,13 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(HotSpotMBeanOperationProvider.class);
         GraalServices.load(DisassemblerProvider.class);
+
+        try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
+            // Instantiate the truffle compiler ensure the backends it uses are initialized.
+            GraalTruffleRuntime.getRuntime().newTruffleCompiler();
+        } catch (Throwable t) {
+            throw debug.handle(t);
+        }
 
         // Filter out any cached services which are for a different architecture
         try {

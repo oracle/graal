@@ -79,8 +79,11 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             return;
         }
         if (IS_BUILDING_NATIVE_IMAGE) {
-            assert snippetEncoder == null;
-            snippetEncoder = new SymbolicSnippetEncoder(this);
+            synchronized (HotSpotReplacementsImpl.class) {
+                if (snippetEncoder == null) {
+                    snippetEncoder = new SymbolicSnippetEncoder(this);
+                }
+            }
         }
     }
 
@@ -161,6 +164,10 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             throw GraalError.shouldNotReachHere("encoded snippets not found");
         }
         return encodedSnippets;
+    }
+
+    public static boolean snippetsAreEncoded() {
+        return encodedSnippets != null;
     }
 
     public static void maybeEncodeSnippets(OptionValues options) {
