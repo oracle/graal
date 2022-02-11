@@ -71,7 +71,6 @@ instantiation is traced for.
 * GraalVM Enterprise only: `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified).
 * GraalVM Enterprise only: `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file.
 
-
 ### Macro Options
 * `--language:nfi`: make the Truffle Native Function Interface language available
 * `--language:python`: make Python available as a language for the image
