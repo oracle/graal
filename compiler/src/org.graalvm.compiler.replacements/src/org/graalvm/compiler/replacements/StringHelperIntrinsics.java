@@ -30,5 +30,8 @@ package org.graalvm.compiler.replacements;
  * Intrinsics for use by {@link StringUTF16Snippets} and {@link StringLatin1Snippets}.
  */
 public class StringHelperIntrinsics {
+    /**
+     * Emits a array access without a bounds check.
+     */
     public static native byte getByte(byte[] value, int i);
 }
