@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,25 +29,24 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.DarwinSyscall;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.X86_64VAListPointerWrapperFactoryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorageFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinSyscall> {
+final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<DarwinSyscall> {
 
     public static final int RTLD_GLOBAL_DARWIN = 8;
     public static final int RTLD_FIRST_DARWIN = 100;
     public static final long RTLD_DEFAULT_DARWIN = -2;
 
-    DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
+    DarwinAArch64PlatformCapability(boolean loadCxxLibraries) {
         super(DarwinSyscall.class, loadCxxLibraries);
     }
 
@@ -69,8 +68,6 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     @Override
     protected LLVMSyscallOperationNode createSyscallNode(DarwinSyscall syscall) {
         switch (syscall) {
-            case SYS_mmap:
-                return LLVMAMD64SyscallMmapNodeGen.create();
             case SYS_exit:
                 return new LLVMSyscallExitNode();
             default:
@@ -79,22 +76,17 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     }
 
     @Override
-    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
-        return new LLVMX86_64VaListStorage(vaListStackPtr);
+    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
+        return new LLVMAarch64VaListStorage(rootNode, vaListStackPtr);
     }
 
     @Override
     public Type getVAListType() {
-        return LLVMX86_64VaListStorage.VA_LIST_TYPE;
+        return LLVMAarch64VaListStorage.VA_LIST_TYPE;
     }
 
     @Override
-    public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
-        return cached ? X86_64VAListPointerWrapperFactoryNodeGen.create() : X86_64VAListPointerWrapperFactoryNodeGen.getUncached();
-    }
-
-    @Override
-    public OS getOS() {
-        return OS.Darwin;
+    public LLVMVaListStorage.VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
+        return cached ? LLVMAarch64VaListStorageFactory.Aarch64VAListPointerWrapperFactoryNodeGen.create() : LLVMAarch64VaListStorageFactory.Aarch64VAListPointerWrapperFactoryNodeGen.getUncached();
     }
 }

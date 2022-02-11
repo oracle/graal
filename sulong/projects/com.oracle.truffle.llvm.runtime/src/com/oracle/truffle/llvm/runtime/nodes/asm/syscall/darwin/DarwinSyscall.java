@@ -27,11 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64;
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 
-public enum DarwinAMD64Syscall implements LLVMSyscallEntry {
+public enum DarwinSyscall implements LLVMSyscallEntry {
 
     SYS_exit(1),
     SYS_getpid(20),
@@ -41,7 +41,7 @@ public enum DarwinAMD64Syscall implements LLVMSyscallEntry {
 
     private final int value;
 
-    DarwinAMD64Syscall(int value) {
+    DarwinSyscall(int value) {
         this.value = value;
     }
 
