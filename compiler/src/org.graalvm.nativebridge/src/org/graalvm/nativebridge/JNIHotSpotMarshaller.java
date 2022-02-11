@@ -25,7 +25,7 @@
 package org.graalvm.nativebridge;
 
 /**
- * Marshaller used by the native bridge processor on the host side to serialize custom type.
+ * Marshaller used by the native bridge processor on the host side to marshall custom type.
  * Marshallers are used to support custom types unknown to native bridge processor.
  *
  * @see JNIConfig.Builder

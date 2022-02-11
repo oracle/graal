@@ -44,8 +44,19 @@ import static org.graalvm.nativebridge.BinaryOutput.STRING;
 import static org.graalvm.nativebridge.BinaryOutput.ARRAY;
 import static org.graalvm.nativebridge.BinaryOutput.bufferSize;
 
+/**
+ * Buffer used by {@link BinaryMarshaller} to unmarshall parameters and return values passed by
+ * value.
+ *
+ * @see BinaryOutput
+ * @see BinaryMarshaller
+ * @see JNIConfig.Builder#registerMarshaller(Class, BinaryMarshaller)
+ */
 public abstract class BinaryInput implements Closeable {
 
+    /**
+     * Represents a value of an unknown type returned by {@link #tryReadTypedValue()}.
+     */
     public static final Object UNKNOWN_TYPE = new Object();
     private static final int EOF = -1;
 
@@ -58,6 +69,10 @@ public abstract class BinaryInput implements Closeable {
         this.length = length;
     }
 
+    /**
+     * Reads a single byte and returns {@code true} if that byte is non-zero, {@code false} if that
+     * byte is zero.
+     */
     public final boolean readBoolean() throws EOFException {
         int b = read();
         if (b < 0) {
@@ -66,6 +81,9 @@ public abstract class BinaryInput implements Closeable {
         return b != 0;
     }
 
+    /**
+     * Reads and returns a single byte.
+     */
     public final byte readByte() throws EOFException {
         int b = read();
         if (b < 0) {
@@ -74,6 +92,9 @@ public abstract class BinaryInput implements Closeable {
         return (byte) b;
     }
 
+    /**
+     * Reads two bytes and returns {@code short} value.
+     */
     public final short readShort() throws EOFException {
         int b1 = read();
         int b2 = read();
@@ -83,15 +104,9 @@ public abstract class BinaryInput implements Closeable {
         return (short) ((b1 << 8) + b2);
     }
 
-    public final int readUnsignedShort() throws EOFException {
-        int b1 = read();
-        int b2 = read();
-        if ((b1 | b2) < 0) {
-            throw new EOFException();
-        }
-        return (b1 << 8) + (b2 << 0);
-    }
-
+    /**
+     * Reads two bytes and returns {@code char} value.
+     */
     public final char readChar() throws EOFException {
         int b1 = read();
         int b2 = read();
@@ -101,6 +116,9 @@ public abstract class BinaryInput implements Closeable {
         return (char) ((b1 << 8) + b2);
     }
 
+    /**
+     * Reads four bytes and returns {@code int} value.
+     */
     public final int readInt() throws EOFException {
         int b1 = read();
         int b2 = read();
@@ -112,6 +130,9 @@ public abstract class BinaryInput implements Closeable {
         return (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
     }
 
+    /**
+     * Reads eight bytes and returns {@code long} value.
+     */
     public final long readLong() throws EOFException {
         int b1 = read();
         int b2 = read();
@@ -128,18 +149,41 @@ public abstract class BinaryInput implements Closeable {
                         ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8;
     }
 
+    /**
+     * Reads four bytes and returns a {@code float} value. It does this by reading an {@code int}
+     * value and converting the {@code int} value to a {@code float} using
+     * {@link Float#intBitsToFloat(int)}.
+     */
     public final float readFloat() throws EOFException {
         return Float.intBitsToFloat(readInt());
     }
 
+    /**
+     * Reads eight bytes and returns a {@code double} value. It does this by reading an {@code lang}
+     * value and converting the {@code long} value to a {@code double} using
+     * {@link Double#longBitsToDouble(long)}.
+     */
     public final double readDouble() throws EOFException {
         return Double.longBitsToDouble(readLong());
     }
 
+    /**
+     * Reads a single byte. The value byte is returned as an {@code int} in the range {@code 0} to
+     * {@code 255}. If no byte is available because the end of the stream has been reached, the
+     * value {@code -1}is returned.
+     */
     public abstract int read();
 
+    /**
+     * Reads up to {@code len} bytes into a byte array starting at offset {@code off}.
+     */
     public abstract int read(byte[] b, int off, int len);
 
+    /**
+     * Reads {@code len} bytes into a byte array starting at offset {@code off}.
+     *
+     * @throws EOFException if there are not enough bytes to read
+     */
     public final void readFully(byte[] b, int off, int len) throws EOFException {
         if (len < 0) {
             throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
@@ -154,6 +198,9 @@ public abstract class BinaryInput implements Closeable {
         }
     }
 
+    /**
+     * Read a string using a modified UTF-8 encoding in a machine-independent manner.
+     */
     public final String readUTF() throws EOFException, UTFDataFormatException {
         int len;
         int b1 = read();
@@ -244,14 +291,31 @@ public abstract class BinaryInput implements Closeable {
         return new String(charBuffer, 0, charCount);
     }
 
+    /**
+     * Closes the buffer.
+     */
     @Override
     public final void close() {
     }
 
+    /**
+     * Tries to read a single value, using the data type encoded in the marshalled data.
+     *
+     * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null}, an
+     *         array of these types or an {@link #UNKNOWN_TYPE} for an unsupported marshalled type.
+     *         When the {@link #UNKNOWN_TYPE} is returned the buffer position is not advanced.
+     */
     public final Object tryReadTypedValue() throws EOFException, UTFDataFormatException {
         return readTypedValueImpl();
     }
 
+    /**
+     * Reads a single value, using the data type encoded in the marshalled data.
+     *
+     * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null} or
+     *         an array of these types.
+     * @throws IllegalArgumentException when the marshalled type is not supported.
+     */
     public final Object readTypedValue() throws EOFException, UTFDataFormatException {
         Object res = readTypedValueImpl();
         if (res == UNKNOWN_TYPE) {
@@ -297,10 +361,17 @@ public abstract class BinaryInput implements Closeable {
         }
     }
 
+    /**
+     * Creates a new buffer backed by a byte array.
+     */
     public static BinaryInput create(byte[] buffer) {
         return new ByteArrayBinaryInput(buffer);
     }
 
+    /**
+     * Creates a new buffer wrapping an off-heap memory segment starting at {@code adddress} having
+     * {@code length} bytes.
+     */
     public static BinaryInput create(CCharPointer address, int length) {
         return new CCharPointerInput(address, length);
     }

@@ -28,13 +28,13 @@ import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativebridge.BinaryOutput.CCharPointerBinaryOutput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
-import java.io.EOFException;
-import java.io.UTFDataFormatException;
+import java.io.IOException;
 
 final class JNINativeMarshallerAdapter<T> implements JNINativeMarshaller<T> {
 
@@ -53,13 +53,13 @@ final class JNINativeMarshallerAdapter<T> implements JNINativeMarshaller<T> {
         }
         int bufSize = BUFFER_SIZE;
         CCharPointer buffer = StackValue.get(bufSize);
-        try (BinaryOutput out = BinaryOutput.create(buffer, bufSize, false)) {
+        try (CCharPointerBinaryOutput out = BinaryOutput.create(buffer, bufSize, false)) {
             binaryMarshaller.write(out, object);
             int len = out.getPosition();
             JByteArray binaryData = JNIUtil.NewByteArray(env, len);
             JNIUtil.SetByteArrayRegion(env, binaryData, 0, len, out.getAddress());
             return binaryData;
-        } catch (UTFDataFormatException e) {
+        } catch (IOException e) {
             throw new AssertionError(e.getMessage(), e);
         }
     }
@@ -82,7 +82,7 @@ final class JNINativeMarshallerAdapter<T> implements JNINativeMarshaller<T> {
             JNIUtil.GetByteArrayRegion(env, ((JByteArray) jObject), 0, len, useBuffer);
             try (BinaryInput in = BinaryInput.create(useBuffer, len)) {
                 return binaryMarshaller.read(in);
-            } catch (UTFDataFormatException | EOFException e) {
+            } catch (IOException e) {
                 throw new AssertionError(e.getMessage(), e);
             }
         } finally {

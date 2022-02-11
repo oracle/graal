@@ -24,6 +24,7 @@
  */
 package org.graalvm.nativebridge;
 
+import org.graalvm.nativebridge.JNIConfig.Builder;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
@@ -32,6 +33,13 @@ import java.io.Closeable;
 import java.io.UTFDataFormatException;
 import java.util.Arrays;
 
+/**
+ * Buffer used by {@link BinaryMarshaller} to marshall parameters and return values passed by value.
+ *
+ * @see BinaryInput
+ * @see BinaryMarshaller
+ * @see Builder#registerMarshaller(Class, BinaryMarshaller)
+ */
 public abstract class BinaryOutput implements Closeable {
 
     /**
@@ -61,7 +69,7 @@ public abstract class BinaryOutput implements Closeable {
     static final byte STRING = DOUBLE + 1;
     static final byte ARRAY = STRING + 1;
 
-    public static final byte CUSTOM_TAG_START = ARRAY + 1;
+    private static final byte CUSTOM_TAG_START = ARRAY + 1;
 
     private byte[] byteBuffer;
     protected int pos;
@@ -69,24 +77,45 @@ public abstract class BinaryOutput implements Closeable {
     private BinaryOutput() {
     }
 
+    /**
+     * Writes a {@code boolean} as a single byte value. The value {@code true} is written as the
+     * value {@code (byte)1}, the value {@code false} is written as the value {@code (byte)0}. The
+     * buffer position is incremented by {@code 1}.
+     */
     public final void writeBoolean(boolean value) {
         write(value ? 1 : 0);
     }
 
+    /**
+     * Writes a {@code byte} as a single byte value. The buffer position is incremented by
+     * {@code 1}.
+     */
     public final void writeByte(int value) {
         write(value);
     }
 
+    /**
+     * Writes a {@code short} as two bytes, high byte first. The buffer position is incremented by
+     * {@code 2}.
+     */
     public final void writeShort(int value) {
         write((value >>> 8) & 0xff);
         write(value & 0xff);
     }
 
+    /**
+     * Writes a {@code char} as two bytes, high byte first. The buffer position is incremented by
+     * {@code 2}.
+     */
     public final void writeChar(int value) {
         write((value >>> 8) & 0xff);
         write(value & 0xff);
     }
 
+    /**
+     * Writes an {@code int} as four bytes, high byte first. The buffer position is incremented by
+     * {@code 4}.
+     */
     public final void writeInt(int value) {
         write((value >>> 24) & 0xff);
         write((value >>> 16) & 0xff);
@@ -94,6 +123,10 @@ public abstract class BinaryOutput implements Closeable {
         write(value & 0xff);
     }
 
+    /**
+     * Writes a {@code long} as eight bytes, high byte first. The buffer position is incremented by
+     * {@code 8}.
+     */
     public final void writeLong(long value) {
         write((int) ((value >>> 56) & 0xff));
         write((int) ((value >>> 48) & 0xff));
@@ -105,22 +138,39 @@ public abstract class BinaryOutput implements Closeable {
         write((int) (value & 0xff));
     }
 
+    /**
+     * Converts a {@code float} value to an {@code int} using the
+     * {@link Float#floatToIntBits(float)}, and then writes that {@code int} as four bytes, high
+     * byte first. The buffer position is incremented by {@code 4}.
+     */
     public final void writeFloat(float value) {
         writeInt(Float.floatToIntBits(value));
     }
 
+    /**
+     * Converts a {@code double} value to a {@code long} using the
+     * {@link Double#doubleToLongBits(double)}, and then writes that {@code long} as eight bytes,
+     * high byte first. The buffer position is incremented by {@code 8}.
+     */
     public final void writeDouble(double value) {
         writeLong(Double.doubleToLongBits(value));
     }
 
+    /**
+     * Writes the lowest byte of the argument as a single byte value. The buffer position is
+     * incremented by {@code 1}.
+     */
     public abstract void write(int b);
 
+    /**
+     * Writes {@code len} bytes from the given byte array starting at offset {@code off}. The buffer
+     * position is incremented by {@code len}.
+     */
     public abstract void write(byte[] b, int off, int len);
 
-    public abstract CCharPointer getAddress();
-
-    public abstract byte[] getArray();
-
+    /**
+     * Writes a string using a modified UTF-8 encoding in a machine-independent manner.
+     */
     public final void writeUTF(String string) throws UTFDataFormatException {
         int len = string.length();
         int utfLen = 0;
@@ -179,14 +229,27 @@ public abstract class BinaryOutput implements Closeable {
         write(byteBuffer, 0, headerSize + utfLen);
     }
 
+    /**
+     * Returns this buffer's position.
+     */
     public int getPosition() {
         return pos;
     }
 
+    /**
+     * Closes the buffer and possibly frees off-heap allocated resources.
+     */
     @Override
     public void close() {
     }
 
+    /**
+     * Writes the value that is represented by the given object, together with information on the
+     * value's data type. Supported types are boxed Java primitive types, {@link String},
+     * {@code null} and arrays of these types.
+     *
+     * @throws IllegalArgumentException when the {@code value} type is not supported.
+     */
     public final void writeTypedValue(Object value) throws UTFDataFormatException {
         boolean res = writeTypedValueImpl(value);
         if (!res) {
@@ -194,6 +257,14 @@ public abstract class BinaryOutput implements Closeable {
         }
     }
 
+    /**
+     * Tries to write the value that is represented by the given object, together with information
+     * on the value's data type. Supported types are boxed Java primitive types, {@link String},
+     * {@code null} and arrays of these types.
+     *
+     * @return {@code true} if the {@code value} type is supported and the value was written;
+     *         {@code false} if the {@code value} type is not supported
+     */
     public final boolean tryWriteTypedValue(Object value) throws UTFDataFormatException {
         return writeTypedValueImpl(value);
     }
@@ -247,23 +318,68 @@ public abstract class BinaryOutput implements Closeable {
         }
     }
 
-    public static BinaryOutput create() {
+    /**
+     * Creates a new buffer backed by a byte array.
+     */
+    public static ByteArrayBinaryOutput create() {
         return new ByteArrayBinaryOutput();
     }
 
-    public static BinaryOutput create(byte[] initialBuffer) {
+    /**
+     * Creates a new buffer wrapping the given byte array. If the capacity of a given array is not
+     * sufficient for writing data, a new array is allocated, always use
+     * {@link ByteArrayBinaryOutput#getArray()} to obtain the marshalled data.
+     */
+    public static ByteArrayBinaryOutput create(byte[] initialBuffer) {
         return initialBuffer == null ? new ByteArrayBinaryOutput() : new ByteArrayBinaryOutput(initialBuffer);
     }
 
-    public static BinaryOutput create(CCharPointer address, int length, boolean unmanaged) {
-        return new CCharPointerBinaryOutput(address, length, unmanaged);
+    /**
+     * Creates a new buffer wrapping an off-heap memory segment starting at {@code adddress} having
+     * {@code length} bytes. If the capacity of a given segment is not sufficient for writing data,
+     * a new off-heap memory is allocated, always use {@link CCharPointerBinaryOutput#getAddress()}
+     * to obtain the marshalled data.
+     *
+     * @param address the off-heap memory address
+     * @param length the off-heap memory size
+     * @param dynamicallyAllocated {@code true} if the memory was dynamically allocated and should
+     *            be freed when the buffer is closed; {@code false} for the stack allocated memory.
+     */
+    public static CCharPointerBinaryOutput create(CCharPointer address, int length, boolean dynamicallyAllocated) {
+        return new CCharPointerBinaryOutput(address, length, dynamicallyAllocated);
+    }
+
+    /**
+     * Returns a value of the first unused tag written by the {@link #writeTypedValue(Object)}
+     * method. The value should be used when a method marshalling custom types delegates to
+     * {@link #tryWriteTypedValue(Object)}.
+     *
+     * Example:
+     *
+     * <pre>
+     *     static void writeCustomTypedValue(BinaryOutput out, Object value) throws UTFDataFormatException {
+     *          if (out.tryWriteTypedValue(value)) {
+     *             // type supported by BinaryOutput#tryWriteTypedValue()
+     *         } else if (value instanceof TruffleString) {
+     *             out.writeByte(BinaryOutput.getCustomTypeStartIndex());
+     *             out.writeUTF(((TruffleString) value).toJavaStringUncached());
+     *         } else {
+     *             throw new IllegalArgumentException(String.format("Unsupported type %s", value.getClass()));
+     *         }
+     * </pre>
+     */
+    public static byte getCustomTypeStartIndex() {
+        return CUSTOM_TAG_START;
     }
 
     static int bufferSize(int headerSize, int dataSize) {
         return headerSize + (dataSize <= MAX_SHORT_LENGTH ? dataSize << 1 : dataSize);
     }
 
-    private static final class ByteArrayBinaryOutput extends BinaryOutput {
+    /**
+     * A {@link BinaryOutput} backed by a byte array.
+     */
+    public static final class ByteArrayBinaryOutput extends BinaryOutput {
 
         private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
         private static final int INITIAL_SIZE = 32;
@@ -292,14 +408,11 @@ public abstract class BinaryOutput implements Closeable {
             pos += len;
         }
 
-        @Override
+        /**
+         * Returns the byte array containing the marshalled data.
+         */
         public byte[] getArray() {
             return buffer;
-        }
-
-        @Override
-        public CCharPointer getAddress() {
-            throw new UnsupportedOperationException("GetAddress is not supported on the array based output.");
         }
 
         private void ensureCapacity(int neededCapacity) {
@@ -316,7 +429,10 @@ public abstract class BinaryOutput implements Closeable {
         }
     }
 
-    private static final class CCharPointerBinaryOutput extends BinaryOutput {
+    /**
+     * A {@link BinaryOutput} backed by an off-heap memory.
+     */
+    public static final class CCharPointerBinaryOutput extends BinaryOutput {
 
         private CCharPointer address;
         private int length;
@@ -334,15 +450,12 @@ public abstract class BinaryOutput implements Closeable {
             return super.getPosition();
         }
 
-        @Override
+        /**
+         * Returns an address of an off-heap memory segment containing the marshalled data.
+         */
         public CCharPointer getAddress() {
             checkClosed();
             return address;
-        }
-
-        @Override
-        public byte[] getArray() {
-            throw new UnsupportedOperationException("GetArray is not supported on the direct memory based output.");
         }
 
         @Override

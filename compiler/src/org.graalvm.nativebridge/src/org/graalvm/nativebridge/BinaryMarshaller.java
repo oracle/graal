@@ -24,12 +24,23 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.EOFException;
-import java.io.UTFDataFormatException;
+import java.io.IOException;
 
+/**
+ * Marshaller used by the native bridge processor to write or read a custom type. Marshallers are
+ * used to support custom types unknown to native bridge processor.
+ *
+ * @see JNIConfig.Builder
+ */
 public interface BinaryMarshaller<T> {
 
-    T read(BinaryInput input) throws UTFDataFormatException, EOFException;
+    /**
+     * Reads the object value from the given buffer and returns the recreated object.
+     */
+    T read(BinaryInput input) throws IOException;
 
-    void write(BinaryOutput output, T object) throws UTFDataFormatException;
+    /**
+     * Writes the object value into the given buffer.
+     */
+    void write(BinaryOutput output, T object) throws IOException;
 }

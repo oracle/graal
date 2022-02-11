@@ -24,9 +24,9 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.EOFException;
-import java.io.UTFDataFormatException;
+import java.io.IOException;
 import java.util.Arrays;
+import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 
 final class JNIHotSpotMarshallerAdapter<T> implements JNIHotSpotMarshaller<T> {
 
@@ -41,10 +41,10 @@ final class JNIHotSpotMarshallerAdapter<T> implements JNIHotSpotMarshaller<T> {
         if (object == null) {
             return null;
         }
-        try (BinaryOutput out = BinaryOutput.create()) {
+        try (ByteArrayBinaryOutput out = BinaryOutput.create()) {
             binaryMarshaller.write(out, object);
             return Arrays.copyOf(out.getArray(), out.getPosition());
-        } catch (UTFDataFormatException e) {
+        } catch (IOException e) {
             throw new AssertionError(e.getMessage(), e);
         }
     }
@@ -56,7 +56,7 @@ final class JNIHotSpotMarshallerAdapter<T> implements JNIHotSpotMarshaller<T> {
         }
         try (BinaryInput in = BinaryInput.create((byte[]) rawObject)) {
             return binaryMarshaller.read(in);
-        } catch (EOFException | UTFDataFormatException e) {
+        } catch (IOException e) {
             throw new AssertionError(e.getMessage(), e);
         }
     }
