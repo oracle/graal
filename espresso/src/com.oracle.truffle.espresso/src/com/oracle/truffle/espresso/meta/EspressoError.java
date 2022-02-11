@@ -65,6 +65,11 @@ public final class EspressoError extends Error {
         throw new EspressoError(cause);
     }
 
+    public static RuntimeException fatal(Object... msg) {
+        CompilerDirectives.transferToInterpreter();
+        throw new EspressoError("fatal: %s", cat(msg));
+    }
+
     public static RuntimeException unexpected(String msg, Throwable cause) {
         CompilerDirectives.transferToInterpreter();
         throw new EspressoError(msg, cause);

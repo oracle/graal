@@ -331,7 +331,7 @@ public final class Classpath {
                 archiveNameBytes[i - 1] = b;
             }
         }
-        System.arraycopy(CLASS_SUFFIX, 0, archiveNameBytes, type.length() - 1, CLASS_SUFFIX.length);
+        System.arraycopy(CLASS_SUFFIX, 0, archiveNameBytes, type.length() - 2, CLASS_SUFFIX.length);
         ByteSequence archiveName = ByteSequence.wrap(archiveNameBytes);
         for (Entry entry : entries()) {
             ClasspathFile classpathFile = entry.readFile(archiveName);

@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
-
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Class;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Double;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Fieldref;
@@ -42,6 +40,9 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_String
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Utf8;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 
 /**
  * A Decompressor that reconstructs the constant pool of classes.
@@ -70,137 +71,131 @@ public class StringSharingDecompressor implements ResourceDecompressor {
     }
 
     public static ByteBuffer normalize(StringsProvider provider, ByteBuffer input, int originalSize) {
-        ByteBuffer output = ByteBuffer.allocate(originalSize);
-        output.putLong(input.getLong());  // magic/4, minor/2, major/2
-        char count = input.getChar();
-        output.putChar(count);
-        for (int i = 1; i < count; i++) {
-            byte tag = input.get();
-            switch (tag) {
-                case CONSTANT_Utf8: {
-                    output.put(tag);
-                    char len = input.getChar();
-                    output.putChar(len);
-                    transfert(input, output, len);
-                    break;
-                }
-                case EXTERNALIZED_STRING: {
-                    int index = CompressedIndexes.readInt(input);
-                    ByteBuffer orig = provider.getRawString(index);
-                    output.put(CONSTANT_Utf8);
-                    output.put(orig);
-                    break;
-                }
-                case EXTERNALIZED_STRING_DESCRIPTOR: {
-                    ByteBuffer orig = reconstruct(provider, input);
-                    output.put(CONSTANT_Utf8);
-                    output.put(orig);
-                    break;
-                }
-                case CONSTANT_Long:
-                case CONSTANT_Double: {
-                    i++;
-                    output.put(tag);
-
-                    break;
-                }
-                case CONSTANT_Integer:
-                case CONSTANT_Float:
-                case CONSTANT_Fieldref:
-                case CONSTANT_Methodref:
-                case CONSTANT_InterfaceMethodref:
-                case CONSTANT_NameAndType:
-                case CONSTANT_InvokeDynamic: {
-                    output.put(tag);
-                    output.putInt(input.getInt());
-                    break;
-                }
-                case CONSTANT_MethodHandle: {
-                    output.put(tag);
-                    output.put(input.get());
-                    output.put(input.get());
-                    output.put(input.get());
-                    break;
-                }
-                case CONSTANT_Class:
-                case CONSTANT_String:
-                case CONSTANT_MethodType:
-                case CONSTANT_Module:
-                case CONSTANT_Package: {
-                    output.put(tag);
-                    output.putShort(input.getShort());
-                    break;
-                }
-                default: {
-                    throw new RuntimeException("Unexpected tag: " + (tag & 0xff));
+        ByteBuffer output = ByteBuffer.allocate(originalSize).order(ByteOrder.BIG_ENDIAN);
+        ByteOrder originalOrder = input.order();
+        input.order(ByteOrder.BIG_ENDIAN);
+        try {
+            output.putLong(input.getLong());  // magic/4, minor/2, major/2
+            char count = input.getChar();
+            output.putChar(count);
+            for (int i = 1; i < count; i++) {
+                byte tag = input.get();
+                switch (tag) {
+                    case CONSTANT_Utf8: {
+                        output.put(tag);
+                        char len = input.getChar();
+                        output.putChar(len);
+                        transfert(input, output, len);
+                        break;
+                    }
+                    case EXTERNALIZED_STRING: {
+                        int index = CompressedIndexes.readInt(input);
+                        ByteBuffer orig = provider.getRawString(index);
+                        output.put(CONSTANT_Utf8);
+                        output.putChar((char) orig.remaining());
+                        output.put(orig);
+                        break;
+                    }
+                    case EXTERNALIZED_STRING_DESCRIPTOR: {
+                        output.put(CONSTANT_Utf8);
+                        int lengthMark = output.position();
+                        output.position(lengthMark + 2);
+                        reconstruct(provider, input, output);
+                        int length = output.position() - lengthMark - 2;
+                        output.putChar(lengthMark, (char) length);
+                        break;
+                    }
+                    case CONSTANT_Long:
+                    case CONSTANT_Double: {
+                        i++;
+                        output.put(tag);
+                        output.putLong(input.getLong());
+                        break;
+                    }
+                    case CONSTANT_Integer:
+                    case CONSTANT_Float:
+                    case CONSTANT_Fieldref:
+                    case CONSTANT_Methodref:
+                    case CONSTANT_InterfaceMethodref:
+                    case CONSTANT_NameAndType:
+                    case CONSTANT_InvokeDynamic: {
+                        output.put(tag);
+                        output.putInt(input.getInt());
+                        break;
+                    }
+                    case CONSTANT_MethodHandle: {
+                        output.put(tag);
+                        output.put(input.get());
+                        output.put(input.get());
+                        output.put(input.get());
+                        break;
+                    }
+                    case CONSTANT_Class:
+                    case CONSTANT_String:
+                    case CONSTANT_MethodType:
+                    case CONSTANT_Module:
+                    case CONSTANT_Package: {
+                        output.put(tag);
+                        output.putShort(input.getShort());
+                        break;
+                    }
+                    default: {
+                        throw new RuntimeException("Unexpected tag: " + (tag & 0xff));
+                    }
                 }
             }
+        } finally {
+            input.order(originalOrder);
         }
+        output.order(originalOrder);
+        output.put(input);
         if (output.hasRemaining()) {
             BasicImageReader.LOGGER.warning("StringSharingDecompressor output was smaller than expected: " + output.remaining() + "bytes of output remaining");
         }
         return output.flip();
     }
 
-    private static ByteBuffer reconstruct(StringsProvider reader, ByteBuffer cr) {
-        ByteBuffer desc = reader.getRawString(CompressedIndexes.readInt(cr));
-        int availableIndices = CompressedIndexes.readInt(cr);
-        ByteBuffer buffer = ByteBuffer.allocate(desc.remaining() * 2);
-        int runStart = 0; // consecutive run of non-L descriptor chars
+    private static void reconstruct(StringsProvider reader, ByteBuffer input, ByteBuffer output) {
+        ByteBuffer desc = reader.getRawString(CompressedIndexes.readInt(input));
+        int indiciesLimit = CompressedIndexes.readInt(input) + input.position();
+        if (indiciesLimit > input.limit()) {
+            throw new RuntimeException("Indices larger than input");
+        }
+        int runStart = desc.position(); // consecutive run of non-L descriptor chars
         for (int i = desc.position(); i < desc.limit(); i++) {
             byte c = desc.get(i);
             if (c == 'L') {
                 // copy previous run
+                // the current 'L' is copied below explicitly
                 int runLength = i - runStart;
                 if (runLength > 0) {
-                    buffer = ensureRemaining(buffer, runLength);
-                    transfert(desc, runStart, buffer, runLength);
-                    runStart = i + 1;
+                    transfert(desc, runStart, output, runLength);
                 }
+                runStart = i + 1;
                 // unpack type
-                if (availableIndices < 2) {
-                    throw new RuntimeException("Missing indices");
+                ByteBuffer pkg = reader.getRawString(CompressedIndexes.readInt(input));
+                ByteBuffer clazz = reader.getRawString(CompressedIndexes.readInt(input));
+                if (input.position() > indiciesLimit) {
+                    throw new RuntimeException("Missing indicies");
                 }
-                availableIndices -= 2;
-                ByteBuffer pkg = reader.getRawString(CompressedIndexes.readInt(cr));
-                ByteBuffer clazz = reader.getRawString(CompressedIndexes.readInt(cr));
                 // 'L' (pkg '/')? clazz
-                int typeLength = 1 + clazz.remaining();
+                output.put((byte) 'L');
                 if (pkg.hasRemaining()) {
-                    typeLength += 1 + pkg.remaining();
+                    output.put(pkg);
+                    output.put((byte) '/');
                 }
-                buffer = ensureRemaining(buffer, typeLength);
-                buffer.put((byte) 'L');
-                if (pkg.hasRemaining()) {
-                    buffer.put(pkg);
-                    buffer.put((byte) '/');
-                }
-                buffer.put(clazz);
+                output.put(clazz);
             }
         }
         if (runStart < desc.limit()) {
             // copy last run
             int runLength = desc.limit() - runStart;
-            buffer = ensureRemaining(buffer, runLength);
-            transfert(desc, runStart, buffer, runLength);
+            transfert(desc, runStart, output, runLength);
         }
-        if (availableIndices > 0) {
-            BasicImageReader.LOGGER.warning("StringSharingDecompressor: " + availableIndices + " indices remain unused after reconstructing descriptor");
-            do {
-                CompressedIndexes.readInt(cr);
-            } while (--availableIndices > 0);
+        if (input.position() < indiciesLimit) {
+            BasicImageReader.LOGGER.warning("StringSharingDecompressor: " + (indiciesLimit - input.position()) + " indicies bytes remain unused after reconstructing descriptor");
+            input.position(indiciesLimit);
         }
-        return buffer;
-    }
-
-    private static ByteBuffer ensureRemaining(ByteBuffer bb, int length) {
-        if (bb.remaining() < length) {
-            bb.flip();
-            ByteBuffer newBuffer = ByteBuffer.allocate((bb.capacity() + length) * 2);
-            newBuffer.put(bb);
-            return newBuffer;
-        }
-        return bb;
     }
 
     @Override

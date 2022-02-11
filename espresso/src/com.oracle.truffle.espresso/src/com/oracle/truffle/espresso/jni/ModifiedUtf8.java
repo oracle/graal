@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jni;
 
 import java.io.IOException;
 import java.io.UTFDataFormatException;
+import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -106,25 +107,28 @@ public final class ModifiedUtf8 {
     }
 
     public static String toJavaString(byte[] bytearr, int offset, int utflen) throws IOException {
-        char[] chararr = new char[utflen];
+        return toJavaString(ByteBuffer.wrap(bytearr, offset, utflen));
+    }
+
+    public static String toJavaString(ByteBuffer buffer) throws IOException {
+        char[] chararr = new char[buffer.remaining()];
 
         int c;
         int char2;
         int char3;
-        int count = 0;
         int chararrCount = 0;
 
-        while (count < utflen) {
-            c = bytearr[count + offset] & 0xff;
+        while (buffer.hasRemaining()) {
+            c = buffer.get() & 0xff;
             if (c > 127) {
+                buffer.position(buffer.position() - 1);
                 break;
             }
-            count++;
             chararr[chararrCount++] = (char) c;
         }
 
-        while (count < utflen) {
-            c = bytearr[count + offset] & 0xff;
+        while (buffer.hasRemaining()) {
+            c = buffer.get() & 0xff;
             switch (c >> 4) {
                 case 0:
                 case 1:
@@ -135,33 +139,30 @@ public final class ModifiedUtf8 {
                 case 6:
                 case 7:
                     /* 0xxxxxxx */
-                    count++;
                     chararr[chararrCount++] = (char) c;
                     break;
                 case 12:
                 case 13:
                     /* 110x xxxx 10xx xxxx */
-                    count += 2;
-                    if (count > utflen) {
+                    if (!buffer.hasRemaining()) {
                         throw throwUTFDataFormatException("malformed input: partial character at end");
                     }
-                    char2 = bytearr[count - 1 + offset];
+                    char2 = buffer.get();
                     if ((char2 & 0xC0) != 0x80) {
-                        throw throwUTFDataFormatException(malformedInputMessage(count));
+                        throw throwUTFDataFormatException(malformedInputMessage(buffer.position()));
                     }
                     chararr[chararrCount++] = (char) (((c & 0x1F) << 6) |
                                     (char2 & 0x3F));
                     break;
                 case 14:
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
-                    count += 3;
-                    if (count > utflen) {
+                    if (buffer.remaining() < 2) {
                         throw throwUTFDataFormatException("malformed input: partial character at end");
                     }
-                    char2 = bytearr[count - 2 + offset];
-                    char3 = bytearr[count - 1 + offset];
+                    char2 = buffer.get();
+                    char3 = buffer.get();
                     if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80)) {
-                        throw throwUTFDataFormatException(malformedInputMessage(count - 1));
+                        throw throwUTFDataFormatException(malformedInputMessage(buffer.position() - 1));
                     }
                     chararr[chararrCount++] = (char) (((c & 0x0F) << 12) |
                                     ((char2 & 0x3F) << 6) |
@@ -169,7 +170,7 @@ public final class ModifiedUtf8 {
                     break;
                 default:
                     /* 10xx xxxx, 1111 xxxx */
-                    throw throwUTFDataFormatException(malformedInputMessage(count));
+                    throw throwUTFDataFormatException(malformedInputMessage(buffer.position()));
             }
         }
         // The number of chars produced may be less than utflen

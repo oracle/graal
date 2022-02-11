@@ -65,6 +65,7 @@ import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -198,18 +199,27 @@ public abstract class ConstantPool {
     static @JavaType(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_VerifyError == null) {
+            throw EspressoError.fatal("VerifyError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
     public static @JavaType(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_ClassFormatError == null) {
+            throw EspressoError.fatal("ClassFormatError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
     }
 
     static @JavaType(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
         CompilerDirectives.transferToInterpreter();
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_NoClassDefFoundError == null) {
+            throw EspressoError.fatal("NoClassDefFoundError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 

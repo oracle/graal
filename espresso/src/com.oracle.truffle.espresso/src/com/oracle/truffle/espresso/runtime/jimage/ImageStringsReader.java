@@ -23,12 +23,13 @@
 
 package com.oracle.truffle.espresso.runtime.jimage;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 
 public class ImageStringsReader {
     public static final int HASH_MULTIPLIER = 0x01000193;
@@ -74,81 +75,13 @@ public class ImageStringsReader {
         return value;
     }
 
-    /**
-     * Calculates the number of characters in the String present at the specified offset. As an
-     * optimization, the length returned will be positive if the characters are all ASCII, and
-     * negative otherwise.
-     */
-    private static int charsFromByteBufferLength(ByteBuffer buffer, int offset) {
-        int length = 0;
-
-        int limit = buffer.limit();
-        boolean asciiOnly = true;
-        int currentOffset = offset;
-        while (currentOffset < limit) {
-            byte ch = buffer.get(currentOffset++);
-
-            if (ch < 0) {
-                asciiOnly = false;
-            } else if (ch == 0) {
-                return asciiOnly ? length : -length;
-            }
-
-            if ((ch & 0xC0) != 0x80) {
-                length++;
-            }
-        }
-        throw new InternalError("No terminating zero byte for modified UTF-8 byte sequence");
-    }
-
-    private static void charsFromByteBuffer(char[] chars, ByteBuffer buffer, int offset) {
-        int j = 0;
-
-        int limit = buffer.limit();
-        int currentOffset = offset;
-        while (currentOffset < limit) {
-            byte ch = buffer.get(currentOffset++);
-
-            if (ch == 0) {
-                return;
-            }
-
-            boolean is_unicode = (ch & 0x80) != 0;
-            int uch = ch & 0x7F;
-
-            if (is_unicode) {
-                int mask = 0x40;
-
-                while ((uch & mask) != 0) {
-                    ch = buffer.get(currentOffset++);
-
-                    if ((ch & 0xC0) != 0x80) {
-                        throw new InternalError("Bad continuation in " +
-                                        "modified UTF-8 byte sequence: " + ch);
-                    }
-
-                    uch = ((uch & ~mask) << 6) | (ch & 0x3F);
-                    mask <<= 6 - 1;
-                }
-            }
-
-            if ((uch & 0xFFFF) != uch) {
-                throw new InternalError("UTF-32 char in modified UTF-8 " +
-                                "byte sequence: " + uch);
-            }
-
-            chars[j++] = (char) uch;
-        }
-
-        throw new InternalError("No terminating zero byte for modified UTF-8 byte sequence");
-    }
-
     static ByteBuffer rawStringFromByteBuffer(ByteBuffer buffer, int startOffset) {
         int limit = buffer.limit();
         int currentOffset = startOffset;
         while (currentOffset < limit) {
             byte ch = buffer.get(currentOffset++);
             if (ch == 0) {
+                currentOffset--; // leave out the null byte
                 break;
             }
         }
@@ -160,25 +93,16 @@ public class ImageStringsReader {
 
     /* package-private */
     static String stringFromByteBuffer(ByteBuffer buffer, int startOffset) {
-        int offset = startOffset;
-        int length = charsFromByteBufferLength(buffer, offset);
-        if (length > 0) {
-            byte[] asciiBytes = new byte[length];
-            // Ideally we could use buffer.get(offset, asciiBytes, 0, length)
-            // here, but that was introduced in JDK 13
-            for (int i = 0; i < length; i++) {
-                asciiBytes[i] = buffer.get(offset++);
-            }
-            return new String(asciiBytes, StandardCharsets.US_ASCII);
+        ByteBuffer raw = rawStringFromByteBuffer(buffer, startOffset);
+        try {
+            return ModifiedUtf8.toJavaString(raw);
+        } catch (IOException e) {
+            throw new InternalError(e);
         }
-        char[] chars = new char[-length];
-        charsFromByteBuffer(chars, buffer, offset);
-        return new String(chars);
     }
 
     /* package-private */
     static int stringFromByteBufferMatches(ByteBuffer buffer, int offset, ByteSequence string, int stringOffset) {
-        // ASCII fast-path
         int limit = buffer.limit();
         int current = offset;
         int stringCurrent = stringOffset;

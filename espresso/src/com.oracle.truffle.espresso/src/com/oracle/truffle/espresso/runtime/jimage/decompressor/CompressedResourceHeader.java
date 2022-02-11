@@ -84,6 +84,7 @@ public final class CompressedResourceHeader {
         }
         int magic = resource.getInt();
         if (magic != MAGIC) {
+            resource.position(resource.position() - 4);
             return null;
         }
         long compressedSize = resource.getLong();

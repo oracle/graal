@@ -68,16 +68,13 @@ public class ImageLocation {
         return new ImageLocation(attributes);
     }
 
-    /**
-     * A simpler verification would be {@code name.equals(getFullName())}, but by not creating the
-     * full name and enabling early returns we allocate fewer objects.
-     */
     boolean verify(ByteSequence name, ImageStringsReader strings) {
         Objects.requireNonNull(name);
         int length = name.length();
         int index = 0;
         int moduleOffset = (int) attributes[ATTRIBUTE_MODULE];
         if (moduleOffset != 0 && length >= 1) {
+            // expected: "/$module/$name"
             int moduleLen = strings.match(moduleOffset, name, 1);
             index = moduleLen + 1;
             if (moduleLen < 0 || index >= length || name.unsignedByteAt(0) != '/' || name.unsignedByteAt(index++) != '/') {

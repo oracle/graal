@@ -64,8 +64,9 @@ public final class Decompressor {
                         throw new EspressoError("Decompressor plugin name not found");
                     }
                     ByteBuffer storedContent = header.getStoredContent(provider);
-                    Properties props = new Properties();
+                    Properties props = null;
                     if (storedContent != null) {
+                        props = new Properties();
                         try (ByteBufferInputStream stream = new ByteBufferInputStream(storedContent)) {
                             // this API will guess the encoding from the InputStream
                             // it will use a BOM and/or the <xml header and defaults to UTF8
@@ -81,7 +82,6 @@ public final class Decompressor {
                     if (decompressor == null) {
                         throw new EspressoError("Plugin not found: " + pluginName);
                     }
-
                     pluginsCache.put(header.getDecompressorNameOffset(), decompressor);
                 }
                 currentContent = decompressor.decompress(provider, currentContent, header.getUncompressedSize());

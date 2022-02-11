@@ -216,7 +216,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
 
     private static byte[] getBufferBytes(ByteBuffer buffer) {
         Objects.requireNonNull(buffer);
-        byte[] bytes = new byte[buffer.limit()];
+        byte[] bytes = new byte[buffer.remaining()];
         buffer.get(bytes);
         return bytes;
     }
