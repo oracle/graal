@@ -66,10 +66,13 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
+import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -217,15 +220,16 @@ public class ProgressReporter {
         reportStringBytes = false;
     }
 
-    public void printStart(String imageName) {
+    public void printStart(String imageName, NativeImageKind imageKind) {
         if (usePrefix) {
             // Add the PID to further disambiguate concurrent builds of images with the same name
             outputPrefix = String.format("[%s:%s] ", imageName, GraalServices.getExecutionID());
             stagePrinter.progressBarStart += outputPrefix.length();
         }
         l().printHeadlineSeparator();
+        String imageKindName = imageKind.name().toLowerCase().replace('_', ' ');
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
-                        .a(": Generating '").bold().a(imageName).reset().a("'...").println();
+                        .a(": Generating '").bold().a(imageName).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
         l().printHeadlineSeparator();
         stagePrinter.start(BuildStage.INITIALIZING);
     }
@@ -241,6 +245,10 @@ public class ProgressReporter {
     public void printInitializeEnd(Timer classlistTimer, Timer setupTimer, Collection<String> libraries) {
         printInitializeEnd(classlistTimer, setupTimer);
         l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").println();
+        if (ImageSingletons.contains(CCompilerInvoker.class)) {
+            l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription()).println();
+        }
+        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(Heap.getHeap().getGC().getName()).println();
         printNativeLibraries(libraries);
     }
 

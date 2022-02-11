@@ -122,6 +122,15 @@ public final class GCImpl implements GC {
     }
 
     @Override
+    public String getName() {
+        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+            return "Epsilon GC";
+        } else {
+            return "Serial GC";
+        }
+    }
+
+    @Override
     public void collect(GCCause cause) {
         collect(cause, false);
     }
