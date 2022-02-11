@@ -60,7 +60,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 

@@ -2677,6 +2677,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
+            // @formatter:off
             switch (argType.byteAt(0)) {
                 case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
                 case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
