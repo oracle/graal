@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +60,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
@@ -90,7 +90,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMCopyTargetLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
+public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
     // %struct.__va_list = type { i8*, i8*, i8*, i32, i32 }
 
@@ -115,7 +115,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     protected OverflowArgArea overflowArgArea;
 
-    public LLVMAarch64VaListStorage(LLVMPointer vaListStackPtr) {
+    public LLVMLinuxAarch64VaListStorage(LLVMPointer vaListStackPtr) {
         super(vaListStackPtr);
     }
 
@@ -154,7 +154,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
          * to copyFrom. I think that an exception should not be thrown here in this idempotent
          * method, but in the actual attempt to make a copy.
          */
-        return source instanceof LLVMAarch64VaListStorage || LLVMNativePointer.isInstance(source);
+        return source instanceof LLVMLinuxAarch64VaListStorage || LLVMNativePointer.isInstance(source);
     }
 
     @ExportMessage
@@ -303,7 +303,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class ReadI32 {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static int readManagedI32(LLVMAarch64VaListStorage vaList, long offset) {
+        static int readManagedI32(LLVMLinuxAarch64VaListStorage vaList, long offset) {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.GP_OFFSET:
                     return vaList.gpOffset;
@@ -317,7 +317,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = "vaList.isNativized()")
         @GenerateAOT.Exclude // recursion cut
-        static int readNativeI32(LLVMAarch64VaListStorage vaList, long offset,
+        static int readNativeI32(LLVMLinuxAarch64VaListStorage vaList, long offset,
                         @Cached LLVMI32LoadNode.LLVMI32OffsetLoadNode offsetLoad) {
             return offsetLoad.executeWithTarget(vaList.vaListStackPtr, offset);
         }
@@ -327,7 +327,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class ReadPointer {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static LLVMPointer readManagedPointer(LLVMAarch64VaListStorage vaList, long offset) {
+        static LLVMPointer readManagedPointer(LLVMLinuxAarch64VaListStorage vaList, long offset) {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.OVERFLOW_ARG_AREA:
                     return vaList.overflowArgArea.getCurrentArgPtr();
@@ -343,7 +343,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = "vaList.isNativized()")
         @GenerateAOT.Exclude // recursion cut
-        static LLVMPointer readNativePointer(LLVMAarch64VaListStorage vaList, long offset,
+        static LLVMPointer readNativePointer(LLVMLinuxAarch64VaListStorage vaList, long offset,
                         @Cached LLVMPointerLoadNode.LLVMPointerOffsetLoadNode offsetLoad) {
             return offsetLoad.executeWithTarget(vaList.vaListStackPtr, offset);
         }
@@ -378,7 +378,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class WriteI32 {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, int value) {
+        static void writeManaged(LLVMLinuxAarch64VaListStorage vaList, long offset, int value) {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.GP_OFFSET:
                     vaList.gpOffset = value;
@@ -393,7 +393,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = "vaList.isNativized()")
         @GenerateAOT.Exclude // recursion cut
-        static void writeNative(LLVMAarch64VaListStorage vaList, long offset, int value,
+        static void writeNative(LLVMLinuxAarch64VaListStorage vaList, long offset, int value,
                         @Cached LLVMI32OffsetStoreNode offsetStore) {
             offsetStore.executeWithTarget(vaList.vaListStackPtr, offset, value);
         }
@@ -409,7 +409,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class WritePointer {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value,
+        static void writeManaged(LLVMLinuxAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value,
                         @Cached BranchProfile exception,
                         @CachedLibrary("vaList") LLVMManagedWriteLibrary self) {
             switch ((int) offset) {
@@ -431,7 +431,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = "vaList.isNativized()")
         @GenerateAOT.Exclude // recursion cut
-        static void writeNative(LLVMAarch64VaListStorage vaList, long offset, LLVMPointer value,
+        static void writeNative(LLVMLinuxAarch64VaListStorage vaList, long offset, LLVMPointer value,
                         @Cached LLVMPointerStoreNode.LLVMPointerOffsetStoreNode offsetStore) {
             offsetStore.executeWithTarget(vaList.vaListStackPtr, offset, value);
         }
@@ -443,7 +443,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class Initialize {
 
         @Specialization(guards = {"!vaList.isNativized()"})
-        static void initializeManaged(LLVMAarch64VaListStorage vaList, Object[] args, int numOfExpArgs, Frame frame,
+        static void initializeManaged(LLVMLinuxAarch64VaListStorage vaList, Object[] args, int numOfExpArgs, Frame frame,
                         @Shared("expander") @Cached ArgumentListExpander argsExpander,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             vaList.originalArgs = args;
@@ -569,7 +569,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = {"vaList.isNativized()"})
-        static void initializeNativized(LLVMAarch64VaListStorage vaList, Object[] realArgs, int numOfExpArgs, Frame frame,
+        static void initializeNativized(LLVMLinuxAarch64VaListStorage vaList, Object[] realArgs, int numOfExpArgs, Frame frame,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode,
                         @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                         @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
@@ -775,7 +775,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class Copy {
 
         @Specialization(guards = {"!source.isNativized()"})
-        static void copyManaged(LLVMAarch64VaListStorage source, LLVMAarch64VaListStorage dest, Frame frame,
+        static void copyManaged(LLVMLinuxAarch64VaListStorage source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             dest.realArguments = source.realArguments;
             dest.originalArgs = source.originalArgs;
@@ -793,7 +793,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea != null"})
-        static void copyNativeToManaged(LLVMAarch64VaListStorage source, LLVMAarch64VaListStorage dest, Frame frame,
+        static void copyNativeToManaged(LLVMLinuxAarch64VaListStorage source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMManagedReadLibrary srcReadLib,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             // The destination va_list will be in the managed state, even if the source has been
@@ -808,7 +808,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea == null"})
         @GenerateAOT.Exclude // recursion cut
-        static void copyNative(LLVMAarch64VaListStorage source, LLVMAarch64VaListStorage dest, Frame frame,
+        static void copyNative(LLVMLinuxAarch64VaListStorage source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                         @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                         @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
             // The source valist is just a holder of the native counterpart and thus the destination
@@ -819,9 +819,9 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization
         @GenerateAOT.Exclude // recursion cut
-        static void copyManagedToNative(LLVMAarch64VaListStorage source, NativeVAListWrapper dest, Frame frame,
+        static void copyManagedToNative(LLVMLinuxAarch64VaListStorage source, NativeVAListWrapper dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
-            LLVMAarch64VaListStorage dummyClone = new LLVMAarch64VaListStorage(dest.nativeVAListPtr);
+            LLVMLinuxAarch64VaListStorage dummyClone = new LLVMLinuxAarch64VaListStorage(dest.nativeVAListPtr);
             dummyClone.nativized = true;
             vaListLibrary.initialize(dummyClone, source.realArguments, source.numberOfExplicitArguments, frame);
         }
@@ -833,7 +833,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
      * @param srcVaList
      * @param readLib
      */
-    private static long getArgPtrFromNativePtr(LLVMAarch64VaListStorage srcVaList, LLVMManagedReadLibrary readLib) {
+    private static long getArgPtrFromNativePtr(LLVMLinuxAarch64VaListStorage srcVaList, LLVMManagedReadLibrary readLib) {
         long curAddr;
         long baseAddr;
         LLVMPointer overflowAreaPtr = readLib.readPointer(srcVaList, Aarch64BitVarArgs.OVERFLOW_ARG_AREA);
@@ -942,7 +942,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         static boolean isManagedVAList(Object o) {
-            return o instanceof LLVMAarch64VaListStorage;
+            return o instanceof LLVMLinuxAarch64VaListStorage;
         }
     }
 
@@ -1080,12 +1080,12 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @ExportMessage
-        @ImportStatic({LLVMTypes.class, LLVMAarch64VaListStorage.class})
+        @ImportStatic({LLVMTypes.class, LLVMLinuxAarch64VaListStorage.class})
         static class Copy {
 
             @Specialization
             @GenerateAOT.Exclude // recursion cut
-            static void copyToManagedObject(NativeVAListWrapper source, LLVMAarch64VaListStorage dest, Frame frame,
+            static void copyToManagedObject(NativeVAListWrapper source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                             @CachedLibrary("source") LLVMVaListLibrary vaListLibrary) {
                 vaListLibrary.copy(source, new NativeVAListWrapper(dest.vaListStackPtr), frame);
                 dest.nativized = true;

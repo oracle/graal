@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
-class Aarch64BitVarArgs {
+public class Aarch64BitVarArgs {
     // see https://static.docs.arm.com/100986/0000/abi_sve_aapcs64_100986_0000_00_en.pdf
 
     public static final int OVERFLOW_ARG_AREA = 0;
