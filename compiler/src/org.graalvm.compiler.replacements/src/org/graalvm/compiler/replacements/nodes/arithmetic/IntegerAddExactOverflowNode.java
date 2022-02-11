@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public final class IntegerAddExactOverflowNode extends IntegerExactOverflowNode implements Simplifiable, BinaryCommutative<ValueNode>, IterableNodeType {
+public final class IntegerAddExactOverflowNode extends IntegerExactOverflowNode implements BinaryCommutative<ValueNode>, IterableNodeType {
     public static final NodeClass<IntegerAddExactOverflowNode> TYPE = NodeClass.create(IntegerAddExactOverflowNode.class);
 
     public IntegerAddExactOverflowNode(ValueNode x, ValueNode y) {

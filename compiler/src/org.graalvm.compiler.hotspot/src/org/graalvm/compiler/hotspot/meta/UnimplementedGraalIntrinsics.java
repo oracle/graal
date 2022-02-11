@@ -282,11 +282,7 @@ public final class UnimplementedGraalIntrinsics {
 
         // to be investigated intrinsics
         add(toBeInvestigated,
-                        // Similar to addExact
-                        "java/lang/Math.negateExact(I)I",
-                        // Similar to addExact
-                        "java/lang/Math.negateExact(J)J",
-                        // Can share most implementation parts with with
+                        // Can share most implementation parts with
                         // Unsafe.allocateUninitializedArray0
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
                         // Only used as a marker for vectorization?
@@ -421,10 +417,6 @@ public final class UnimplementedGraalIntrinsics {
         Map<String, VMField> fields = store.getFields();
         return fields.containsKey("StubRoutines::_electronicCodeBook_encryptAESCrypt") &&
                         fields.containsKey("StubRoutines::_electronicCodeBook_decryptAESCrypt");
-    }
-
-    private static boolean isJDK12OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 12;
     }
 
     private static boolean isJDK14OrHigher() {

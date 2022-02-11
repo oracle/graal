@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements.nodes.arithmetic;
 
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -31,32 +33,39 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
-public final class IntegerSubExactSplitNode extends BinaryIntegerExactArithmeticSplitNode {
-    public static final NodeClass<IntegerSubExactSplitNode> TYPE = NodeClass.create(IntegerSubExactSplitNode.class);
+@NodeInfo(cycles = CYCLES_4, cyclesRationale = "neg+cmp")
+public final class IntegerNegExactSplitNode extends IntegerExactArithmeticSplitNode {
+    public static final NodeClass<IntegerNegExactSplitNode> TYPE = NodeClass.create(IntegerNegExactSplitNode.class);
 
-    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
-        super(TYPE, stamp, x, y, next, overflowSuccessor);
+    @Input protected ValueNode value;
+
+    public IntegerNegExactSplitNode(Stamp stamp, ValueNode value, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+        super(TYPE, stamp, next, overflowSuccessor);
+        this.value = value;
     }
 
     @Override
     protected Value generateArithmetic(NodeLIRBuilderTool gen) {
-        return gen.getLIRGeneratorTool().getArithmetic().emitSub(gen.operand(getX()), gen.operand(getY()), true);
+        return gen.getLIRGeneratorTool().getArithmetic().emitNegate(gen.operand(value));
+    }
+
+    public ValueNode getValue() {
+        return value;
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
         NodeView view = NodeView.from(tool);
-        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) x.stamp(view), (IntegerStamp) y.stamp(view))) {
+        if (!IntegerStamp.negateCanOverflow((IntegerStamp) value.stamp(view))) {
             tool.deleteBranch(overflowSuccessor);
             tool.addToWorkList(next);
-            SubNode replacement = graph().unique(new SubNode(x, y));
+            NegateNode replacement = graph().unique(new NegateNode(value));
             graph().replaceSplitWithFloating(this, replacement, next);
             tool.addToWorkList(replacement);
         }

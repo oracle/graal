@@ -44,7 +44,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 @NodeInfo(cycles = CYCLES_4, cyclesRationale = "mul+cmp", size = SIZE_2)
-public class IntegerMulExactOverflowNode extends IntegerExactOverflowNode implements Simplifiable, Canonicalizable.BinaryCommutative<ValueNode> {
+public class IntegerMulExactOverflowNode extends IntegerExactOverflowNode implements Canonicalizable.BinaryCommutative<ValueNode> {
     public static final NodeClass<IntegerMulExactOverflowNode> TYPE = NodeClass.create(IntegerMulExactOverflowNode.class);
 
     public IntegerMulExactOverflowNode(ValueNode x, ValueNode y) {

@@ -162,6 +162,9 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmetic
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactSplitNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactOverflowNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
@@ -731,7 +734,7 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    public enum IntegerExactOp {
+    public enum IntegerExactBinaryOp {
         INTEGER_ADD_EXACT,
         INTEGER_INCREMENT_EXACT,
         INTEGER_SUBTRACT_EXACT,
@@ -739,7 +742,7 @@ public class StandardGraphBuilderPlugins {
         INTEGER_MULTIPLY_EXACT
     }
 
-    private static GuardingNode createIntegerExactArithmeticGuardNode(GraphBuilderContext b, ValueNode x, ValueNode y, IntegerExactOp op) {
+    private static GuardingNode createIntegerExactArithmeticGuardNode(GraphBuilderContext b, ValueNode x, ValueNode y, IntegerExactBinaryOp op) {
         LogicNode overflowCheck;
         switch (op) {
             case INTEGER_ADD_EXACT:
@@ -762,7 +765,7 @@ public class StandardGraphBuilderPlugins {
         return b.add(new FixedGuardNode(overflowCheck, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateRecompile, true));
     }
 
-    private static ValueNode createIntegerExactArithmeticNode(GraphBuilderContext b, ValueNode x, ValueNode y, IntegerExactOp op) {
+    private static ValueNode createIntegerExactArithmeticNode(GraphBuilderContext b, ValueNode x, ValueNode y, IntegerExactBinaryOp op) {
         switch (op) {
             case INTEGER_ADD_EXACT:
             case INTEGER_INCREMENT_EXACT:
@@ -777,7 +780,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static IntegerExactArithmeticSplitNode createIntegerExactSplit(ValueNode x, ValueNode y, AbstractBeginNode exceptionEdge, IntegerExactOp op) {
+    private static IntegerExactArithmeticSplitNode createIntegerExactSplit(ValueNode x, ValueNode y, AbstractBeginNode exceptionEdge, IntegerExactBinaryOp op) {
         switch (op) {
             case INTEGER_ADD_EXACT:
             case INTEGER_INCREMENT_EXACT:
@@ -792,7 +795,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void createIntegerExactOperation(GraphBuilderContext b, JavaKind kind, ValueNode x, ValueNode y, IntegerExactOp op) {
+    private static void createIntegerExactBinaryOperation(GraphBuilderContext b, JavaKind kind, ValueNode x, ValueNode y, IntegerExactBinaryOp op) {
         if (b.needsExplicitException()) {
             BytecodeExceptionKind exceptionKind = kind == JavaKind.Int ? BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW : BytecodeExceptionKind.LONG_EXACT_OVERFLOW;
             AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
@@ -812,7 +815,7 @@ public class StandardGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
                         ConstantNode y = b.add(ConstantNode.forIntegerKind(kind, 1));
-                        createIntegerExactOperation(b, kind, x, y, IntegerExactOp.INTEGER_DECREMENT_EXACT);
+                        createIntegerExactBinaryOperation(b, kind, x, y, IntegerExactBinaryOp.INTEGER_DECREMENT_EXACT);
                         return true;
                     }
                 });
@@ -820,28 +823,46 @@ public class StandardGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
                         ConstantNode y = b.add(ConstantNode.forIntegerKind(kind, 1));
-                        createIntegerExactOperation(b, kind, x, y, IntegerExactOp.INTEGER_INCREMENT_EXACT);
+                        createIntegerExactBinaryOperation(b, kind, x, y, IntegerExactBinaryOp.INTEGER_INCREMENT_EXACT);
                         return true;
                     }
                 });
                 r.register(new InvocationPlugin("addExact", type, type) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                        createIntegerExactOperation(b, kind, x, y, IntegerExactOp.INTEGER_ADD_EXACT);
+                        createIntegerExactBinaryOperation(b, kind, x, y, IntegerExactBinaryOp.INTEGER_ADD_EXACT);
                         return true;
                     }
                 });
                 r.register(new InvocationPlugin("subtractExact", type, type) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                        createIntegerExactOperation(b, kind, x, y, IntegerExactOp.INTEGER_SUBTRACT_EXACT);
+                        createIntegerExactBinaryOperation(b, kind, x, y, IntegerExactBinaryOp.INTEGER_SUBTRACT_EXACT);
                         return true;
                     }
                 });
                 r.register(new InvocationPlugin("multiplyExact", type, type) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                        createIntegerExactOperation(b, kind, x, y, IntegerExactOp.INTEGER_MULTIPLY_EXACT);
+                        createIntegerExactBinaryOperation(b, kind, x, y, IntegerExactBinaryOp.INTEGER_MULTIPLY_EXACT);
+                        return true;
+                    }
+                });
+                r.register(new InvocationPlugin("negateExact", type) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                        if (b.needsExplicitException()) {
+                            BytecodeExceptionKind exceptionKind = kind == JavaKind.Int ? BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW : BytecodeExceptionKind.LONG_EXACT_OVERFLOW;
+                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
+                            IntegerExactArithmeticSplitNode split = b.addPush(kind, new IntegerNegExactSplitNode(value.stamp(NodeView.DEFAULT).unrestricted(),
+                                            value, null, exceptionEdge));
+                            split.setNext(b.add(new BeginNode()));
+                        } else {
+                            LogicNode overflowCheck = new IntegerNegExactOverflowNode(value);
+                            FixedGuardNode guard = b.add(new FixedGuardNode(overflowCheck, DeoptimizationReason.ArithmeticException,
+                                            DeoptimizationAction.InvalidateRecompile, true));
+                            b.addPush(kind, new IntegerNegExactNode(value, guard));
+                        }
                         return true;
                     }
                 });
