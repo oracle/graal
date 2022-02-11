@@ -205,7 +205,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -215,8 +215,11 @@ suite = {
         "org.graalvm.collections",
         "org.graalvm.home",
       ],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
 
@@ -225,7 +228,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "workingSets" : "API,SDK",
     },
@@ -238,7 +241,7 @@ suite = {
         "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.nativeimage.test" : {
@@ -248,7 +251,7 @@ suite = {
         "mx:JUNIT",
         "org.graalvm.nativeimage"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
     },
@@ -260,7 +263,10 @@ suite = {
         "JLINE",
         "JLINE3",
       ],
-      "javaCompliance" : "8+",
+      "requires" : [
+        "java.logging",
+      ],
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
     },
@@ -271,7 +277,7 @@ suite = {
         "mx:JUNIT",
         "org.graalvm.launcher"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
     },
@@ -282,14 +288,14 @@ suite = {
         "org.graalvm.polyglot",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK,Test",
     },
     "org.graalvm.collections" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.collections.test" : {
@@ -300,7 +306,7 @@ suite = {
         "org.graalvm.collections",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK,Test",
     },
     "org.graalvm.home" : {
@@ -310,7 +316,7 @@ suite = {
         "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.home.test" : {
@@ -321,7 +327,7 @@ suite = {
         "org.graalvm.home",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
   },

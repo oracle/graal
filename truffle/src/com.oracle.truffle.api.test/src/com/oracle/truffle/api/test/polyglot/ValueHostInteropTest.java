@@ -379,7 +379,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(0L, arrObj.getArraySize());
     }
 
-    private static final TypeLiteral<List<String>> LIST_STRING = new TypeLiteral<List<String>>() {
+    private static final TypeLiteral<List<String>> LIST_STRING = new TypeLiteral<>() {
     };
 
     @Test
@@ -752,7 +752,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
-    private static final TypeLiteral<Map<String, String>> MAP_STRING_STRING = new TypeLiteral<Map<String, String>>() {
+    private static final TypeLiteral<Map<String, String>> MAP_STRING_STRING = new TypeLiteral<>() {
     };
 
     @SuppressWarnings("unchecked")

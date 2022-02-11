@@ -91,7 +91,7 @@ public class LegacyLanguageSPITest {
             CountDownLatch beforeSleep = new CountDownLatch(1);
             CountDownLatch interrupt = new CountDownLatch(1);
             AtomicInteger gotInterrupt = new AtomicInteger(0);
-            Function<TruffleLanguage.Env, Object> f = new Function<TruffleLanguage.Env, Object>() {
+            Function<TruffleLanguage.Env, Object> f = new Function<>() {
                 public Object apply(TruffleLanguage.Env t) {
                     try {
                         beforeSleep.countDown();

@@ -303,7 +303,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.30
      */
     public Map<String, ? extends DebugValue> getExportedSymbols() {
-        return new AbstractMap<String, DebugValue>() {
+        return new AbstractMap<>() {
             private final DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
 
             @Override

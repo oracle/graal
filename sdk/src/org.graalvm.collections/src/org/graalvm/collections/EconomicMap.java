@@ -237,7 +237,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * @since 22.0
      */
     static <K, V> MapCursor<K, V> emptyCursor() {
-        return new MapCursor<K, V>() {
+        return new MapCursor<>() {
             @Override
             public void remove() {
             }

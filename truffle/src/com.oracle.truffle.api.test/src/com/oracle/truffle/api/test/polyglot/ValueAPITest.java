@@ -278,7 +278,7 @@ public class ValueAPITest {
                     new JavaSuperClass(),
                     new BigInteger("42"),
                     new BigDecimal("42"),
-                    new Function<Object, Object>() {
+                    new Function<>() {
                         public Object apply(Object t) {
                             return t;
                         }
@@ -628,7 +628,7 @@ public class ValueAPITest {
 
     @Test
     public void testComplexGenericCoercion() {
-        TypeLiteral<List<Map<Integer, Map<String, Object[]>>>> literal = new TypeLiteral<List<Map<Integer, Map<String, Object[]>>>>() {
+        TypeLiteral<List<Map<Integer, Map<String, Object[]>>>> literal = new TypeLiteral<>() {
         };
         Map<String, Object> map = new HashMap<>();
         map.put("foobar", new Object[]{"baz"});
@@ -641,7 +641,7 @@ public class ValueAPITest {
 
     @Test
     public void testComplexGenericCoercion2() {
-        TypeLiteral<List<Map<String, Map<String, Object[]>>>> literal = new TypeLiteral<List<Map<String, Map<String, Object[]>>>>() {
+        TypeLiteral<List<Map<String, Map<String, Object[]>>>> literal = new TypeLiteral<>() {
         };
         Object[] array = new Object[]{ProxyObject.fromMap(Collections.singletonMap("foo", ProxyObject.fromMap(Collections.singletonMap("bar", new Object[]{"baz"}))))};
 
@@ -1546,9 +1546,9 @@ public class ValueAPITest {
 
     }
 
-    private static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
+    private static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<List<Integer>> INTEGER_LIST = new TypeLiteral<List<Integer>>() {
+    private static final TypeLiteral<List<Integer>> INTEGER_LIST = new TypeLiteral<>() {
     };
 
     @Test
@@ -1605,7 +1605,7 @@ public class ValueAPITest {
         assertFalse(v.removeMember("a"));
     }
 
-    private static final TypeLiteral<Map<String, String>> STRING_MAP = new TypeLiteral<Map<String, String>>() {
+    private static final TypeLiteral<Map<String, String>> STRING_MAP = new TypeLiteral<>() {
     };
 
     public static class MemberErrorTest {

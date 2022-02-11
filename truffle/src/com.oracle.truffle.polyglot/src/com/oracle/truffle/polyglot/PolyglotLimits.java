@@ -169,7 +169,7 @@ final class PolyglotLimits {
      */
     static final class EngineLimits {
 
-        private static final Predicate<Source> NO_PREDICATE = new Predicate<Source>() {
+        private static final Predicate<Source> NO_PREDICATE = new Predicate<>() {
             public boolean test(Source t) {
                 return true;
             }

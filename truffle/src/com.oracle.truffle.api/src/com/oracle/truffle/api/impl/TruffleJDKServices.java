@@ -40,95 +40,108 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.lang.invoke.VarHandle;
+import java.util.Collections;
 import java.util.List;
+import java.util.ServiceLoader;
+import java.util.Set;
 
 /**
- * JDK version independent interface to JDK services used by Truffle.
+ * JDK 11+ implementation of {@code TruffleJDKServices}.
  */
 final class TruffleJDKServices {
 
-    private TruffleJDKServices() {
-    }
-
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay for " + TruffleJDKServices.class.getName() + " missing");
-    }
-
-    /**
-     * Exports all Truffle packages to a Truffle client.
-     *
-     * @param loader the loader used to load the classes of the client
-     * @param moduleName the name of the module containing the client. This will be {@code null} if
-     *            the client is not deployed as a module.
-     */
     static void exportTo(ClassLoader loader, String moduleName) {
-        throw shouldNotReachHere();
+        assert (loader == null) != (moduleName == null) : "exactly one of a class loader or module name is required when exporting Truffle";
+        Module truffleModule = TruffleJDKServices.class.getModule();
+        Module clientModule;
+        if (moduleName != null) {
+            clientModule = truffleModule.getLayer().findModule(moduleName).orElseThrow();
+        } else {
+            clientModule = loader.getUnnamedModule();
+        }
+        exportFromTo(truffleModule, clientModule);
     }
 
-    /**
-     * Exports all Truffle packages to the module containing {@code client}.
-     *
-     * @param client class in a module that requires access to Truffle
-     */
     static void exportTo(Class<?> client) {
-        throw shouldNotReachHere();
+        Module truffleModule = TruffleJDKServices.class.getModule();
+        exportFromTo(truffleModule, client.getModule());
     }
 
-    /**
-     * Updates Truffle module to read the {@code client}'s module. This method is a no-op if
-     * {@code client} is in the Truffle module, or the Truffle module already reads {@code client}'s
-     * module.
-     *
-     * @param client class in a module that should be added into modules read by the Truffle module.
-     */
+    private static void exportFromTo(Module truffleModule, Module clientModule) {
+        if (truffleModule != clientModule) {
+            Set<String> packages = truffleModule.getPackages();
+            for (String pkg : packages) {
+                boolean exported = truffleModule.isExported(pkg, clientModule);
+                if (!exported) {
+                    truffleModule.addExports(pkg, clientModule);
+                }
+            }
+        }
+    }
+
     static void addReads(Class<?> client) {
-        throw shouldNotReachHere();
+        Module truffleModule = TruffleJDKServices.class.getModule();
+        Module clientModule = client.getModule();
+        truffleModule.addReads(clientModule);
     }
 
-    /**
-     * Gets the ordered list of loaders for {@link Service} providers.
-     *
-     * @param serviceClass defines service class
-     */
     static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
-        throw shouldNotReachHere();
+        return Collections.singletonList(ServiceLoader.load(serviceClass));
     }
 
-    /**
-     * Ensures that the Truffle module declares a use of {@code service}.
-     *
-     * @param service a class describing a service about to be loaded by Truffle
-     */
     static <S> void addUses(Class<S> service) {
-        throw shouldNotReachHere();
+        Module module = TruffleJDKServices.class.getModule();
+        if (!module.canUse(service)) {
+            module.addUses(service);
+        }
     }
 
-    /**
-     * Returns the unnamed module configured for a classloader.
-     *
-     * @param classLoader the class loader to return the unnamed module for.
-     */
     static Object getUnnamedModule(ClassLoader classLoader) {
-        throw shouldNotReachHere();
+        if (classLoader == null) {
+            return null;
+        }
+        return classLoader.getUnnamedModule();
     }
 
-    /**
-     * Returns <code>true</code> if the member class is visible to the given module.
-     *
-     * @param lookupModule the module to use for lookups.
-     * @param memberClass the class or the declaring class of the member to check.
-     */
-    static boolean verifyModuleVisibility(Object lookupModule, Class<?> memberClass) {
-        throw shouldNotReachHere();
+    static boolean verifyModuleVisibility(Object module, Class<?> memberClass) {
+        Module lookupModule = (Module) module;
+        if (lookupModule == null) {
+            /*
+             * This case may currently happen in AOT as the module support there is not complete.
+             * See GR-19155.
+             */
+            return true;
+        }
+        Module memberModule = memberClass.getModule();
+        if (lookupModule == memberModule) {
+            return true;
+        } else {
+            String pkg = memberClass.getPackageName();
+            if (lookupModule.isNamed()) {
+                if (memberModule.isNamed()) {
+                    // both modules are named. check whether they are exported.
+                    return memberModule.isExported(pkg, lookupModule);
+                } else {
+                    // no access from named modules to unnamed modules
+                    return false;
+                }
+            } else {
+                if (memberModule.isNamed()) {
+                    // unnamed modules see all exported packages
+                    return memberModule.isExported(pkg);
+                } else {
+                    // full access from unnamed modules to unnamed modules
+                    return true;
+                }
+            }
+        }
     }
 
-    /**
-     * Returns <code>true</code> if the class is not part of the truffle framework.
-     *
-     * @param clazz the class to check.
-     */
     static boolean isNonTruffleClass(Class<?> clazz) {
-        throw shouldNotReachHere();
+        ClassLoader truffleClassLoader = TruffleJDKServices.class.getModule().getClassLoader();
+        ClassLoader classLoader = clazz.getClassLoader();
+        return truffleClassLoader != classLoader;
     }
 
     /**
@@ -136,7 +149,7 @@ final class TruffleJDKServices {
      * after the fence.
      */
     static void fullFence() {
-        throw shouldNotReachHere();
+        VarHandle.fullFence();
     }
 
     /**
@@ -144,7 +157,7 @@ final class TruffleJDKServices {
      * fence.
      */
     static void acquireFence() {
-        throw shouldNotReachHere();
+        VarHandle.acquireFence();
     }
 
     /**
@@ -152,20 +165,20 @@ final class TruffleJDKServices {
      * fence.
      */
     static void releaseFence() {
-        throw shouldNotReachHere();
+        VarHandle.releaseFence();
     }
 
     /**
      * Ensures that loads before the fence will not be reordered with loads after the fence.
      */
     static void loadLoadFence() {
-        throw shouldNotReachHere();
+        VarHandle.loadLoadFence();
     }
 
     /**
      * Ensures that stores before the fence will not be reordered with stores after the fence.
      */
     static void storeStoreFence() {
-        throw shouldNotReachHere();
+        VarHandle.storeStoreFence();
     }
 }

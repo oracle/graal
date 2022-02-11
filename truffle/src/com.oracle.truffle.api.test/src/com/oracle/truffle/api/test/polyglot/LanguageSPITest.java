@@ -424,7 +424,7 @@ public class LanguageSPITest {
             CountDownLatch beforeSleep = new CountDownLatch(1);
             CountDownLatch interrupt = new CountDownLatch(1);
             AtomicInteger gotInterrupt = new AtomicInteger(0);
-            Function<Env, Object> f = new Function<Env, Object>() {
+            Function<Env, Object> f = new Function<>() {
                 public Object apply(Env t) {
                     try {
                         beforeSleep.countDown();
@@ -555,7 +555,7 @@ public class LanguageSPITest {
     @Test
     public void testInnerContext() {
         Context context = Context.create();
-        Function<Env, Object> f = new Function<Env, Object>() {
+        Function<Env, Object> f = new Function<>() {
             public Object apply(Env env) {
                 LanguageContext outerLangContext = LanguageSPITestLanguage.getContext();
                 Object config = new Object();
@@ -615,7 +615,7 @@ public class LanguageSPITest {
     @Test
     public void testTruffleContext() {
         Context context = Context.create();
-        Function<Env, Object> f = new Function<Env, Object>() {
+        Function<Env, Object> f = new Function<>() {
             public Object apply(Env env) {
                 LanguageSPITestLanguage.runinside = null; // No more recursive runs inside
                 Throwable[] error = new Throwable[1];
@@ -677,7 +677,7 @@ public class LanguageSPITest {
     @Test
     public void testEnterInNewThread() {
         Context context = Context.create();
-        Function<Env, Object> f = new Function<Env, Object>() {
+        Function<Env, Object> f = new Function<>() {
             @Override
             public Object apply(Env env) {
                 Throwable[] error = new Throwable[1];
