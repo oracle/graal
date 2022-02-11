@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.word.Word;
@@ -67,34 +68,38 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * <pre>
  *      +-0x0-|-0x4-|-0x8-|-0xa-+
- * 0x00 | hub | (1) | (2) | (3) | instance header: 1) identity hash code; 2) size in words; 3) number of stored frames
+ * 0x00 | hub | (1) | (2) |  -  |
+ *      +-----------------------+ header: hub; 1) identity hash code; 2) object monitor; 3) payload size in bytes;
+ * 0x10 | (3) | (4) |    (5)    |         4) number of frames n; (5) reference map address (same for all frames)
  *      +-----------------------+
- * 0x10 | -  (1)  - | (2) | (3) | 8-byte shared header for all frames: 1) nonmovable address of reference map, which should be same for all frames.
- *      : more per-frame headers: 8-byte per-frame header: 2) size of frame in bytes; 3) reference map index of frame
- *      : continuous frame data :
+ * 0x20 | (a1)|(b1) | (a2)|(b2) | 8-byte per-frame headers: a) size of frame in bytes; b) reference map index of frame
+ *  .   | ..  | ..  |  .. | ..  |
+ *  .   | (an)|(bn) | c o n t i |
+ *  .   : n u o u s   f r a m e :
+ *  .   :  d a t a  :
+ *      +-----------+
  * </pre>
  */
 public final class StoredContinuationImpl {
-    private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -4;
-    private static final int SIZE_OFFSET_TO_PAYLOAD = -8;
+    private static final int HEADER_SIZE = 32;
+    public static final int PAYLOAD_OFFSET = HEADER_SIZE;
+    public static final int OBJECT_MONITOR_OFFSET = 8;
+
+    private static final int SIZE_OFFSET_TO_PAYLOAD = -HEADER_SIZE + 0x10;
+    private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -HEADER_SIZE + 0x14;
+    private static final int SHARED_REFERENCE_MAP_OFFSET_TO_PAYLOAD = -HEADER_SIZE + 0x18;
 
     private static final int VALID_OFFSET_START = SIZE_OFFSET_TO_PAYLOAD;
 
-    public static final int PAYLOAD_OFFSET = 16;
-
-    private static final int SHARED_REFERENCE_MAP_ENCODING_OFFSET = 0;
-    private static final int SHARED_REFERENCE_MAP_ENCODING_SIZE = 8;
-    private static final int FRAME_META_START_OFFSET = SHARED_REFERENCE_MAP_ENCODING_OFFSET + SHARED_REFERENCE_MAP_ENCODING_SIZE;
+    private static final int FRAME_META_START_OFFSET_TO_PAYLOAD = 0;
     private static final int FRAME_META_SIZE = 8;
     private static final int SIZE_OFFSET_IN_FRAME_META = 0;
     private static final int REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META = 4;
 
-    // use for hard-coded size calculation
-    private static final int HEADER_SIZE = PAYLOAD_OFFSET;
-
     @Uninterruptible(reason = "in allocation of StoredContinuation instance")
-    public static void initializeNewlyAllocated(Object obj) {
+    public static void initializeNewlyAllocated(Object obj, int payloadSize) {
         Pointer p = Word.objectToUntrackedPointer(obj).add(PAYLOAD_OFFSET);
+        p.writeInt(SIZE_OFFSET_TO_PAYLOAD, payloadSize, LocationIdentity.init());
         // Keep GC from taking a closer look until frames are initialized
         p.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, 0, LocationIdentity.init());
     }
@@ -183,22 +188,22 @@ public final class StoredContinuationImpl {
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static NonmovableArray<Byte> readReferenceMapEncoding(StoredContinuation f) {
-        return WordFactory.pointer(payloadLocation(f).readLong(SHARED_REFERENCE_MAP_ENCODING_OFFSET));
+        return WordFactory.pointer(payloadLocation(f).readLong(SHARED_REFERENCE_MAP_OFFSET_TO_PAYLOAD));
     }
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static int readFrameMetaSize(StoredContinuation f) {
-        return SHARED_REFERENCE_MAP_ENCODING_SIZE + readFrameCount(f) * FRAME_META_SIZE;
+        return FRAME_META_START_OFFSET_TO_PAYLOAD + readFrameCount(f) * FRAME_META_SIZE;
     }
 
     @Uninterruptible(reason = "read StoredContinuation")
     public static int readFrameSize(StoredContinuation f, int frameIndex) {
-        return payloadLocation(f).readInt(SHARED_REFERENCE_MAP_ENCODING_SIZE + frameIndex * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META);
+        return payloadLocation(f).readInt(FRAME_META_START_OFFSET_TO_PAYLOAD + frameIndex * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META);
     }
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static int readReferenceMapIndex(StoredContinuation f, int frameIndex) {
-        return payloadLocation(f).readInt(SHARED_REFERENCE_MAP_ENCODING_SIZE + frameIndex * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META);
+        return payloadLocation(f).readInt(FRAME_META_START_OFFSET_TO_PAYLOAD + frameIndex * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META);
     }
 
     // Pointers
@@ -260,7 +265,7 @@ public final class StoredContinuationImpl {
         VMError.guarantee(resultLeafSP.isNonNull());
 
         int frameCount = visitor.frameSizeReferenceMapIndex.size();
-        int payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + UnsignedUtils.safeToInt(rootSp.subtract(resultLeafSP));
+        int payloadSize = FRAME_META_SIZE * frameCount + UnsignedUtils.safeToInt(rootSp.subtract(resultLeafSP));
 
         cont.stored = allocate(payloadSize);
         /*
@@ -268,30 +273,41 @@ public final class StoredContinuationImpl {
          * are interrupted by a GC, it will not attempt to make sense of it. Only at the end of this
          * method we uninterruptibly initialize the frame count and copy the stack frames.
          */
-
-        writePayloadLong(cont.stored, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
-
+        NonmovableArray<Byte> referenceMap = visitor.referenceMapEncoding;
         int allFrameSize = 0;
         for (int i = 0; i < frameCount; i++) {
             Pair<Integer, Integer> frameSizeRefMapInxPair = visitor.frameSizeReferenceMapIndex.get(i);
-            writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
+            writePayloadInt(cont.stored, FRAME_META_START_OFFSET_TO_PAYLOAD + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
                             frameSizeRefMapInxPair.getLeft());
-            writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META,
+            writePayloadInt(cont.stored, FRAME_META_START_OFFSET_TO_PAYLOAD + i * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META,
                             frameSizeRefMapInxPair.getRight());
             allFrameSize += frameSizeRefMapInxPair.getLeft();
         }
-
-        copyUninterruptibly(cont, resultLeafSP, allFrameSize, frameCount);
+        fillUninterruptibly(cont.stored, referenceMap, resultLeafSP, allFrameSize, frameCount);
         return Continuation.YIELD_SUCCESS;
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while copying.")
-    private static void copyUninterruptibly(Continuation cont, Pointer sp, int size, int frameCount) {
-        payloadLocation(cont.stored).writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
+    private static void fillUninterruptibly(StoredContinuation stored, NonmovableArray<Byte> referenceMap, Pointer sp, int size, int frameCount) {
+        Pointer p = payloadLocation(stored);
+        p.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
+        p.writeWord(SHARED_REFERENCE_MAP_OFFSET_TO_PAYLOAD, referenceMap);
 
-        VMError.guarantee(size == readAllFrameSize(cont.stored));
-        Pointer frameStart = payloadFrameStart(cont.stored);
+        VMError.guarantee(size == readAllFrameSize(stored));
+        Pointer frameStart = payloadFrameStart(stored);
         UnmanagedMemoryUtil.copy(sp, frameStart, WordFactory.unsigned(size));
+
+        /*
+         * Since its allocation, our StoredContinuation could have already been promoted to the old
+         * generation and some references we just copied might point to the young generation and
+         * need to be added to the remembered set.
+         *
+         * To support precise marking and pre-write barriers, we need to check first if the object
+         * needs barriers, then, on a slow path, individually copy references from stack frames.
+         */
+        // Drop type info to not trigger compiler assertions about StoredContinuation in barriers
+        Object opaque = GraalDirectives.opaque(stored);
+        Heap.getHeap().dirtyAllReferencesOf(opaque);
     }
 
     /**

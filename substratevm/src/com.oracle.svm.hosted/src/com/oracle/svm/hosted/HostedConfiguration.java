@@ -109,9 +109,8 @@ public class HostedConfiguration {
      * <li>hub (reference)</li>
      * <li>identity hashcode (int)</li>
      * <li>instance fields (references, primitives)</li>
+     * <li>if needed, object monitor (reference)</li>
      * </ul>
-     * The hashcode is appended after instance fields and is only present if the identity hashcode
-     * is used for that type.
      *
      * The layout of array objects is:
      * <ul>
@@ -120,8 +119,6 @@ public class HostedConfiguration {
      * <li>array length (int)</li>
      * <li>array elements (length * reference or primitive)</li>
      * </ul>
-     * The hashcode is always present in arrays. Note that on 64-bit targets it does not impose any
-     * size overhead for arrays with 64-bit aligned elements (e.g. arrays of objects).
      */
     public static ObjectLayout createObjectLayout(JavaKind referenceKind) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();

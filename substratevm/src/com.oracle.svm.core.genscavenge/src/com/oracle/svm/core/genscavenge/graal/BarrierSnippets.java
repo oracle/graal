@@ -146,8 +146,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
 
             /*
-             * We know that instances (in contrast to arrays) are always in aligned chunks. There is
-             * no code anywhere that would allocate an instance into an unaligned chunk.
+             * We know that instances (in contrast to arrays) are always in aligned chunks, except
+             * for StoredContinuation objects, but these are immutable and do not need barriers.
              *
              * Note that arrays can be assigned to values that have the type java.lang.Object, so
              * that case is excluded. Arrays can also implement some interfaces, like Serializable.

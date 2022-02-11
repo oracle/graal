@@ -34,10 +34,12 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
@@ -63,6 +65,10 @@ public class ContinuationsFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (Continuation.isSupported()) {
             access.registerAsInHeap(StoredContinuation.class);
+            VMError.guarantee(ConfigurationValues.getObjectLayout().getFirstFieldOffset() == StoredContinuationImpl.OBJECT_MONITOR_OFFSET,
+                            "Unexpected monitor field offset. Continuation support currently needs option " +
+                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+") +
+                                            " and compressed 32-bit reference support.");
 
             if (LoomSupport.isEnabled()) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
