@@ -26,6 +26,7 @@ import os
 import mx
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
+import mx_sdk_vm_impl
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from os.path import join
@@ -36,8 +37,7 @@ _suite = mx.suite('espresso')
 LLVM_JAVA_HOME = mx.get_env('LLVM_JAVA_HOME')
 
 def _espresso_command(launcher, args):
-    import mx_sdk_vm_impl
-    bin_dir = join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
+    bin_dir = join(mx_sdk_vm.graalvm_home(fatalIfMissing=True), 'bin')
     exe = join(bin_dir, mx.exe_suffix(launcher))
     if not os.path.exists(exe):
         exe = join(bin_dir, mx.cmd_suffix(launcher))
@@ -77,6 +77,14 @@ def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True):
 def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
     """Run espresso through the standard java launcher within a GraalVM"""
     return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+
+def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True):
+    if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
+        # no libespresso, we can only run with the espresso launcher
+        _run_espresso_launcher(args, cwd, nonZeroIsFatal)
+    else:
+        _run_java_truffle(args, cwd, nonZeroIsFatal)
 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True):
