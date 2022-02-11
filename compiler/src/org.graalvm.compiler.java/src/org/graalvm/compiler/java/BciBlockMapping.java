@@ -228,7 +228,6 @@ import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.bytecode.Bytecodes.TABLESWITCH;
 import static org.graalvm.compiler.bytecode.Bytecodes.WIDE;
 import static org.graalvm.compiler.core.common.GraalOptions.SupportJsrBytecodes;
-import static org.graalvm.compiler.java.BciBlockMapping.Options.DuplicateIrreducibleLoops;
 import static org.graalvm.compiler.java.BciBlockMapping.Options.MaxDuplicationFactor;
 
 import java.util.ArrayDeque;
@@ -293,9 +292,9 @@ import jdk.vm.ci.meta.JavaMethod;
  * maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
  * <p>
  * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more
- * than one entry), a bailout is thrown or block duplication is attempted to make the loop
- * reducible. This simplifies the compiler later on since only structured loops need to be
- * supported.
+ * than one entry), a bailout is thrown or, if {@link Options#MaxDuplicationFactor} {@code > 1},
+ * block duplication is attempted to make the loop reducible. This simplifies the compiler later on
+ * since only structured loops need to be supported.
  * <p>
  * A data flow analysis computes the live local variables from the point of view of the interpreter.
  * The result is used later to prune frame states, i.e., remove local variable entries that are
@@ -306,9 +305,8 @@ import jdk.vm.ci.meta.JavaMethod;
  */
 public class BciBlockMapping implements JavaMethodContext {
     public static class Options {
-        @Option(help = "When enabled, some limited amount of duplication will be performed in order compile code containing irreducible loops.")//
-        public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(true);
-        @Option(help = "Amount of block duplication to perform as factor of original number of blocks to handle irreducible loops before bailing out.", type = OptionType.Expert)//
+        @Option(help = "Max amount of extra effort to expend handling irreducible loops. " +
+                        "A value <= 1 disables support for irreducible loops.", type = OptionType.Expert)//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
     }
 
@@ -1622,10 +1620,10 @@ public class BciBlockMapping implements JavaMethodContext {
      * <p>
      * Since loops are marked eagerly, forward entries into an existing loop without going through
      * the loop header (i.e., irreducible loops) can be detected easily. In this case, if
-     * {@link Options#DuplicateIrreducibleLoops} is enabled, the traversal starts to duplicate
+     * {@link Options#MaxDuplicationFactor} is greater than 1, the traversal starts to duplicate
      * blocks until it either exits the loop or reaches the header. Since this is a depth-first
      * traversal and the loop header is not active, we know that the loop and its inner-loops were
-     * until then reducible.
+     * reducible until then.
      * <p>
      * This is not recursive to avoid stack overflow issues.
      */
@@ -1684,7 +1682,7 @@ public class BciBlockMapping implements JavaMethodContext {
                         for (int pos = -1; (pos = checkBits.nextSetBit(pos + 1)) >= 0;) {
                             int id = pos;
                             if (!loopHeaders[id].active) {
-                                if (!Options.DuplicateIrreducibleLoops.getValue(debug.getOptions())) {
+                                if (Options.MaxDuplicationFactor.getValue(debug.getOptions()) <= 1.0D) {
                                     throw new PermanentBailoutException("Irreducible");
                                 } else if (outermostInactiveLoopId == -1 || !loopHeaders[id].loops.get(outermostInactiveLoopId)) {
                                     outermostInactiveLoopId = id;
@@ -1729,10 +1727,9 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (blocksNotYetAssignedId < 0) {
                     // this should only happen if duplication is active
                     OptionValues options = debug.getOptions();
-                    assert DuplicateIrreducibleLoops.getValue(options);
+                    double factor = MaxDuplicationFactor.getValue(options);
                     duplicateBlocks += newDuplicateBlocks;
-                    double factor = MaxDuplicationFactor.getValue(options) * maxDuplicationBoost;
-                    if (duplicateBlocks > postJsrBlockCount * factor) {
+                    if (duplicateBlocks > postJsrBlockCount * factor * maxDuplicationBoost) {
                         throw new PermanentBailoutException("Non-reducible loop requires too much duplication. " +
                                         "Setting " + MaxDuplicationFactor.getName() + " to a value higher than " + factor + " may resolve this.");
                     }

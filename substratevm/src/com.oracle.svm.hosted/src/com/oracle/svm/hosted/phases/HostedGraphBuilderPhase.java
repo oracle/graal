@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import static org.graalvm.compiler.java.BciBlockMapping.Options.MaxDuplicationFactor;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -305,8 +304,8 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      */
     private final Set<DeoptEntryInsertionPoint> insertedBlocks;
 
-    private HostedBciBlockMapping(Bytecode code, DebugContext debug) {
-        super(code, debug);
+    private HostedBciBlockMapping(Bytecode code, DebugContext debug, int maxDuplicationBoost) {
+        super(code, debug, maxDuplicationBoost);
         insertedBlocks = new HashSet<>();
     }
 
@@ -471,8 +470,8 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * Creates a BciBlockMapping with blocks explicitly representing where DeoptEntryNodes and
      * DeoptProxyAnchorNodes are to be inserted.
      */
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
-        BciBlockMapping map = new HostedBciBlockMapping(code, debug);
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions, int maxDuplicationBoost) {
+        BciBlockMapping map = new HostedBciBlockMapping(code, debug, maxDuplicationBoost);
         buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }
