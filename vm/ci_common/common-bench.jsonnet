@@ -110,7 +110,7 @@ local vm_common = import '../ci_common/common.jsonnet';
       self.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=partial-evaluation-time'],
       self.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
     ],
-    timelimit: '1:00:00',
+    timelimit: '1:30:00',
     notify_emails: [],
   },
 
