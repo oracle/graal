@@ -273,14 +273,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private boolean registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
-        if (config.invokeJavaMethodAddress == 0) {
-            return true;
+    private void registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        if (config.invokeJavaMethodAddress == 0 || IS_IN_NATIVE_IMAGE) {
+            return;
         }
-        if (IS_IN_NATIVE_IMAGE) {
-            // These helpers are only used for testing the jargraal
-            return true;
-        }
+        // These functions are only used for testing purposes but their registration also ensures
+        // that libgraal has support for InvokeJavaMethodStub built into the image, which is
+        // required for support of Truffle. Because of the lazy initialization of this support in
+        // Truffle we rely on this code to ensure the support is built into the image.
         ResolvedJavaMethod booleanReturnsBoolean = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "booleanReturnsBoolean");
         invokeJavaMethodStub(options, providers, TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, config.invokeJavaMethodAddress, booleanReturnsBoolean);
         ResolvedJavaMethod byteReturnsByte = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "byteReturnsByte");
@@ -295,8 +295,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         invokeJavaMethodStub(options, providers, TestForeignCalls.LONG_RETURNS_LONG, config.invokeJavaMethodAddress, longReturnsLong);
         ResolvedJavaMethod objectReturnsObject = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "objectReturnsObject");
         invokeJavaMethodStub(options, providers, TestForeignCalls.OBJECT_RETURNS_OBJECT, config.invokeJavaMethodAddress, objectReturnsObject);
-
-        return true;
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
@@ -568,7 +566,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
         }
 
-        assert registerStubCallFunctions(options, providers, runtime.getVMConfig());
+        registerStubCallFunctions(options, providers, runtime.getVMConfig());
     }
 
     @SuppressWarnings("unused")
