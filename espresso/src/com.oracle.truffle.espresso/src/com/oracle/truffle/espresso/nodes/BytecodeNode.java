@@ -462,7 +462,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
 
         Symbol<Type>[] methodSignature = getMethod().getParsedSignature();
-        int argCount = Signatures.parameterCount(methodSignature, false);
+        int argCount = Signatures.parameterCount(methodSignature);
         CompilerAsserts.partialEvaluationConstant(argCount);
         for (int i = 0; i < argCount; ++i) {
             Symbol<Type> argType = Signatures.parameterType(methodSignature, i);
@@ -2653,7 +2653,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @ExplodeLoop
     public static Object[] popArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
-        int argCount = Signatures.parameterCount(signature, false);
+        int argCount = Signatures.parameterCount(signature);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];

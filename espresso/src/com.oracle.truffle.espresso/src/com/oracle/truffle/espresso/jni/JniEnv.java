@@ -291,7 +291,7 @@ public final class JniEnv extends NativeEnv {
 
     public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature) {
         VarArgs varargs = new VarArgsImpl(varargsPtr);
-        int paramCount = Signatures.parameterCount(signature, false);
+        int paramCount = Signatures.parameterCount(signature);
         Object[] args = new Object[paramCount];
         for (int i = 0; i < paramCount; ++i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
