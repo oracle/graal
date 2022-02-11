@@ -51,6 +51,8 @@ public class VMFeature implements Feature {
 
     private NativeLibraries nativeLibraries;
     private static final String STATIC_BINARY_MARKER_SYMBOL_NAME = "__svm_vm_is_static_binary";
+    private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
+    private static final String valueSeparator = "=";
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -58,8 +60,7 @@ public class VMFeature implements Feature {
     }
 
     protected VM createVMSingletonValue() {
-        String config = System.getProperty("org.graalvm.config", "CE");
-        return new VM(config);
+        return new VM("CE");
     }
 
     @Override
@@ -74,7 +75,7 @@ public class VMFeature implements Feature {
         }
 
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        String fieldName = "VERSION_INFO";
+        String fieldName = "version";
         try {
             Field declaredField = VM.class.getDeclaredField(fieldName);
             access.registerAsRead(declaredField);
@@ -87,6 +88,10 @@ public class VMFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        CGlobalDataFeature.singleton().registerWithGlobalSymbol(
+                        CGlobalDataFactory.createCString(VM.class.getName() + valueSeparator +
+                                        ImageSingletons.lookup(VM.class).version, VERSION_INFO_SYMBOL_NAME));
+
         addCGlobalDataString("Target.Platform", ImageSingletons.lookup(Platform.class).getClass().getName());
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
 
@@ -108,7 +113,7 @@ public class VMFeature implements Feature {
     }
 
     private static void addCGlobalDataString(String infoType, String content) {
-        String data = VM.class.getName() + "." + infoType + VM.valueSeparator + content;
+        String data = VM.class.getName() + "." + infoType + valueSeparator + content;
         String symbolName = "__svm_vm_" + infoType.toLowerCase().replace(".", "_");
         CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.createCString(data, symbolName));
     }

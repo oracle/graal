@@ -71,6 +71,10 @@ public final class CGlobalDataInfo {
         return offset;
     }
 
+    public void makeGlobalSymbol() {
+        VMError.guarantee(!isSymbolReference && data.symbolName != null, "Cannot change the local/global status of a symbol reference");
+    }
+
     public boolean isSymbolReference() {
         return isSymbolReference;
     }
