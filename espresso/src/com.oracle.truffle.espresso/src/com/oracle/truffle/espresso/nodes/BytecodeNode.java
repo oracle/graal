@@ -285,7 +285,6 @@ import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -466,28 +465,29 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         CompilerAsserts.partialEvaluationConstant(argCount);
         for (int i = 0; i < argCount; ++i) {
             Symbol<Type> argType = Signatures.parameterType(methodSignature, i);
-            if (argType.length() == 1) {
-                // @formatter:off
-                switch (argType.byteAt(0)) {
-                    case 'Z' : setLocalInt(frame, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
-                    case 'B' : setLocalInt(frame, curSlot, ((byte) arguments[i + receiverSlot]));            break;
-                    case 'S' : setLocalInt(frame, curSlot, ((short) arguments[i + receiverSlot]));           break;
-                    case 'C' : setLocalInt(frame, curSlot, ((char) arguments[i + receiverSlot]));            break;
-                    case 'I' : setLocalInt(frame, curSlot, (int) arguments[i + receiverSlot]);               break;
-                    case 'F' : setLocalFloat(frame, curSlot, (float) arguments[i + receiverSlot]);           break;
-                    case 'J' : setLocalLong(frame, curSlot, (long) arguments[i + receiverSlot]);     ++curSlot; break;
-                    case 'D' : setLocalDouble(frame, curSlot, (double) arguments[i + receiverSlot]); ++curSlot; break;
-                    default      :
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw EspressoError.shouldNotReachHere("unexpected kind");
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : setLocalInt(frame, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
+                case 'B' : setLocalInt(frame, curSlot, ((byte) arguments[i + receiverSlot]));            break;
+                case 'S' : setLocalInt(frame, curSlot, ((short) arguments[i + receiverSlot]));           break;
+                case 'C' : setLocalInt(frame, curSlot, ((char) arguments[i + receiverSlot]));            break;
+                case 'I' : setLocalInt(frame, curSlot, (int) arguments[i + receiverSlot]);               break;
+                case 'F' : setLocalFloat(frame, curSlot, (float) arguments[i + receiverSlot]);           break;
+                case 'J' : setLocalLong(frame, curSlot, (long) arguments[i + receiverSlot]);     ++curSlot; break;
+                case 'D' : setLocalDouble(frame, curSlot, (double) arguments[i + receiverSlot]); ++curSlot; break;
+                case '[' : // fall through
+                case 'L' : {
+                    // Reference type.
+                    StaticObject argument = (StaticObject) arguments[i + receiverSlot];
+                    setLocalObject(frame, curSlot, argument);
+                    checkNoForeignObjectAssumption(argument);
+                    break;
                 }
-                // @formatter:on
-            } else {
-                // Reference type.
-                StaticObject argument = (StaticObject) arguments[i + receiverSlot];
-                setLocalObject(frame, curSlot, argument);
-                checkNoForeignObjectAssumption(argument);
+                default :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
             }
+            // @formatter:on
             ++curSlot;
         }
     }
@@ -1559,9 +1559,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case 'F' : return popFloat(frame, top - 1);
             case 'D' : return popDouble(frame, top - 1);
             case 'V' : return StaticObject.NULL; // void
+            case '[' : // fall through
+            case 'L' : return popObject(frame, top - 1);
             default:
-                assert Types.isReference(returnType);
-                return popObject(frame, top - 1);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -2482,78 +2484,83 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
         assert field.isStatic() == (opcode == PUTSTATIC);
 
-        int slot = top - field.getKind().getSlotCount() - 1; // -receiver
-        StaticObject receiver = field.isStatic()
+        byte typeHeader = field.getType().byteAt(0);
+        int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
+        assert slotCount == field.getKind().getSlotCount();
+        int slot = top - slotCount - 1; // -receiver
+        StaticObject receiver = (opcode == PUTSTATIC)
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         // Do not release the object, it might be read again in PutFieldNode
                         : nullCheck(popObject(frame, slot));
 
         if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
             if (receiver.isForeignObject()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Restore the receiver for quickening.
                 putObject(frame, slot, receiver);
                 return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
             }
         }
 
-        switch (field.getKind()) {
-            case Boolean:
+        switch (typeHeader) {
+            case 'Z':
                 boolean booleanValue = stackIntToBoolean(popInt(frame, top - 1));
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
                 }
                 InterpreterToVM.setFieldBoolean(booleanValue, receiver, field);
                 break;
-            case Byte:
+            case 'B':
                 byte byteValue = (byte) popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, byteValue);
                 }
                 InterpreterToVM.setFieldByte(byteValue, receiver, field);
                 break;
-            case Char:
+            case 'C':
                 char charValue = (char) popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, charValue);
                 }
                 InterpreterToVM.setFieldChar(charValue, receiver, field);
                 break;
-            case Short:
+            case 'S':
                 short shortValue = (short) popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, shortValue);
                 }
                 InterpreterToVM.setFieldShort(shortValue, receiver, field);
                 break;
-            case Int:
+            case 'I':
                 int intValue = popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, intValue);
                 }
                 InterpreterToVM.setFieldInt(intValue, receiver, field);
                 break;
-            case Double:
+            case 'D':
                 double doubleValue = popDouble(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, doubleValue);
                 }
                 InterpreterToVM.setFieldDouble(doubleValue, receiver, field);
                 break;
-            case Float:
+            case 'F':
                 float floatValue = popFloat(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, floatValue);
                 }
                 InterpreterToVM.setFieldFloat(floatValue, receiver, field);
                 break;
-            case Long:
+            case 'J':
                 long longValue = popLong(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, longValue);
                 }
                 InterpreterToVM.setFieldLong(longValue, receiver, field);
                 break;
-            case Object:
+            case '[': // fall through
+            case 'L':
                 StaticObject value = popObject(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
@@ -2564,7 +2571,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
-        return -field.getKind().getSlotCount();
+        return -slotCount;
     }
 
     /**
@@ -2602,13 +2609,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         assert field.isStatic() == (opcode == GETSTATIC);
 
         int slot = top - 1;
-        StaticObject receiver = field.isStatic()
+        StaticObject receiver = opcode == GETSTATIC
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         // Do not release the object, it might be read again in GetFieldNode
                         : nullCheck(peekObject(frame, slot));
 
         if (!noForeignObjects.isValid() && opcode == GETFIELD) {
             if (receiver.isForeignObject()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Restore the receiver for quickening.
                 putObject(frame, slot, receiver);
                 return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
@@ -2621,27 +2629,31 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
         int resultAt = field.isStatic() ? top : (top - 1);
         // @formatter:off
-        switch (field.getKind()) {
-            case Boolean : putInt(frame, resultAt, InterpreterToVM.getFieldBoolean(receiver, field) ? 1 : 0); break;
-            case Byte    : putInt(frame, resultAt, InterpreterToVM.getFieldByte(receiver, field));      break;
-            case Char    : putInt(frame, resultAt, InterpreterToVM.getFieldChar(receiver, field));      break;
-            case Short   : putInt(frame, resultAt, InterpreterToVM.getFieldShort(receiver, field));     break;
-            case Int     : putInt(frame, resultAt, InterpreterToVM.getFieldInt(receiver, field));       break;
-            case Double  : putDouble(frame, resultAt, InterpreterToVM.getFieldDouble(receiver, field)); break;
-            case Float   : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
-            case Long    : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
-            case Object  : {
+        byte typeHeader = field.getType().byteAt(0);
+        switch (typeHeader) {
+            case 'Z' : putInt(frame, resultAt, InterpreterToVM.getFieldBoolean(receiver, field) ? 1 : 0); break;
+            case 'B' : putInt(frame, resultAt, InterpreterToVM.getFieldByte(receiver, field));      break;
+            case 'C' : putInt(frame, resultAt, InterpreterToVM.getFieldChar(receiver, field));      break;
+            case 'S' : putInt(frame, resultAt, InterpreterToVM.getFieldShort(receiver, field));     break;
+            case 'I' : putInt(frame, resultAt, InterpreterToVM.getFieldInt(receiver, field));       break;
+            case 'D' : putDouble(frame, resultAt, InterpreterToVM.getFieldDouble(receiver, field)); break;
+            case 'F' : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
+            case 'J' : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
+            case '[' : // fall through
+            case 'L' : {
                 StaticObject value = InterpreterToVM.getFieldObject(receiver, field);
                 putObject(frame, resultAt, value);
                 checkNoForeignObjectAssumption(value);
                 break;
             }
-            default :
+            default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
-        return field.getKind().getSlotCount();
+        int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
+        assert slotCount == field.getKind().getSlotCount();
+        return slotCount;
     }
 
     // endregion Field read/write
@@ -2665,25 +2677,22 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
-            if (argType.length() == 1) {
-                // @formatter:off
-                switch (argType.byteAt(0)) {
-                    case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
-                    case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
-                    case 'S' : args[i + extraParam] = (short) popInt(frame, argAt); break;
-                    case 'C' : args[i + extraParam] = (char) popInt(frame, argAt);  break;
-                    case 'I' : args[i + extraParam] = popInt(frame, argAt);         break;
-                    case 'F' : args[i + extraParam] = popFloat(frame, argAt);       break;
-                    case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
-                    case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
-                    default  :
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw EspressoError.shouldNotReachHere();
-                }
-                // @formatter:on
-            } else {
-                args[i + extraParam] = popObject(frame, argAt);
+            switch (argType.byteAt(0)) {
+                case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
+                case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
+                case 'S' : args[i + extraParam] = (short) popInt(frame, argAt); break;
+                case 'C' : args[i + extraParam] = (char) popInt(frame, argAt);  break;
+                case 'I' : args[i + extraParam] = popInt(frame, argAt);         break;
+                case 'F' : args[i + extraParam] = popFloat(frame, argAt);       break;
+                case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + extraParam] = popObject(frame, argAt);      break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
             }
+            // @formatter:on
             --argAt;
 
         }
@@ -2702,25 +2711,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
-            if (argType.length() == 1) {
-                // @formatter:off
-                switch (argType.byteAt(0)) {
-                    case 'Z' : // fall through
-                    case 'B' : // fall through
-                    case 'S' : // fall through
-                    case 'C' : // fall through
-                    case 'I' : args[i + start] = popInt(frame, argAt);    break;
-                    case 'F' : args[i + start] = popFloat(frame, argAt);  break;
-                    case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
-                    case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
-                    default  :
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw EspressoError.shouldNotReachHere();
-                }
-                // @formatter:on
-            } else {
-                args[i + start] = popObject(frame, argAt);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : // fall through
+                case 'B' : // fall through
+                case 'S' : // fall through
+                case 'C' : // fall through
+                case 'I' : args[i + start] = popInt(frame, argAt);    break;
+                case 'F' : args[i + start] = popFloat(frame, argAt);  break;
+                case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + start] = popObject(frame, argAt); break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
             }
+            // @formatter:on
             --argAt;
         }
         return args;
