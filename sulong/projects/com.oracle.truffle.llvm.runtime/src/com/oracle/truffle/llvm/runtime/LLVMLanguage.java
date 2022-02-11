@@ -266,7 +266,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         // need to duplicate the thread local value for this thread.
 
         LLVMThreadLocalValue value = contextThreadLocal.get(thread);
-        AggregateTLGlobalInPlaceNodeGen.c
+        // call the calltarget added to the context from addGlobalInitializer in initializeglobals
+
 
     }
 

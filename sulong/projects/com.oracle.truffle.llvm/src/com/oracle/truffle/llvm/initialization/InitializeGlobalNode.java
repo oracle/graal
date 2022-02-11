@@ -73,9 +73,9 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
 
     private final DataLayout dataLayout;
 
-    @Child @CompilationFinal private StaticInitsNode globalVarInit;
-    @Child @CompilationFinal private DirectCallNode threadGlobalVarInit;
-    @Child @CompilationFinal private LLVMMemoryOpNode protectRoData;
+    @Child private StaticInitsNode globalVarInit;
+    @Child private DirectCallNode threadGlobalVarInit;
+    @Child private LLVMMemoryOpNode protectRoData;
 
     public InitializeGlobalNode(LLVMParserResult parserResult, String moduleName) {
         this.dataLayout = parserResult.getDataLayout();
@@ -96,6 +96,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         LLVMContext context = LLVMContext.get(this);
         List<Thread> threads = context.getAllRunningThreads();
         for (Thread thread : threads) {
+
             threadGlobalVarInit.call(frame, thread);
         }
         context.addGlobalInitializer(threadGlobalVarInit.getCallTarget());

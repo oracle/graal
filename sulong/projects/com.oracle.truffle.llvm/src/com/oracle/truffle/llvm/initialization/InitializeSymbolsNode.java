@@ -126,6 +126,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         this.threadLocalPointers = new LLVMThreadLocalPointer[threadLocalGlobalsCount];
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.get(null).getCapability(LLVMIntrinsicProvider.class);
 
+        // this will all be moved to a new class called from loadmodules and passed here.
         for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
             Type type = global.getType().getPointeeType();
@@ -186,6 +187,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
             functions[i] = function;
         }
 
+        // this will all be moved to a new class called from loadmodules and passed here.
         this.allocTLSection = threadLocalSection.getAllocateNode(nodeFactory, "tlglobals_struct", true);
         this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
         this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
@@ -200,13 +202,14 @@ public final class InitializeSymbolsNode extends LLVMNode {
         if (LibraryLocator.loggingEnabled()) {
             LibraryLocator.traceStaticInits(ctx, "symbol initializers", moduleName);
         }
+        // this will all be moved to a new class called from loadmodules and passed here.
         LLVMPointer roBase = allocOrNull(allocRoSection);
         LLVMPointer rwBase = allocOrNull(allocRwSection);
         LLVMPointer tlgBase = allocOrNull(allocTLSection);
 
-        allocGlobals(ctx, roBase, rwBase);
-        allocFunctions(ctx);
-        allocTLGlobals(ctx, tlgBase);
+        initializeGlobalSymbols(ctx, roBase, rwBase);
+        initializeFunctionSymbols(ctx);
+        initializeTLGlobalSymbols(ctx, tlgBase);
 
         if (allocRoSection != null) {
             ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, nodeFactory);
@@ -217,7 +220,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         return roBase; // needed later to apply memory protection after initialization
     }
 
-    public void allocTLGlobals(LLVMContext context, LLVMPointer tlgBase) {
+    public void initializeTLGlobalSymbols(LLVMContext context, LLVMPointer tlgBase) {
         // create the value for the globals
         for (int i = 0; i < threadLocalPointers.length; i++) {
             LLVMThreadLocalPointer pointer = threadLocalPointers[i];
@@ -228,10 +231,11 @@ public final class InitializeSymbolsNode extends LLVMNode {
             }
             context.initializeSymbol(symbol, LLVMManagedPointer.create(pointer));
         }
+        // this needs to be moved to initialize globals
         LLVMLanguage.get(this).contextThreadLocal.get().addSection(tlgBase, bitcodeID);
     }
 
-    private void allocGlobals(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
+    private void initializeGlobalSymbols(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
         for (int i = 0; i < globals.length; i++) {
             LLVMSymbol allocGlobal = globals[i];
             LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.getName());
@@ -258,7 +262,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         }
     }
 
-    private void allocFunctions(LLVMContext context) {
+    private void initializeFunctionSymbols(LLVMContext context) {
         for (int i = 0; i < allocFuncs.length; i++) {
             AllocSymbolNode allocSymbol = allocFuncs[i];
             LLVMPointer pointer = allocSymbol.allocate(context);
