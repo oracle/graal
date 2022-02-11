@@ -141,7 +141,7 @@ public final class Resources {
     private static URL createURL(String moduleName, String resourceName, int index) {
         try {
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";
-            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
         }

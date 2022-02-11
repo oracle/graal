@@ -44,6 +44,10 @@ public class ResourceURLConnection extends URLConnection {
         super(url);
     }
 
+    private static String resolveName(String resourceName) {
+        return resourceName.startsWith("/") ? resourceName.substring(1) : resourceName;
+    }
+
     @Override
     public void connect() {
         if (connected) {
@@ -54,10 +58,7 @@ public class ResourceURLConnection extends URLConnection {
         String urlHost = url.getHost();
         String hostNameOrNull = urlHost != null && !urlHost.isEmpty() ? urlHost : null;
         String urlPath = url.getPath();
-        if (urlPath.isEmpty()) {
-            throw new IllegalArgumentException("Empty URL path not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
-        }
-        String resourceName = urlPath.substring(1);
+        String resourceName = resolveName(urlPath);
         ResourceStorageEntry entry = Resources.get(hostNameOrNull, Resources.toCanonicalForm(resourceName));
         if (entry != null) {
             List<byte[]> bytes = entry.getData();
