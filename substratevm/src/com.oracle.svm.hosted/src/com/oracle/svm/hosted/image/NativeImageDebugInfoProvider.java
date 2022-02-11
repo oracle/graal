@@ -76,6 +76,7 @@ import jdk.vm.ci.meta.Signature;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.lang.reflect.Modifier;
@@ -967,28 +968,305 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return Stream.empty();
             }
             final List<DebugLocationInfo> locationInfos = new ArrayList<>();
-            final ResolvedJavaMethod rootMethod = root.frame.getMethod();
-            if (SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue()) {
-                root.visitChildren(new Visitor() {
-                    @Override
-                    public void apply(FrameNode node, Object... args) {
-                        if (node.frame.getCaller() == null && node.frame.getMethod() == rootMethod) {
-                            locationInfos.add(new NativeImageDebugLocationInfo(node));
+            final boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
+            final Visitor visitor = (omitInline ? new TopLevelVisitor(locationInfos) : new MultiLevelVisitor(locationInfos));
+            // arguments passed by visitor to apply are
+            // NativeImageDebugLocationInfo caller location info
+            // CallNode nodeToEmbed parent call node to convert to entry code leaf
+            // NativeImageDebugLocationInfo leaf into which current leaf may be merged
+            root.visitChildren(visitor, (Object) null, (Object) null, (Object) null);
+            return locationInfos.stream();
+        }
+
+        // indices for arguments passed to SingleLevelVisitor::apply
+
+        protected static final int CALLER_INFO = 0;
+        protected static final int PARENT_NODE_TO_EMBED = 1;
+        protected static final int LAST_LEAF_INFO = 2;
+
+        private abstract class SingleLevelVisitor implements Visitor {
+
+            protected final List<DebugLocationInfo> locationInfos;
+
+            SingleLevelVisitor(List<DebugLocationInfo> locationInfos) {
+                this.locationInfos = locationInfos;
+            }
+
+            public NativeImageDebugLocationInfo process(FrameNode node, NativeImageDebugLocationInfo callerInfo) {
+                NativeImageDebugLocationInfo locationInfo;
+                if (node instanceof CallNode) {
+                    // this node represents an inline call range so
+                    // add a locationinfo to cover the range of the call
+                    locationInfo = createCallLocationInfo((CallNode) node, callerInfo);
+                } else {
+                    // this is leaf method code so add details of its range
+                    locationInfo = createLeafLocationInfo(node, callerInfo);
+                }
+                return locationInfo;
+            }
+        }
+
+        private class TopLevelVisitor extends SingleLevelVisitor {
+            TopLevelVisitor(List<DebugLocationInfo> locationInfos) {
+                super(locationInfos);
+            }
+
+            @Override
+            public void apply(FrameNode node, Object... args) {
+                if (skipNode(node)) {
+                    // this is a bogus wrapper so skip it and transform the wrapped node instead
+                    node.visitChildren(this, args);
+                } else {
+                    NativeImageDebugLocationInfo locationInfo = process(node, null);
+                    if (node instanceof CallNode) {
+                        locationInfos.add(locationInfo);
+                        // erase last leaf (if present) since there is an intervening call range
+                        invalidateMerge(args);
+                    } else {
+                        locationInfo = tryMerge(locationInfo, args);
+                        if (locationInfo != null) {
+                            locationInfos.add(locationInfo);
                         }
                     }
-                });
-            } else {
-                root.visitChildren(new Visitor() {
-                    @Override
-                    public void apply(FrameNode node, Object... args) {
-                        NativeImageDebugLocationInfo callerInfo = (args.length == 0 ? null : (NativeImageDebugLocationInfo) args[0]);
-                        NativeImageDebugLocationInfo locationInfo =  new NativeImageDebugLocationInfo(node, callerInfo);
-                        locationInfos.add(locationInfo);
-                        node.visitChildren(this, locationInfo);
-                    }
-                });
+                }
             }
-            return locationInfos.stream();
+        }
+
+        public class MultiLevelVisitor extends SingleLevelVisitor {
+            MultiLevelVisitor(List<DebugLocationInfo> locationInfos) {
+                super(locationInfos);
+            }
+
+            @Override
+            public void apply(FrameNode node, Object... args) {
+                if (skipNode(node)) {
+                    // this is a bogus wrapper so skip it and transform the wrapped node instead
+                    node.visitChildren(this, args);
+                } else {
+                    NativeImageDebugLocationInfo callerInfo = (NativeImageDebugLocationInfo) args[CALLER_INFO];
+                    CallNode nodeToEmbed = (CallNode) args[PARENT_NODE_TO_EMBED];
+                    if (nodeToEmbed != null) {
+                        if (embedWithChildren(nodeToEmbed, node)) {
+                            // embed a leaf range for the method start that was included in the
+                            // parent CallNode
+                            // its end range is determined by the start of the first node at this
+                            // level
+                            NativeImageDebugLocationInfo embeddedLocationInfo = createEmbeddedParentLocationInfo(nodeToEmbed, node, callerInfo);
+                            locationInfos.add(embeddedLocationInfo);
+                            // since this is a leaf node we can merge later leafs into it
+                            initMerge(embeddedLocationInfo, args);
+                        }
+                        // reset args so we only embed the parent node before the first node at
+                        // this level
+                        args[PARENT_NODE_TO_EMBED] = nodeToEmbed = null;
+                    }
+                    NativeImageDebugLocationInfo locationInfo = process(node, callerInfo);
+                    if (node instanceof CallNode) {
+                        CallNode callNode = (CallNode) node;
+                        locationInfos.add(locationInfo);
+                        // erase last leaf (if present) since there is an intervening call range
+                        invalidateMerge(args);
+                        if (hasChildren(callNode)) {
+                            // a call node may include an initial leaf range for the call that must
+                            // be
+                            // embedded under the newly created location info so pass it as an
+                            // argument
+                            callNode.visitChildren(this, locationInfo, callNode, (Object) null);
+                        } else {
+                            // we need to embed a leaf node for the whole call range
+                            locationInfo = createEmbeddedParentLocationInfo(callNode, null, locationInfo);
+                            locationInfos.add(locationInfo);
+                        }
+                    } else {
+                        locationInfo = tryMerge(locationInfo, args);
+                        if (locationInfo != null) {
+                            locationInfos.add(locationInfo);
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Report whether a call node has any children.
+         * 
+         * @param callNode the node to check
+         * @return true if it has any children otherwise false.
+         */
+        private boolean hasChildren(CallNode callNode) {
+            Object[] result = new Object[]{false};
+            callNode.visitChildren(new Visitor() {
+                @Override
+                public void apply(FrameNode node, Object... args) {
+                    args[0] = true;
+                }
+            }, result);
+            return (boolean) result[0];
+        }
+
+        /**
+         * Create a location info record for a leaf subrange.
+         * 
+         * @param node is a simple FrameNode
+         * @return the newly created location info record
+         */
+        private NativeImageDebugLocationInfo createLeafLocationInfo(FrameNode node, NativeImageDebugLocationInfo callerInfo) {
+            assert !(node instanceof CallNode);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(node, callerInfo);
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Create leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
+                            locationInfo.addressHi() - 1);
+            return locationInfo;
+        }
+
+        /**
+         * Create a location info record for a subrange that encloses an inline call.
+         * 
+         * @param callNode is the top level inlined call frame
+         * @return the newly created location info record
+         */
+        private NativeImageDebugLocationInfo createCallLocationInfo(CallNode callNode, NativeImageDebugLocationInfo callerInfo) {
+            BytecodePosition callerPos = realCaller(callNode);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(callerPos, callNode.getStartPos(), callNode.getEndPos() + 1, callerInfo);
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Create call Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
+                            locationInfo.addressHi() - 1);
+            return locationInfo;
+        }
+
+        /**
+         * Create a location info record for the initial range associated with a parent call node
+         * whose position and start are defined by that call node and whose end is determined by the
+         * first child of the call node.
+         * 
+         * @param parentToEmbed a parent call node which has already been processed to create the
+         *            caller location info
+         * @param firstChild the first child of the call node
+         * @param callerLocation the location info created to represent the range for the call
+         * @return a location info to be embedded as the first child range of the caller location.
+         */
+        private NativeImageDebugLocationInfo createEmbeddedParentLocationInfo(CallNode parentToEmbed, FrameNode firstChild, NativeImageDebugLocationInfo callerLocation) {
+            BytecodePosition pos = parentToEmbed.frame;
+            int startPos = parentToEmbed.getStartPos();
+            int endPos = (firstChild != null ? firstChild.getStartPos() : parentToEmbed.getEndPos() + 1);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(pos, startPos, endPos, callerLocation, true);
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
+                            locationInfo.addressHi() - 1);
+            return locationInfo;
+        }
+
+        /**
+         * Test whether a bytecode position represents a bogus frame added by the compiler when a
+         * substitution or snippet call is injected.
+         * 
+         * @param pos the position to be tested
+         * @return true if the frame is bogus otherwise false
+         */
+        private boolean skipPos(BytecodePosition pos) {
+            return (pos.getBCI() == -1 && pos instanceof NodeSourcePosition && ((NodeSourcePosition) pos).isSubstitution());
+        }
+
+        /**
+         * Skip caller nodes with bogus positions, as determined by
+         * {@link #skipPos(BytecodePosition)}, returning first caller node position that is not
+         * bogus.
+         * 
+         * @param node the node whose callers are to be traversed
+         * @return the first non-bogus position in the caller chain.
+         */
+        private BytecodePosition realCaller(CallNode node) {
+            BytecodePosition pos = node.frame.getCaller();
+            while (skipPos(pos)) {
+                pos = pos.getCaller();
+            }
+            return pos;
+        }
+
+        /**
+         * Test whether the position associated with a child node should result in an entry in the
+         * inline tree. The test is for a call node with a bogus position as determined by
+         * {@link #skipPos(BytecodePosition)}.
+         * 
+         * @param node A node associated with a child frame in the compilation result frame tree.
+         * @return True an entry should be included or false if it should be omitted.
+         */
+        private boolean skipNode(FrameNode node) {
+            return node instanceof CallNode && skipPos(node.frame);
+        }
+
+        /*
+         * Test whether the position associated with a call node frame should be embedded along with
+         * the locations generated for the node's children. This is needed because call frames
+         * include a valid source position that precedes the first child position.
+         * 
+         * @param node A node associated with a frame in the compilation result frame tree.
+         * 
+         * @return True if an inline frame should be included or false if it should be omitted.
+         */
+
+        /**
+         * Test whether the position associated with a call node frame should be embedded along with
+         * the locations generated for the node's children. This is needed because call frames may
+         * include a valid source position that precedes the first child position.
+         *
+         * @param parent The call node whose children are currently being visited
+         * @param firstChild The first child of that call node
+         * @return true if the node should be embedded otherwise false
+         */
+        private boolean embedWithChildren(CallNode parent, FrameNode firstChild) {
+            // we only need to insert a range for the caller if it fills a gap
+            // at the start of the caller range before the first child
+            if (parent.getStartPos() < firstChild.getStartPos()) {
+                return true;
+            }
+            return false;
+        }
+
+        /**
+         * Try merging a new location info for a leaf range into the location info for the last leaf
+         * range added at this level.
+         * 
+         * @param newLeaf the new leaf location info
+         * @param args the visitor argument vector used to pass parameters from one child visit to
+         *            the next possibly including the last leaf
+         * @return the new location info if it could not be merged or null to indicate that it was
+         *         merged
+         */
+        public NativeImageDebugLocationInfo tryMerge(NativeImageDebugLocationInfo newLeaf, Object[] args) {
+            // last leaf node added at this level is 3rd element of arg vector
+            NativeImageDebugLocationInfo lastLeaf = (NativeImageDebugLocationInfo) args[LAST_LEAF_INFO];
+
+            if (lastLeaf != null) {
+                // try merging new leaf into last one
+                lastLeaf = lastLeaf.merge(newLeaf);
+                if (lastLeaf != null) {
+                    // null return indicates new leaf has been merged into last leaf
+                    return null;
+                }
+            }
+            // update last leaf and return new leaf for addition to local info list
+            args[LAST_LEAF_INFO] = newLeaf;
+            return newLeaf;
+        }
+
+        /**
+         * Set the last leaf node at the current level to the supplied leaf node.
+         * 
+         * @param lastLeaf the last leaf node created at this level
+         * @param args the visitor argument vector used to pass parameters from one child visit to
+         *            the next
+         */
+        public void initMerge(NativeImageDebugLocationInfo lastLeaf, Object[] args) {
+            args[LAST_LEAF_INFO] = lastLeaf;
+        }
+
+        /**
+         * Clear the last leaf node at the current level from the visitor arguments by setting the
+         * arg vector entry to null.
+         * 
+         * @param args the visitor argument vector used to pass parameters from one child visit to
+         *            the next
+         */
+        public void invalidateMerge(Object[] args) {
+            args[LAST_LEAF_INFO] = null;
         }
 
         @Override
@@ -1092,24 +1370,29 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final int bci;
         private final ResolvedJavaMethod method;
         private final int lo;
-        private final int hi;
+        private int hi;
         private Path cachePath;
         private Path fullFilePath;
         private DebugLocationInfo callersLocationInfo;
+        private boolean isPrologueEnd;
         private List<DebugLocalInfo> localInfoList;
 
-        NativeImageDebugLocationInfo(FrameNode frameNode) {
-            this(frameNode, null);
+        NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo) {
+            this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, frameNode.sourcePos.isMethodStart());
         }
 
-        NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo) {
-            BytecodePosition bcpos = frameNode.frame;
+        NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo) {
+            this(bcpos, lo, hi, callersLocationInfo, false);
+        }
+
+        NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo, boolean isPrologueEnd) {
             this.bci = bcpos.getBCI();
             this.method = bcpos.getMethod();
-            this.lo = frameNode.getStartPos();
-            this.hi = frameNode.getEndPos() + 1;
+            this.lo = lo;
+            this.hi = hi;
             this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
             this.callersLocationInfo = callersLocationInfo;
+            this.isPrologueEnd = isPrologueEnd;
             computeFullFilePath();
             this.localInfoList = initLocalInfoList(bcpos);
         }
@@ -1302,6 +1585,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public boolean isPrologueEnd() {
+            return isPrologueEnd;
+        }
+
+        @Override
         public Stream<DebugLocalInfo> localsProvider() {
             if (localInfoList != null) {
                 return localInfoList.stream();
@@ -1350,6 +1638,66 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int vtableOffset() {
             /* TODO - convert index to offset (+ sizeof DynamicHub) */
             return isVirtual() ? ((HostedMethod) method).getVTableIndex() : -1;
+        }
+
+        public int depth() {
+            int depth = 1;
+            DebugLocationInfo caller = getCaller();
+            while (caller != null) {
+                depth++;
+                caller = caller.getCaller();
+            }
+            return depth;
+        }
+
+        private int localsSize() {
+            if (localInfoList != null) {
+                return localInfoList.size();
+            } else {
+                return 0;
+            }
+        }
+
+        /**
+         * Merge the supplied leaf location info into this leaf location info if they have
+         * contiguous ranges, the same method and line number and the same live local variables with
+         * the same values.
+         * 
+         * @param that a leaf location info to be merged into this one
+         * @return this leaf location info if the merge was performed otherwise null
+         */
+        NativeImageDebugLocationInfo merge(NativeImageDebugLocationInfo that) {
+            assert callersLocationInfo == that.callersLocationInfo;
+            assert depth() == that.depth() : "should only compare sibling ranges";
+            assert this.hi <= that.lo : "later nodes should not overlap earlier ones";
+            if (this.hi != that.lo) {
+                return null;
+            }
+            if (method != that.method) {
+                return null;
+            }
+            if (this.isPrologueEnd != that.isPrologueEnd) {
+                return null;
+            }
+            if (line() != that.line()) {
+                return null;
+            }
+            int size = localsSize();
+            if (size != that.localsSize()) {
+                return null;
+            }
+            for (int i = 0; i < size; i++) {
+                NativeImageDebugLocalInfo thisLocal = (NativeImageDebugLocalInfo) localInfoList.get(i);
+                NativeImageDebugLocalInfo thatLocal = (NativeImageDebugLocalInfo) that.localInfoList.get(i);
+                if (!thisLocal.sameAs(thatLocal)) {
+                    return null;
+                }
+            }
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Merge  leaf Location Info : %s depth %d (%d, %d) into (%d, %d)", that.name(), that.depth(), that.lo, that.hi - 1, this.lo, this.hi - 1);
+            // merging just requires updating lo and hi range as everything else is equal
+            this.hi = that.hi;
+
+            return this;
         }
     }
 
@@ -1425,6 +1773,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public Constant constantValue() {
             return null;
+        }
+
+        public boolean sameAs(NativeImageDebugLocalInfo that) {
+            if (localKind == that.localKind) {
+                switch (localKind) {
+                    case REGISTER:
+                        return regIndex() != that.regIndex();
+                    case STACKSLOT:
+                        return stackSlot() != that.stackSlot();
+                    case CONSTANT: {
+                        Constant thisValue = (Constant) value;
+                        Constant thatValue = (Constant) that.value;
+                        return thisValue.equals(thatValue);
+                    }
+                    case UNDEFINED:
+                        return true;
+                }
+            }
+            return false;
         }
     }
 

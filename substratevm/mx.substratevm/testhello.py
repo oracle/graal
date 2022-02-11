@@ -517,10 +517,7 @@ def test():
 
     # list inlineIs and inlineA and check that the listing maps to the inlined code instead of the actual code,
     # although not ideal this is how GDB treats inlined code in C/C++ as well
-    rexp = [r'file: "hello/Hello\.java", line number: 125, symbol: "hello\.Hello::inlineIs"',
-            r"125%sinlineA\(\);"%spaces_pattern,
-            r'file: "hello/Hello\.java", line number: 126, symbol: "hello\.Hello::inlineIs"',
-            r"126%s}"%spaces_pattern]
+    rexp = [r"125%sinlineA\(\);"%spaces_pattern]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
     rexp = [r'file: "hello/Hello\.java", line number: 130, symbol: "hello\.Hello::inlineA"',
@@ -533,7 +530,7 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at inlined method and step through its nested inline methods
     exec_string = execute("break hello.Hello::inlineIs")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 130\."%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineIs\. \(2 locations\)"%(digits_pattern, address_pattern)
     checker = Checker('break inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -578,15 +575,12 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at method with inline and not-inlined invocation in same line
     exec_string = execute("break hello.Hello::inlineFrom")
-    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineFrom\. \(4 locations\)"%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 141."%(digits_pattern, address_pattern)
     checker = Checker('break inlineFrom', rexp)
     checker.check(exec_string, skip_fails=False)
 
     exec_string = execute("info break 6")
-    rexp = [r"6.1%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:141"%(spaces_pattern, spaces_pattern, address_pattern),
-            r"6.2%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:179"%(spaces_pattern, spaces_pattern, address_pattern),
-            r"6.3%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:162"%(spaces_pattern, spaces_pattern, address_pattern),
-            r"6.4%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:179"%(spaces_pattern, spaces_pattern, address_pattern)]
+    rexp = [r"6%sbreakpoint%skeep%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:141"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, address_pattern)]
     checker = Checker('info break inlineFrom', rexp)
     checker.check(exec_string)
 

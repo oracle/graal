@@ -357,33 +357,35 @@ public abstract class DebugInfoBase {
          * number.
          */
         DebugLocationInfo callerLocationInfo = locationInfo.getCaller();
-        boolean isInline = locationInfo.getCaller() != null;
-        // ranges with no caller should be for the primary method
-        // but we seem to be seeing inline snippets also
-        // assert (isInline || (locationInfo.name().equals(primaryRange.getMethodName()) && TypeEntry.canonicalize(locationInfo.ownerType().toJavaName()).equals(primaryRange.getClassName())));
-        Range caller = (isInline ? subRangeIndex.get(callerLocationInfo) : primaryRange);
+        boolean isTopLevel = callerLocationInfo == null;
+        assert (!isTopLevel || (locationInfo.name().equals(primaryRange.getMethodName()) &&
+                        TypeEntry.canonicalize(locationInfo.ownerType().toJavaName()).equals(primaryRange.getClassName())));
+        Range caller = (isTopLevel ? primaryRange : subRangeIndex.get(callerLocationInfo));
         // the frame tree is walked topdown so inline ranges should always have a caller range
-        assert !(isInline && (caller == null));
+        assert caller != null;
 
         final String fileName = locationInfo.fileName();
         final Path filePath = locationInfo.filePath();
+        final String fullPath = (filePath == null ? "" : filePath.toString() + "/") + fileName;
         final ResolvedJavaType ownerType = locationInfo.ownerType();
         final String methodName = locationInfo.name();
+        final int loOff = locationInfo.addressLo();
+        final int hiOff = locationInfo.addressHi() - 1;
         final int lo = primaryRange.getLo() + locationInfo.addressLo();
         final int hi = primaryRange.getLo() + locationInfo.addressHi();
         final int line = locationInfo.line();
+        final boolean isPrologueEnd = locationInfo.isPrologueEnd();
         ClassEntry subRangeClassEntry = ensureClassEntry(ownerType);
         MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);
-        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isInline, caller);
+        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isTopLevel, caller, isPrologueEnd);
         classEntry.indexSubRange(subRange);
         subRangeIndex.put(locationInfo, subRange);
-        try (DebugContext.Scope s = debugContext.scope("Subranges")) {
-            debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %s %s:%d [0x%x, 0x%x]",
-                            ownerType.toJavaName(), methodName, filePath, fileName, line, lo, hi);
-            locationInfo.localsProvider().forEach(localInfo -> {
-                debugContext.log(DebugContext.DETAILED_LEVEL, " local %s:%s = %s", localInfo.name(), localInfo.typeName(), localInfo.valueString());
-            });
-        }
+        debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
+                        ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
+        assert (callerLocationInfo == null || (callerLocationInfo.addressLo() <= loOff && callerLocationInfo.addressHi() >= hiOff)) : "parent range should enclose subrange!";
+        locationInfo.localsProvider().forEach(localInfo -> {
+            debugContext.log(DebugContext.DETAILED_LEVEL, "  local %s:%s = %s", localInfo.name(), localInfo.typeName(), localInfo.valueString());
+        });
         return subRange;
     }
 

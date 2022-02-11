@@ -40,7 +40,7 @@ public class Range {
     private final int lo;
     private int hi;
     private final int line;
-    private final boolean isInlined;
+    private boolean isPrologueEnd;
     private final int depth;
     /**
      * This is null for a primary range. For sub ranges it holds the root of the call tree they
@@ -71,30 +71,30 @@ public class Range {
      * Create a primary range.
      */
     public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
-        this(stringTable, methodEntry, lo, hi, line, null, false, null);
+        this(stringTable, methodEntry, lo, hi, line, null, false, null, false);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isInline, Range caller) {
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isTopLevel, Range caller, boolean isPrologueEnd) {
         assert methodEntry != null;
         if (methodEntry.fileEntry != null) {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
             stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
         }
         this.methodEntry = methodEntry;
-        this.fullMethodName = isInline ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
+        this.fullMethodName = isTopLevel ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
         this.fullMethodNameWithParams = constructClassAndMethodNameWithParams();
         this.lo = lo;
         this.hi = hi;
         this.line = line;
-        this.isInlined = isInline;
         this.primary = primary;
         this.firstCallee = null;
         this.lastCallee = null;
         this.siblingCallee = null;
         this.caller = caller;
+        this.isPrologueEnd = isPrologueEnd;
         if (caller != null) {
             caller.addCallee(this);
         }
@@ -210,6 +210,13 @@ public class Range {
         return methodEntry.fileEntry;
     }
 
+    public int getFileIndex() {
+        // the primary range's class entry indexes all files defined by the compilation unit
+        Range primaryRange = (isPrimary() ? this : getPrimary());
+        ClassEntry owner = primaryRange.methodEntry.ownerType();
+        return owner.localFilesIdx(getFileEntry());
+    }
+
     public int getModifiers() {
         return methodEntry.modifiers;
     }
@@ -225,10 +232,6 @@ public class Range {
 
     public MethodEntry getMethodEntry() {
         return methodEntry;
-    }
-
-    public boolean isInlined() {
-        return isInlined;
     }
 
     public Range getCaller() {
@@ -251,7 +254,20 @@ public class Range {
         return firstCallee == null;
     }
 
+    public boolean includesInlineRanges() {
+        Range child = firstCallee;
+        while (child != null && child.isLeaf()) {
+            child = child.siblingCallee;
+        }
+        return child != null;
+    }
+
     public int getDepth() {
         return depth;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean isPrologueEnd() {
+        return isPrologueEnd;
     }
 }

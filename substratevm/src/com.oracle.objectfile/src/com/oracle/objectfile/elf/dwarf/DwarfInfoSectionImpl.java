@@ -959,26 +959,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     /**
      * Go through the subranges and generate concrete debug entries for inlined methods.
      */
-    private int generateConcreteInlinedMethods(DebugContext context, ClassEntry classEntry,
-                    PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int generateConcreteInlinedMethods(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
         Range primary = primaryEntry.getPrimary();
         if (primary.isLeaf()) {
             return p;
         }
         int pos = p;
         log(context, "  [0x%08x] concrete entries [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodName());
-        int depth = 1;
+        int depth = 0;
         Iterator<Range> iterator = primaryEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
             Range subrange = iterator.next();
-            /*
-             * Top level subranges don't need concrete methods. They just provide a file and line
-             * for their callee.
-             */
-            if (!subrange.isInlined()) {
-                // only happens if the subrange is for the top-level compiled method
-                assert subrange.getCaller() == primaryEntry.getPrimary();
-                assert subrange.getDepth() == 0;
+            if (subrange.isLeaf()) {
+                // we only generate concrete methods for non-leaf entries
                 continue;
             }
             // if we just stepped out of a child range write nulls for each step up
@@ -986,19 +979,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 pos = writeAttrNull(buffer, pos);
                 depth--;
             }
-            MethodEntry method = subrange.getMethodEntry();
-            ClassEntry methodClassEntry = method.ownerType();
-            String methodKey = method.getSymbolName();
-            /* the abstract index was written in the method's class entry */
-            int specificationIndex = getAbstractInlineMethodIndex(methodClassEntry, methodKey);
-            pos = writeInlineSubroutine(context, classEntry, subrange, specificationIndex, depth, buffer, pos);
-            if (!subrange.isLeaf()) {
-                // increment depth before writing the children
-                depth++;
-            }
+            depth = subrange.getDepth();
+            pos = writeInlineSubroutine(context, subrange, depth, buffer, pos);
         }
         // if we just stepped out of a child range write nulls for each step up
-        while (depth > 1) {
+        while (depth > 0) {
             pos = writeAttrNull(buffer, pos);
             depth--;
         }
@@ -1322,7 +1307,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * the method has inlined ranges so write concrete inlined method entries as its
              * children
              */
-            pos = generateConcreteInlinedMethods(context, classEntry, primaryEntry, buffer, pos);
+            pos = generateConcreteInlinedMethods(context, primaryEntry, buffer, pos);
         }
         /*
          * Write a terminating null attribute.
@@ -1354,44 +1339,47 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeInlineSubroutine(DebugContext context, ClassEntry classEntry, Range range, int subprogramOffset, int depth, byte[] buffer, int p) {
-        assert range.isInlined();
+    private int writeInlineSubroutine(DebugContext context, Range caller, int depth, byte[] buffer, int p) {
+        assert !caller.isLeaf();
+        // identify the inlined method by looking at the first callee
+        Range callee = caller.getFirstCallee();
+        MethodEntry methodEntry = callee.getMethodEntry();
+        ClassEntry methodClassEntry = methodEntry.ownerType();
+        String methodKey = methodEntry.getSymbolName();
+        /* the abstract index was written in the method's class entry */
+        int specificationIndex = getAbstractInlineMethodIndex(methodClassEntry, methodKey);
+
         int pos = p;
-        log(context, "  [0x%08x] concrete inline subroutine [0x%x, 0x%x] %s", pos, range.getLo(), range.getHi(), range.getSymbolName());
-        final Range callerSubrange = range.getCaller();
-        assert callerSubrange != null;
-        int callLine = callerSubrange.getLine();
+        log(context, "  [0x%08x] concrete inline subroutine [0x%x, 0x%x] %s", pos, caller.getLo(), caller.getHi(), methodKey);
+
+        int callLine = caller.getLine();
         assert callLine >= -1 : callLine;
         Integer fileIndex;
         if (callLine == -1) {
-            log(context, "  Unable to retrieve call line for inlined method %s", range.getFullMethodName());
+            log(context, "  Unable to retrieve call line for inlined method %s", callee.getFullMethodName());
             /* continue with line 0 and fileIndex 1 as we must insert a tree node */
             callLine = 0;
             fileIndex = 1;
         } else {
-            if (callerSubrange == range) {
-                fileIndex = 1;
-            } else {
-                FileEntry subFileEntry = callerSubrange.getFileEntry();
-                assert subFileEntry != null : callerSubrange.getClassName() + "." + callerSubrange.getMethodName() + "(" + callerSubrange.getFileName() + ":" + callLine + ")";
-                fileIndex = classEntry.localFilesIdx(subFileEntry);
-                assert fileIndex != null;
-            }
+            FileEntry subFileEntry = caller.getFileEntry();
+            assert subFileEntry != null : caller.getClassName() + "." + caller.getMethodName() + "(" + caller.getFileName() + ":" + callLine + ")";
+            fileIndex = caller.getFileIndex();
+            assert fileIndex != null;
         }
         final int code;
-        if (range.isLeaf()) {
-            code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
-        } else {
+        if (caller.includesInlineRanges()) {
             code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine_with_children;
+        } else {
+            code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
         }
-        log(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth + 1, code);
+        log(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth + 2, code);
         pos = writeAbbrevCode(code, buffer, pos);
-        log(context, "  [0x%08x]     abstract_origin  0x%x", pos, subprogramOffset);
-        pos = writeAttrRef4(subprogramOffset, buffer, pos);
-        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
-        pos = writeAttrAddress(range.getLo(), buffer, pos);
-        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
-        pos = writeAttrAddress(range.getHi(), buffer, pos);
+        log(context, "  [0x%08x]     abstract_origin  0x%x", pos, specificationIndex);
+        pos = writeAttrRef4(specificationIndex, buffer, pos);
+        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, caller.getLo());
+        pos = writeAttrAddress(caller.getLo(), buffer, pos);
+        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, caller.getHi());
+        pos = writeAttrAddress(caller.getHi(), buffer, pos);
         log(context, "  [0x%08x]     call_file  %d", pos, fileIndex);
         pos = writeAttrData4(fileIndex, buffer, pos);
         log(context, "  [0x%08x]     call_line  %d", pos, callLine);
