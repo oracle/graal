@@ -120,7 +120,7 @@ final class EspressoShutdownHandler implements ContextAccess {
             Object sync = getShutdownSynchronizer();
             synchronized (sync) {
                 if (isClosing()) {
-                    throw new EspressoExitException(getExitStatus());
+                    return;
                 }
                 beginClose(code);
                 // Wake up spinning natural exiting thread if needed.
@@ -132,7 +132,6 @@ final class EspressoShutdownHandler implements ContextAccess {
          * At this point, the exit code given should have been registered. If not, this means that
          * another closing was started before us, and we should use the previous' exit code.
          */
-        throw new EspressoExitException(getExitStatus());
     }
 
     /**
@@ -159,18 +158,17 @@ final class EspressoShutdownHandler implements ContextAccess {
         }
         if (isClosing()) {
             // Skip if Shutdown.shutdown called an exit method.
-            throw new EspressoExitException(getExitStatus());
+            return;
         }
         Object s = getShutdownSynchronizer();
         synchronized (s) {
             if (isClosing()) {
                 // If a daemon thread called an exit in-between
-                throw new EspressoExitException(getExitStatus());
+                return;
             }
             beginClose(0);
         }
         teardown(killThreads);
-        throw new EspressoExitException(getExitStatus());
     }
 
     private void waitForClose() throws EspressoExitException {
@@ -180,7 +178,7 @@ final class EspressoShutdownHandler implements ContextAccess {
         synchronized (synchronizer) {
             while (true) {
                 if (isClosing()) {
-                    throw new EspressoExitException(getExitStatus());
+                    return;
                 }
                 if (hasActiveNonDaemon(initiating)) {
                     try {

@@ -453,7 +453,7 @@ public final class VM extends NativeEnv {
     }
 
     public void dispose() {
-        if (getUncached().isNull(mokapotEnvPtr)) {
+        if (mokapotEnvPtr == null || getUncached().isNull(mokapotEnvPtr)) {
             return; // Mokapot disposed or uninitialized.
         }
         assert !getUncached().isNull(mokapotEnvPtr);
@@ -470,7 +470,7 @@ public final class VM extends NativeEnv {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
         }
-        assert getUncached().isNull(mokapotEnvPtr);
+        assert mokapotEnvPtr == null || getUncached().isNull(mokapotEnvPtr);
     }
 
     private StaticObject nonReflectionClassLoader(StaticObject loader) {
