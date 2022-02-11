@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -38,8 +36,8 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
-    protected LoadFieldTypeFlow(LoadFieldNode node) {
-        super(node, (AnalysisField) node.field());
+    protected LoadFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field) {
+        super(loadLocation, field);
     }
 
     protected LoadFieldTypeFlow(MethodFlowsGraph methodFlows, LoadFieldTypeFlow original) {
@@ -50,8 +48,8 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         private final FieldTypeFlow fieldFlow;
 
-        LoadStaticFieldTypeFlow(LoadFieldNode node, FieldTypeFlow fieldFlow) {
-            super(node);
+        LoadStaticFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field, FieldTypeFlow fieldFlow) {
+            super(loadLocation, field);
             this.fieldFlow = fieldFlow;
 
             /*
@@ -95,8 +93,8 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
          */
         private TypeFlow<?> objectFlow;
 
-        LoadInstanceFieldTypeFlow(LoadFieldNode node, TypeFlow<?> objectFlow) {
-            super(node);
+        LoadInstanceFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field, TypeFlow<?> objectFlow) {
+            super(loadLocation, field);
             this.objectFlow = objectFlow;
         }
 
@@ -147,8 +145,19 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
             assert this.isClone();
-            /* When receiver flow saturates start observing the flow of the field declaring type. */
-            replaceObservedWith(bb, field.getDeclaringClass());
+            if (!isSaturated()) {
+                /*
+                 * When the receiver flow saturates start observing the flow of the field declaring
+                 * type, unless the load is already saturated.
+                 */
+                replaceObservedWith(bb, field.getDeclaringClass());
+            }
+        }
+
+        @Override
+        protected void onSaturated() {
+            /* Deregister the load as an observer of the receiver. */
+            objectFlow.removeObserver(this);
         }
 
         @Override

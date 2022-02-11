@@ -24,14 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,24 +32,31 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
+
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class PointsToAnalysisMethod extends AnalysisMethod {
     private MethodTypeFlow typeFlow;
 
     private ConcurrentMap<InvokeTypeFlow, Object> invokedBy;
     private ConcurrentMap<InvokeTypeFlow, Object> implementationInvokedBy;
+    /**
+     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
+     * receiver type of the method, i.e., its declaring-class. Therefore, this invoke will link with
+     * all possible callees.
+     */
+    private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
 
-    public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
+    PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped);
         typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
-    }
-
-    @Override
-    public void cleanupAfterAnalysis() {
-        super.cleanupAfterAnalysis();
-        contextInsensitiveInvoke.set(null);
-        typeFlow = null;
-        invokedBy = null;
-        implementationInvokedBy = null;
     }
 
     @Override
@@ -111,26 +110,10 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         return getTypeFlow().getParsingContext();
     }
 
-    /**
-     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
-     * receiver type of the method, i.e., its declaring-class. Therefore, this invoke will link with
-     * all possible callees.
-     */
-    private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
-
     public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation) {
-        if (contextInsensitiveInvoke.get() == null) {
-            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
-            boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
-            if (set) {
-                /*
-                 * Only register the winning context insensitive invoke as an observer of the target
-                 * method declaring class type flow.
-                 */
-                InvokeTypeFlow.initContextInsensitiveInvoke(bb, this, invoke);
-            }
-        }
-        return contextInsensitiveInvoke.get();
+        return AtomicUtils.produceAndSetValue(contextInsensitiveInvoke,
+                        () -> InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation),
+                        (t) -> InvokeTypeFlow.initContextInsensitiveInvoke(bb, this, t));
     }
 
     public InvokeTypeFlow getContextInsensitiveInvoke() {
@@ -138,4 +121,14 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         AnalysisError.guarantee(invoke != null);
         return invoke;
     }
+
+    @Override
+    public void cleanupAfterAnalysis() {
+        super.cleanupAfterAnalysis();
+        contextInsensitiveInvoke.set(null);
+        typeFlow = null;
+        invokedBy = null;
+        implementationInvokedBy = null;
+    }
+
 }

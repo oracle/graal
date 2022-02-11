@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
 
     /** The array object. */
-    private AnalysisObject object;
+    private final AnalysisObject object;
 
     public ArrayElementsTypeFlow(AnalysisObject sourceObject) {
         super(sourceObject.type(), sourceObject.type().getComponentType());

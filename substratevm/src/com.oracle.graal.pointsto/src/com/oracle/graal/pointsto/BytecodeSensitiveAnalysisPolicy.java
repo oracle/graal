@@ -36,6 +36,8 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
+import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -133,6 +135,86 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             return exactType.getCachedConstantObject(bb, constant);
         } else {
             return exactType.getContextInsensitiveAnalysisObject();
+        }
+    }
+
+    @Override
+    public TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
+        /* Generate a heap object for every new incoming type. */
+        TypeState resultState = TypeState.forEmpty();
+        for (AnalysisType type : newState.types(bb)) {
+            if (!currentState.containsType(type)) {
+                TypeState typeState = TypeState.forAllocation(bb, allocationSite, type, allocationContext);
+                resultState = TypeState.forUnion(bb, resultState, typeState);
+            }
+        }
+        assert !resultState.canBeNull();
+        return resultState;
+    }
+
+    @Override
+    public TypeState cloneState(PointsToAnalysis bb, TypeState currentState, TypeState inputState, BytecodeLocation cloneSite, AnalysisContext allocationContext) {
+        TypeState resultState;
+        if (inputState.isEmpty() || inputState.isNull()) {
+            /* Nothing to be cloned if the input state is not a concrete type state. */
+            resultState = inputState.forNonNull(bb);
+        } else {
+            resultState = TypeState.forEmpty();
+            for (AnalysisType type : inputState.types(bb)) {
+                if (!currentState.containsType(type)) {
+                    TypeState typeState = TypeState.forClone(bb, cloneSite, type, allocationContext);
+                    resultState = TypeState.forUnion(bb, resultState, typeState);
+                }
+            }
+        }
+        assert !resultState.canBeNull();
+        return resultState;
+    }
+
+    @Override
+    public void linkClonedObjects(PointsToAnalysis bb, TypeFlow<?> inputFlow, CloneTypeFlow cloneFlow, BytecodePosition source) {
+        TypeState inputState = inputFlow.getState();
+        TypeState cloneState = cloneFlow.getState();
+
+        for (AnalysisType type : inputState.types(bb)) {
+            if (type.isArray()) {
+                if (bb.analysisPolicy().aliasArrayTypeFlows()) {
+                    /* All arrays are aliased, no need to model the array clone operation. */
+                    continue;
+                }
+
+                /* The object array clones must also get the elements flows of the originals. */
+                for (AnalysisObject originalObject : inputState.objects(type)) {
+                    if (originalObject.isPrimitiveArray() || originalObject.isEmptyObjectArrayConstant(bb)) {
+                        /* Nothing to read from a primitive array or an empty array constant. */
+                        continue;
+                    }
+                    ArrayElementsTypeFlow originalObjectElementsFlow = originalObject.getArrayElementsFlow(bb, false);
+
+                    for (AnalysisObject cloneObject : cloneState.objects(type)) {
+                        if (cloneObject.isPrimitiveArray() || cloneObject.isEmptyObjectArrayConstant(bb)) {
+                            /* Cannot write to a primitive array or an empty array constant. */
+                            continue;
+                        }
+                        ArrayElementsTypeFlow cloneObjectElementsFlow = cloneObject.getArrayElementsFlow(bb, true);
+                        originalObjectElementsFlow.addUse(bb, cloneObjectElementsFlow);
+                    }
+                }
+            } else {
+
+                /* The object clones must get field flows of the originals. */
+                for (AnalysisObject originalObject : inputState.objects(type)) {
+                    /* Link all the field flows of the original to the clone. */
+                    for (AnalysisField field : type.getInstanceFields(true)) {
+                        FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, inputFlow, source, field, false);
+
+                        for (AnalysisObject cloneObject : cloneState.objects(type)) {
+                            FieldTypeFlow cloneObjectFieldFlow = cloneObject.getInstanceFieldFlow(bb, cloneFlow, source, field, true);
+                            originalObjectFieldFlow.addUse(bb, cloneObjectFieldFlow);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -294,6 +376,13 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 }
 
             }
+        }
+
+        @Override
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            assert this.isClone();
+            /* When the receiver flow saturates start observing the flow of the receiver type. */
+            replaceObservedWith(bb, receiverType);
         }
 
         @Override
