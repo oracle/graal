@@ -288,26 +288,27 @@ public class SymbolicSnippetEncoder {
             args = new Object[method.getSignature().getParameterCount(true)];
             args[0] = receiver;
         }
-        // To get dumping out from this context during image building, it's necessary to pass the
-        // dumping options directly to the VM, otherwise they aren't available during initialization
-        // of the backend. Use this:
-        //
-        // -J-Dgraal.Dump=SymbolicSnippetEncoder_:2 -J-Dgraal.PrintGraph=File
-        // -J-Dgraal.DebugStubsAndSnippets=true
+        // Dumps of the graph preparation step can be captured with -H:Dump=LibGraal:2 and
+        // MethodFilter can be used to focus on particular snippets.
         IntrinsicContext.CompilationContext contextToUse = IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
         try (DebugContext debug = snippetReplacements.openDebugContext("LibGraalBuildGraph_", method, options)) {
-            StructuredGraph graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, nonNullParameters, original,
-                            trackNodeSourcePosition, null, contextToUse);
+            StructuredGraph graph;
+            try (DebugContext.Scope s = debug.scope("LibGraal", method)) {
+                graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, nonNullParameters, original,
+                                trackNodeSourcePosition, null, contextToUse);
 
-            // Check if all methods which should be inlined are really inlined.
-            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                ResolvedJavaMethod callee = callTarget.targetMethod();
-                if (!delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original) && !Objects.equals(callee, method)) {
-                    throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)");
+                // Check if all methods which should be inlined are really inlined.
+                for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                    ResolvedJavaMethod callee = callTarget.targetMethod();
+                    if (!delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original) && !Objects.equals(callee, method)) {
+                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)");
+                    }
                 }
+                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");
+            } catch (Throwable e) {
+                throw debug.handle(e);
             }
             assert verifySnippetEncodeDecode(debug, method, original, args, trackNodeSourcePosition, graph);
-            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");
             assert graph.getAssumptions() == null : graph;
             return graph;
         }
