@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.replacements.nodes.arithmetic;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -39,7 +40,7 @@ import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(cycles = CYCLES_4, cyclesRationale = "neg+cmp")
+@NodeInfo(cycles = CYCLES_2, cyclesRationale = "neg+cmp", size = SIZE_2)
 public final class IntegerNegExactSplitNode extends IntegerExactArithmeticSplitNode {
     public static final NodeClass<IntegerNegExactSplitNode> TYPE = NodeClass.create(IntegerNegExactSplitNode.class);
 

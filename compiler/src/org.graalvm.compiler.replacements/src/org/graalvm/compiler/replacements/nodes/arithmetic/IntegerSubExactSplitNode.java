@@ -37,7 +37,10 @@ import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+
+@NodeInfo(cycles = CYCLES_2, cyclesRationale = "sub+cmp", size = SIZE_2)
 public final class IntegerSubExactSplitNode extends BinaryIntegerExactArithmeticSplitNode {
     public static final NodeClass<IntegerSubExactSplitNode> TYPE = NodeClass.create(IntegerSubExactSplitNode.class);
 
