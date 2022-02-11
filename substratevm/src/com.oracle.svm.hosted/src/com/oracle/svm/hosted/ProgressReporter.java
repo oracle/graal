@@ -112,19 +112,27 @@ public class ProgressReporter {
 
     private enum BuildStage {
         INITIALIZING("Initializing"),
-        ANALYSIS("Performing analysis"),
+        ANALYSIS("Performing analysis", true, false),
         UNIVERSE("Building universe"),
-        PARSING("Parsing methods"),
-        INLINING("Inlining methods"),
-        COMPILING("Compiling methods"),
+        PARSING("Parsing methods", true, true),
+        INLINING("Inlining methods", true, false),
+        COMPILING("Compiling methods", true, true),
         CREATING("Creating image");
 
         private static final int NUM_STAGES = values().length;
 
         private final String message;
+        private final boolean hasProgressBar;
+        private final boolean hasPeriodicProgress;
 
         BuildStage(String message) {
+            this(message, false, false);
+        }
+
+        BuildStage(String message, boolean hasProgressBar, boolean hasPeriodicProgress) {
             this.message = message;
+            this.hasProgressBar = hasProgressBar;
+            this.hasPeriodicProgress = hasPeriodicProgress;
         }
     }
 
@@ -267,12 +275,12 @@ public class ProgressReporter {
     public ReporterClosable printAnalysis(BigBang bb) {
         Timer timer = bb.getAnalysisTimer();
         timer.start();
-        stagePrinter.start(BuildStage.ANALYSIS).startProgress();
+        stagePrinter.start(BuildStage.ANALYSIS);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                stagePrinter.stopProgress().end(bb.getAnalysisTimer());
+                stagePrinter.end(bb.getAnalysisTimer());
                 printAnalysisStatistics(bb.getUniverse());
             }
         };
@@ -322,40 +330,40 @@ public class ProgressReporter {
 
     public ReporterClosable printParsing(Timer timer) {
         timer.start();
-        stagePrinter.start(BuildStage.PARSING).startPeriodicProgress();
+        stagePrinter.start(BuildStage.PARSING);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                stagePrinter.stopPeriodicProgress().end(timer);
+                stagePrinter.end(timer);
             }
         };
     }
 
     public ReporterClosable printInlining(Timer timer) {
         timer.start();
-        stagePrinter.start(BuildStage.INLINING).startProgress();
+        stagePrinter.start(BuildStage.INLINING);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                stagePrinter.stopProgress().end(timer);
+                stagePrinter.end(timer);
             }
         };
     }
 
     public void printInliningSkipped() {
-        stagePrinter.start(BuildStage.INLINING).skipped();
+        stagePrinter.skipped(BuildStage.INLINING);
     }
 
     public ReporterClosable printCompiling(Timer timer) {
         timer.start();
-        stagePrinter.start(BuildStage.COMPILING).startPeriodicProgress();
+        stagePrinter.start(BuildStage.COMPILING);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                stagePrinter.stopPeriodicProgress().end(timer);
+                stagePrinter.end(timer);
             }
         };
     }
@@ -917,29 +925,24 @@ public class ProgressReporter {
 
     abstract class StagePrinter<T extends StagePrinter<T>> extends LinePrinter<T> {
         private int progressBarStart = 30;
+        private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
 
-        final T start(BuildStage stage) {
-            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + stage.ordinal(), BuildStage.NUM_STAGES)).reset()
-                            .blueBold().doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
+        T start(BuildStage stage) {
+            assert activeBuildStage == null;
+            activeBuildStage = stage;
+            appendStageStart();
+            if (activeBuildStage.hasProgressBar) {
+                a(progressBarStartPadding()).dim().a("[");
+            }
+            if (activeBuildStage.hasPeriodicProgress) {
+                startPeriodicProgress();
+            }
             return getThis();
         }
 
-        void startProgress() {
-            a(progressBarStartPadding()).dim().a("[");
-        }
-
-        final String progressBarStartPadding() {
-            return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
-        }
-
-        void reportProgress() {
-            a("*");
-        }
-
-        final void startPeriodicProgress() {
-            startProgress();
+        private void startPeriodicProgress() {
             periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
                 int countdown;
                 int numPrints;
@@ -954,32 +957,47 @@ public class ProgressReporter {
             }, 0, 1, TimeUnit.SECONDS);
         }
 
-        final T stopPeriodicProgress() {
-            periodicPrintingTask.cancel(false);
-            stopProgress();
-            return getThis();
-        }
-
-        T stopProgress() {
-            a("]").reset();
-            return getThis();
-        }
-
-        final void skipped() {
+        final void skipped(BuildStage stage) {
+            assert activeBuildStage == null;
+            activeBuildStage = stage;
+            appendStageStart();
             a(progressBarStartPadding()).dim().a("(skipped)").reset().flushln();
+            activeBuildStage = null;
+        }
+
+        private void appendStageStart() {
+            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
+                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase()).a("...").reset();
+        }
+
+        final String progressBarStartPadding() {
+            return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
+        }
+
+        void reportProgress() {
+            a("*");
         }
 
         final void end(Timer timer) {
             end(timer.getTotalTime());
         }
 
-        final void end(double totalTime) {
+        void end(double totalTime) {
+            if (activeBuildStage.hasPeriodicProgress) {
+                periodicPrintingTask.cancel(false);
+            }
+            if (activeBuildStage.hasProgressBar) {
+                a("]").reset();
+            }
+
             String suffix = String.format("(%.1fs @ %.2fGB)", Utils.millisToSeconds(totalTime), Utils.getUsedMemory());
             int textLength = getCurrentTextLength();
             // TODO: `assert textLength > 0;` should be used here but tests do not start stages
             // properly (GR-35721)
             String padding = Utils.stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - textLength - suffix.length()), " ");
             a(padding).dim().a(suffix).reset().flushln();
+
+            activeBuildStage = null;
 
             boolean optionsAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(HostedOptionValues.class);
             if (optionsAvailable && SubstrateOptions.BuildOutputGCWarnings.getValue()) {
@@ -1029,9 +1047,10 @@ public class ProgressReporter {
         }
 
         @Override
-        void startProgress() {
-            super.startProgress();
+        CharacterwiseStagePrinter start(BuildStage stage) {
+            super.start(stage);
             builderIO.listenForNextStdioWrite = true;
+            return getThis();
         }
 
         @Override
@@ -1047,10 +1066,10 @@ public class ProgressReporter {
         }
 
         @Override
-        CharacterwiseStagePrinter stopProgress() {
+        void end(double totalTime) {
             reprintLineIfNecessary();
             builderIO.listenForNextStdioWrite = false;
-            return super.stopProgress();
+            super.end(totalTime);
         }
 
         void reprintLineIfNecessary() {
