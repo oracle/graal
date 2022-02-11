@@ -152,26 +152,15 @@ public class SymbolicSnippetEncoder {
 
     private final HotSpotReplacementsImpl originalReplacements;
 
-    abstract static class GraphKey {
+    static class SnippetKey {
+
         final ResolvedJavaMethod method;
         final ResolvedJavaMethod original;
-
-        GraphKey(ResolvedJavaMethod method, ResolvedJavaMethod original) {
-            this.method = method;
-            this.original = original;
-        }
-
-        public abstract String keyString();
-
-        public abstract Class<?> receiverClass();
-    }
-
-    static class SnippetKey extends GraphKey {
-
         private final Class<?> receiverClass;
 
         SnippetKey(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver) {
-            super(method, original);
+            this.method = method;
+            this.original = original;
             assert method.isStatic() == (receiver == null) : "static must not have receiver and non-static must";
             this.receiverClass = receiver != null ? receiver.getClass() : null;
         }
@@ -193,12 +182,10 @@ public class SymbolicSnippetEncoder {
             return Objects.hash(method, original, receiverClass);
         }
 
-        @Override
         public String keyString() {
             return methodKey(method);
         }
 
-        @Override
         public Class<?> receiverClass() {
             return receiverClass;
         }
@@ -213,7 +200,7 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    private final EconomicMap<GraphKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> pendingSnippetGraphs = EconomicMap.create();
+    private final EconomicMap<SnippetKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> pendingSnippetGraphs = EconomicMap.create();
 
     private final EconomicMap<String, SnippetParameterInfo> snippetParameterInfos = EconomicMap.create();
 
@@ -417,10 +404,10 @@ public class SymbolicSnippetEncoder {
         copy.appendInlineInvokePlugin(new SnippetInlineInvokePlugin());
         copy.appendNodePlugin(new SnippetCounterPlugin(snippetReplacements));
 
-        EconomicMap<GraphKey, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
-        MapCursor<GraphKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> cursor = pendingSnippetGraphs.getEntries();
+        EconomicMap<SnippetKey, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
+        MapCursor<SnippetKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> cursor = pendingSnippetGraphs.getEntries();
         while (cursor.advance()) {
-            GraphKey key = cursor.getKey();
+            SnippetKey key = cursor.getKey();
             preparedSnippetGraphs.put(key, cursor.getValue().apply(options, snippetReplacements));
         }
 
@@ -524,7 +511,7 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    private synchronized EncodedSnippets encodeSnippets(DebugContext debug, EconomicMap<GraphKey, StructuredGraph> preparedSnippetGraphs) {
+    private synchronized EncodedSnippets encodeSnippets(DebugContext debug, EconomicMap<SnippetKey, StructuredGraph> preparedSnippetGraphs) {
         GraphEncoder encoder = new GraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch, debug);
         for (StructuredGraph graph : preparedSnippetGraphs.getValues()) {
             graph.resetDebug(debug);
@@ -534,9 +521,9 @@ public class SymbolicSnippetEncoder {
         encoder.finishPrepare();
 
         EconomicMap<String, GraphData> graphDatas = EconomicMap.create();
-        MapCursor<GraphKey, StructuredGraph> cursor = preparedSnippetGraphs.getEntries();
+        MapCursor<SnippetKey, StructuredGraph> cursor = preparedSnippetGraphs.getEntries();
         while (cursor.advance()) {
-            GraphKey key = cursor.getKey();
+            SnippetKey key = cursor.getKey();
             String keyString = key.keyString();
             GraphData previous = graphDatas.get(keyString);
             GraphData data = GraphData.create(encoder.encode(cursor.getValue()), originalMethods.get(keyString), snippetParameterInfos.get(keyString), key.receiverClass(), previous);
