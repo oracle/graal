@@ -21,6 +21,7 @@ If an application is not optimizable, then a so-called fallback image is generat
 
 The following features generally require the configuration at image build time in order to use the closed-world optimization.
 This configuration ensures that the minimum amount of space necessary is used in the native image binary.
+
 If one of the following features is used without providing a configuration at image build time, a fallback image is generated.
 
 ### Dynamic Class Loading

@@ -11,7 +11,8 @@ The name of the class containing the `main` method is the last argument, or you 
 
 The syntax of the `native-image` command is:
 
-- `native-image [options] class [imagename] [options]` to build an executable file for a class in the current working directory. Invoking it executes the native-compiled code of that class.
+- `native-image [options] class [imagename] [options]` to build an executable file for a class in the current working directory. Invoking it executes the native-compiled code of that
+class.
 
 - `native-image [options] -jar jarfile [imagename] [options]` to build an image for a JAR file.
 

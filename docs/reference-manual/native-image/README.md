@@ -47,7 +47,7 @@ Run this command to install Native Image:
 gu install native-image
 ```
 After this additional step, the `native-image` executable will become available in
-the `GRAALVM_HOME/bin` directory.
+the `$JAVA_HOME/bin` directory.
 
 The above command will install Native Image from the GitHub catalog for GraalVM Community users.
 For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md#manual-installation) is required.
@@ -76,10 +76,16 @@ xcode-select --install
 ```
 
 #### Prerequisites for Using Native Image on Windows
-Building native images on Windows requires a Microsoft Visual C++ (MSVC) that comes with Visual Studio 2017 15.5.5 or later.
 
-In addition, a proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
-On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
+To start using Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++(MSVC). There are two installation options:
+  * Install the Visual Studio Code Build Tools with the Windows 10 SDK
+  * Install Visual Studio Code with the Windows 10 SDK
+
+You can use Visual Studio 2017 version 15.9 or later.
+
+Lastly, on Windows, the `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
+The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
+Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for step-by-step instructions.
 
 ## Build a Native Image
 
@@ -224,6 +230,6 @@ com.oracle.svm.core.VM=GraalVM <version> Java 11 EE
 ## Ahead-of-time Compilation Limitations
 
 There is a small portion of Java features are not susceptible to ahead-of-time compilation, and will therefore miss out on the performance advantages.
-To be able to build a highly optimized native executable, GraalVM runs an aggressive static analysis that requires a closed-world assumption, which means that all classes and all bytecodes that are reachable at run time must be known at build time.
+To be able to build a highly optimized native executable, GraalVM runs an aggressive static analysis that requires a closed-world assumption, which means that all classes and all bytecodes that are reachable at run time must be known at build time. 
 Therefore, it is not possible to load new data that have not been available during ahead-of-time compilation.
 Continue reading to [GraalVM Native Image Compatibility and Optimization](Limitations.md).

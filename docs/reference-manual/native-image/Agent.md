@@ -16,7 +16,7 @@ $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/conf
 
 Note that `-agentlib` must be specified _before_ a `-jar` option or a class name or any application parameters in the `java` command line.
 
-During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent then generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are standalone configuration files in _JSON_ format which contain all intercepted dynamic accesses.
+During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent then generates the files _jni-config.json_, _reflect-config.json_, _proxy-config.json_ and _resource-config.json_ in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are standalone configuration files in JSON format which contain all intercepted dynamic accesses.
 
 It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses. The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:
 ```shell
@@ -159,7 +159,7 @@ Filter files have the following structure:
 }
 ```
 
-TThe `rules` section contains a sequence of rules.
+The `rules` section contains a sequence of rules.
 Each rule specifies either `includeClasses`, which means that lookups originating in matching classes will be included in the resulting configuration, or `excludeClasses`, which excludes lookups originating in matching classes from the configuration.
 Each rule defines a pattern for the set of matching classes, which can end in `.*` or `.**`: a `.*` ending matches all classes in a package and that package only, while a `.**` ending matches all classes in the package as well as in all subpackages at any depth. Without `.*` or `.**`, the rule applies only to a single class with the qualified name that matches the pattern.
 All rules are processed in the sequence in which they are specified, so later rules can partially or entirely override earlier ones.
@@ -203,8 +203,7 @@ In order to use separate paths with a single global `JAVA_TOOL_OPTIONS` variable
 export JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=config-output-dir=/path/to/config-output-dir-{pid}-{datetime}/"
 ```
 
-The `{pid}` placeholder is replaced with the process identifier, while `{datetime}` is replaced with the system date and time in UTC, formatted according to ISO 8601.
-For the above example, the resulting path could be: `/path/to/config-output-dir-31415-20181231T235950Z/`.
+The `{pid}` placeholder is replaced with the process identifier, while `{datetime}` is replaced with the system date and time in UTC, formatted according to ISO 8601. For the above example, the resulting path could be: `/path/to/config-output-dir-31415-20181231T235950Z/`.
 
 ### Trace Files
 
@@ -230,10 +229,8 @@ In this case, it is necessary to provide the absolute path of the agent:
 
 ### Native Image Configure Tool
 
-When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files.
-The `native-image-configure` tool can be used to merge these configuration files.
+When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure-launcher` tool can be used to merge these configuration files.
 This tool must first be built with:
-
 ```shell
 native-image --macro:native-image-configure-launcher
 ```
@@ -242,7 +239,9 @@ native-image --macro:native-image-configure-launcher
 
 Then, the tool can be used to merge sets of configuration files as follows:
 ```shell
-native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
+native-image-configure-launcher generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```
 
-This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`. An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure help` for all options.
+This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
+
+An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure-launcher help` for all options.
