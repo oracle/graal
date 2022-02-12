@@ -79,6 +79,7 @@ public abstract class FrameAccess {
         return ConfigurationValues.getTarget().arch.getWordSize();
     }
 
+    @Fold
     public static int uncompressedReferenceSize() {
         return wordSize();
     }

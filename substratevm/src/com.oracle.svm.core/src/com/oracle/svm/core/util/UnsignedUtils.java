@@ -105,6 +105,7 @@ public final class UnsignedUtils {
      * Converts an {@link UnsignedWord} to a positive signed {@code int}, asserting that it can be
      * correctly represented.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int safeToInt(UnsignedWord w) {
         long l = w.rawValue();
         assert l >= 0 && l == (int) l;

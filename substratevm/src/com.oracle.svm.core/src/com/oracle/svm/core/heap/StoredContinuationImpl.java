@@ -315,6 +315,7 @@ public final class StoredContinuationImpl {
      * stored in {@link StoredContinuation} object.
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkStoredContinuationFromPointer(Pointer baseAddress, ObjectReferenceVisitor visitor, Object holderObject) {
         StoredContinuation f = (StoredContinuation) holderObject;
 
@@ -332,7 +333,7 @@ public final class StoredContinuationImpl {
             int frameSize = StoredContinuationImpl.readFrameSize(f, frameIndex);
             int referenceMapIndex = StoredContinuationImpl.readReferenceMapIndex(f, frameIndex);
 
-            boolean r = CodeReferenceMapDecoder.walkOffsetsFromPointer(curFrame, referenceMapEncoding, referenceMapIndex, visitor);
+            boolean r = CodeReferenceMapDecoder.walkOffsetsFromPointer(curFrame, referenceMapEncoding, referenceMapIndex, visitor, holderObject);
 
             if (!r) {
                 return false;
