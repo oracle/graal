@@ -416,7 +416,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         this.frameDescriptor = EspressoFrame.createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = method.getContext().livenessAnalysis ? LivenessAnalysis.analyze(methodVersion) : null;
+        this.livenessAnalysis = (method.getContext().livenessAnalysis && methodVersion.getMaxLocals() >= method.getContext().LivenessAnalysisMinimumLocals)
+                        ? LivenessAnalysis.analyze(methodVersion)
+                        : null;
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
@@ -1516,6 +1518,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
                     ExceptionHandler handler = null;
                     for (ExceptionHandler toCheck : handlers) {
+                        CompilerAsserts.partialEvaluationConstant(toCheck);
                         if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
                             Klass catchType = null;
                             if (!toCheck.isCatchAll()) {
@@ -1523,6 +1526,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 // pass instanceof
                                 catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                             }
+                            CompilerAsserts.partialEvaluationConstant(catchType);
                             if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getGuestException(), catchType)) {
                                 // the first found exception handler is our exception handler
                                 handler = toCheck;

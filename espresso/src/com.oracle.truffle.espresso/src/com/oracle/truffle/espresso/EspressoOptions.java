@@ -236,6 +236,11 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
 
+    @Option(help = "Minimum number of locals to run liveness analysis.\\n" + //
+                    "Liveness analysis, if enabled, only affects compiled code.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Integer> LivenessAnalysisMinimumLocals = new OptionKey<>(8);
+
     @Option(help = "Enable Class Hierarchy Analysis, which optimizes instanceof checks and virtual method calls by keeping track of descendants of a given class or interface.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> CHA = new OptionKey<>(false);

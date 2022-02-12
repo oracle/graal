@@ -185,6 +185,7 @@ public final class EspressoContext {
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
     public final boolean livenessAnalysis;
+    public final int LivenessAnalysisMinimumLocals;
     public final boolean EnableClassHierarchyAnalysis;
 
     // Behavior control
@@ -288,6 +289,7 @@ public final class EspressoContext {
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        this.LivenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         this.EnableClassHierarchyAnalysis = env.getOptions().get(EspressoOptions.CHA);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);

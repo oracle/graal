@@ -143,14 +143,10 @@ public final class LivenessAnalysis {
         }
     }
 
-    public LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart) {
+    private LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart) {
         this.result = result;
         this.edge = edge;
         this.onStart = onStart;
-    }
-
-    private LivenessAnalysis() {
-        this(null, null, null);
     }
 
     private static final class Builder {
