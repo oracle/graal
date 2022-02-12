@@ -96,7 +96,20 @@ public class SubstrateOptions {
 
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
-    public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("");
+    public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            String updatedNewValue;
+            // both darwin and macos refer to Platform.MacOS
+            if (newValue.equals("macos")) {
+                updatedNewValue = "darwin";
+            } else {
+                updatedNewValue = newValue;
+            }
+            super.onValueUpdate(values, oldValue, updatedNewValue);
+
+        }
+    };
 
     @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false) {
