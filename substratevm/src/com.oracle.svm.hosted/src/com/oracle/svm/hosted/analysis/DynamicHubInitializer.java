@@ -35,20 +35,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -57,6 +65,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class DynamicHubInitializer {
 
+    private final BigBang bb;
     private final SVMHost hostVM;
     private final AnalysisMetaAccess metaAccess;
     private final UnsupportedFeatures unsupportedFeatures;
@@ -66,6 +75,7 @@ public class DynamicHubInitializer {
     private final Map<AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap;
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
+    private final Field dynamicHubClassInitializationInfoField;
     private final Field dynamicHubArrayHubField;
     private final Field dynamicHubEnclosingClassField;
     private final Field dynamicHubInterfacesEncodingField;
@@ -74,16 +84,18 @@ public class DynamicHubInitializer {
     private final Field dynamicHubAnnotatedSuperInfoField;
     private final Field dynamicHubGenericInfoField;
 
-    public DynamicHubInitializer(AnalysisMetaAccess metaAccess, UnsupportedFeatures unsupportedFeatures, ConstantReflectionProvider constantReflection) {
-        this.metaAccess = metaAccess;
-        this.hostVM = (SVMHost) metaAccess.getUniverse().hostVM();
-        this.unsupportedFeatures = unsupportedFeatures;
-        this.constantReflection = constantReflection;
+    public DynamicHubInitializer(BigBang bb) {
+        this.bb = bb;
+        this.metaAccess = bb.getMetaAccess();
+        this.hostVM = (SVMHost) bb.getHostVM();
+        this.unsupportedFeatures = bb.getUnsupportedFeatures();
+        this.constantReflection = bb.getConstantReflectionProvider();
 
         this.genericInterfacesMap = new ConcurrentHashMap<>();
         this.annotatedInterfacesMap = new ConcurrentHashMap<>();
         this.interfacesEncodings = new ConcurrentHashMap<>();
 
+        dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
         dynamicHubEnclosingClassField = ReflectionUtil.lookupField(DynamicHub.class, "enclosingClass");
         dynamicHubInterfacesEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
@@ -103,6 +115,9 @@ public class DynamicHubInitializer {
         heapScanner.rescanObject(javaClass.getPackage());
 
         DynamicHub hub = hostVM.dynamicHub(type);
+        if (hub.getClassInitializationInfo() == null) {
+            buildClassInitializationInfo(heapScanner, type, hub);
+        }
         if (hub.getGenericInfo() == null) {
             fillGenericInfo(heapScanner, type, hub);
         }
@@ -203,6 +218,60 @@ public class DynamicHubInitializer {
             }
         }
         heapScanner.rescanObject(hub, OtherReason.HUB);
+    }
+
+    private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
+        ClassInitializationInfo info;
+        if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
+            info = buildRuntimeInitializationInfo(type);
+        } else {
+            assert type.isInitialized();
+            info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+        }
+        hub.setClassInitializationInfo(info);
+        heapScanner.rescanField(hub, dynamicHubClassInitializationInfoField);
+    }
+
+    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type) {
+        assert !type.isInitialized();
+        try {
+            /*
+             * Check if there are any linking errors. This method throws an error even if linking
+             * already failed in a previous attempt.
+             */
+            type.link();
+
+        } catch (VerifyError e) {
+            /* Synthesize a VerifyError to be thrown at run time. */
+            AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
+            registerAsCompiled(throwVerifyError);
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
+        } catch (Throwable t) {
+            /*
+             * All other linking errors will be reported as NoClassDefFoundError when initialization
+             * is attempted at run time.
+             */
+            return ClassInitializationInfo.FAILED_INFO_SINGLETON;
+        }
+
+        /*
+         * Now we now that there are no linking errors, we can register the class initialization
+         * information.
+         */
+        assert type.isLinked();
+        CFunctionPointer classInitializerFunction = null;
+        AnalysisMethod classInitializer = type.getClassInitializer();
+        if (classInitializer != null) {
+            assert classInitializer.getCode() != null;
+            registerAsCompiled(classInitializer);
+            classInitializerFunction = new MethodPointer(classInitializer);
+        }
+        return new ClassInitializationInfo(classInitializerFunction);
+    }
+
+    private void registerAsCompiled(AnalysisMethod aMethod) {
+        bb.addRootMethod(aMethod).registerAsImplementationInvoked();
+        CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
     }
 
     static class GenericInterfacesEncodingKey {

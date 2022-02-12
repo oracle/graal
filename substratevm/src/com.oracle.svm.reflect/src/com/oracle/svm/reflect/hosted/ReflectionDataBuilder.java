@@ -289,7 +289,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 if (!SubstitutionReflectivityFilter.shouldExclude(reflectMethod, access.getMetaAccess(), access.getUniverse())) {
                     AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(reflectMethod);
                     registerTypesForQueriedMethod(access, analysisMethod, reflectMethod);
-                    registerHidingSubTypeMethods(analysisMethod, analysisMethod.getDeclaringClass());
+                    registerHidingSubTypeMethods(access, analysisMethod, analysisMethod.getDeclaringClass());
                     newQueriedMethods.add(reflectMethod);
                 }
             }
@@ -297,7 +297,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             for (Executable method : reflectionMethods) {
                 if (!SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
                     AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
-                    registerHidingSubTypeMethods(analysisMethod, analysisMethod.getDeclaringClass());
+                    registerHidingSubTypeMethods(access, analysisMethod, analysisMethod.getDeclaringClass());
                 }
             }
         }
@@ -312,7 +312,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private final Map<AnalysisMethod, Set<AnalysisType>> seenHidingMethods = new HashMap<>();
 
-    private void registerHidingSubTypeMethods(AnalysisMethod method, AnalysisType type) {
+    private void registerHidingSubTypeMethods(DuringAnalysisAccessImpl access, AnalysisMethod method, AnalysisType type) {
         if (!type.equals(method.getDeclaringClass()) && type.isReachable()) {
             if (!seenHidingMethods.containsKey(method) || !seenHidingMethods.get(method).contains(type)) {
                 seenHidingMethods.computeIfAbsent(method, m -> new HashSet<>()).add(type);
@@ -335,6 +335,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (subClassMethod != null) {
                         hidingMethods.add(subClassMethod);
                     }
+                    /*
+                     * findMethod can lead to the creation of new AnalysisMethod, so we need to run
+                     * another analysis iteration.
+                     */
+                    access.requireAnalysisIteration();
+
                 } catch (UnsupportedFeatureException | LinkageError e) {
                     /*
                      * A method that is not supposed to end up in the image is considered as being
@@ -345,7 +351,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         for (AnalysisType subType : type.getSubTypes()) {
             if (!subType.equals(type)) {
-                registerHidingSubTypeMethods(method, subType);
+                registerHidingSubTypeMethods(access, method, subType);
             }
         }
     }

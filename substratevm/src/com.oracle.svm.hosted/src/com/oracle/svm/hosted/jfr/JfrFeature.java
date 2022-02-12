@@ -28,7 +28,6 @@ import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -209,6 +208,12 @@ public class JfrFeature implements Feature {
         JfrManager manager = JfrManager.get();
         runtime.addStartupHook(manager.startupHook());
         runtime.addShutdownHook(manager.shutdownHook());
+
+        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
+        if (eventClass != null) {
+            access.registerSubtypeReachabilityHandler(JfrFeature::eventSubtypeReachable, eventClass);
+        }
+
     }
 
     @Override
@@ -229,26 +234,21 @@ public class JfrFeature implements Feature {
         }
     }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess a) {
+    private static void eventSubtypeReachable(DuringAnalysisAccess a, Class<?> c) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
-        if (eventClass != null && access.isReachable(eventClass)) {
-            Set<Class<?>> s = access.reachableSubtypes(eventClass);
-            for (Class<?> c : s) {
-                // Use canonical name for package private AbstractJDKEvent
-                if (c.getCanonicalName().equals("jdk.jfr.Event") || c.getCanonicalName().equals("jdk.internal.event.Event") || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
-                                c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
-                    continue;
-                }
-                try {
-                    Field f = c.getDeclaredField("eventHandler");
-                    RuntimeReflection.register(f);
-                    access.rescanRoot(f);
-                } catch (Exception e) {
-                    throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
-                }
-            }
+        if (c.getCanonicalName().equals("jdk.jfr.Event") ||
+                        c.getCanonicalName().equals("jdk.internal.event.Event") ||
+                        c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
+                        c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
+            return;
+        }
+        try {
+            Field f = c.getDeclaredField("eventHandler");
+            RuntimeReflection.register(f);
+            access.rescanRoot(f);
+            a.requireAnalysisIteration();
+        } catch (Exception e) {
+            throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
         }
     }
 }
