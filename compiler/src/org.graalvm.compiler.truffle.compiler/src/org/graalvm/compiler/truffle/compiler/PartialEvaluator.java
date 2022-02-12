@@ -345,13 +345,11 @@ public abstract class PartialEvaluator {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options)) {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-                boolean inlined = inliningGraphPE(request);
+                inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                // If no inlining has happened, we can skip the final Truffle tier round
-                // since these phases have already been run during PE of the root.
-                if (inlined) {
-                    truffleTier(request);
-                }
+                // Even if we have not inlined any call target, we need to run the truffle tier
+                // phases again after the PE inlining phase has finalized the graph.
+                truffleTier(request);
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
                 if (request.task.isCancelled()) {
