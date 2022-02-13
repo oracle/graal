@@ -280,6 +280,7 @@ public class SymbolicSnippetEncoder {
         conditionalPlugins.add(plugin);
     }
 
+    @SuppressWarnings("try")
     private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, BitSet nonNullParameters,
                     boolean trackNodeSourcePosition, OptionValues options, ReplacementsImpl snippetReplacements) {
         assert method.hasBytecodes() : "Snippet must not be abstract or native";

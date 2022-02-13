@@ -170,12 +170,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return encodedSnippets != null;
     }
 
-    public static void maybeEncodeSnippets(OptionValues options) {
-        if (!IS_IN_NATIVE_IMAGE && snippetEncoder != null) {
-            snippetEncoder.encode(options);
-        }
-    }
-
     public void clearSnippetParameterNames() {
         assert snippetEncoder != null;
         snippetEncoder.clearSnippetParameterNames();
@@ -202,8 +196,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
         if (IS_IN_NATIVE_IMAGE) {
-            maybeEncodeSnippets(options);
-
             // Snippets graphs can contain foreign object references and
             // outlive a single compilation.
             try (CompilationContext scope = HotSpotGraalServices.enterGlobalCompilationContext()) {
