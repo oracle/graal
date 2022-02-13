@@ -73,8 +73,8 @@ public final class IntegerNegExactNode extends NegateNode implements GuardedNode
     }
 
     @Override
-    public Stamp foldStamp(Stamp stamp) {
-        IntegerStamp integerStamp = (IntegerStamp) stamp;
+    public Stamp foldStamp(Stamp newStamp) {
+        IntegerStamp integerStamp = (IntegerStamp) newStamp;
         // if an overflow is possible the node will throw so do not expose bound information to
         // avoid optimizations believing (because of a precise range) that the node can be folded
         // etc
@@ -82,13 +82,13 @@ public final class IntegerNegExactNode extends NegateNode implements GuardedNode
             return integerStamp.unrestricted();
         }
 
-        return super.foldStamp(stamp);
+        return super.foldStamp(newStamp);
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode value) {
-        if (value.isConstant()) {
-            JavaConstant cst = value.asJavaConstant();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            JavaConstant cst = forValue.asJavaConstant();
             try {
                 if (cst.getJavaKind() == JavaKind.Int) {
                     return ConstantNode.forInt(Math.negateExact(cst.asInt()));
@@ -101,8 +101,8 @@ public final class IntegerNegExactNode extends NegateNode implements GuardedNode
             }
             return this;
         }
-        if (!IntegerStamp.negateCanOverflow((IntegerStamp) value.stamp(NodeView.DEFAULT))) {
-            return new NegateNode(value).canonical(tool);
+        if (!IntegerStamp.negateCanOverflow((IntegerStamp) forValue.stamp(NodeView.DEFAULT))) {
+            return new NegateNode(forValue).canonical(tool);
         }
         return this;
     }
