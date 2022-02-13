@@ -112,7 +112,7 @@ public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableAr
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        nodeValueMap.setResult(this, gen.emitNegate(nodeValueMap.operand(getValue())));
+        nodeValueMap.setResult(this, gen.emitNegate(nodeValueMap.operand(getValue()), false));
     }
 
     @Override

@@ -53,7 +53,7 @@ public final class IntegerNegExactSplitNode extends IntegerExactArithmeticSplitN
 
     @Override
     protected Value generateArithmetic(NodeLIRBuilderTool gen) {
-        return gen.getLIRGeneratorTool().getArithmetic().emitNegate(gen.operand(value));
+        return gen.getLIRGeneratorTool().getArithmetic().emitNegate(gen.operand(value), true);
     }
 
     public ValueNode getValue() {

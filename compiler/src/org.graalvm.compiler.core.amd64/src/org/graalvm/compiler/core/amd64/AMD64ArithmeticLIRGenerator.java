@@ -171,7 +171,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     private final AllocatableValue nullRegisterValue;
 
     @Override
-    public Variable emitNegate(Value inputVal) {
+    public Variable emitNegate(Value inputVal, boolean setFlags) {
         AllocatableValue input = asAllocatable(inputVal);
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         boolean isAvx = supportAVX();

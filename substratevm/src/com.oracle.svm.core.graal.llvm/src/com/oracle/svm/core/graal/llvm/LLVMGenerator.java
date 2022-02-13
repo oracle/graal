@@ -1339,7 +1339,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
-        public Value emitNegate(Value input) {
+        public Value emitNegate(Value input, boolean setFlags) {
             LLVMValueRef neg = builder.buildNeg(getVal(input));
             return new LLVMVariable(neg);
         }
