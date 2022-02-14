@@ -59,7 +59,7 @@ abstract class MDAggregateNode implements MDBaseNode, Iterable<MDBaseNode> {
 
     @Override
     public Iterator<MDBaseNode> iterator() {
-        return new Iterator<MDBaseNode>() {
+        return new Iterator<>() {
 
             private int i = 0;
 

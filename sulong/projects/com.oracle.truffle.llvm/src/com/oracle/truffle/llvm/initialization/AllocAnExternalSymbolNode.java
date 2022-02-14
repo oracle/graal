@@ -29,7 +29,7 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
     }
 
     public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
-                                        LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
+                    LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
 
         LLVMPointer pointerFromLocal = lookupFromLocalScope(localScope, symbol, context, BranchProfile.create());
         if (pointerFromLocal != null && isDefaultFlagActive(rtldFlags)) {
@@ -54,7 +54,7 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
         }
 
         if (symbol.isFunction()) {
-             if (symbol.isExternalWeak()) {
+            if (symbol.isExternalWeak()) {
                 return LLVMNativePointer.createNull();
             } else if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(symbol.getName())) {
                 LLVMFunctionCode functionCode = new LLVMFunctionCode(symbol.asFunction());
@@ -62,7 +62,7 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
                 functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
                 return LLVMManagedPointer.create(functionDescriptor);
             } else if (intrinsicProvider != null && !intrinsicProvider.isIntrinsified(symbol.getName()) && nativeContextExtension != null) {
-                 NativeLookupResult nativeFunction = getNativeFunction(nativeContextExtension, symbol);
+                NativeLookupResult nativeFunction = getNativeFunction(nativeContextExtension, symbol);
                 if (nativeFunction != null) {
                     LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), new LLVMFunctionCode(symbol.asFunction()));
                     functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
