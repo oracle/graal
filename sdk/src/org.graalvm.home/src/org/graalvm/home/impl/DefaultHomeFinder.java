@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,19 +63,6 @@ import org.graalvm.nativeimage.ProcessProperties;
  */
 public final class DefaultHomeFinder extends HomeFinder {
 
-    private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
-    }
-
-    /**
-     * The integer value corresponding to the value of the {@code java.specification.version} system
-     * property after any leading {@code "1."} has been stripped.
-     */
-    private static final int JAVA_SPEC = getJavaSpecificationVersion();
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("com.oracle.graalvm.locator.verbose");
 
     private static final Path FORCE_GRAAL_HOME;
@@ -190,21 +177,10 @@ public final class DefaultHomeFinder extends HomeFinder {
                 throw new AssertionError("Java home is not reachable.");
             }
 
-            if (JAVA_SPEC <= 8) {
-                Path jre = javaHome.resolve("jre");
-                if (Files.exists(jre)) {
-                    home = javaHome;
-                } else if (javaHome.endsWith("jre")) {
-                    home = javaHome.getParent();
-                } else {
-                    return null;
-                }
+            if (Files.exists(javaHome.resolve(Paths.get("lib", "modules")))) {
+                home = javaHome;
             } else {
-                if (Files.exists(javaHome.resolve(Paths.get("lib", "modules")))) {
-                    home = javaHome;
-                } else {
-                    throw new AssertionError("Missing jimage in java.home: " + javaHome);
-                }
+                throw new AssertionError("Missing jimage in java.home: " + javaHome);
             }
 
             verbose("GraalVM home found by java.home property as: ", home);
@@ -258,8 +234,7 @@ public final class DefaultHomeFinder extends HomeFinder {
             if (home == null) {
                 res = Collections.unmodifiableMap(collectStandaloneHomes());
             } else {
-                Path languages = JAVA_SPEC <= 8 ? Paths.get("jre", "languages") : Paths.get("languages");
-                res = collectHomes(home.resolve(languages));
+                res = collectHomes(home.resolve(Paths.get("languages")));
                 for (Object property : System.getProperties().keySet()) {
                     if (property instanceof String) {
                         String name = ((String) property);
@@ -291,8 +266,7 @@ public final class DefaultHomeFinder extends HomeFinder {
             if (home == null) {
                 res = Collections.emptyMap();
             } else {
-                Path tools = JAVA_SPEC <= 8 ? Paths.get("jre", "tools") : Paths.get("tools");
-                res = Collections.unmodifiableMap(collectHomes(home.resolve(tools)));
+                res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("tools"))));
             }
             if (!ImageInfo.inImageBuildtimeCode()) {
                 toolHomes = res;
