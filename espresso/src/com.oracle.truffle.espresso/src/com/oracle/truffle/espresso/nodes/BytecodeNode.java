@@ -416,9 +416,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         this.frameDescriptor = EspressoFrame.createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = (method.getContext().livenessAnalysis && methodVersion.getMaxLocals() >= method.getContext().LivenessAnalysisMinimumLocals)
-                        ? LivenessAnalysis.analyze(methodVersion)
-                        : null;
+        this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.

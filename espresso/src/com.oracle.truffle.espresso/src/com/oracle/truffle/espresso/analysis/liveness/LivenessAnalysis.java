@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
@@ -41,6 +42,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class LivenessAnalysis {
 
@@ -51,14 +53,16 @@ public final class LivenessAnalysis {
     public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation", LIVENESS_TIMER);
     public static final DebugTimer ACTION_TIMER = DebugTimer.create("action", LIVENESS_TIMER);
 
+    private static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis(null, null, null);
+
     /**
      * Contains 2 entries per BCI: the action to perform on entering the BCI (for nulling out locals
      * when jumping into a block), and one for the action to perform after executing the bytecode
      * (/ex: Nulling out a local once it has been loaded and no other load requires it).
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final LocalVariableAction[] result;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final EdgeAction[] edge;
     private final LocalVariableAction onStart;
 
@@ -88,6 +92,12 @@ public final class LivenessAnalysis {
 
     @SuppressWarnings("try")
     public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
+
+        EspressoContext context = methodVersion.getMethod().getContext();
+        if (!context.livenessAnalysis || methodVersion.getMaxLocals() < context.LivenessAnalysisMinimumLocals) {
+            return NO_ANALYSIS;
+        }
+
         Method method = methodVersion.getMethod();
         TimerCollection scope = method.getContext().getTimers();
         try (DebugCloseable liveness = LIVENESS_TIMER.scope(scope)) {
