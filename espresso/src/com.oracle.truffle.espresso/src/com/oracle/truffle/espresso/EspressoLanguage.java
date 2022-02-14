@@ -179,13 +179,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             // Wait for ongoing threads to finish.
             context.destroyVM(false);
         } else {
-            context.prepareDispose();
             try {
                 // Here we give a chance for our threads to exit gracefully in guest code before
                 // Truffle kicks in with host thread deaths.
                 context.doExit(exitCode);
-            } catch (AbstractTruffleException e) {
-                // Expected. Suppress.
             } finally {
                 context.cleanupNativeEnv(); // This must be done here in case of a hard exit.
             }

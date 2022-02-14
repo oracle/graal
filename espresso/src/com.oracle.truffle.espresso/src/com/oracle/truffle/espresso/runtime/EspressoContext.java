@@ -204,6 +204,7 @@ public final class EspressoContext {
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode jimageMode;
+    public final boolean usesTruffleSafepoints = false;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
