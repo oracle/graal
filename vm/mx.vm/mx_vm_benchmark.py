@@ -140,8 +140,8 @@ class NativeImageVM(GraalVm):
             self.last_stage = self.stages[-1]
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
-            self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
-            self.executable_name = (os.path.splitext(basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
+            unique_suite_name = '{}-{}'.format(self.bmSuite.benchSuiteName(), self.bmSuite.version().replace('.', '-')) if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
+            self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
