@@ -36,8 +36,8 @@ abstract class InvalidEndPointHandle1Test extends AbstractService {
 
     @EndPointHandle final HSObject delegate1;
 
-    @ExpectError("Only single field can be annotated by `EndPointHandle`.%n" +
-                    "Remove `final HSObject delegate1` or `final HSObject delegate2` field.") @EndPointHandle final HSObject delegate2;
+    @ExpectError("Only a single field can be annotated by the `EndPointHandle`.%n" +
+                    "Fix the ambiguity by removing the `final HSObject delegate1` field or the `final HSObject delegate2` field.") @EndPointHandle final HSObject delegate2;
 
     InvalidEndPointHandle1Test(HSObject delegate) {
         this.delegate1 = delegate;

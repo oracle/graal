@@ -32,10 +32,10 @@ import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-@ExpectError("The annotated type must extend `NativeObject`, have a field annotated by `EndPointHandle` or an explicit receiver.%n" +
+@ExpectError("The annotated type must extend `NativeObject`, have a field annotated by `EndPointHandle` or a custom dispatch.%n" +
                 "To bridge an interface extend `NativeObject` and implement the interface.%n" +
-                "To bridge a class extend the class, add `@EndPointHandle final NativeObject delegate` field and initialize it in the constructor.%n" +
-                "To bridge a class with an explicit receiver add `@DispatchResolver static Service resolveDispatch(Object receiver)` and `@ReceiverResolver static Object resolveReceiver(Object receiver)` methods.")
+                "To bridge a class extend the class, add the `@EndPointHandle final NativeObject delegate` field and initialize it in the constructor.%n" +
+                "To bridge a class with a custom dispatch add `@CustomDispatchAccessor static Service resolveDispatch(Object receiver)` and `@CustomReceiverAccessor static Object resolveReceiver(Object receiver)` methods.")
 abstract class NativeInvalidBaseTypeTest extends Object implements Service {
 
     @SuppressWarnings("unused")

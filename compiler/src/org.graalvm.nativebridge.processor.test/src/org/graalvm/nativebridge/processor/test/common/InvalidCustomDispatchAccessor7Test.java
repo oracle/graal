@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.common;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ExpectError;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-/**
- * Marks a method as a receiver resolver. The receiver resolver is used in the classes with explicit
- * receiver to translate the receiver to the actual receiver. The method annotated by
- * {@link ReceiverResolver} must be non-private static method with a single parameter returning the
- * actual receiver.
- *
- * @see DispatchResolver
- */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
-public @interface ReceiverResolver {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class InvalidCustomDispatchAccessor7Test extends CustomReceiverService {
+
+    @CustomDispatchAccessor
+    @ExpectError("Classes with a custom dispatch accessor must also provide a custom receiver accessor.%n" +
+                    "To fix this add the `@CustomReceiverAccessor static Object resolveReceiver(ServiceAPI receiver)` method.")
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
+    }
 }

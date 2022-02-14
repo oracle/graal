@@ -39,7 +39,8 @@ abstract class HSHandler extends HSObject implements Handler {
     }
 
     @Override
-    public abstract void publish(@ByReference(NativeRecord.class) Record record);
+    public abstract void publish(@ByReference(NativeCustomLanguageDispatch.class) LanguageAPI language,
+                    @ByReference(NativeRecord.class) Record record);
 
     @Override
     @ByReference(NativeContext.class)

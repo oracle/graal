@@ -22,23 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge;
 
-import org.graalvm.nativebridge.EndPointHandle;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.AbstractService;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeInvalidEndPointHandleTest extends AbstractService {
-
-    @ExpectError("A field annotated by `EndPointHandle` must be a non-private field of `NativeObject` type.%n" +
-                    "To fix this change the signature to `final NativeObject delegate`.") @EndPointHandle final Object delegate;
-
-    NativeInvalidEndPointHandleTest(NativeObject delegate) {
-        this.delegate = delegate;
-    }
+/**
+ * Marks a method as a double dispatch receiver factory. The factory method is used by the
+ * annotation processor to create a double dispatch receiver from an actual receiver transferred by
+ * a reference. The method annotated by {@link CustomDispatchFactory} must be non-private static
+ * method taking an actual receiver parameter and returning the double dispatch receiver.
+ *
+ * @see CustomDispatchAccessor
+ * @see CustomReceiverAccessor
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.METHOD)
+public @interface CustomDispatchFactory {
 }

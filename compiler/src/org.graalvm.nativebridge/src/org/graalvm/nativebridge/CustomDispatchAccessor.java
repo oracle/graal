@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge;
 
-import org.graalvm.nativebridge.EndPointHandle;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.AbstractService;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeInvalidEndPointHandleTest extends AbstractService {
-
-    @ExpectError("A field annotated by `EndPointHandle` must be a non-private field of `NativeObject` type.%n" +
-                    "To fix this change the signature to `final NativeObject delegate`.") @EndPointHandle final Object delegate;
-
-    NativeInvalidEndPointHandleTest(NativeObject delegate) {
-        this.delegate = delegate;
-    }
+/**
+ * Marks a method as a dispatch resolver. The dispatch resolver is used in the classes with explicit
+ * receiver to translate the receiver to the actual dispatch class handling the operation. The
+ * method annotated by {@link CustomDispatchAccessor} must be non-private static method with single
+ * parameter returning the bridged type.
+ *
+ * @see CustomReceiverAccessor
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.METHOD)
+public @interface CustomDispatchAccessor {
 }

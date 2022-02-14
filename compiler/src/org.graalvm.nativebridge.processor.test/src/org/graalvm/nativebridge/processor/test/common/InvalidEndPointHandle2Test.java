@@ -34,8 +34,8 @@ import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
 abstract class InvalidEndPointHandle2Test extends AbstractService {
 
-    @ExpectError("Field annotated by `EndPointHandle` must be a non private field of `HSObject` type.%n" +
-                    "Change signature to `final HSObject delegate`.") @EndPointHandle private final HSObject delegate;
+    @ExpectError("A field annotated by `EndPointHandle` must be a non-private field of `HSObject` type.%n" +
+                    "To fix this change the signature to `final HSObject delegate`.") @EndPointHandle private final HSObject delegate;
 
     InvalidEndPointHandle2Test(HSObject delegate) {
         this.delegate = delegate;

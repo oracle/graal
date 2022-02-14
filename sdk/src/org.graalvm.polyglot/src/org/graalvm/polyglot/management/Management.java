@@ -44,6 +44,8 @@ import java.lang.reflect.Method;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 
 /*
@@ -71,12 +73,12 @@ final class Management {
     private static final class ManagementAccessImpl extends ManagementAccess {
 
         @Override
-        public ExecutionListener newExecutionListener(AbstractPolyglotImpl.AbstractExecutionListenerDispatch dispatch, Object receiver) {
+        public ExecutionListener newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver) {
             return new ExecutionListener(dispatch, receiver);
         }
 
         @Override
-        public ExecutionEvent newExecutionEvent(AbstractPolyglotImpl.AbstractExecutionEventDispatch dispatch, Object event) {
+        public ExecutionEvent newExecutionEvent(AbstractExecutionEventDispatch dispatch, Object event) {
             return new ExecutionEvent(dispatch, event);
         }
 
@@ -86,7 +88,7 @@ final class Management {
         }
 
         @Override
-        public AbstractPolyglotImpl.AbstractExecutionListenerDispatch getDispatch(ExecutionListener executionListener) {
+        public AbstractExecutionListenerDispatch getDispatch(ExecutionListener executionListener) {
             return executionListener.dispatch;
         }
 
@@ -96,7 +98,7 @@ final class Management {
         }
 
         @Override
-        public AbstractPolyglotImpl.AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent) {
+        public AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent) {
             return executionEvent.dispatch;
         }
     }

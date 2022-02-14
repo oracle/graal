@@ -31,8 +31,8 @@ import org.graalvm.nativebridge.processor.test.Service;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@ExpectError("The annotated type must have a non `Object` super class or implement a single interface.%n" +
-                "Introduce a new bridged base class extending `AbstractService` and implementing `Service` and extend it.")
+@ExpectError("The annotated type must have a non `Object` superclass or implement a single interface.%n" +
+                "To fix this introduce a new bridged base class extending `AbstractService` and implementing `Service` and extend it.")
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
 abstract class InvalidBaseType3Test extends AbstractService implements Service {
 

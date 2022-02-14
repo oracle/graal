@@ -24,21 +24,27 @@
  */
 package org.graalvm.nativebridge.processor.test.hstonative;
 
-import org.graalvm.nativebridge.EndPointHandle;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.AbstractService;
-import org.graalvm.nativebridge.processor.test.ExpectError;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeInvalidEndPointHandleTest extends AbstractService {
+abstract class NativeCustomReceiverImplTest extends CustomReceiverService {
 
-    @ExpectError("A field annotated by `EndPointHandle` must be a non-private field of `NativeObject` type.%n" +
-                    "To fix this change the signature to `final NativeObject delegate`.") @EndPointHandle final Object delegate;
+    NativeCustomReceiverImplTest() {
+    }
 
-    NativeInvalidEndPointHandleTest(NativeObject delegate) {
-        this.delegate = delegate;
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
+    }
+
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

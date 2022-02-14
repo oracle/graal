@@ -24,27 +24,27 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.processor.test.ExpectError;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
 abstract class InvalidMethod2Test extends InvalidExplicitReceiverService {
 
-    @ExpectError("In a class with an explicit receiver the first method parameter must be a receiver.%n" +
-                    "For class with an explicit receiver make the method `final` to prevent its generation.%n" +
-                    "For class which has no explicit receiver remove methods annotated by `DispatchResolver` and `ReceiverResolver`.")
+    @ExpectError("In a class with a custom dispatch, the first method parameter must be the receiver.%n" +
+                    "For a class with a custom dispatch, make the method `final` to prevent its generation.%n" +
+                    "For a class that has no custom dispatch, remove methods annotated by `CustomDispatchAccessor` and `CustomReceiverAccessor`.")
     @Override
     abstract boolean isValid();
 
-    @DispatchResolver
+    @CustomDispatchAccessor
     static InvalidExplicitReceiverService getDispatch(Object receiver) {
         return (InvalidExplicitReceiverService) receiver;
     }
 
-    @ReceiverResolver
+    @CustomReceiverAccessor
     static Object getReceiver(Object receiver) {
         return receiver;
     }

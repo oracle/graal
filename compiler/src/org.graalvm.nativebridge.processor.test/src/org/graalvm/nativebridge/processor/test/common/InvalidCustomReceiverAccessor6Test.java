@@ -22,23 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.common;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ExpectError;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-/**
- * Marks a method as a double dispatch receiver factory. The factory method is used by the
- * annotation processor to create a double dispatch receiver from an actual receiver transferred by
- * a reference. The method annotated by {@link Factory} must be non-private static method taking an
- * actual receiver parameter and returning the double dispatch receiver.
- *
- * @see DispatchResolver
- * @see ReceiverResolver
- */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
-public @interface Factory {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class InvalidCustomReceiverAccessor6Test extends CustomReceiverService {
+
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
+    }
+
+    @CustomReceiverAccessor
+    @ExpectError("A method annotated by `CustomReceiverAccessor` must be a non-private non-void static method with a single parameter.%n" +
+                    "To fix this change the signature to `static Object getReceiver(ServiceAPI receiver)`.")
+    @SuppressWarnings("unused")
+    static int getReceiver(ServiceAPI receiver) {
+        return 42;
+    }
 }

@@ -24,25 +24,28 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchFactory;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidDispatchResolver4Test extends ExplicitReceiverService {
+abstract class InvalidCustomDispatchFactory7Test extends CustomReceiverService {
 
-    @DispatchResolver
-    @ExpectError("Method annotated by `DispatchResolver` must be a non private static method with a single parameter and `ExplicitReceiverService` return type.%n" +
-                    "Change signature to `static ExplicitReceiverService getDispatch(Object receiver)`.")
-    static ExplicitReceiverService getDispatch() {
-        return null;
+    @CustomReceiverAccessor
+    @ExpectError("Class with a custom receiver accessor must also provide a custom dispatch accessor.%n" +
+                    "To fix this add the `@CustomDispatchAccessor static CustomReceiverService resolveDispatch(ServiceAPI receiver)` method.")
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomDispatchFactory
+    @ExpectError("A method annotated by `CustomDispatchFactory` is allowed only for classes with a custom dispatch.%n" +
+                    "To fix this add a custom dispatch accessor method annotated by `CustomDispatchAccessor` and a custom receiver accessor method annotated by `CustomReceiverAccessor`.")
+    static ServiceAPI create(Object receiver) {
+        return new ServiceAPI(null, receiver);
     }
 }

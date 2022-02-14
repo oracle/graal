@@ -22,28 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ExpectError;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeExplicitReceiverImplTest extends ExplicitReceiverService {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class InvalidCustomReceiverAccessor7Test extends CustomReceiverService {
 
-    NativeExplicitReceiverImplTest() {
-    }
-
-    @DispatchResolver
-    static ExplicitReceiverService getDispatch(Object receiver) {
-        return (ExplicitReceiverService) receiver;
-    }
-
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomReceiverAccessor
+    @ExpectError("Class with a custom receiver accessor must also provide a custom dispatch accessor.%n" +
+                    "To fix this add the `@CustomDispatchAccessor static CustomReceiverService resolveDispatch(ServiceAPI receiver)` method.")
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

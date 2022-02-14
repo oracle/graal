@@ -24,30 +24,33 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.CustomDispatchFactory;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidReceiverResolver1Test extends ExplicitReceiverService {
+abstract class InvalidCustomDispatchFactory5Test extends CustomReceiverService {
 
-    @DispatchResolver
-    static ExplicitReceiverService getDispatch(Object receiver) {
-        return (ExplicitReceiverService) receiver;
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
     }
 
-    @ReceiverResolver
-    static Object getReceiver1(Object receiver) {
-        return receiver;
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 
-    @ReceiverResolver
-    @ExpectError("Only single method can be annotated by `ReceiverResolver`.%n" +
-                    "Remove `static Object getReceiver1(Object receiver)` or `static Object getReceiver2(Object receiver)` method.")
-    static Object getReceiver2(Object receiver) {
-        return receiver;
+    @CustomDispatchFactory
+    @ExpectError("A method annotated by `CustomDispatchFactory` must be a non-private static method with a single object parameter and `ServiceAPI` return type.%n" +
+                    "To fix this change the signature to `static ServiceAPI create(Object receiver)`.")
+    @SuppressWarnings("unused")
+    static ServiceAPI create(Object receiver, Object foo) {
+        return new ServiceAPI(null, receiver);
     }
 }

@@ -42,8 +42,8 @@ abstract class InvalidExceptionHandler3Test extends HSObject implements Service 
     }
 
     @ExceptionHandler
-    @ExpectError("Method annotated by `ExceptionHandler` must be a non private static boolean method with `ExceptionHandlerContext` parameter(s).%n" +
-                    "Change signature to `static boolean handleException(ExceptionHandlerContext exceptionHandlerContext)`.")
+    @ExpectError("A method annotated by `ExceptionHandler` must be a non-private static boolean method with `ExceptionHandlerContext` parameter(s).%n" +
+                    "To fix this change the signature to `static boolean handleException(ExceptionHandlerContext exceptionHandlerContext)`.")
     @SuppressWarnings("unused")
     private static boolean handleException(ExceptionHandlerContext exceptionHandlerContext) {
         return false;

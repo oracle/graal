@@ -149,7 +149,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         CharSequence receiver;
         CharSequence receiverNativeObject;
         int nonReceiverParameterStart;
-        if (data.hasExplicitReceiver()) {
+        if (data.hasCustomDispatch()) {
             receiver = methodData.element.getParameters().get(0).getSimpleName();
             receiverCastStatement = new CodeBuilder(builder).write(typeCache.nativeObject).write(" nativeObject = (").write(typeCache.nativeObject).write(") ").write(receiver).write(";");
             receiverNativeObject = "nativeObject";
@@ -242,7 +242,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         PrimitiveType longType = types.getPrimitiveType(TypeKind.LONG);
         nativeMethodParameters.add(CodeBuilder.newParameter(longType, "isolateThread"));
         nativeMethodParameters.add(CodeBuilder.newParameter(longType, "objectId"));
-        int nonReceiverParameterStart = data.hasExplicitReceiver() ? 1 : 0;
+        int nonReceiverParameterStart = data.hasCustomDispatch() ? 1 : 0;
         List<? extends VariableElement> parameters = methodData.element.getParameters();
         List<? extends TypeMirror> parameterTypes = methodData.type.getParameterTypes();
         for (int i = nonReceiverParameterStart; i < parameters.size(); i++) {
@@ -299,7 +299,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         List<? extends TypeMirror> methodParameterTypes = methodData.type.getParameterTypes();
         Set<CharSequence> warnings = new TreeSet<>(Comparator.comparing(CharSequence::toString));
         Collections.addAll(warnings, "try", "unused");
-        if (!data.hasExplicitReceiver() && isParameterizedType(data.serviceType)) {
+        if (!data.hasCustomDispatch() && isParameterizedType(data.serviceType)) {
             warnings.add("unchecked");
         }
         for (int i = 0; i < methodParameters.size(); i++) {
@@ -314,7 +314,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         isolateAnnotationBuilder.annotation(typeCache.isolateThreadContext, null);
         params.add(CodeBuilder.newParameter(types.getPrimitiveType(TypeKind.LONG), "isolateThread", isolateAnnotationBuilder.build()));
         params.add(CodeBuilder.newParameter(types.getPrimitiveType(TypeKind.LONG), "objectId"));
-        int parameterStartIndex = data.hasExplicitReceiver() ? 1 : 0;
+        int parameterStartIndex = data.hasCustomDispatch() ? 1 : 0;
         for (int i = parameterStartIndex; i < methodParameters.size(); i++) {
             TypeMirror nativeMethodType = marshallerSnippets(data, methodData.getParameterMarshaller(i)).getEndPointMethodParameterType(methodParameterTypes.get(i));
             params.add(CodeBuilder.newParameter(jniTypeForJavaType(nativeMethodType, types, typeCache), methodParameters.get(i).getSimpleName()));
@@ -338,7 +338,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         CharSequence[] actualParameters = new CharSequence[methodParameters.size()];
         int nonReceiverParameterStart;
-        if (data.hasExplicitReceiver()) {
+        if (data.hasCustomDispatch()) {
             actualParameters[0] = "receiverObject";
             nonReceiverParameterStart = 1;
         } else {
@@ -364,17 +364,19 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         }
 
         CharSequence resolvedDispatch;
-        if (data.hasExplicitReceiver()) {
-            TypeMirror receiverType = data.dispatchAccessor.getParameters().get(0).asType();
+        if (data.hasCustomDispatch()) {
+            TypeMirror receiverType = data.customDispatchAccessor.getParameters().get(0).asType();
             CodeBuilder classLiteralBuilder = new CodeBuilder(builder).classLiteral(receiverType);
             CharSequence nativeObject = "nativeObject";
             resolvedDispatch = "resolvedDispatch";
             builder.lineStart().write(receiverType).space().write(nativeObject).write(" = ").invokeStatic(typeCache.nativeObjectHandles, "resolve", "objectId", classLiteralBuilder.build()).lineEnd(
                             ";");
-            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.dispatchAccessor.getSimpleName(), nativeObject).lineEnd(
-                            ";");
-            builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), nativeObject).lineEnd(
-                            ";");
+            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.customDispatchAccessor.getSimpleName(),
+                            nativeObject).lineEnd(
+                                            ";");
+            builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(),
+                            nativeObject).lineEnd(
+                                            ";");
         } else {
             resolvedDispatch = "receiverObject";
             CodeBuilder classLiteralBuilder = new CodeBuilder(builder).classLiteral(data.serviceType);
@@ -452,7 +454,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             encodeTypeForJniCMethodSymbol(sb, types.getPrimitiveType(TypeKind.LONG));   // Object
                                                                                         // handle
             List<? extends VariableElement> params = methodData.element.getParameters();
-            int nonReceiverParameterStart = data.hasExplicitReceiver() ? 1 : 0;
+            int nonReceiverParameterStart = data.hasCustomDispatch() ? 1 : 0;
             for (int i = nonReceiverParameterStart; i < params.size(); i++) {
                 encodeTypeForJniCMethodSymbol(sb, types.erasure(params.get(i).asType()));
             }

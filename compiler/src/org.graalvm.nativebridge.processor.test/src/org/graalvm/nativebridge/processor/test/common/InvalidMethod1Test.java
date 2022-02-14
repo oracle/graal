@@ -40,7 +40,7 @@ abstract class InvalidMethod1Test extends HSObject implements Service {
     }
 
     @ExpectError("Should be `final` to prevent override in the generated class or `abstract` to be generated.%n" +
-                    "Add a `final` modifier or remove implementation in the `InvalidMethod1Test`.")
+                    "To fix this add a `final` modifier or remove implementation in the `InvalidMethod1Test`.")
     public void invalid() {
     }
 }

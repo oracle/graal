@@ -22,9 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test;
+package org.graalvm.nativebridge.processor.test.common;
 
-public abstract class ExplicitReceiverService {
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ExpectError;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-    public abstract boolean execute(Object receiver);
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class InvalidCustomReceiverAccessor3Test extends CustomReceiverService {
+
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
+    }
+
+    @CustomReceiverAccessor
+    @ExpectError("A method annotated by `CustomReceiverAccessor` must be a non-private non-void static method with a single parameter.%n" +
+                    "To fix this change the signature to `static Object getReceiver(ServiceAPI receiver)`.")
+    private static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
+    }
 }

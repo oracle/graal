@@ -24,8 +24,14 @@
  */
 package org.graalvm.nativebridge.processor.test.references;
 
+import org.graalvm.nativebridge.ByReference;
+
 interface Context {
+
     Handler getHandler();
 
     void close();
+
+    @ByReference(NativeCustomLanguageDispatch.class)
+    LanguageAPI getLanguage();
 }

@@ -24,19 +24,27 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
+import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidReceiverResolver7Test extends ExplicitReceiverService {
+abstract class InvalidCustomReceiverAccessor2Test extends CustomReceiverService {
 
-    @ReceiverResolver
-    @ExpectError("Class with a receiver resolver method must also provide dispatch resolver method.%n" +
-                    "Add `@DispatchResolver static ExplicitReceiverService resolveDispatch(Object receiver)` method.")
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
+    }
+
+    @CustomReceiverAccessor
+    @ExpectError("A method annotated by `CustomReceiverAccessor` must be a non-private non-void static method with a single parameter.%n" +
+                    "To fix this change the signature to `static Object getReceiver(ServiceAPI receiver)`.")
+    @SuppressWarnings("static-method")
+    final Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

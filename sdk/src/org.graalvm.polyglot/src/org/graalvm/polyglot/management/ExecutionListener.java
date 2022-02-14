@@ -47,7 +47,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
@@ -194,7 +193,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 public final class ExecutionListener implements AutoCloseable {
 
     private static final ExecutionListener EMPTY = new ExecutionListener(null, null);
-    final AbstractPolyglotImpl.AbstractExecutionListenerDispatch dispatch;
+    final AbstractExecutionListenerDispatch dispatch;
     final Object receiver;
 
     ExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.common;
+package org.graalvm.nativebridge;
 
-import org.graalvm.nativebridge.DispatchResolver;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidReceiverResolver8Test extends ExplicitReceiverService {
-
-    @DispatchResolver
-    static ExplicitReceiverService getDispatch(Object receiver) {
-        return (ExplicitReceiverService) receiver;
-    }
-
-    @ReceiverResolver
-    @ExpectError("Receiver resolver method must have the same parameter type as the dispatch resolver method.")
-    static Object getReceiver(Long receiver) {
-        return receiver;
-    }
+/**
+ * Marks a method as a receiver resolver. The receiver resolver is used in the classes with explicit
+ * receiver to translate the receiver to the actual receiver. The method annotated by
+ * {@link CustomReceiverAccessor} must be non-private static method with a single parameter
+ * returning the actual receiver.
+ *
+ * @see CustomDispatchAccessor
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.METHOD)
+public @interface CustomReceiverAccessor {
 }

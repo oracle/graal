@@ -22,23 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.EndPointHandle;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.AbstractService;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeInvalidEndPointHandleTest extends AbstractService {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class InvalidCustomDispatchAccessor4Test extends CustomReceiverService {
 
-    @ExpectError("A field annotated by `EndPointHandle` must be a non-private field of `NativeObject` type.%n" +
-                    "To fix this change the signature to `final NativeObject delegate`.") @EndPointHandle final Object delegate;
+    @CustomDispatchAccessor
+    @ExpectError("A method annotated by `CustomDispatchAccessor` must be a non-private static method with a single parameter and `CustomReceiverService` return type.%n" +
+                    "To fix this change the signature to `static CustomReceiverService getDispatch(Object receiver)`.")
+    static CustomReceiverService getDispatch() {
+        return null;
+    }
 
-    NativeInvalidEndPointHandleTest(NativeObject delegate) {
-        this.delegate = delegate;
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

@@ -42,8 +42,8 @@ abstract class NativeInvalidExceptionHandlerTest extends NativeObject implements
 
     @ExceptionHandler
     @SuppressWarnings("unused")
-    @ExpectError("Method annotated by `ExceptionHandler` must be a non private static boolean method with `JNIEnv`, `Throwable` parameter(s).%n" +
-                    "Change signature to `static boolean handleException(JNIEnv p0, Throwable p1)`.")
+    @ExpectError("A method annotated by `ExceptionHandler` must be a non-private static boolean method with `JNIEnv`, `Throwable` parameter(s).%n" +
+                    "To fix this change the signature to `static boolean handleException(JNIEnv p0, Throwable p1)`.")
     static boolean handleException(Throwable exception) {
         return false;
     }

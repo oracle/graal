@@ -34,7 +34,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
 final class InnerClassTest {
 
-    @ExpectError("Annotation is supported only on top level types. Make the `ServiceImpl` a top level class.")
+    @ExpectError("Annotation is supported only on top-level types.%n" +
+                    "To fix this make the `ServiceImpl` a top-level class.")
     @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
     abstract static class ServiceImpl extends NativeObject implements Service {
 

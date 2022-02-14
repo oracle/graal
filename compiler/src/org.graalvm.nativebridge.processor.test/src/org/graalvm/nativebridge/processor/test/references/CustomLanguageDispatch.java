@@ -22,32 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.common;
+package org.graalvm.nativebridge.processor.test.references;
 
-import org.graalvm.nativebridge.DispatchResolver;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+abstract class CustomLanguageDispatch {
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidDispatchResolver1Test extends ExplicitReceiverService {
+    abstract String getId(Object receiver);
 
-    @DispatchResolver
-    static ExplicitReceiverService getDispatch1(Object receiver) {
-        return (ExplicitReceiverService) receiver;
-    }
+    abstract String getName(Object receiver);
 
-    @ExpectError("Only single method can be annotated by `DispatchResolver`.%n" +
-                    "Remove `static ExplicitReceiverService getDispatch1(Object receiver)` or `static ExplicitReceiverService getDispatch2(Object receiver)` method.")
-    @DispatchResolver
-    static ExplicitReceiverService getDispatch2(Object receiver) {
-        return (ExplicitReceiverService) receiver;
-    }
-
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
-    }
+    abstract String getVersion(Object receiver);
 }

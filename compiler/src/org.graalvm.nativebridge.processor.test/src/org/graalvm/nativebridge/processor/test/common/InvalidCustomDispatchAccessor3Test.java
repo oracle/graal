@@ -24,26 +24,26 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidDispatchResolver2Test extends ExplicitReceiverService {
+abstract class InvalidCustomDispatchAccessor3Test extends CustomReceiverService {
 
-    @DispatchResolver
-    @ExpectError("Method annotated by `DispatchResolver` must be a non private static method with a single parameter and `ExplicitReceiverService` return type.%n" +
-                    "Change signature to `static ExplicitReceiverService getDispatch(Object receiver)`.")
-    @SuppressWarnings("static-method")
-    final ExplicitReceiverService getDispatch(Object receiver) {
-        return (ExplicitReceiverService) receiver;
+    @CustomDispatchAccessor
+    @ExpectError("A method annotated by `CustomDispatchAccessor` must be a non-private static method with a single parameter and `CustomReceiverService` return type.%n" +
+                    "To fix this change the signature to `static CustomReceiverService getDispatch(ServiceAPI receiver)`.")
+    private static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
     }
 
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

@@ -50,8 +50,8 @@ public @interface ByReference {
      * For classes with explicit receiver, when set to {@code true} the foreign object is translated
      * by receiver resolver before it's passed to target method.
      *
-     * @see ReceiverResolver
-     * @see DispatchResolver
+     * @see CustomReceiverAccessor
+     * @see CustomDispatchAccessor
      */
-    boolean useReceiverResolver() default false;
+    boolean useCustomReceiverAccessor() default false;
 }

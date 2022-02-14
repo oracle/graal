@@ -215,7 +215,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             List<CharSequence> signature = new ArrayList<>(1 + parameterTypes.size());
             TypeMirror endPointParameterType = marshallerSnippets(data, methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
             signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
-            if (!data.hasExplicitReceiver()) {
+            if (!data.hasCustomDispatch()) {
                 signature.add(new CodeBuilder(builder).classLiteral(data.serviceType).build());
             }
             if (needsExplicitIsolateParameter(methodData)) {
@@ -239,7 +239,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         CharSequence receiver;
         int nonReceiverParameterStart;
-        if (data.hasExplicitReceiver()) {
+        if (data.hasCustomDispatch()) {
             receiver = methodData.element.getParameters().get(0).getSimpleName();
             nonReceiverParameterStart = 1;
         } else {
@@ -339,7 +339,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                     CharSequence jniEnv, CharSequence receiver, Map<String, CharSequence> parameterValueOverrides) {
         String jniArgs = "jniArgs";
         List<? extends VariableElement> parameters = methodData.element.getParameters();
-        boolean hasExplicitReceiver = data.hasExplicitReceiver();
+        boolean hasExplicitReceiver = data.hasCustomDispatch();
         boolean hasExplicitIsolate = needsExplicitIsolateParameter(methodData);
         int argumentCount = parameters.size() + (hasExplicitReceiver ? 0 : 1) + (hasExplicitIsolate ? 1 : 0);
         CodeBuilder jValueClassLiteral = new CodeBuilder(builder).classLiteral(typeCache.jValue);
@@ -494,7 +494,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             builder.lineStart().annotation(typeCache.suppressWarnings, warnings.toArray(new CharSequence[warnings.size()])).lineEnd("");
         }
         List<CodeBuilder.Parameter> params = new ArrayList<>();
-        if (!data.hasExplicitReceiver()) {
+        if (!data.hasCustomDispatch()) {
             params.add(CodeBuilder.newParameter(data.serviceType, "receiverObject"));
         }
         if (needsExplicitIsolateParameter(methodData)) {
@@ -513,7 +513,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         // Encode arguments
         CharSequence[] actualParameters = new CharSequence[methodParameters.size()];
         int nonReceiverParameterStart;
-        if (data.hasExplicitReceiver()) {
+        if (data.hasCustomDispatch()) {
             actualParameters[0] = "receiverObject";
             nonReceiverParameterStart = 1;
         } else {
@@ -524,13 +524,18 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                             null);
         }
         CharSequence resolvedDispatch;
-        if (data.hasExplicitReceiver()) {
-            CharSequence explicitReceiver = methodParameters.get(0).getSimpleName();
+        if (data.hasCustomDispatch()) {
+            TypeMirror receiverType = data.customDispatchAccessor.getParameters().get(0).asType();
+            CharSequence receiverName = methodParameters.get(0).getSimpleName();
+            boolean accessorNeedsCast = !types.isSameType(typeCache.object, receiverType);
+            CharSequence customDispatch = accessorNeedsCast ? new CodeBuilder(builder).cast(receiverType, receiverName).build() : receiverName;
             resolvedDispatch = "resolvedDispatch";
-            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.dispatchAccessor.getSimpleName(), explicitReceiver).lineEnd(
-                            ";");
-            builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), explicitReceiver).lineEnd(
-                            ";");
+            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.customDispatchAccessor.getSimpleName(),
+                            customDispatch).lineEnd(
+                                            ";");
+            builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(),
+                            customDispatch).lineEnd(
+                                            ";");
         } else {
             resolvedDispatch = "receiverObject";
         }

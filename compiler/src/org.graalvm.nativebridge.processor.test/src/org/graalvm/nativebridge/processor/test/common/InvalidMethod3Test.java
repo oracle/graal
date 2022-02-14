@@ -40,8 +40,8 @@ abstract class InvalidMethod3Test extends HSObject implements InvalidService {
     }
 
     @Idempotent
-    @ExpectError("Method with cached return value must have non void return type.%n" +
-                    "Remove `Idempotent` annotation.")
+    @ExpectError("A method with a cached return value must have a non-void return type.%n" +
+                    "To fix this remove the `Idempotent` annotation or change the return type.")
     @Override
     public abstract void execute();
 

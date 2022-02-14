@@ -47,6 +47,6 @@ abstract class InvalidMethod5Test extends AbstractService {
     }
 
     @ReceiverMethod("executePrivate")
-    @ExpectError("Receiver method `executePrivate` must be a non private instance method.")
+    @ExpectError("The receiver method `executePrivate` must be a non-private instance method.")
     abstract boolean executeImpl(long value);
 }

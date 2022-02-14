@@ -34,7 +34,8 @@ import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
 @ExpectError("The annotation `TestAnnotation1` is already configured to be ignored.%n" +
-                "Remove repeating `AnnotationAction` for `TestAnnotation1`.")
+                "Only one action can be set for each annotation.%n" +
+                "To fix this remove the repeating `AnnotationAction` for `TestAnnotation1`.")
 @AnnotationAction(value = TestAnnotation1.class, action = AnnotationAction.Action.IGNORE)
 @AnnotationAction(value = TestAnnotation1.class, action = AnnotationAction.Action.COPY)
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)

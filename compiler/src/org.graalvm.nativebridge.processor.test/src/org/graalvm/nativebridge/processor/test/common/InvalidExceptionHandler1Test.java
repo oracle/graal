@@ -48,8 +48,8 @@ abstract class InvalidExceptionHandler1Test extends HSObject implements Service 
     }
 
     @ExceptionHandler
-    @ExpectError("Only single method can be annotated by `ExceptionHandler`.%n" +
-                    "Remove `static boolean handleException1(ExceptionHandlerContext exceptionHandlerContext)` or `static boolean handleException2(ExceptionHandlerContext exceptionHandlerContext)` method.")
+    @ExpectError("Only a single method can be annotated by the `ExceptionHandler`.%n" +
+                    "Fix the ambiguity by removing the `static boolean handleException1(ExceptionHandlerContext exceptionHandlerContext)` method or the `static boolean handleException2(ExceptionHandlerContext exceptionHandlerContext)` method.")
     @SuppressWarnings("unused")
     static boolean handleException2(ExceptionHandlerContext exceptionHandlerContext) {
         return false;

@@ -24,25 +24,33 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.CustomDispatchFactory;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidDispatchResolver6Test extends ExplicitReceiverService {
+abstract class InvalidCustomDispatchFactory2Test extends CustomReceiverService {
 
-    @DispatchResolver
-    @ExpectError("Method annotated by `DispatchResolver` must be a non private static method with a single parameter and `ExplicitReceiverService` return type.%n" +
-                    "Change signature to `static ExplicitReceiverService getDispatch(Object receiver)`.")
-    static Object getDispatch(Object receiver) {
-        return receiver;
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
     }
 
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
+    }
+
+    @CustomDispatchFactory
+    @ExpectError("A method annotated by `CustomDispatchFactory` must be a non-private static method with a single object parameter and `ServiceAPI` return type.%n" +
+                    "To fix this change the signature to `static ServiceAPI create(Object receiver)`.")
+    @SuppressWarnings("static-method")
+    final ServiceAPI create(Object receiver) {
+        return new ServiceAPI(null, receiver);
     }
 }

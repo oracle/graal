@@ -22,23 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge.processor.test.references;
 
-import org.graalvm.nativebridge.EndPointHandle;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.CustomDispatchFactory;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.AbstractService;
-import org.graalvm.nativebridge.processor.test.ExpectError;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeInvalidEndPointHandleTest extends AbstractService {
+@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class)
+abstract class NativeCustomLanguageDispatch extends CustomLanguageDispatch {
 
-    @ExpectError("A field annotated by `EndPointHandle` must be a non-private field of `NativeObject` type.%n" +
-                    "To fix this change the signature to `final NativeObject delegate`.") @EndPointHandle final Object delegate;
+    private static final NativeCustomLanguageDispatch INSTANCE = NativeCustomLanguageDispatchGen.createHotSpotToNative();
 
-    NativeInvalidEndPointHandleTest(NativeObject delegate) {
-        this.delegate = delegate;
+    @CustomDispatchAccessor
+    static CustomLanguageDispatch getDispatch(LanguageAPI api) {
+        return api.dispatch;
+    }
+
+    @CustomReceiverAccessor
+    static Object getReceiver(LanguageAPI api) {
+        return api.receiver;
+    }
+
+    @CustomDispatchFactory
+    static LanguageAPI createLanguage(Object receiver) {
+        return new LanguageAPI(INSTANCE, receiver);
     }
 }

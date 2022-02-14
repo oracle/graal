@@ -33,8 +33,8 @@ import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-@ExpectError("The annotated type must have a single constructor with `(NativeIsolate, long,...)` signature.%n" +
-                "Add `NativeInvalidConstructor1Test(NativeIsolate p0, long p1)` constructor into `NativeInvalidConstructor1Test`.")
+@ExpectError("The annotated type must have a single constructor with a `(NativeIsolate, long,...)` signature.%n" +
+                "To fix this add the `NativeInvalidConstructor1Test(NativeIsolate p0, long p1)` constructor into `NativeInvalidConstructor1Test`.")
 abstract class NativeInvalidConstructor1Test extends NativeObject implements Service {
 
     @SuppressWarnings("unused")

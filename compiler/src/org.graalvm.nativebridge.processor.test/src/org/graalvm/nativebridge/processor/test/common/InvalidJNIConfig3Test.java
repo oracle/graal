@@ -31,8 +31,9 @@ import org.graalvm.nativebridge.processor.test.ExpectError;
 import org.graalvm.nativebridge.processor.test.Service;
 import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@ExpectError("JNI config must have a non private static `getInstance()` method returning `JNIConfig`.%n" +
-                "Add the `static JNIConfig getInstance() { return INSTANCE;}` into `JNIConfigProvider`.")
+@ExpectError("JNI config must have a non-private static `getInstance()` method returning `JNIConfig`.%n" +
+                "The `getInstance` method is used by the generated code to look up marshallers.%n" +
+                "To fix this add `static JNIConfig getInstance() { return INSTANCE;}` into `JNIConfigProvider`.")
 @GenerateHotSpotToNativeBridge(jniConfig = InvalidJNIConfig3Test.JNIConfigProvider.class, include = NotIncludedAutomatically.class)
 abstract class InvalidJNIConfig3Test extends NativeObject implements Service {
 

@@ -26,7 +26,7 @@ package org.graalvm.nativebridge.processor.test.references;
 
 interface Handler {
 
-    void publish(Record record);
+    void publish(LanguageAPI language, Record record);
 
     Context getContext();
 }

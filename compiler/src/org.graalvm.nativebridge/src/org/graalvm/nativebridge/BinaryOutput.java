@@ -69,8 +69,6 @@ public abstract class BinaryOutput implements Closeable {
     static final byte STRING = DOUBLE + 1;
     static final byte ARRAY = STRING + 1;
 
-    private static final byte CUSTOM_TAG_START = ARRAY + 1;
-
     private byte[] byteBuffer;
     protected int pos;
 
@@ -251,25 +249,6 @@ public abstract class BinaryOutput implements Closeable {
      * @throws IllegalArgumentException when the {@code value} type is not supported.
      */
     public final void writeTypedValue(Object value) throws UTFDataFormatException {
-        boolean res = writeTypedValueImpl(value);
-        if (!res) {
-            throw new IllegalArgumentException(String.format("Unsupported type %s", value.getClass()));
-        }
-    }
-
-    /**
-     * Tries to write the value that is represented by the given object, together with information
-     * on the value's data type. Supported types are boxed Java primitive types, {@link String},
-     * {@code null} and arrays of these types.
-     *
-     * @return {@code true} if the {@code value} type is supported and the value was written;
-     *         {@code false} if the {@code value} type is not supported
-     */
-    public final boolean tryWriteTypedValue(Object value) throws UTFDataFormatException {
-        return writeTypedValueImpl(value);
-    }
-
-    private boolean writeTypedValueImpl(Object value) throws UTFDataFormatException {
         if (value instanceof Object[]) {
             Object[] arr = (Object[]) value;
             writeByte(ARRAY);
@@ -307,9 +286,8 @@ public abstract class BinaryOutput implements Closeable {
             writeByte(STRING);
             writeUTF((String) value);
         } else {
-            return false;
+            throw new IllegalArgumentException(String.format("Unsupported type %s", value.getClass()));
         }
-        return true;
     }
 
     private void ensureBufferSize(int headerSize, int dataSize) {
@@ -347,29 +325,6 @@ public abstract class BinaryOutput implements Closeable {
      */
     public static CCharPointerBinaryOutput create(CCharPointer address, int length, boolean dynamicallyAllocated) {
         return new CCharPointerBinaryOutput(address, length, dynamicallyAllocated);
-    }
-
-    /**
-     * Returns a value of the first unused tag written by the {@link #writeTypedValue(Object)}
-     * method. The value should be used when a method marshalling custom types delegates to
-     * {@link #tryWriteTypedValue(Object)}.
-     *
-     * Example:
-     *
-     * <pre>
-     *     static void writeCustomTypedValue(BinaryOutput out, Object value) throws UTFDataFormatException {
-     *          if (out.tryWriteTypedValue(value)) {
-     *             // type supported by BinaryOutput#tryWriteTypedValue()
-     *         } else if (value instanceof TruffleString) {
-     *             out.writeByte(BinaryOutput.getCustomTypeStartIndex());
-     *             out.writeUTF(((TruffleString) value).toJavaStringUncached());
-     *         } else {
-     *             throw new IllegalArgumentException(String.format("Unsupported type %s", value.getClass()));
-     *         }
-     * </pre>
-     */
-    public static byte getCustomTypeStartIndex() {
-        return CUSTOM_TAG_START;
     }
 
     static int bufferSize(int headerSize, int dataSize) {

@@ -24,16 +24,18 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-@ExpectError("Annotated type must have a single constructor.")
-abstract class InvalidConstructorTest extends ExplicitReceiverService {
+@ExpectError("The annotated type must have a single constructor.%n" +
+                "Fix the ambiguity by removing constructor overloads.")
+abstract class InvalidConstructorTest extends CustomReceiverService {
 
     @SuppressWarnings("unused")
     InvalidConstructorTest(int num) {
@@ -43,13 +45,13 @@ abstract class InvalidConstructorTest extends ExplicitReceiverService {
     InvalidConstructorTest(Object obj) {
     }
 
-    @DispatchResolver
-    static ExplicitReceiverService getDispatch(Object receiver) {
-        return (ExplicitReceiverService) receiver;
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
     }
 
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

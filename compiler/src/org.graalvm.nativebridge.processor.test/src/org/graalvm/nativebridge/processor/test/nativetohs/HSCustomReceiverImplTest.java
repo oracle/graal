@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.nativetohs;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-/**
- * Marks a method as a dispatch resolver. The dispatch resolver is used in the classes with explicit
- * receiver to translate the receiver to the actual dispatch class handling the operation. The
- * method annotated by {@link DispatchResolver} must be non-private static method with single
- * parameter returning the bridged type.
- *
- * @see ReceiverResolver
- */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
-public @interface DispatchResolver {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class HSCustomReceiverImplTest extends CustomReceiverService {
+
+    HSCustomReceiverImplTest() {
+    }
+
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
+    }
+
+    @CustomReceiverAccessor
+    static Object getReceiver(ServiceAPI receiver) {
+        return receiver.receiver;
+    }
 }

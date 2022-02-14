@@ -24,25 +24,31 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.nativebridge.DispatchResolver;
+import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.ReceiverResolver;
+import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.ExplicitReceiverService;
+import org.graalvm.nativebridge.processor.test.ServiceAPI;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidDispatchResolver3Test extends ExplicitReceiverService {
+abstract class InvalidCustomReceiverAccessor1Test extends CustomReceiverService {
 
-    @DispatchResolver
-    @ExpectError("Method annotated by `DispatchResolver` must be a non private static method with a single parameter and `ExplicitReceiverService` return type.%n" +
-                    "Change signature to `static ExplicitReceiverService getDispatch(Object receiver)`.")
-    private static ExplicitReceiverService getDispatch(Object receiver) {
-        return (ExplicitReceiverService) receiver;
+    @CustomDispatchAccessor
+    static CustomReceiverService getDispatch(ServiceAPI receiver) {
+        return receiver.dispatch;
     }
 
-    @ReceiverResolver
-    static Object getReceiver(Object receiver) {
-        return receiver;
+    @CustomReceiverAccessor
+    static Object getReceiver1(ServiceAPI receiver) {
+        return receiver.receiver;
+    }
+
+    @CustomReceiverAccessor
+    @ExpectError("Only a single method can be annotated by the `CustomReceiverAccessor`.%n" +
+                    "Fix the ambiguity by removing the `static Object getReceiver1(ServiceAPI receiver)` method or the `static Object getReceiver2(ServiceAPI receiver)` method.")
+    static Object getReceiver2(ServiceAPI receiver) {
+        return receiver.receiver;
     }
 }

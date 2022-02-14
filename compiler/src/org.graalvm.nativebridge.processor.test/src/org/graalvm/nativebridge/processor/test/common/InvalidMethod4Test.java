@@ -46,7 +46,7 @@ abstract class InvalidMethod4Test extends HSObject implements Service {
     }
 
     @ReceiverMethod("execute")
-    @ExpectError("Method `execute(long)` is not found in `Service`. " +
-                    "Receiver method must have the same arguments as the annotated method and must exist in the bridged type.")
+    @ExpectError("A method `execute(long)` is not found in the `Service`. " +
+                    "The receiver method must have the same arguments as the annotated method and must exist in the bridged type.")
     abstract boolean executeImpl(long p0);
 }

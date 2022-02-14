@@ -54,10 +54,6 @@ import static org.graalvm.nativebridge.BinaryOutput.bufferSize;
  */
 public abstract class BinaryInput implements Closeable {
 
-    /**
-     * Represents a value of an unknown type returned by {@link #tryReadTypedValue()}.
-     */
-    public static final Object UNKNOWN_TYPE = new Object();
     private static final int EOF = -1;
 
     private byte[] byteBuffer;
@@ -299,17 +295,6 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Tries to read a single value, using the data type encoded in the marshalled data.
-     *
-     * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null}, an
-     *         array of these types or an {@link #UNKNOWN_TYPE} for an unsupported marshalled type.
-     *         When the {@link #UNKNOWN_TYPE} is returned the buffer position is not advanced.
-     */
-    public final Object tryReadTypedValue() throws EOFException, UTFDataFormatException {
-        return readTypedValueImpl();
-    }
-
-    /**
      * Reads a single value, using the data type encoded in the marshalled data.
      *
      * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null} or
@@ -317,15 +302,6 @@ public abstract class BinaryInput implements Closeable {
      * @throws IllegalArgumentException when the marshalled type is not supported.
      */
     public final Object readTypedValue() throws EOFException, UTFDataFormatException {
-        Object res = readTypedValueImpl();
-        if (res == UNKNOWN_TYPE) {
-            byte tag = readByte();
-            throw new IllegalArgumentException(String.format("Unknown tag %d", tag));
-        }
-        return res;
-    }
-
-    private Object readTypedValueImpl() throws EOFException, UTFDataFormatException {
         byte tag = readByte();
         switch (tag) {
             case ARRAY:
@@ -356,8 +332,7 @@ public abstract class BinaryInput implements Closeable {
             case STRING:
                 return readUTF();
             default:
-                pos--;
-                return UNKNOWN_TYPE;
+                throw new IllegalArgumentException(String.format("Unknown tag %d", tag));
         }
     }
 

@@ -35,7 +35,7 @@ import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
 @ExpectError("The annotated type must have a single constructor with one of the following signatures `(HSObject,...)`, `(HSObject, JNIEnv,...)`.%n" +
-                "Add `HSInvalidConstructor2Test(HSObject p0)` constructor into `HSInvalidConstructor2Test`.")
+                "To fix this add the `HSInvalidConstructor2Test(HSObject p0)` constructor into `HSInvalidConstructor2Test`.")
 abstract class HSInvalidConstructor2Test extends AbstractService {
 
     @EndPointHandle final HSObject delegate;

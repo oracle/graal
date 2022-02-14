@@ -165,10 +165,10 @@ abstract class AbstractBridgeGenerator {
     }
 
     final CacheSnippets cacheSnippets(DefinitionData data) {
-        if (data.hasExplicitReceiver()) {
-            return CacheSnippets.explicitReceiver(types, typeCache);
+        if (data.hasCustomDispatch()) {
+            return CacheSnippets.customDispatch(types, typeCache);
         } else {
-            return CacheSnippets.implicitReceiver(types, typeCache);
+            return CacheSnippets.standardDispatch(types, typeCache);
         }
     }
 
@@ -376,11 +376,11 @@ abstract class AbstractBridgeGenerator {
         }
 
         final CharSequence unmarshallHotSpotToNativeProxyInNative(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
-            TypeMirror receiverType = marshallerData.useReceiverResolver ? data.receiverAccessor.getParameters().get(0).asType() : parameterType;
+            TypeMirror receiverType = marshallerData.useCustomReceiverAccessor ? data.customReceiverAccessor.getParameters().get(0).asType() : parameterType;
             CharSequence classLiteral = new CodeBuilder(builder).classLiteral(receiverType).build();
             CodeBuilder result = new CodeBuilder(builder).invokeStatic(cache.nativeObjectHandles, "resolve", parameterName, classLiteral);
-            if (marshallerData.useReceiverResolver) {
-                result = new CodeBuilder(result).invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), result.build());
+            if (marshallerData.useCustomReceiverAccessor) {
+                result = new CodeBuilder(result).invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(), result.build());
             }
             return result.build();
         }
@@ -397,9 +397,9 @@ abstract class AbstractBridgeGenerator {
                 args = newArgs;
             }
             CharSequence proxy = createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, args);
-            if (marshallerData.factoryMethod != null) {
-                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.factoryMethod.getEnclosingElement().asType(),
-                                marshallerData.factoryMethod.getSimpleName(), proxy);
+            if (marshallerData.customDispatchFactory != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
+                                marshallerData.customDispatchFactory.getSimpleName(), proxy);
                 proxy = factory.build();
             }
             CodeBuilder result = new CodeBuilder(builder);
@@ -415,9 +415,9 @@ abstract class AbstractBridgeGenerator {
                 args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[args.size()])).build());
             }
             CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
-            if (marshallerData.factoryMethod != null) {
-                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.factoryMethod.getEnclosingElement().asType(),
-                                marshallerData.factoryMethod.getSimpleName(), proxy);
+            if (marshallerData.customDispatchFactory != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
+                                marshallerData.customDispatchFactory.getSimpleName(), proxy);
                 proxy = factory.build();
             }
             CodeBuilder result = new CodeBuilder(builder);
@@ -426,13 +426,13 @@ abstract class AbstractBridgeGenerator {
         }
 
         final CharSequence unmarshallNativeToHotSpotProxyInHotSpot(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
-            TypeMirror receiverType = marshallerData.useReceiverResolver ? data.receiverAccessor.getParameters().get(0).asType() : parameterType;
+            TypeMirror receiverType = marshallerData.useCustomReceiverAccessor ? data.customReceiverAccessor.getParameters().get(0).asType() : parameterType;
             CharSequence result = parameterName;
             if (!types.isSubtype(parameterType, receiverType)) {
                 result = new CodeBuilder(builder).cast(receiverType, parameterName).build();
             }
-            if (marshallerData.useReceiverResolver) {
-                result = new CodeBuilder(builder).invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), result).build();
+            if (marshallerData.useCustomReceiverAccessor) {
+                result = new CodeBuilder(builder).invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(), result).build();
             }
             return result;
         }
@@ -518,17 +518,17 @@ abstract class AbstractBridgeGenerator {
 
         abstract CharSequence writeCache(CodeBuilder currentBuilder, CharSequence cacheField, CharSequence receiver, CharSequence value);
 
-        static CacheSnippets implicitReceiver(Types types, AbstractTypeCache cache) {
-            return new ImplicitReceiver(types, cache);
+        static CacheSnippets standardDispatch(Types types, AbstractTypeCache cache) {
+            return new StandardDispatch(types, cache);
         }
 
-        static CacheSnippets explicitReceiver(Types types, AbstractTypeCache cache) {
-            return new ExplicitReceiver(types, cache);
+        static CacheSnippets customDispatch(Types types, AbstractTypeCache cache) {
+            return new CustomDispatch(types, cache);
         }
 
-        private static final class ImplicitReceiver extends CacheSnippets {
+        private static final class StandardDispatch extends CacheSnippets {
 
-            ImplicitReceiver(Types types, AbstractTypeCache cache) {
+            StandardDispatch(Types types, AbstractTypeCache cache) {
                 super(types, cache);
             }
 
@@ -558,9 +558,9 @@ abstract class AbstractBridgeGenerator {
             }
         }
 
-        private static final class ExplicitReceiver extends CacheSnippets {
+        private static final class CustomDispatch extends CacheSnippets {
 
-            ExplicitReceiver(Types type, AbstractTypeCache cache) {
+            CustomDispatch(Types type, AbstractTypeCache cache) {
                 super(type, cache);
             }
 

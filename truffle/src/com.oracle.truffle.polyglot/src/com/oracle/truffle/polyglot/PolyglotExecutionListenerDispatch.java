@@ -47,7 +47,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 import org.graalvm.polyglot.management.ExecutionEvent;
@@ -85,7 +85,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
 
     static class ListenerImpl {
 
-        final AbstractPolyglotImpl.AbstractExecutionEventDispatch executionEventDispatch;
+        final AbstractExecutionEventDispatch executionEventDispatch;
         final PolyglotEngineImpl engine;
         final Consumer<ExecutionEvent> onEnter;
         final Consumer<ExecutionEvent> onReturn;
@@ -97,7 +97,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
         volatile EventBinding<?> binding;
         volatile boolean closing;
 
-        ListenerImpl(AbstractPolyglotImpl.AbstractExecutionEventDispatch executionEventDispatch, PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
+        ListenerImpl(AbstractExecutionEventDispatch executionEventDispatch, PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
                         Consumer<ExecutionEvent> onReturn,
                         boolean collectInputValues,
                         boolean collectReturnValues,
