@@ -58,7 +58,7 @@ public class AllocationLimitsTest {
 
     private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
     private static final String FILENAME = "bitcode-O0.bc";
-    public static final BaseMatcher<String> EXCEEDS_LIMIT = new BaseMatcher<String>() {
+    public static final BaseMatcher<String> EXCEEDS_LIMIT = new BaseMatcher<>() {
         private final Pattern compile = Pattern.compile(".*exceeds.*limit.*");
 
         @Override
