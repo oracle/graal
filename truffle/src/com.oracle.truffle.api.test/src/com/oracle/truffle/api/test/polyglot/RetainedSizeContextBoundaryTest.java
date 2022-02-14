@@ -378,7 +378,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
             protected CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = new RootNode(languageInstance) {
+                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
 
                         @Override
                         public Object execute(VirtualFrame frame) {
@@ -390,7 +390,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
                             return source.createSection(1);
                         }
 
-                    }.getCallTarget();
+                    });
                 }
                 return target;
             }
