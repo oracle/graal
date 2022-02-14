@@ -1161,26 +1161,6 @@ public abstract class Accessor {
         public boolean isNonTruffleClass(Class<?> clazz) {
             return TruffleJDKServices.isNonTruffleClass(clazz);
         }
-
-        public void fullFence() {
-            TruffleJDKServices.fullFence();
-        }
-
-        public void acquireFence() {
-            TruffleJDKServices.acquireFence();
-        }
-
-        public void releaseFence() {
-            TruffleJDKServices.releaseFence();
-        }
-
-        public void loadLoadFence() {
-            TruffleJDKServices.loadLoadFence();
-        }
-
-        public void storeStoreFence() {
-            TruffleJDKServices.storeStoreFence();
-        }
     }
 
 // A separate class to break the cycle such that Accessor can fully initialize
