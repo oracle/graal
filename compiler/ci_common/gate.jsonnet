@@ -111,8 +111,8 @@
   
   style:: c.eclipse + c.jdt + s.base("style,fullbuild,javadoc"),
 
-  x82_avx3:: {
-    capabilities+: ["x82"],
+  avx3:: {
+    capabilities+: ["avx512"],
     environment+: {
       JVM_CONFIG: jvm_config + "-avx3"
     }
