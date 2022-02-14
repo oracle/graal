@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ThreadFactory;
@@ -124,5 +125,10 @@ final class SubstrateVirtualThreads implements VirtualThreads {
     @Override
     public void unpinCurrent() {
         current().unpin();
+    }
+
+    @Override
+    public Executor getScheduler(Thread thread) {
+        return cast(thread).getScheduler();
     }
 }

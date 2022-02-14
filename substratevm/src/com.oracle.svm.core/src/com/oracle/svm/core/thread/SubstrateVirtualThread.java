@@ -53,7 +53,7 @@ import jdk.internal.misc.Unsafe;
  * thread} and instead gets mounted (scheduled to run) on a <em>platform thread</em> (OS thread),
  * which, until when it is unmounted again, is called its <em>carrier thread</em>.
  *
- * This class is based on Project Loom's {@code java.lang.VirtualThread}.
+ * This class is based on Project Loom's {@code java.lang.VirtualThread} (46f99ef).
  */
 final class SubstrateVirtualThread extends Thread {
     private static final ScheduledExecutorService UNPARKER = createDelayedTaskScheduler();
@@ -686,6 +686,10 @@ final class SubstrateVirtualThread extends Thread {
 
     @Override
     public void run() {
+    }
+
+    Executor getScheduler() {
+        return scheduler;
     }
 
     private static ScheduledExecutorService createDelayedTaskScheduler() {

@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.nativeimage.Platforms;
@@ -117,5 +118,10 @@ final class LoomVirtualThreads implements VirtualThreads {
     @Override
     public void unpinCurrent() {
         throw unreachable();
+    }
+
+    @Override
+    public Executor getScheduler(Thread thread) {
+        throw VMError.unimplemented();
     }
 }
