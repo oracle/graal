@@ -256,8 +256,6 @@ abstract class HostMethodDesc {
             public Object invoke(Object receiver, Object[] arguments) throws Throwable {
                 try {
                     return reflectInvoke(reflectionMethod, receiver, arguments);
-                } catch (IllegalArgumentException | IllegalAccessException ex) {
-                    throw HostInteropErrors.unsupportedTypeException(arguments, ex);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -293,8 +291,6 @@ abstract class HostMethodDesc {
             public Object invoke(Object receiver, Object[] arguments) throws Throwable {
                 try {
                     return reflectNewInstance(reflectionConstructor, arguments);
-                } catch (IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
-                    throw HostInteropErrors.unsupportedTypeException(arguments, ex);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }

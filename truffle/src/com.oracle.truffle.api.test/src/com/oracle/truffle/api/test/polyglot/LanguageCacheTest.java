@@ -89,6 +89,7 @@ public class LanguageCacheTest {
 
     @Test
     public void testDuplicateLanguageIds() throws Throwable {
+        TruffleTestAssumptions.assumeNotAOT();
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         Path location = Paths.get(codeSource.getLocation().toURI());
@@ -124,6 +125,7 @@ public class LanguageCacheTest {
 
     @Test
     public void testNestedArchives() throws Throwable {
+        TruffleTestAssumptions.assumeNotAOT();
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         URL location = codeSource.getLocation();

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -84,10 +85,21 @@ import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.NullObject;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class HostAccessTest {
+
+    public static final String INSTANTIATION_FAILED = "Instantiation failed";
+    public static final String RETURNED_STRING = "Returned string";
+
     public static class OK {
         public int value = 42;
     }
@@ -883,6 +895,9 @@ public class HostAccessTest {
         assertEquals("422", map.get("f1").o);
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @Implementable
     public interface ConverterProxy {
 
@@ -924,6 +939,9 @@ public class HostAccessTest {
         assertEquals("422", map.f1().o);
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface ConverterFunction {
 
@@ -1077,6 +1095,13 @@ public class HostAccessTest {
 
     @Test
     public void testConverterReturnsNull() {
+        /*
+         * HotSpot uses GuestToHostCodeCache#methodHandleHostInvoke and SVM uses
+         * GuestToHostCodeCache#reflectionHostInvoke. These two methods throw a different exception
+         * when a null value is passed as a method int argument. The former throws
+         * NullPointerException during automatic unboxing, the latter throws
+         * IllegalArgumentException.
+         */
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.targetTypeMapping(Integer.class, Integer.class, (v) -> v.equals(42), (v) -> {
             return null;
@@ -1087,7 +1112,7 @@ public class HostAccessTest {
             fail();
         } catch (PolyglotException e) {
             assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof NullPointerException);
+            assertTrue(TruffleTestAssumptions.isAOT() ? e.asHostException() instanceof IllegalArgumentException : e.asHostException() instanceof NullPointerException);
         }
 
         assertNull(context.asValue(42).as(int.class));
@@ -1168,6 +1193,9 @@ public class HostAccessTest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @Implementable
     public interface TestInterface {
 
@@ -1623,25 +1651,6 @@ public class HostAccessTest {
     }
 
     @Test
-    public void testReturnsNull() {
-        HostAccess.Builder builder = HostAccess.newBuilder();
-        builder.targetTypeMapping(Integer.class, Integer.class, (v) -> v.equals(42), (v) -> {
-            return null;
-        });
-        setupEnv(builder);
-        try {
-            context.asValue(new PassPrimitive()).invokeMember("f0", 42);
-            fail();
-        } catch (PolyglotException e) {
-            assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof NullPointerException);
-        }
-
-        assertNull(context.asValue(42).as(int.class));
-        assertEquals(43, context.asValue(43).asInt());
-    }
-
-    @Test
     public void testPassNullValue() {
         HostAccess.Builder builder = HostAccess.newBuilder();
         AtomicInteger invoked = new AtomicInteger();
@@ -1777,6 +1786,164 @@ public class HostAccessTest {
         @Override
         public Iterator<T> iterator() {
             return new IteratorImpl<>(values);
+        }
+    }
+
+    public abstract static class NoArgumentConstructorTestClass {
+        public NoArgumentConstructorTestClass() {
+        }
+
+        public String returnString() {
+            return RETURNED_STRING;
+        }
+    }
+
+    public static class NoArgumentConstructorTestSubClass extends NoArgumentConstructorTestClass {
+    }
+
+    public abstract static class ArgumentConstructorTestClass {
+        private final String str;
+
+        public ArgumentConstructorTestClass(String str) {
+            this.str = str;
+        }
+
+        public String returnString() {
+            return str;
+        }
+    }
+
+    public static class ArgumentConstructorTestSubClass extends ArgumentConstructorTestClass {
+        public ArgumentConstructorTestSubClass(String str) {
+            super(str);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class NoArgAbstractClassInstantiationTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try {
+                Object classObj = env.lookupHostSymbol(NoArgumentConstructorTestClass.class.getName());
+                interop.instantiate(classObj);
+                fail();
+            } catch (UnsupportedMessageException e) {
+                return INSTANTIATION_FAILED;
+            }
+            return null;
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class NoArgSubclassInstantiationTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object classObj = env.lookupHostSymbol(NoArgumentConstructorTestSubClass.class.getName());
+            Object obj = interop.instantiate(classObj);
+            return interop.invokeMember(obj, "returnString");
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class ArgAbstractClassInstantiationTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try {
+                Object classObj = env.lookupHostSymbol(ArgumentConstructorTestClass.class.getName());
+                interop.instantiate(classObj, RETURNED_STRING);
+                fail();
+            } catch (UnsupportedMessageException e) {
+                return INSTANTIATION_FAILED;
+            }
+            return null;
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class ArgSubclassInstantiationTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object classObj = env.lookupHostSymbol(ArgumentConstructorTestSubClass.class.getName());
+            Object obj = interop.instantiate(classObj, RETURNED_STRING);
+            return interop.invokeMember(obj, "returnString");
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class NoArgAdapterInstantiationTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object classObj = env.lookupHostSymbol(NoArgumentConstructorTestClass.class.getName());
+            classObj = env.createHostAdapter(new Object[]{classObj});
+            Object obj = interop.instantiate(classObj, NullObject.SINGLETON);
+            return interop.invokeMember(obj, "returnString");
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class ArgAdapterInstantiationTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object classObj = env.lookupHostSymbol(ArgumentConstructorTestClass.class.getName());
+            classObj = env.createHostAdapter(new Object[]{classObj});
+            Object obj = interop.instantiate(classObj, RETURNED_STRING, NullObject.SINGLETON);
+            return interop.invokeMember(obj, "returnString");
+        }
+    }
+
+    @Test
+    public void testNoArgAbstractClassInstantiation() {
+        try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
+            assertEquals(INSTANTIATION_FAILED, evalTestLanguage(c, NoArgAbstractClassInstantiationTestLanguage.class, "no argument constructor abstract class failure").asString());
+        }
+    }
+
+    @Test
+    public void testNoArgSubclassInstantiation() {
+        try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
+            assertEquals(RETURNED_STRING, evalTestLanguage(c, NoArgSubclassInstantiationTestLanguage.class, "no argument constructor sub class success").asString());
+        }
+    }
+
+    @Test
+    public void testArgAbstractClassInstantiation() {
+        try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
+            assertEquals(INSTANTIATION_FAILED, evalTestLanguage(c, ArgAbstractClassInstantiationTestLanguage.class, "argument constructor abstract class failure").asString());
+        }
+    }
+
+    @Test
+    public void testArgSubclassInstantiation() {
+        try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
+            assertEquals(RETURNED_STRING, evalTestLanguage(c, ArgSubclassInstantiationTestLanguage.class, "argument constructor sub class success").asString());
+        }
+    }
+
+    @Test
+    public void testNoArgAdapterInstantiation() {
+        TruffleTestAssumptions.assumeNotAOT();
+        try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
+            assertEquals(RETURNED_STRING, evalTestLanguage(c, NoArgAdapterInstantiationTestLanguage.class, "no argument constructor adapter success").asString());
+        }
+    }
+
+    @Test
+    public void testArgAdapterInstantiation() {
+        TruffleTestAssumptions.assumeNotAOT();
+        try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
+            assertEquals(RETURNED_STRING, evalTestLanguage(c, ArgAdapterInstantiationTestLanguage.class, "argument constructor adapter success").asString());
         }
     }
 }
