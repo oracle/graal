@@ -155,8 +155,12 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          * https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms
          *
          * https://docs.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions
+         *
+         * Android uses r18 for maintaining a shadow call stack:
+         *
+         * https://developer.android.com/ndk/guides/abis#arm64-v8a
          */
-        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
         }
         allocatableRegs = new RegisterArray(regs);
