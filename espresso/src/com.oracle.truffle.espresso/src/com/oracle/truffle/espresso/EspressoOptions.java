@@ -234,7 +234,7 @@ public final class EspressoOptions {
     @Option(help = "Controls static liveness analysis of bytecodes, allowing to clear local variables during execution if they become stale.\\n" + //
                     "Liveness analysis, if enabled, only affects compiled code.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
+    public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(true);
 
     @Option(help = "Minimum number of locals to run liveness analysis.\\n" + //
                     "Liveness analysis, if enabled, only affects compiled code.", //
