@@ -846,9 +846,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case BIPUSH: putInt(frame, top, bs.readByte(curBCI)); break;
                     case SIPUSH: putInt(frame, top, bs.readShort(curBCI)); break;
-                    case LDC: // fall through
-                    case LDC_W: // fall through
-                    case LDC2_W: putPoolConstant(frame, top, readCPI(curBCI), curOpcode); break;
+
+                    case LDC   : putPoolConstant(frame, top, bs.readCPI1(curBCI), curOpcode); break;
+                    case LDC_W : // fall through
+                    case LDC2_W: putPoolConstant(frame, top, bs.readCPI2(curBCI), curOpcode); break;
 
                     case ILOAD:
                         putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
@@ -1295,9 +1296,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case INVOKEINTERFACE:
                         top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(NEW, readCPI(curBCI)), true)); break;
+                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(NEW, bs.readCPI2(curBCI)), true)); break;
                     case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta(), this)); break;
-                    case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, readCPI(curBCI)), popInt(frame, top - 1), this)); break;
+                    case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1), this)); break;
 
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
@@ -1366,7 +1367,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         continue loop;
                     }
 
-                    case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
+                    case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, bs.readCPI2(curBCI)), bs.readUByte(curBCI + 3)); break;
 
                     case BREAKPOINT:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1383,7 +1384,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             continue loop;
                         }
-                        BaseQuickNode quickNode = nodes[readCPI(curBCI)];
+                        BaseQuickNode quickNode = nodes[bs.readCPI2(curBCI)];
                         if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);

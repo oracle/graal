@@ -248,6 +248,14 @@ public final class BytecodeStream {
         return (char) Bytes.beU2(code, curBCI + 1);
     }
 
+    public char readCPI1(int curBCI) {
+        return (char) Bytes.beU1(code, curBCI + 1);
+    }
+
+    public char readCPI2(int curBCI) {
+        return (char) Bytes.beU2(code, curBCI + 1);
+    }
+
     /**
      * Reads a constant pool index for the current instruction.
      *
