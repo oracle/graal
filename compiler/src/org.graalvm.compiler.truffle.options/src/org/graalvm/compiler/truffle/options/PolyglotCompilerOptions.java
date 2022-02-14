@@ -233,8 +233,7 @@ public final class PolyglotCompilerOptions {
 
     // Compilation
 
-    @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.", //
-                    usageSyntax = "latency|throughput", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
     @Option(help = "Enable or disable Truffle compilation.", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
@@ -400,7 +399,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic inlining of guest language call targets (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
-    @Option(help = "Maximum depth for recursive inlining (default: 2).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
+    @Option(help = "Maximum depth for recursive inlining (default: 2).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     // Splitting

@@ -74,7 +74,7 @@ public class CoverageInstrument extends TruffleInstrument {
     @Option(help = "Keep count of each element's coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> Count = new OptionKey<>(false);
     @Option(name = "Output", help = "Can be: human readable 'histogram' (per file coverage summary) or 'detailed' (per line coverage summary), machine readable 'json', tool compliant 'lcov' (default: histogram).",
-            usageSyntax = "histogram|detailed|json|lcov", category = OptionCategory.USER, stability = OptionStability.STABLE)
+            category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter)", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
