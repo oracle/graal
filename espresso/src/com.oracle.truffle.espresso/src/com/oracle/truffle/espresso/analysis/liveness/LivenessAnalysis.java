@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 
-public class LivenessAnalysis {
+public final class LivenessAnalysis {
 
     public static final DebugTimer LIVENESS_TIMER = DebugTimer.create("liveness");
     public static final DebugTimer BUILDER_TIMER = DebugTimer.create("builder", LIVENESS_TIMER);
@@ -50,20 +50,6 @@ public class LivenessAnalysis {
     public static final DebugTimer STATE_TIMER = DebugTimer.create("state", LIVENESS_TIMER);
     public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation", LIVENESS_TIMER);
     public static final DebugTimer ACTION_TIMER = DebugTimer.create("action", LIVENESS_TIMER);
-
-    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
-        @Override
-        public void performPostBCI(VirtualFrame frame, int bci) {
-        }
-
-        @Override
-        public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
-        }
-
-        @Override
-        public void onStart(VirtualFrame frame) {
-        }
-    };
 
     /**
      * Contains 2 entries per BCI: the action to perform on entering the BCI (for nulling out locals
@@ -103,9 +89,6 @@ public class LivenessAnalysis {
     @SuppressWarnings("try")
     public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
         Method method = methodVersion.getMethod();
-        if (!method.getContext().livenessAnalysis) {
-            return NO_ANALYSIS;
-        }
         TimerCollection scope = method.getContext().getTimers();
         try (DebugCloseable liveness = LIVENESS_TIMER.scope(scope)) {
             Graph<? extends LinkedBlock> graph;

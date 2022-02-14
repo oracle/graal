@@ -416,7 +416,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         this.frameDescriptor = EspressoFrame.createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
+        this.livenessAnalysis = method.getContext().livenessAnalysis ? LivenessAnalysis.analyze(methodVersion) : null;
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
@@ -786,7 +786,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         if (instrument != null && !skipEntryInstrumentation) {
             instrument.notifyEntry(frame, this);
         }
-        livenessAnalysis.onStart(frame);
+        if (livenessAnalysis != null) {
+            livenessAnalysis.onStart(frame);
+        }
 
         loop: while (true) {
             final int curOpcode = bs.opcode(curBCI);
@@ -846,23 +848,33 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case ILOAD:
                         putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case LLOAD:
                         putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case FLOAD:
                         putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case DLOAD:
                         putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case ALOAD:
                         putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
 
                     case ILOAD_0: // fall through
@@ -870,38 +882,50 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case ILOAD_2: // fall through
                     case ILOAD_3:
                         putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case LLOAD_0: // fall through
                     case LLOAD_1: // fall through
                     case LLOAD_2: // fall through
                     case LLOAD_3:
                         putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case FLOAD_0: // fall through
                     case FLOAD_1: // fall through
                     case FLOAD_2: // fall through
                     case FLOAD_3:
                         putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case DLOAD_0: // fall through
                     case DLOAD_1: // fall through
                     case DLOAD_2: // fall through
                     case DLOAD_3:
                         putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case ALOAD_0:
                         putObject(frame, top, getLocalObject(frame, 0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case ALOAD_1: // fall through
                     case ALOAD_2: // fall through
                     case ALOAD_3:
                         putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
 
                     case IALOAD: // fall through
@@ -918,23 +942,33 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case ISTORE:
                         setLocalInt(frame, bs.readLocalIndex(curBCI), popInt(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case LSTORE:
                         setLocalLong(frame, bs.readLocalIndex(curBCI), popLong(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case FSTORE:
                         setLocalFloat(frame, bs.readLocalIndex(curBCI), popFloat(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case DSTORE:
                         setLocalDouble(frame, bs.readLocalIndex(curBCI), popDouble(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case ASTORE:
                         setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
 
                     case ISTORE_0: // fall through
@@ -942,35 +976,45 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case ISTORE_2: // fall through
                     case ISTORE_3:
                         setLocalInt(frame, curOpcode - ISTORE_0, popInt(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case LSTORE_0: // fall through
                     case LSTORE_1: // fall through
                     case LSTORE_2: // fall through
                     case LSTORE_3:
                         setLocalLong(frame, curOpcode - LSTORE_0, popLong(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case FSTORE_0: // fall through
                     case FSTORE_1: // fall through
                     case FSTORE_2: // fall through
                     case FSTORE_3:
                         setLocalFloat(frame, curOpcode - FSTORE_0, popFloat(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case DSTORE_0: // fall through
                     case DSTORE_1: // fall through
                     case DSTORE_2: // fall through
                     case DSTORE_3:
                         setLocalDouble(frame, curOpcode - DSTORE_0, popDouble(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
                     case ASTORE_3:
                         setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, popReturnAddressOrObject(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
 
                     case IASTORE: // fall through
@@ -1047,7 +1091,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case IINC:
                         setLocalInt(frame, bs.readLocalIndex1(curBCI), getLocalInt(frame, bs.readLocalIndex1(curBCI)) + bs.readIncrement1(curBCI));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         break;
 
                     case I2L: putLong(frame, top - 1, popInt(frame, top - 1)); break;
@@ -1157,7 +1203,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     case RET: {
                         int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         if (jsrBci == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             jsrBci = new int[bs.endBCI()][];
@@ -1321,7 +1369,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             case IINC: setLocalInt(frame, bs.readLocalIndex2(curBCI), getLocalInt(frame, bs.readLocalIndex2(curBCI)) + bs.readIncrement2(curBCI)); break;
                             case RET: {
                                 int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
-                                livenessAnalysis.performPostBCI(frame, curBCI);
+                                if (livenessAnalysis != null) {
+                                    livenessAnalysis.performPostBCI(frame, curBCI);
+                                }
                                 if (jsrBci == null) {
                                     CompilerDirectives.transferToInterpreterAndInvalidate();
                                     jsrBci = new int[bs.endBCI()][];
@@ -1352,9 +1402,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 CompilerDirectives.transferToInterpreter();
                                 throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                         }
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performPostBCI(frame, curBCI);
+                        }
                         int targetBCI = bs.nextBCI(curBCI);
-                        livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+                        if (livenessAnalysis != null) {
+                            livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+                        }
                         top += Bytecodes.stackEffectOf(wideOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -1505,7 +1559,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
             int targetBCI = curBCI + Bytecodes.lengthOf(curOpcode);
-            livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+            if (livenessAnalysis != null) {
+                livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+            }
             if (instrument != null) {
                 nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
             }
@@ -1779,7 +1835,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 }
             }
         }
-        livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+        if (livenessAnalysis != null) {
+            livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+        }
         return nextStatementIndex;
     }
 
