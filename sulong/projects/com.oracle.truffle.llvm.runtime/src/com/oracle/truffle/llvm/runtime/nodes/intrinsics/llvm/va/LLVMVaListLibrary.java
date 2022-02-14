@@ -99,7 +99,7 @@ public abstract class LLVMVaListLibrary extends Library {
      * otherwise.
      */
     public void copyWithoutFrame(Object srcVaList, Object destVaList) {
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
                 copy(srcVaList, destVaList, frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE));
