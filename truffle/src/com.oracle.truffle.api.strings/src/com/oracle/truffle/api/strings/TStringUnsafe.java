@@ -49,21 +49,6 @@ import sun.misc.Unsafe;
 
 final class TStringUnsafe {
 
-    @TruffleBoundary
-    private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
-    }
-
-    /**
-     * The integer value corresponding to the value of the {@code java.specification.version} system
-     * property after any leading {@code "1."} has been stripped.
-     */
-    static final int JAVA_SPEC = getJavaSpecificationVersion();
-
     private static final sun.misc.Unsafe UNSAFE = getUnsafe();
     private static final long javaStringValueFieldOffset;
     private static final long javaStringCoderFieldOffset;
@@ -71,12 +56,8 @@ final class TStringUnsafe {
     static {
         Field valueField = getStringDeclaredField("value");
         javaStringValueFieldOffset = UNSAFE.objectFieldOffset(valueField);
-        if (JAVA_SPEC <= 8) {
-            javaStringCoderFieldOffset = 0;
-        } else {
-            Field coderField = getStringDeclaredField("coder");
-            javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
-        }
+        Field coderField = getStringDeclaredField("coder");
+        javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
     }
 
     @TruffleBoundary
@@ -103,22 +84,14 @@ final class TStringUnsafe {
         }
     }
 
-    static char[] getJavaStringArrayJDK8(String str) {
-        assert JAVA_SPEC <= 8;
-        Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
-        assert value instanceof char[];
-        return (char[]) value;
-    }
-
-    static byte[] getJavaStringArrayJDK9(String str) {
-        assert JAVA_SPEC > 8;
+    static byte[] getJavaStringArray(String str) {
         Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
         assert value instanceof byte[];
         return (byte[]) value;
     }
 
     static int getJavaStringStride(String s) {
-        return JAVA_SPEC <= 8 ? 1 : UNSAFE.getByte(s, javaStringCoderFieldOffset);
+        return UNSAFE.getByte(s, javaStringCoderFieldOffset);
     }
 
     static byte getByteManaged(Object array, long byteOffset) {
