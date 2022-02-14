@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -117,6 +118,25 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     @Override
     public AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         return exactType.getContextInsensitiveAnalysisObject();
+    }
+
+    @Override
+    public TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
+        /* Just return the new type state as there is no allocation context. */
+        return newState.forNonNull(bb);
+    }
+
+    @Override
+    public TypeState cloneState(PointsToAnalysis bb, TypeState currentState, TypeState inputState, BytecodeLocation cloneSite, AnalysisContext allocationContext) {
+        return inputState.forNonNull(bb);
+    }
+
+    @Override
+    public void linkClonedObjects(PointsToAnalysis bb, TypeFlow<?> inputFlow, CloneTypeFlow cloneFlow, BytecodePosition source) {
+        /*
+         * Nothing to do for the context insensitive analysis. The source and clone flows are
+         * identical, thus their elements are modeled by the same array or field flows.
+         */
     }
 
     @Override
@@ -360,7 +380,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone();
+            assert this.isClone() && !isSaturated();
             /* The receiver state has changed. Process the invoke. */
 
             /*

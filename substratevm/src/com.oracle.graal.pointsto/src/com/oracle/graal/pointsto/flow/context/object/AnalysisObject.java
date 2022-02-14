@@ -220,9 +220,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         assert !Modifier.isStatic(field.getModifiers());
         assert bb != null && !bb.getUniverse().sealed();
 
-        if (!field.getDeclaringClass().isAssignableFrom(type)) {
-            throw AnalysisError.fieldNotPresentError(bb, objectFlow, context, field, type);
-        }
+        checkField(bb, objectFlow, context, field);
 
         if (instanceFieldsTypeStore == null) {
             AnalysisField[] fields = type.getInstanceFields(true);
@@ -244,6 +242,19 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         }
 
         return fieldStore;
+    }
+
+    private void checkField(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
+        /*
+         * Assignable types are assigned on AnalysisType creation, before the type is published, so
+         * if other is assignable to this then other would have been added to
+         * this.assignableTypesState and there is no risk of calling this.isAssignableFrom(other)
+         * too early. Using the type state based check is cheaper than getting the assignable
+         * information from the host vm every time.
+         */
+        if (!field.getDeclaringClass().getAssignableTypes(false).containsType(type)) {
+            throw AnalysisError.fieldNotPresentError(bb, objectFlow, context, field, type);
+        }
     }
 
     @SuppressWarnings("unused")
