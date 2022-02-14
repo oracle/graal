@@ -49,7 +49,9 @@ public enum JfrEvent {
     GCPhasePauseLevel1Event("jdk.GCPhasePauseLevel1"),
     GCPhasePauseLevel2Event("jdk.GCPhasePauseLevel2"),
     GCPhasePauseLevel3Event("jdk.GCPhasePauseLevel3"),
-    GCPhasePauseLevel4Event("jdk.GCPhasePauseLevel4");
+    GCPhasePauseLevel4Event("jdk.GCPhasePauseLevel4"),
+    SafepointBegin("jdk.SafepointBegin"),
+    SafepointEnd("jdk.SafepointEnd");
 
     private final long id;
 
