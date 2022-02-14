@@ -119,8 +119,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                 // convert (x|y)-(x^y) to x&y
                 OrNode or = (OrNode) forX;
                 XorNode xor = (XorNode) forY;
-                if ((or.getX() == xor.getX() && or.getY() == xor.getY())
-                        || (or.getX() == xor.getY() && or.getY() == xor.getX())) {
+                if ((or.getX() == xor.getX() && or.getY() == xor.getY()) || (or.getX() == xor.getY() && or.getY() == xor.getX())) {
                     return AndNode.create(or.getX(), or.getY(), view);
                 }
             }

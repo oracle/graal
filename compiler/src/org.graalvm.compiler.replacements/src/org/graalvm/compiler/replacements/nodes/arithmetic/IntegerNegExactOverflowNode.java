@@ -94,8 +94,7 @@ public class IntegerNegExactOverflowNode extends LogicNode implements Simplifiab
 
             // Try to find corresponding exact nodes that could be combined with the split. They
             // would be directly linked to the BeginNode of the false branch.
-            List<IntegerNegExactNode> coupledNodes = next.usages().filter(IntegerNegExactNode.class)
-                            .filter(n -> value == ((IntegerNegExactNode) n).getValue()).snapshot();
+            List<IntegerNegExactNode> coupledNodes = next.usages().filter(IntegerNegExactNode.class).filter(n -> value == ((IntegerNegExactNode) n).getValue()).snapshot();
 
             Stamp splitStamp = value.stamp(NodeView.DEFAULT).unrestricted();
             if (!coupledNodes.isEmpty()) {
