@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -361,6 +361,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
+    private StageFlag currentStage = null;
     private FrameStateVerification frameStateVerification;
     /** Flag to indicate {@link #clearAllStateAfterForTestingOnly()} was called. */
     private boolean stateAfterClearedForTesting = false;
@@ -719,6 +720,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.hasUnsafeAccess = hasUnsafeAccess;
         copy.setGuardsStage(getGuardsStage());
         copy.stageFlags = EnumSet.copyOf(stageFlags);
+        copy.currentStage = currentStage;
         copy.trackNodeSourcePosition = trackNodeSourcePositionForCopy;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
@@ -1014,17 +1016,32 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.guardsStage = guardsStage;
     }
 
-    public boolean isAfterStage(StageFlag state) {
-        return stageFlags.contains(state);
+    public boolean isBeforeStage(StageFlag stage) {
+        return !isDuringStage(stage) && !isAfterStage(stage);
     }
 
-    public boolean isBeforeStage(StageFlag state) {
-        return !isAfterStage(state);
+    /**
+     * Phases may set this flag to indicate that a stage is in progress. This is optional:
+     * {@link #isAfterStage(StageFlag)} may become true for a stage even if
+     * {@link #isDuringStage(StageFlag)} was never set for that stage.
+     */
+    public boolean isDuringStage(StageFlag stage) {
+        return currentStage == stage;
     }
 
-    public void setAfterStage(StageFlag state) {
-        assert isBeforeStage(state) : "Cannot set after state " + state + " since the graph is already in that state";
-        stageFlags.add(state);
+    public boolean isAfterStage(StageFlag stage) {
+        return stageFlags.contains(stage);
+    }
+
+    public void setDuringStage(StageFlag stage) {
+        assert isBeforeStage(stage) : "Cannot set during stage " + stage + " since the graph is not before that stage";
+        currentStage = stage;
+    }
+
+    public void setAfterStage(StageFlag stage) {
+        assert !isAfterStage(stage) : "Cannot set after stage " + stage + " since the graph is already after that stage";
+        stageFlags.add(stage);
+        currentStage = null;
     }
 
     public EnumSet<StageFlag> getStageFlags() {
