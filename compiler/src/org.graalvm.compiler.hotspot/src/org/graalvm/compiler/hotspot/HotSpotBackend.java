@@ -279,6 +279,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor UPDATE_BYTES_ADLER32 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "updateBytesAdler32", int.class, int.class,
                     WordBase.class, int.class);
 
+    public static final HotSpotForeignCallDescriptor BIGINTEGER_LEFT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "bigIntegerLeftShiftWorker", void.class,
+                    WordBase.class, WordBase.class, int.class, int.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor BIGINTEGER_RIGHT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "bigIntegerRightShiftWorker", void.class,
+                    WordBase.class, WordBase.class, int.class, int.class, int.class);
+
     /**
      * @see VMErrorNode
      */

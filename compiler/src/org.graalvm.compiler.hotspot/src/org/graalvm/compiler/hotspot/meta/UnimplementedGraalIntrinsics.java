@@ -279,6 +279,12 @@ public final class UnimplementedGraalIntrinsics {
                             "java/util/zip/Adler32.updateByteBuffer(IJII)I",
                             "java/util/zip/Adler32.updateBytes(I[BII)I");
         }
+        if (config.bigIntegerLeftShiftWorker == 0L) {
+            add(ignore, "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V");
+        }
+        if (config.bigIntegerRightShiftWorker == 0L) {
+            add(ignore, "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
+        }
 
         if (isJDK16OrHigher()) {
             // JDK-8258558
@@ -292,12 +298,6 @@ public final class UnimplementedGraalIntrinsics {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
-        }
-
-        if (isJDK14OrHigher()) {
-            add(toBeInvestigated,
-                            "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
-                            "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
         if (isJDK16OrHigher()) {
@@ -394,10 +394,6 @@ public final class UnimplementedGraalIntrinsics {
         Map<String, VMField> fields = store.getFields();
         return fields.containsKey("StubRoutines::_electronicCodeBook_encryptAESCrypt") &&
                         fields.containsKey("StubRoutines::_electronicCodeBook_decryptAESCrypt");
-    }
-
-    private static boolean isJDK14OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 14;
     }
 
     private static boolean isJDK16OrHigher() {

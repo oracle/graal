@@ -818,10 +818,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        /*
-         * static int[] implMontgomeryMultiply(int[] a, int[] b, int[] n, int len, long inv, int[]
-         * product)
-         */
         r.registerConditional(config.useMontgomeryMultiplyIntrinsic(), new InvocationPlugin("implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class, long.class, int[].class) {
 
             @Override
@@ -837,9 +833,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        /*
-         * static int[] implMontgomerySquare(int[] a, int[] n, int len, long inv, int[] product)
-         */
         r.registerConditional(config.useMontgomerySquareIntrinsic(), new InvocationPlugin("implMontgomerySquare", int[].class, int[].class, int.class, long.class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode n, ValueNode len, ValueNode inv, ValueNode product) {
@@ -853,9 +846,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        /*
-         * static int[] implSquareToLen(int[] x, int len, int[] z, int zLen)
-         */
         r.registerConditional(config.useSquareToLenIntrinsic(), new InvocationPlugin("implSquareToLen", int[].class, int.class, int[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
@@ -866,6 +856,38 @@ public class HotSpotGraphBuilderPlugins {
                     b.add(new ForeignCallNode(HotSpotBackend.SQUARE_TO_LEN, helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
                 }
                 return true;
+            }
+        });
+        r.registerConditional(config.bigIntegerLeftShiftWorker != 0L, new InvocationPlugin("shiftLeftImplWorker", int[].class, int[].class, int.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newArr, ValueNode oldArr, ValueNode newIdx, ValueNode shiftCount,
+                            ValueNode numIter) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    b.add(new ForeignCallNode(HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER, helper.arrayStart(newArr, JavaKind.Int), helper.arrayStart(oldArr, JavaKind.Int), newIdx, shiftCount,
+                                    numIter));
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 14;
+            }
+        });
+        r.registerConditional(config.bigIntegerRightShiftWorker != 0L, new InvocationPlugin("shiftRightImplWorker", int[].class, int[].class, int.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newArr, ValueNode oldArr, ValueNode newIdx, ValueNode shiftCount,
+                            ValueNode numIter) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    b.add(new ForeignCallNode(HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER, helper.arrayStart(newArr, JavaKind.Int), helper.arrayStart(oldArr, JavaKind.Int), newIdx, shiftCount,
+                                    numIter));
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 14;
             }
         });
     }

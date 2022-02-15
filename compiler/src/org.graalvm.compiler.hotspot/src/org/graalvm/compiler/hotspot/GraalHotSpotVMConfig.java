@@ -524,7 +524,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     {
         // JDK-8237497
         if (JDK < 15) {
-            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address", -1, JDK >= 10);
+            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address");
         } else if (JDK < 16) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
         } else {
@@ -578,7 +578,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long sha512ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address");
     public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address");
 
-    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L, JDK >= 9);
+    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address");
     public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address");
     public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address");
@@ -589,6 +589,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address");
     public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address");
     public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address");
+
+    public final long bigIntegerLeftShiftWorker = getFieldValue("StubRoutines::_bigIntegerLeftShiftWorker", Long.class, "address", 0L, JDK >= 14);
+    public final long bigIntegerRightShiftWorker = getFieldValue("StubRoutines::_bigIntegerRightShiftWorker", Long.class, "address", 0L, JDK >= 14);
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
@@ -661,8 +664,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long exceptionHandlerForPcAddress = getAddress("JVMCIRuntime::exception_handler_for_pc");
     public final long monitorenterAddress = getAddress("JVMCIRuntime::monitorenter");
     public final long monitorexitAddress = getAddress("JVMCIRuntime::monitorexit");
-    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify", 0L, JDK >= 11);
-    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll", 0L, JDK >= 11);
+    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify");
+    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll");
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
     public final long throwClassCastExceptionAddress = getAddress("JVMCIRuntime::throw_class_cast_exception");
