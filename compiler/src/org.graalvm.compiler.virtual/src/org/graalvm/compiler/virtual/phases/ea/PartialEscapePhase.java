@@ -84,27 +84,46 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     private final boolean readElimination;
     private final BasePhase<CoreProviders> cleanupPhase;
-    private boolean finalPEA;
+    private final boolean finalPEA;
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, OptionValues options) {
-        this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, null, options);
+        this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, null, options, false);
     }
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options) {
-        this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, cleanupPhase, options);
+        this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, cleanupPhase, options, false);
+    }
+
+    public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options, boolean finalPEA) {
+        this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, cleanupPhase, options, finalPEA);
     }
 
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options) {
+        this(iterative, readElimination, canonicalizer, cleanupPhase, options, false);
+    }
+
+    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options, boolean finalPEA) {
         super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer);
         this.readElimination = readElimination;
         this.cleanupPhase = cleanupPhase;
+        this.finalPEA = finalPEA;
     }
 
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options,
                     SchedulePhase.SchedulingStrategy strategy) {
+        this(iterative, readElimination, canonicalizer, cleanupPhase, options, strategy, false);
+    }
+
+    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options,
+                    SchedulePhase.SchedulingStrategy strategy, boolean finalPEA) {
         super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer, false, strategy);
         this.readElimination = readElimination;
         this.cleanupPhase = cleanupPhase;
+        this.finalPEA = finalPEA;
+    }
+
+    public static PartialEscapePhase createFinalPEA(boolean iterative, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options) {
+        return new PartialEscapePhase(iterative, canonicalizer, cleanupPhase, options, true);
     }
 
     @Override
@@ -143,10 +162,5 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     @Override
     public boolean checkContract() {
         return false;
-    }
-
-    public PartialEscapePhase setFinalPEA() {
-        this.finalPEA = true;
-        return this;
     }
 }
