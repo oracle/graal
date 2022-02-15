@@ -248,6 +248,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
+    @Deprecated
     public void lockInterruptibly() {
         throw new UnsupportedOperationException("lockInterruptibly unsupported for EspressoLock. Use lockInterruptible instead.");
     }
