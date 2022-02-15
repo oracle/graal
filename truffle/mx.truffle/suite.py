@@ -355,22 +355,6 @@ suite = {
       "workingSets" : "Truffle,Codegen",
     },
 
-    "com.oracle.truffle.dsl.processor.jdk9" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.dsl.processor",
-      ],
-      "requires" : [
-        "java.compiler",
-      ],
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "11+",
-      "overlayTarget" : "com.oracle.truffle.dsl.processor",
-      "multiReleaseJarVersion" : "11",
-      "workingSets" : "Truffle,Codegen",
-    },
-
     "com.oracle.truffle.api.interop" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
