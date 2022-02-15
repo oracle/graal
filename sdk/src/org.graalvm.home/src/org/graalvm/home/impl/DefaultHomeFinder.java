@@ -362,13 +362,13 @@ public final class DefaultHomeFinder extends HomeFinder {
     }
 
     /**
-     * Fallback for the GraalVM home using location of libpolyglot in jdk/jre layout.
+     * Fallback for the GraalVM home using location of libpolyglot in jdk layout.
      *
      * @param objectFile the path to libpolyglot
      * @return the path to GraalVM home or null
      */
     private static Path getGraalVmHomeLibPolyglotFallBack(Path objectFile) {
-        // <home>/jre/lib/polyglot/libpolyglot.so
+        // <home>/lib/polyglot/libpolyglot.so
         Path parent = objectFile.getParent();
         if (parent == null || !"polyglot".equals(getFileName(parent))) {
             return null;
@@ -378,13 +378,9 @@ public final class DefaultHomeFinder extends HomeFinder {
             return null;
         }
         Path home = null;
-        Path jreOrJdk = parent.getParent();
-        if (jreOrJdk != null) {
-            if ("jre".equals(getFileName(jreOrJdk))) {
-                home = jreOrJdk.getParent();
-            } else {
-                home = jreOrJdk;
-            }
+        Path jdk = parent.getParent();
+        if (jdk != null) {
+            home = jdk;
         }
         return home != null && isJdkHome(home) ? home : null;
     }
