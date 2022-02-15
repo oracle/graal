@@ -959,16 +959,6 @@ suite = {
       "license": "GPLv2-CPE",
       "jacoco" : "exclude",
     },
-
-    "com.oracle.graalvm.locator.jdk11" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "overlayTarget" : "com.oracle.graalvm.locator",
-      "checkstyle" : "com.oracle.truffle.api",
-      "multiReleaseJarVersion" : "11",
-      "javaCompliance" : "11+",
-      "checkPackagePrefix" : "false",
-    },
    },
 
   "licenses" : {
