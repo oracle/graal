@@ -665,13 +665,13 @@ public abstract class PointsToAnalysis implements BigBang {
      * @param analysisEndCondition hook for actions to be taken during analysis. It also dictates
      *            when the analysis should end, i.e., it returns true if no more iterations are
      *            required.
-     * 
+     *
      *            When the analysis is used for Native Image generation the actions could for
      *            example be specified via
      *            {@link org.graalvm.nativeimage.hosted.Feature#duringAnalysis(Feature.DuringAnalysisAccess)}.
      *            The ending condition could be provided by
      *            {@link org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess#requireAnalysisIteration()}.
-     * 
+     *
      * @throws AnalysisError if the analysis fails
      */
     @SuppressWarnings("try")
