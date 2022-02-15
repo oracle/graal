@@ -90,6 +90,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     public static final CounterKey COUNTER_MATERIALIZATIONS_UNHANDLED = DebugContext.counter("MaterializationsUnhandled");
     public static final CounterKey COUNTER_MATERIALIZATIONS_LOOP_REITERATION = DebugContext.counter("MaterializationsLoopReiteration");
     public static final CounterKey COUNTER_MATERIALIZATIONS_LOOP_END = DebugContext.counter("MaterializationsLoopEnd");
+    public static final CounterKey COUNTER_MATERIALIZATIONS_LOOP_EXIT = DebugContext.counter("MaterializationsLoopExit");
     public static final CounterKey COUNTER_ALLOCATION_REMOVED = DebugContext.counter("AllocationsRemoved");
     public static final CounterKey COUNTER_MEMORYCHECKPOINT = DebugContext.counter("MemoryCheckpoint");
 
@@ -624,11 +625,17 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
         if (exitNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+            // We cannot go below loop exits with an exception handling BCI, it would create
+            // allocations whose slow path has an invalid frame state.
+            boolean forceMaterialization = exitNode.stateAfter().isExceptionHandlingBCI();
             EconomicMap<Integer, ProxyNode> proxies = EconomicMap.create(Equivalence.DEFAULT);
             for (ProxyNode proxy : exitNode.proxies()) {
                 ValueNode alias = getAlias(proxy.value());
                 if (alias instanceof VirtualObjectNode) {
                     VirtualObjectNode virtual = (VirtualObjectNode) alias;
+                    if (forceMaterialization) {
+                        ensureMaterialized(exitState, virtual.getObjectId(), exitNode, effects, COUNTER_MATERIALIZATIONS_LOOP_EXIT);
+                    }
                     proxies.put(virtual.getObjectId(), proxy);
                 }
             }
