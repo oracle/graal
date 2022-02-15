@@ -51,6 +51,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -246,6 +247,7 @@ public final class ClassRedefinition {
     }
 
     public int redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
@@ -266,7 +268,6 @@ public final class ClassRedefinition {
                     // if there is a currently loaded class under that name
                     // we have to replace that in the class loader registry etc.
                     // otherwise, don't eagerly define the new class
-                    ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
                     Symbol<Symbol.Type> type = env.getTypes().fromName(classInfo.getName());
                     ClassRegistry classRegistry = env.getRegistries().getClassRegistry(classInfo.getClassLoader());
                     Klass loadedKlass = classRegistry.findLoadedKlass(env, type);
@@ -285,6 +286,8 @@ public final class ClassRedefinition {
             // TODO(Gregersen) - return appropriate error code based on the exception type
             // we get from parsing the class file
             return ErrorCodes.INVALID_CLASS_FORMAT;
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(env.getMeta());
         }
     }
 

@@ -23,37 +23,51 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 /**
  * Indicates an exception that occurred during class loading.
  */
-public class EspressoClassLoadingException extends RuntimeException {
+public abstract class EspressoClassLoadingException extends Exception {
 
     private static final long serialVersionUID = 1598679948708713831L;
 
-    public static ClassCircularityError classCircularityError() throws ClassCircularityError {
+    public static EspressoClassLoadingException.ClassCircularityError classCircularityError() throws EspressoClassLoadingException.ClassCircularityError {
         CompilerDirectives.transferToInterpreter();
-        throw new ClassCircularityError("Class circularity detected");
+        throw new EspressoClassLoadingException.ClassCircularityError("Class circularity detected");
     }
 
-    public static IncompatibleClassChangeError incompatibleClassChangeError(String msg) throws IncompatibleClassChangeError {
+    public static EspressoClassLoadingException.IncompatibleClassChangeError incompatibleClassChangeError(String msg) throws EspressoClassLoadingException.IncompatibleClassChangeError {
         CompilerDirectives.transferToInterpreter();
-        throw new IncompatibleClassChangeError(msg);
+        throw new EspressoClassLoadingException.IncompatibleClassChangeError(msg);
     }
 
-    public static SecurityException securityException(String msg) throws SecurityException {
+    public static EspressoClassLoadingException.SecurityException securityException(String msg) throws EspressoClassLoadingException.SecurityException {
         CompilerDirectives.transferToInterpreter();
-        throw new SecurityException(msg);
+        throw new EspressoClassLoadingException.SecurityException(msg);
     }
 
-    public static ClassDefNotFoundError classDefNotFoundError(String msg) throws ClassDefNotFoundError {
+    public static EspressoClassLoadingException.ClassDefNotFoundError classDefNotFoundError(String msg) throws EspressoClassLoadingException.ClassDefNotFoundError {
         CompilerDirectives.transferToInterpreter();
-        throw new ClassDefNotFoundError(msg);
+        throw new EspressoClassLoadingException.ClassDefNotFoundError(msg);
+    }
+
+    public static EspressoClassLoadingException.LinkageError linkageError(String msg) throws EspressoClassLoadingException.LinkageError {
+        CompilerDirectives.transferToInterpreter();
+        throw new EspressoClassLoadingException.LinkageError(msg);
+    }
+
+    public static EspressoClassLoadingException.IllegalAccessError illegalAccessError(String msg) throws EspressoClassLoadingException.IllegalAccessError {
+        CompilerDirectives.transferToInterpreter();
+        throw new EspressoClassLoadingException.IllegalAccessError(msg);
     }
 
     private EspressoClassLoadingException(String msg) {
         super(msg);
     }
+
+    public abstract EspressoException asGuestException(Meta meta);
 
     public static final class ClassCircularityError extends EspressoClassLoadingException {
 
@@ -61,6 +75,11 @@ public class EspressoClassLoadingException extends RuntimeException {
 
         private ClassCircularityError(String msg) {
             super(msg);
+        }
+
+        @Override
+        public EspressoException asGuestException(Meta meta) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCircularityError, getMessage());
         }
     }
 
@@ -71,6 +90,11 @@ public class EspressoClassLoadingException extends RuntimeException {
         private IncompatibleClassChangeError(String msg) {
             super(msg);
         }
+
+        @Override
+        public EspressoException asGuestException(Meta meta) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, getMessage());
+        }
     }
 
     public static final class SecurityException extends EspressoClassLoadingException {
@@ -80,6 +104,11 @@ public class EspressoClassLoadingException extends RuntimeException {
         private SecurityException(String msg) {
             super(msg);
         }
+
+        @Override
+        public EspressoException asGuestException(Meta meta) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, getMessage());
+        }
     }
 
     public static final class ClassDefNotFoundError extends EspressoClassLoadingException {
@@ -88,6 +117,39 @@ public class EspressoClassLoadingException extends RuntimeException {
 
         private ClassDefNotFoundError(String msg) {
             super(msg);
+        }
+
+        @Override
+        public EspressoException asGuestException(Meta meta) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, getMessage());
+        }
+    }
+
+    public static final class LinkageError extends EspressoClassLoadingException {
+
+        private static final long serialVersionUID = 1820087778127928882L;
+
+        private LinkageError(String msg) {
+            super(msg);
+        }
+
+        @Override
+        public EspressoException asGuestException(Meta meta) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, getMessage());
+        }
+    }
+
+    public static final class IllegalAccessError extends EspressoClassLoadingException {
+
+        private static final long serialVersionUID = 1820087878127928882L;
+
+        private IllegalAccessError(String msg) {
+            super(msg);
+        }
+
+        @Override
+        public EspressoException asGuestException(Meta meta) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, getMessage());
         }
     }
 }

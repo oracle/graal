@@ -65,8 +65,7 @@ public final class BootClassRegistry extends ClassRegistry {
     private final Map<String, String> packageMap = new ConcurrentHashMap<>();
 
     @Override
-    public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.SecurityException {
+    public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
         if (Types.isArray(type)) {
             throw EspressoError.shouldNotReachHere("Array type provided to loadParserKlass");
         }
@@ -84,15 +83,13 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError {
+    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ParserKlass parserKlass = loadParserKlass(env, type, info);
         return parserKlass != null ? createLinkedKlass(env, parserKlass, info) : null;
     }
 
     @Override
-    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.IncompatibleClassChangeError {
+    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ClasspathFile classpathFile = getClasspathFile(env, type);
         if (classpathFile == null) {
             return null;

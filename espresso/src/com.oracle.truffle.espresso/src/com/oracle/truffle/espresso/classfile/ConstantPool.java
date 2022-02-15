@@ -41,7 +41,6 @@ import java.util.Formatter;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;

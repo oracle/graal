@@ -105,6 +105,7 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EntryTable;
 import com.oracle.truffle.espresso.impl.Field;
@@ -1893,11 +1894,15 @@ public final class VM extends NativeEnv {
 
         ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
         ObjectKlass k;
-        if (isHidden) {
-            // Special handling
-            k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
-        } else {
-            k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+        try {
+            if (isHidden) {
+                // Special handling
+                k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+            } else {
+                k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+            }
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(env.getMeta());
         }
 
         if (initialize) {
@@ -1921,7 +1926,12 @@ public final class VM extends NativeEnv {
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
 
         ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
-        StaticObject clazz = getContext().getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        StaticObject clazz;
+        try {
+            clazz = getContext().getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(env.getMeta());
+        }
         assert clazz != null;
         return clazz;
     }

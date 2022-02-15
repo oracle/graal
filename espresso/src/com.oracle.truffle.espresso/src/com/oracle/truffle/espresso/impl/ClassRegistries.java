@@ -217,8 +217,7 @@ public final class ClassRegistries {
      * .
      */
     @TruffleBoundary
-    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain)
-            throws EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.SecurityException {
+    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) throws EspressoClassLoadingException {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
@@ -229,18 +228,16 @@ public final class ClassRegistries {
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.loadKlass(env, type, protectionDomain);
+        return registry.loadKlass(env, type, protectionDomain, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     @TruffleBoundary
-    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader)
-            throws EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.SecurityException {
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader) throws EspressoClassLoadingException {
         return defineKlass(env, type, bytes, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     @TruffleBoundary
-    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.SecurityException {
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
         assert classLoader != null;
         ClassRegistry registry = getClassRegistry(classLoader);
         return registry.defineKlass(env, type, bytes, info);

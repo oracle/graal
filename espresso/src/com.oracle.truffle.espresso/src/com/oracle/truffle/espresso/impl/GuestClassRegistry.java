@@ -78,15 +78,13 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.SecurityException {
+    public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
         ObjectKlass klass = performLoadKlass(env, type, info);
         return klass.getLinkedKlass().getParserKlass();
     }
 
     @Override
-    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.IncompatibleClassChangeError {
+    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
         ObjectKlass klass = performLoadKlass(env, type, info);
         return klass.getLinkedKlass();
     }
@@ -119,8 +117,7 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @SuppressWarnings("sync-override")
     @Override
-    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes, ClassRegistry.ClassDefinitionInfo info)
-            throws EspressoClassLoadingException.SecurityException, EspressoClassLoadingException.ClassCircularityError, EspressoClassLoadingException.ClassDefNotFoundError, EspressoClassLoadingException.IncompatibleClassChangeError {
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ObjectKlass klass = super.defineKlass(env, typeOrNull, bytes, info);
         // Register class in guest CL. Mimics HotSpot behavior.
         if (info.addedToRegistry()) {

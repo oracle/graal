@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
@@ -156,32 +155,6 @@ public interface ClassLoadingEnv {
         @Override
         public double unboxDouble(StaticObject obj) {
             return getMeta().unboxDouble(obj);
-        }
-
-
-        // TODO remove all under
-
-        public RuntimeException generateClassCircularityError() {
-            throw getMeta().throwException(getMeta().java_lang_ClassCircularityError);
-        }
-
-        public RuntimeException generateIncompatibleClassChangeError(String msg) {
-            return getMeta().throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, msg);
-        }
-
-        public RuntimeException generateSecurityException(String msg) {
-            return getMeta().throwExceptionWithMessage(getMeta().java_lang_SecurityException, msg);
-        }
-
-        public RuntimeException wrapIntoClassDefNotFoundError(EspressoException e) {
-            Meta meta = getMeta();
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
-                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
-                throw meta.throwException(ncdfe);
-            }
-            return e;
         }
     }
 
