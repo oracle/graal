@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,7 +92,7 @@ public class VMFeature implements Feature {
         addCGlobalDataString("Target.Libraries", String.join("|", nativeLibraries.getLibraries()));
         addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream().map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
-            addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
+            addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toCGlobalDataString());
         }
 
         if (SubstrateOptions.DumpTargetInfo.getValue()) {

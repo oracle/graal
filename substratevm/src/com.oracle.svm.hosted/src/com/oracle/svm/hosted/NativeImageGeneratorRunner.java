@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -309,7 +309,6 @@ public class NativeImageGeneratorRunner {
                 throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
             try {
-                reporter.printStart(imageName);
 
                 totalTimer.setPrefix(imageName);
                 classlistTimer.setPrefix(imageName);
@@ -341,6 +340,8 @@ public class NativeImageGeneratorRunner {
                     throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
                                     SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
                 }
+
+                reporter.printStart(imageName, imageKind);
 
                 if (!className.isEmpty() || !moduleName.isEmpty()) {
                     Method mainEntryPoint;
