@@ -39,7 +39,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Test;
@@ -68,13 +67,11 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
         DebugContext debug = getDebugContext(options);
         for (VMIntrinsicMethod intrinsic : intrinsics) {
             InvocationPlugin plugin = CheckGraalIntrinsics.findPlugin(invocationPluginsMap, intrinsic);
-            if (plugin != null) {
-                if (plugin instanceof MethodSubstitutionPlugin) {
-                    ResolvedJavaMethod method = CheckGraalIntrinsics.resolveIntrinsic(getMetaAccess(), intrinsic);
-                    if (!method.isNative()) {
-                        StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, AllowAssumptions.YES, null);
-                        getCode(method, graph);
-                    }
+            if (plugin != null && !plugin.inlineOnly()) {
+                ResolvedJavaMethod method = CheckGraalIntrinsics.resolveIntrinsic(getMetaAccess(), intrinsic);
+                if (!method.isNative()) {
+                    StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, AllowAssumptions.YES, null);
+                    getCode(method, graph);
                 }
             }
         }

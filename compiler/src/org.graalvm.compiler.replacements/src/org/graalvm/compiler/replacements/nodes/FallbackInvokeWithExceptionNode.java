@@ -80,4 +80,10 @@ public final class FallbackInvokeWithExceptionNode extends WithExceptionNode imp
      */
     @NodeIntrinsic
     public static native Object fallbackFunctionCall();
+
+    /**
+     * @see FallbackInvokeWithExceptionNode
+     */
+    @NodeIntrinsic
+    public static native int fallbackFunctionCallInt();
 }

@@ -26,20 +26,26 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayStart;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.Snippets;
 
-@ClassSubstitution(className = "java.math.BigInteger", optional = true)
-public class BigIntegerSubstitutions {
+public class BigIntegerSnippets implements Snippets {
 
-    @MethodSubstitution(isStatic = false)
-    static int[] multiplyToLen(@SuppressWarnings("unused") Object receiver, int[] x, int xlen, int[] y, int ylen, int[] zIn) {
-        return multiplyToLenStatic(x, xlen, y, ylen, zIn);
+    public static class Templates extends SnippetTemplate.AbstractTemplates {
+
+        public Templates(OptionValues options, Providers providers) {
+            super(options, providers);
+        }
+
+        public final SnippetTemplate.SnippetInfo implMultiplyToLen = snippet(BigIntegerSnippets.class, "implMultiplyToLen");
     }
 
-    @MethodSubstitution(isStatic = true)
-    static int[] multiplyToLenStatic(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
+    @Snippet
+    public static int[] implMultiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
         int[] zResult = zIn;
         int zLen;
         if (zResult == null || zResult.length < (xlen + ylen)) {

@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.GraalOptions.EmitStringSubstitutions;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
@@ -188,6 +189,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     private BoxingSnippets.Templates boxingSnippets;
     protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
     protected IsArraySnippets.Templates isArraySnippets;
+    protected StringLatin1Snippets.Templates latin1Templates;
+    protected StringUTF16Snippets.Templates utf16templates;
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
@@ -203,6 +206,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
         replacements = providers.getReplacements();
         boxingSnippets = new BoxingSnippets.Templates(options, factory, providers);
+        if (EmitStringSubstitutions.getValue(options)) {
+            latin1Templates = new StringLatin1Snippets.Templates(options, providers);
+            providers.getReplacements().registerSnippetTemplateCache(latin1Templates);
+            utf16templates = new StringUTF16Snippets.Templates(options, providers);
+            providers.getReplacements().registerSnippetTemplateCache(utf16templates);
+        }
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers));
     }
 

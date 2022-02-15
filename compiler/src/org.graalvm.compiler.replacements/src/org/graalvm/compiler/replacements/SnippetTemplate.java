@@ -92,6 +92,7 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -1633,6 +1634,10 @@ public class SnippetTemplate {
         return replacements;
     }
 
+    public boolean hasSideEffects() {
+        return !sideEffectNodes.isEmpty();
+    }
+
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}
@@ -2431,8 +2436,18 @@ public class SnippetTemplate {
             if (!(nodeRequiringState instanceof AbstractMergeNode || nodeRequiringState instanceof LoopExitNode)) {
                 // merges and loop exit cannot have "this node" on stack
                 if (valueInReplacement instanceof ValuePhiNode) {
-                    Node sideEffectDup = duplicates.get(nodeRequiringState);
-                    valueInReplacement = (ValueNode) sideEffectDup;
+                    ValuePhiNode valuePhi = (ValuePhiNode) valueInReplacement;
+                    FixedNode next = (FixedNode) nodeRequiringState;
+                    while (next instanceof FixedWithNextNode) {
+                        next = ((FixedWithNextNode) next).next();
+                    }
+                    if (next instanceof EndNode) {
+                        EndNode duplicateEnd = (EndNode) duplicates.get(next);
+                        int endIndex = valuePhi.merge().forwardEndIndex(duplicateEnd);
+                        if (endIndex != -1) {
+                            valueInReplacement = valuePhi.valueAt(endIndex);
+                        }
+                    }
                 }
             }
             propagateValInState(newState, replacee, valueInReplacement);

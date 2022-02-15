@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.test;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -46,9 +45,9 @@ import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tests if {@link MethodSubstitution}s are inlined correctly. Most test cases only assert that
- * there are no remaining invocations in the graph. This is sufficient if the method that is being
- * substituted is a native method. For Java methods, additional checks are necessary.
+ * Tests if method substitutions are inlined correctly. Most test cases only assert that there are
+ * no remaining invocations in the graph. This is sufficient if the method that is being substituted
+ * is a native method. For Java methods, additional checks are necessary.
  */
 public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 

@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -138,16 +137,9 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    @Fold
-    public static ResolvedJavaType methodHolderClass(@InjectedParameter IntrinsicContext context) {
-        return context.getOriginalMethod().getDeclaringClass();
-    }
-
-    @Fold
-    public static ResolvedJavaType getType(@Fold.InjectedParameter IntrinsicContext context, String typeName) {
+    public static ResolvedJavaType getType(ResolvedJavaType accessingClass, String typeName) {
         try {
-            UnresolvedJavaType unresolved = UnresolvedJavaType.create(typeName);
-            return unresolved.resolve(methodHolderClass(context));
+            return UnresolvedJavaType.create(typeName).resolve(accessingClass);
         } catch (LinkageError e) {
             throw new GraalError(e);
         }

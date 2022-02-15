@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -507,10 +506,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
         if (!IS_IN_NATIVE_IMAGE) {
             if (method != null) {
-                if (method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null) {
+                if (method.getAnnotation(Snippet.class) != null) {
                     assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
-                                    " annotated by " + Snippet.class.getName() + " or " +
-                                    MethodSubstitution.class.getName() +
+                                    " annotated by " + Snippet.class.getName() +
                                     " must have its `isSubstitution` field set to true";
                 }
             }
@@ -1040,8 +1038,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * Returns true if this graph is built without parsing the {@linkplain #method() root method} or
-     * if the root method is annotated by {@link Snippet} or {@link MethodSubstitution}. This is
-     * preferred over querying annotations directly as querying annotations can cause class loading.
+     * if the root method is annotated by {@link Snippet}. This is preferred over querying
+     * annotations directly as querying annotations can cause class loading.
      */
     public boolean isSubstitution() {
         return isSubstitution;

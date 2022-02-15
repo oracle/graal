@@ -72,7 +72,9 @@ import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
+import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -302,6 +304,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, providers);
         objectSnippets = new ObjectSnippets.Templates(options, providers);
         unsafeSnippets = new UnsafeSnippets.Templates(options, providers);
+
+        replacements.registerSnippetTemplateCache(new BigIntegerSnippets.Templates(options, providers));
+        replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
 
         initializeExtensions(options, factories, providers, config);
     }
