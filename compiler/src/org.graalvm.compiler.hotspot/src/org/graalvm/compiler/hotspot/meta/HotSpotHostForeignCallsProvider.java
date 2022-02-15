@@ -55,6 +55,9 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCH;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
@@ -529,6 +532,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.useSquareToLenIntrinsic()) {
             registerForeignCall(SQUARE_TO_LEN, c.squareToLen, NativeCall);
         }
+        if (c.useCRC32Intrinsics) {
+            // This stub does callee saving
+            registerForeignCall(UPDATE_BYTES_CRC32, c.updateBytesCRC32Stub, NativeCall);
+        }
+        if (c.useCRC32CIntrinsics) {
+            registerForeignCall(UPDATE_BYTES_CRC32C, c.updateBytesCRC32C, NativeCall);
+        }
+        registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
 
         if (c.useAESIntrinsics) {
             /*

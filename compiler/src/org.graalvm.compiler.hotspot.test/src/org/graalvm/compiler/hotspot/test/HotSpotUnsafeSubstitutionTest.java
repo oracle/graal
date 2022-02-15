@@ -59,7 +59,7 @@ public class HotSpotUnsafeSubstitutionTest extends MethodSubstitutionTest {
 
     @Test
     public void testUnsafeSubstitutions() throws Exception {
-        testGraph("unsafeCopyMemory", HotSpotBackend.copyMemoryName);
+        testGraph("unsafeCopyMemory", "copyMemory0");
     }
 
     public void unsafeCopyMemory(Object srcBase, long srcOffset, Object dstBase, long dstOffset, long bytes) {

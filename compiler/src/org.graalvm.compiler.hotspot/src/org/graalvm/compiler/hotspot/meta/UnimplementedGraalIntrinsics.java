@@ -274,6 +274,11 @@ public final class UnimplementedGraalIntrinsics {
         if (!config.useSHA512Intrinsics()) {
             add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
         }
+        if (config.updateBytesAdler32 == 0L) {
+            add(ignore,
+                            "java/util/zip/Adler32.updateByteBuffer(IJII)I",
+                            "java/util/zip/Adler32.updateBytes(I[BII)I");
+        }
 
         if (isJDK16OrHigher()) {
             // JDK-8258558
@@ -287,10 +292,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
                         // Only used as a marker for vectorization?
                         "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
-                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
-                        "java/util/zip/Adler32.updateByteBuffer(IJII)I",
-                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
-                        "java/util/zip/Adler32.updateBytes(I[BII)I",
                         // Emits a slow and a fast path and some dispatching logic
                         "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;");
 
@@ -357,7 +358,6 @@ public final class UnimplementedGraalIntrinsics {
 
         if (arch instanceof AArch64) {
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
                             "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/StringLatin1.indexOf([B[B)I",

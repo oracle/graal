@@ -200,6 +200,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacements, config);
                 registerAESPlugins(invocationPlugins, config, replacements);
+                registerAdler32Plugins(invocationPlugins, config, replacements);
                 registerCRC32Plugins(invocationPlugins, config, replacements);
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
@@ -437,7 +438,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
-        r.register(new InvocationPlugin(HotSpotBackend.copyMemoryName, Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
+        r.register(new InvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
                             ValueNode destOffset, ValueNode bytes) {
@@ -743,6 +744,30 @@ public class HotSpotGraphBuilderPlugins {
                         new AESCryptPlugin(true, "implEncryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class));
         r.registerConditional(config.useAESIntrinsics && config.aescryptDecryptBlockStub != 0L,
                         new AESCryptPlugin(false, "implDecryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class));
+    }
+
+    private static void registerAdler32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.util.zip.Adler32", replacements);
+        r.registerConditional(config.updateBytesAdler32 != 0L, new InlineOnlyInvocationPlugin("updateBytes", int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode adler, ValueNode src, ValueNode off, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode addr = helper.arrayElementPointer(src, JavaKind.Byte, off);
+                    ForeignCallNode call = new ForeignCallNode(HotSpotBackend.UPDATE_BYTES_ADLER32, adler, addr, len);
+                    b.addPush(JavaKind.Int, call);
+                }
+                return true;
+            }
+        });
+        r.registerConditional(config.updateBytesAdler32 != 0L, new InlineOnlyInvocationPlugin("updateByteBuffer", int.class, long.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode adler, ValueNode addr, ValueNode off, ValueNode len) {
+                ValueNode buff = b.add(new ComputeObjectAddressNode(addr, off));
+                ForeignCallNode call = new ForeignCallNode(HotSpotBackend.UPDATE_BYTES_ADLER32, adler, buff, len);
+                b.addPush(JavaKind.Int, call);
+                return true;
+            }
+        });
     }
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
