@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -85,6 +86,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextLocalTest extends AbstractPolyglotTest {
 
@@ -95,6 +97,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     static final String VALID_INSTRUMENT = "ContextLocalTest_ValidInstrument";
     static final String INVALID_CONTEXT_LOCAL = "ContextLocalTest_InvalidLanguageContextLocal";
     static final String INVALID_CONTEXT_THREAD_LOCAL = "ContextLocalTest_InvalidLanguageContextThreadLocal";
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void customSubclassesDisallowed() {
@@ -484,8 +491,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @Test
     public void testInvalidContextLocalLanguage() {
         try (Engine engine = Engine.create()) {
-            try (Context c0 = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-                            Context c1 = Context.newBuilder().engine(engine).allowAllAccess(true).build()) {
+            try (Context c0 = Context.newBuilder(INVALID_CONTEXT_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build();
+                            Context c1 = Context.newBuilder(INVALID_CONTEXT_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build()) {
                 c0.initialize(INVALID_CONTEXT_LOCAL);
                 c1.enter();
                 try {
@@ -505,8 +512,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @Test
     public void testInvalidContextThreadLocalLanguage() {
         try (Engine engine = Engine.create()) {
-            try (Context c0 = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-                            Context c1 = Context.newBuilder().engine(engine).allowAllAccess(true).build()) {
+            try (Context c0 = Context.newBuilder(INVALID_CONTEXT_THREAD_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build();
+                            Context c1 = Context.newBuilder(INVALID_CONTEXT_THREAD_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build()) {
                 c0.initialize(INVALID_CONTEXT_THREAD_LOCAL);
                 c1.enter();
                 try {
@@ -842,7 +849,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             TruffleContext innerTruffleContext = createInnerContext(outerLanguageOuterEnv);
             Object outerTruffleContext = innerTruffleContext.enter(this);
             try {
-                Env outerLanguageInnerEnv = ValidSharedLanguage.CONTEXT_REF.get(this);
+                Env outerLanguageInnerEnv = ValidSharedLanguage.CONTEXT_REF.get(null);
                 createInstrument(outerLanguageInnerEnv);
                 CallTarget callTarget = parse(outerLanguageInnerEnv);
                 return callNode.call(callTarget);

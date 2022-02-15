@@ -44,6 +44,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.util.GuardedAnnotationAccess;
 
@@ -210,6 +214,21 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
                 }
             }
             return false;
+        } else if (node instanceof VirtualObjectNode) {
+            /*
+             * Same as the explicit allocation nodes above, but this time for the virtualized
+             * allocations created when escape analysis runs immediately after bytecode parsing.
+             */
+            if (node instanceof VirtualArrayNode) {
+                int newArrayLength = ((VirtualArrayNode) node).entryCount();
+                if (newArrayLength == 0) {
+                    return true;
+                }
+            }
+            return false;
+        } else if (node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode) {
+            /* Ignore nodes created by escape analysis in addition to the VirtualInstanceNode. */
+            return true;
         }
 
         if (node instanceof Invoke) {

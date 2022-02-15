@@ -62,9 +62,9 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         int argCount = Signatures.parameterCount(parsedSignature, false);
-        Object[] args = BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
+        Object[] args = BytecodeNode.popBasicArgumentsWithArray(frame, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
         if (hasAppendix) {
             args[args.length - 1] = appendix;
         }
@@ -72,7 +72,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), unbasic(result, returnType), returnKind);
+        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), unbasic(result, returnType), returnKind);
     }
 
     private int getResultAt() {

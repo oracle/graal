@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.access;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -33,10 +31,10 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import sun.misc.Unsafe;
 
 /**
@@ -112,17 +113,25 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     @Specialization
     Object doByteArray(byte[] input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), false);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(String input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), true);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.LATIN_1, false);
     }
 
     @Specialization(guards = "!isCompactString(input)")
     Object doStringNonCompact(String input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), false);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN, false);
+    }
+
+    @Specialization(guards = "codeRangeEqualsNode.execute(input, cachedCodeRange)", limit = "5")
+    Object doTString(TruffleString input, int fromIndex, int index, int maxIndex,
+                    @Cached @SuppressWarnings("unused") TruffleString.GetCodeRangeNode codeRangeNode,
+                    @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
+                    @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange) {
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, true);
     }
 
     @Specialization(guards = "neitherByteArrayNorString(input)")
@@ -131,7 +140,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
         // strings?
-        return executor.execute(executor.createLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex), false);
+        return executor.execute(executor.createLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN, false);
     }
 
     static boolean isCompactString(String str) {
@@ -139,6 +148,6 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String);
+        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
     }
 }

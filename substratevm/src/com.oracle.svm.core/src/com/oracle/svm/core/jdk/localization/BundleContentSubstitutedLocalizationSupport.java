@@ -37,20 +37,19 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
-import org.graalvm.compiler.debug.GraalError;
+import com.oracle.svm.core.util.UserError;
 
-// Checkstyle: stop
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
-// Checkstyle: resume
 
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
@@ -88,6 +87,14 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         }
     }
 
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void onClassBundlePrepared(Class<?> bundleClass) {
+        if (isBundleSupported(bundleClass)) {
+            prepareNonCompliant(bundleClass);
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private void storeBundleContentOf(ResourceBundle bundle) {
         GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle %s of type %s", bundle, bundle.getClass());
@@ -114,8 +121,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isBundleSupported(ResourceBundle bundle) {
-        return bundle instanceof ListResourceBundle || bundle instanceof OpenListResourceBundle || bundle instanceof ParallelListResourceBundle;
+    private static boolean isBundleSupported(ResourceBundle bundle) {
+        return isBundleSupported(bundle.getClass());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static boolean isBundleSupported(Class<?> bundleClass) {
+        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

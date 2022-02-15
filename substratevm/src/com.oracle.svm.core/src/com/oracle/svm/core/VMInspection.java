@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-//Checkstyle: stop
-
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -48,14 +46,12 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
-
-//Checkstyle: resume
 
 @AutomaticFeature
 public class VMInspection implements Feature {
@@ -83,9 +79,12 @@ public class VMInspection implements Feature {
     }
 }
 
-final class VMInspectionStartupHook implements Runnable {
+final class VMInspectionStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
+    public void execute(boolean isFirstIsolate) {
+        if (!isFirstIsolate) {
+            return;
+        }
         DumpAllStacks.install();
         if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
             /* We have enough signals to enable the rest. */
@@ -124,7 +123,7 @@ class DumpAllStacks implements SignalHandler {
     }
 
     private static void dumpStack(Log log, IsolateThread vmThread) {
-        Thread javaThread = JavaThreads.fromVMThread(vmThread);
+        Thread javaThread = PlatformThreads.fromVMThread(vmThread);
         if (javaThread != null) {
             log.character('"').string(javaThread.getName()).character('"');
             log.string(" #").signed(javaThread.getId());

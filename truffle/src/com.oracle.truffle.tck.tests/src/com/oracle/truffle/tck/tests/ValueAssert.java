@@ -103,31 +103,31 @@ import static org.junit.Assert.fail;
 
 public class ValueAssert {
 
-    private static final TypeLiteral<List<Object>> OBJECT_LIST = new TypeLiteral<List<Object>>() {
+    private static final TypeLiteral<List<Object>> OBJECT_LIST = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Object, Object>> OBJECT_OBJECT_MAP = new TypeLiteral<Map<Object, Object>>() {
+    private static final TypeLiteral<Map<Object, Object>> OBJECT_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<String, Object>> STRING_OBJECT_MAP = new TypeLiteral<Map<String, Object>>() {
+    private static final TypeLiteral<Map<String, Object>> STRING_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Long, Object>> LONG_OBJECT_MAP = new TypeLiteral<Map<Long, Object>>() {
+    private static final TypeLiteral<Map<Long, Object>> LONG_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Integer, Object>> INTEGER_OBJECT_MAP = new TypeLiteral<Map<Integer, Object>>() {
+    private static final TypeLiteral<Map<Integer, Object>> INTEGER_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Short, Object>> SHORT_OBJECT_MAP = new TypeLiteral<Map<Short, Object>>() {
+    private static final TypeLiteral<Map<Short, Object>> SHORT_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Byte, Object>> BYTE_OBJECT_MAP = new TypeLiteral<Map<Byte, Object>>() {
+    private static final TypeLiteral<Map<Byte, Object>> BYTE_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Number, Object>> NUMBER_OBJECT_MAP = new TypeLiteral<Map<Number, Object>>() {
+    private static final TypeLiteral<Map<Number, Object>> NUMBER_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Float, Object>> FLOAT_OBJECT_MAP = new TypeLiteral<Map<Float, Object>>() {
+    private static final TypeLiteral<Map<Float, Object>> FLOAT_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Map<Double, Object>> DOUBLE_OBJECT_MAP = new TypeLiteral<Map<Double, Object>>() {
+    private static final TypeLiteral<Map<Double, Object>> DOUBLE_OBJECT_MAP = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<Function<Object, Object>>() {
+    private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Iterable<Object>> OBJECT_ITERABLE = new TypeLiteral<Iterable<Object>>() {
+    private static final TypeLiteral<Iterable<Object>> OBJECT_ITERABLE = new TypeLiteral<>() {
     };
-    private static final TypeLiteral<Iterator<Object>> OBJECT_ITERATOR = new TypeLiteral<Iterator<Object>>() {
+    private static final TypeLiteral<Iterator<Object>> OBJECT_ITERATOR = new TypeLiteral<>() {
     };
 
     public static void assertValue(Value value) {
@@ -584,7 +584,9 @@ public class ValueAssert {
 
                     for (String key : value.getMemberKeys()) {
                         Value child = value.getMember(key);
-                        if (!isSameHostObject(value, child)) {
+                        if (child == null) {
+                            assertTrue("A non-readable member must at least be modifiable, removable, or invocable", value.hasMember(key));
+                        } else if (!isSameHostObject(value, child)) {
                             assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
                         }
                     }

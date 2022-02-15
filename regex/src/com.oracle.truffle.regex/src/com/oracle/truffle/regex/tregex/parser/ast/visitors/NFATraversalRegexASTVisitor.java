@@ -236,7 +236,7 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             RegexASTNode target = pathGetNode(curPath.peek());
             visit(target);
-            if (target.isMatchFound() && !dollarsOnPath() && lookAroundsOnPath.isEmpty() && !hasQuantifierGuards() && !caretsOnPath()) {
+            if (target.isMatchFound() && forward && !dollarsOnPath() && lookAroundsOnPath.isEmpty() && !hasQuantifierGuards() && !caretsOnPath()) {
                 /*
                  * Transitions after an unconditional final state transition will never be taken, so
                  * it is safe to prune them.
@@ -374,6 +374,7 @@ public abstract class NFATraversalRegexASTVisitor {
     protected GroupBoundaries getGroupBoundaries() {
         captureGroupUpdates.clear();
         captureGroupClears.clear();
+        int lastGroup = -1;
         for (int i = 0; i < curPath.length(); i++) {
             long element = curPath.get(i);
             if (pathIsGroupPassThrough(element)) {
@@ -382,6 +383,9 @@ public abstract class NFATraversalRegexASTVisitor {
             if (pathIsGroup(element)) {
                 Group group = (Group) pathGetNode(element);
                 if (group.isCapturing()) {
+                    if (ast.getOptions().getFlavor().usesLastGroupResultField() && pathIsGroupExit(element) && group.getGroupNumber() != 0) {
+                        lastGroup = group.getGroupNumber();
+                    }
                     int b = pathIsGroupEnter(element) ? group.getBoundaryIndexStart() : group.getBoundaryIndexEnd();
                     captureGroupUpdates.set(b);
                     captureGroupClears.clear(b);
@@ -396,7 +400,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
             }
         }
-        return ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears);
+        return ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears, lastGroup);
     }
 
     private boolean doAdvance() {

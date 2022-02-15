@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,8 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         String mediumUTF16String = "\u03bbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaax" +
                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        String[] targets = new String[]{"foobar", "foo", "bar", "\u03bbfoobar", mediumString, mediumUTF16String, longString, longUTF16String};
-        int[] targetChars = new int[]{'f', 'o', 'r', 'x', Character.MIN_SUPPLEMENTARY_CODE_POINT};
+        String[] targets = new String[]{"foobar", "foo", "bar", "\u00A6", "\u03bbfoobar", mediumString, mediumUTF16String, longString, longUTF16String};
+        int[] targetChars = new int[]{'f', 'o', 'r', 'x', '\u00A6', Character.MIN_SUPPLEMENTARY_CODE_POINT};
         int[] targetOffsets = new int[12];
         for (int i = 0; i < targetOffsets.length; i++) {
             targetOffsets[i] = i - 1;

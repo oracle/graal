@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-//Checkstyle: allow reflection
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
@@ -34,11 +32,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -50,14 +48,18 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Counter;
 
 import jdk.vm.ci.code.Architecture;
@@ -135,7 +137,7 @@ public class JavaMainWrapper {
                  * because they often depend on option values. The user is expected to manually run
                  * the startup hooks after setting all option values.
                  */
-                RuntimeSupport.getRuntimeSupport().executeStartupHooks();
+                VMRuntime.initialize();
             }
 
             /*
@@ -163,7 +165,7 @@ public class JavaMainWrapper {
             /*
              * Shutdown sequence: First wait for all non-daemon threads to exit.
              */
-            JavaThreads.singleton().joinAllNonDaemons();
+            PlatformThreads.singleton().joinAllNonDaemons();
             /*
              * Run shutdown hooks (both our own hooks and application-registered hooks. Note that
              * this can start new non-daemon threads. We are not responsible to wait until they have
@@ -261,11 +263,12 @@ public class JavaMainWrapper {
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
-    private static class EnterCreateIsolateWithCArgumentsPrologue {
+    private static class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create the main Isolate.");
 
         @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
         public static void enter(int paramArgc, CCharPointerPointer paramArgv) {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             args.setVersion(3);
@@ -273,7 +276,7 @@ public class JavaMainWrapper {
             args.setArgv(paramArgv);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }

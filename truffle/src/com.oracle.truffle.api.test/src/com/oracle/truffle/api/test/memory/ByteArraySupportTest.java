@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,22 @@
 
 package com.oracle.truffle.api.test.memory;
 
-import com.oracle.truffle.api.memory.ByteArraySupport;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.nio.charset.StandardCharsets;
 
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class ByteArraySupportTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void putByteBigEndian() {
         byte[] buffer = new byte[1];

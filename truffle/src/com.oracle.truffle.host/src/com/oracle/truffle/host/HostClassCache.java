@@ -78,7 +78,7 @@ final class HostClassCache {
     private final Object unnamedModule;
     private final WeakReference<HostClassCache> weakHostClassRef = new WeakReference<>(this);
 
-    private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
+    private final ClassValue<HostClassDesc> descs = new ClassValue<>() {
         @Override
         protected HostClassDesc computeValue(Class<?> type) {
             /*

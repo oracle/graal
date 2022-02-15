@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -91,7 +90,7 @@ public class HotSpotReplacementsUtil {
         }
 
         @Override
-        public abstract ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool);
+        public abstract ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool);
 
         protected ValueNode findReadHub(ValueNode object) {
             ValueNode base = object;
@@ -138,16 +137,9 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    @Fold
-    public static ResolvedJavaType methodHolderClass(@InjectedParameter IntrinsicContext context) {
-        return context.getOriginalMethod().getDeclaringClass();
-    }
-
-    @Fold
-    public static ResolvedJavaType getType(@Fold.InjectedParameter IntrinsicContext context, String typeName) {
+    public static ResolvedJavaType getType(ResolvedJavaType accessingClass, String typeName) {
         try {
-            UnresolvedJavaType unresolved = UnresolvedJavaType.create(typeName);
-            return unresolved.resolve(methodHolderClass(context));
+            return UnresolvedJavaType.create(typeName).resolve(accessingClass);
         } catch (LinkageError e) {
             throw new GraalError(e);
         }
@@ -341,7 +333,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = new HotSpotOptimizingLocationIdentity("Klass::_layout_helper") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
             ValueNode javaObject = findReadHub(object);
             if (javaObject != null) {
                 if (javaObject.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
@@ -443,7 +435,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity HUB_LOCATION = new HotSpotOptimizingLocationIdentity("Hub") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
             TypeReference constantType = StampTool.typeReferenceOrNull(object);
             if (constantType != null && constantType.isExact()) {
                 return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), tool.getConstantReflection().asObjectHub(constantType.getType()), tool.getMetaAccess());
@@ -454,7 +446,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity COMPRESSED_HUB_LOCATION = new HotSpotOptimizingLocationIdentity("CompressedHub") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
             TypeReference constantType = StampTool.typeReferenceOrNull(object);
             if (constantType != null && constantType.isExact()) {
                 return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), ((HotSpotMetaspaceConstant) tool.getConstantReflection().asObjectHub(constantType.getType())).compress(),
@@ -818,14 +810,14 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity CLASS_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._klass") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
             return foldIndirection(read, object, CLASS_MIRROR_LOCATION);
         }
     };
 
     public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._array_klass") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
             return foldIndirection(read, object, ARRAY_KLASS_COMPONENT_MIRROR);
         }
     };
@@ -891,7 +883,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("ObjArrayKlass::_element_klass") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
             ValueNode javaObject = findReadHub(object);
             if (javaObject != null) {
                 ResolvedJavaType type = StampTool.typeOrNull(javaObject);

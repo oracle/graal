@@ -69,6 +69,7 @@ import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -91,6 +92,8 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
@@ -171,7 +174,7 @@ public abstract class NativeImageCodeCache {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
                 JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                addConstantToHeap(constant);
+                addConstantToHeap(constant, "data section");
             }
         }
         for (CompilationResult compilationResult : compilations.values()) {
@@ -189,11 +192,14 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private void addConstantToHeap(Constant constant) {
-        addConstantToHeap(constant, null);
-    }
-
     private void addConstantToHeap(Constant constant, Object reason) {
+        if (constant instanceof SubstrateMethodPointerConstant) {
+            /*
+             * This constant represents a pointer to a method, and as such, should not be added to
+             * the heap
+             */
+            return;
+        }
         Object obj = SubstrateObjectConstant.asObject(constant);
 
         if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
@@ -201,7 +207,7 @@ public abstract class NativeImageCodeCache {
                             (reason != null ? " Method: " + reason : ""));
         }
 
-        imageHeap.addObject(obj, false, constantReasons.get(constant));
+        imageHeap.addObject(obj, false, reason != null ? reason : constantReasons.get(constant));
     }
 
     protected int getConstantsSize() {
@@ -215,30 +221,36 @@ public abstract class NativeImageCodeCache {
     public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization);
+        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             final HostedMethod method = entry.getKey();
             final CompilationResult compilation = entry.getValue();
             codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
         }
 
-        for (HostedType type : imageHeap.getUniverse().getTypes()) {
-            if (type.getWrapped().isReachable()) {
-                codeInfoEncoder.prepareMetadataForClass(type.getJavaClass());
-            }
-        }
-
+        MethodMetadataEncoder methodMetadataEncoder = ImageSingletons.lookup(MethodMetadataEncoderFactory.class).create(encoders);
         if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
             for (Executable queriedMethod : ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods()) {
-                HostedMethod method = imageHeap.getMetaAccess().optionalLookupJavaMethod(queriedMethod);
-                if (method != null) {
-                    codeInfoEncoder.prepareMetadataForMethod(method, queriedMethod);
-                }
+                HostedMethod method = imageHeap.getMetaAccess().lookupJavaMethod(queriedMethod);
+                methodMetadataEncoder.addReflectionMethodMetadata(imageHeap.getMetaAccess(), method, queriedMethod);
             }
-        } else {
+            for (Object method : ImageSingletons.lookup(RuntimeReflectionSupport.class).getHidingMethods()) {
+                AnalysisMethod hidingMethod = (AnalysisMethod) method;
+                HostedType declaringType = imageHeap.getUniverse().lookup(hidingMethod.getDeclaringClass());
+                String name = hidingMethod.getName();
+                JavaType[] analysisParameterTypes = hidingMethod.getSignature().toParameterTypes(null);
+                HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
+                for (int i = 0; i < analysisParameterTypes.length; ++i) {
+                    parameterTypes[i] = imageHeap.getUniverse().lookup(analysisParameterTypes[i]);
+                }
+                methodMetadataEncoder.addHidingMethodMetadata(declaringType, name, parameterTypes);
+            }
+        }
+        if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
-                if (method.getWrapped().isReachable() && method.hasJavaMethod()) {
-                    codeInfoEncoder.prepareMetadataForMethod(method, method.getJavaMethod());
+                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod()) {
+                    methodMetadataEncoder.addReachableMethodMetadata(method);
                 }
             }
         }
@@ -250,6 +262,7 @@ public abstract class NativeImageCodeCache {
 
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        methodMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
@@ -257,9 +270,11 @@ public abstract class NativeImageCodeCache {
         imageCodeInfo.setCodeAndDataMemorySize(codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
+            System.out.println("****Start Code Info Encoder Counters****");
             for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {
                 System.out.println(counter.getName() + " ; " + counter.getValue());
             }
+            System.out.println("****End Code Info Encoder Counters****");
         }
 
         if (Options.VerifyDeoptimizationEntryPoints.getValue()) {
@@ -537,5 +552,19 @@ public abstract class NativeImageCodeCache {
             }
             return false;
         }
+    }
+
+    public interface MethodMetadataEncoder {
+        void addReflectionMethodMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod);
+
+        void addHidingMethodMetadata(HostedType declType, String name, HostedType[] paramTypes);
+
+        void addReachableMethodMetadata(HostedMethod method);
+
+        void encodeAllAndInstall();
+    }
+
+    public interface MethodMetadataEncoderFactory {
+        MethodMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
     }
 }

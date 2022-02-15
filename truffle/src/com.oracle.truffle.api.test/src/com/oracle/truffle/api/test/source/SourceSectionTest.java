@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,20 +50,31 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileWriter;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SourceSectionTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private final Source emptySource = Source.newBuilder("", "", "emptySource").build();
     private final Source emptyLineSource = Source.newBuilder("", "\n", "emptyLineSource").build();
     private final Source shortSource = Source.newBuilder("", "01", "shortSource").build();
     private final Source longSource = Source.newBuilder("", "01234\n67\n9\n", "long").build();
     private final Source noContentSource = Source.newBuilder("", "", "name").content(Source.CONTENT_NONE).build();
+
+    public SourceSectionTest() {
+        needsLanguageEnv = true;
+    }
 
     @Test
     public void emptySourceTest0() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.api.frame;
 
-import com.oracle.truffle.api.nodes.SlowPathException;
-
 /**
  * Exception thrown if the frame slot type does not match the access type.
- * 
+ *
  * @since 0.8 or earlier
  */
-public final class FrameSlotTypeException extends SlowPathException {
+public final class FrameSlotTypeException extends IllegalStateException {
 
     private static final long serialVersionUID = 6972120475215757452L;
 

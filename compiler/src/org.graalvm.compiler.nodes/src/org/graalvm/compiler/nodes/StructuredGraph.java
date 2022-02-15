@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -83,28 +82,26 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of
-     * {@link GuardNode guards}, {@link DeoptimizingNode deoptimizations} and {@link FrameState
-     * frame states}. The stage of a graph progresses monotonously.
+     * {@link GuardNode}s, {@link DeoptimizingNode}s and {@link FrameState}s. The stage of a graph
+     * progresses monotonously.
      */
     public enum GuardsStage {
         /**
-         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}
-         * such as {@link GuardNode GuardNodes}. New {@link DeoptimizingNode DeoptimizingNodes} can
-         * be introduced without constraints. {@link FrameState} nodes are associated with
-         * {@link StateSplit} nodes.
+         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}s
+         * such as {@link GuardNode}s. New {@link DeoptimizingNode}s can be introduced without
+         * constraints. {@link FrameState}s are associated with {@link StateSplit} nodes.
          */
         FLOATING_GUARDS,
         /**
-         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
-         * {@link FixedNode fixed} but new {@link DeoptimizingNode DeoptimizingNodes} can still be
-         * introduced. {@link FrameState} nodes are still associated with {@link StateSplit} nodes.
+         * During this stage, all {@link DeoptimizingNode}s must be {@link FixedNode fixed} but new
+         * {@link DeoptimizingNode}s can still be introduced. {@link FrameState}s are still
+         * associated with {@link StateSplit} nodes.
          */
         FIXED_DEOPTS,
         /**
-         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
-         * {@link FixedNode fixed}. New {@link DeoptimizingNode DeoptimizingNodes} can not be
-         * introduced any more. {@link FrameState} nodes are now associated with
-         * {@link DeoptimizingNode} nodes.
+         * During this stage, all {@link DeoptimizingNode}s must be {@link FixedNode fixed}. New
+         * {@link DeoptimizingNode}s cannot be introduced. {@link FrameState}s are now associated
+         * with {@link DeoptimizingNode}s.
          */
         AFTER_FSA;
 
@@ -158,12 +155,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public enum StageFlag {
         PARTIAL_ESCAPE,
-        HIGH_TIER,
+        HIGH_TIER_LOWERING,
         FLOATING_READS,
         GUARD_MOVEMENT,
-        FIXED_READS,
         VALUE_PROXY_REMOVAL,
+        MID_TIER_LOWERING,
+        LOW_TIER_LOWERING,
         EXPAND_LOGIC,
+        FIXED_READS,
         FINAL_CANONICALIZATION
     }
 
@@ -362,6 +361,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
     private FrameStateVerification frameStateVerification;
+    /** Flag to indicate {@link #clearAllStateAfterForTestingOnly()} was called. */
+    private boolean stateAfterClearedForTesting = false;
 
     /**
      * Different node types verified during {@linkplain FrameStateVerification}. See
@@ -505,10 +506,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
         if (!IS_IN_NATIVE_IMAGE) {
             if (method != null) {
-                if (method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null) {
+                if (method.getAnnotation(Snippet.class) != null) {
                     assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
-                                    " annotated by " + Snippet.class.getName() + " or " +
-                                    MethodSubstitution.class.getName() +
+                                    " annotated by " + Snippet.class.getName() +
                                     " must have its `isSubstitution` field set to true";
                 }
             }
@@ -532,6 +532,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void getDebugProperties(Map<Object, Object> properties) {
         super.getDebugProperties(properties);
         properties.put("compilationIdentifier", compilationId());
+        properties.put("edgeModificationCount", getEdgeModificationCount());
         properties.put("assumptions", String.valueOf(getAssumptions()));
     }
 
@@ -756,13 +757,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public Iterable<Invoke> getInvokes() {
         final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.TYPE).iterator();
-        return new Iterable<Invoke>() {
+        return new Iterable<>() {
 
             private Invoke next;
 
             @Override
             public Iterator<Invoke> iterator() {
-                return new Iterator<Invoke>() {
+                return new Iterator<>() {
 
                     @Override
                     public boolean hasNext() {
@@ -910,6 +911,20 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         AbstractBeginNode next = node.next();
         AbstractBeginNode exceptionEdge = node.exceptionEdge();
         node.replaceAtUsagesAndDelete(replacement);
+
+        if (next instanceof LoopExitNode) {
+            // see LoopExitNode for special case with exception nodes
+            BeginNode newNextBegin = add(new BeginNode());
+            newNextBegin.setNext(next);
+            next = newNextBegin;
+        }
+        if (exceptionEdge instanceof LoopExitNode) {
+            // see LoopExitNode for special case with exception nodes
+            BeginNode newExceptionEdgeBegin = add(new BeginNode());
+            newExceptionEdgeBegin.setNext(exceptionEdge);
+            exceptionEdge = newExceptionEdgeBegin;
+        }
+
         replacement.setNext(next);
         replacement.setExceptionEdge(exceptionEdge);
     }
@@ -1023,8 +1038,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * Returns true if this graph is built without parsing the {@linkplain #method() root method} or
-     * if the root method is annotated by {@link Snippet} or {@link MethodSubstitution}. This is
-     * preferred over querying annotations directly as querying annotations can cause class loading.
+     * if the root method is annotated by {@link Snippet}. This is preferred over querying
+     * annotations directly as querying annotations can cause class loading.
      */
     public boolean isSubstitution() {
         return isSubstitution;
@@ -1187,6 +1202,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return frameStateVerification;
     }
 
+    public boolean isStateAfterClearedForTesting() {
+        return stateAfterClearedForTesting;
+    }
+
     public void weakenFrameStateVerification(FrameStateVerification newFrameStateVerification) {
         if (frameStateVerification == FrameStateVerification.NONE) {
             return;
@@ -1208,7 +1227,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         weakenFrameStateVerification(FrameStateVerification.NONE);
     }
 
-    public void clearAllStateAfter() {
+    /**
+     * For use in tests to clear all stateAfter frame states.
+     */
+    public void clearAllStateAfterForTestingOnly() {
+        stateAfterClearedForTesting = true;
         weakenFrameStateVerification(FrameStateVerification.NONE);
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {

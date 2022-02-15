@@ -24,6 +24,15 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -38,14 +47,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.utils.json.JSONObject;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-
-import org.graalvm.polyglot.Source;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import org.junit.Test;
 
 public class ProfilerTest {
 

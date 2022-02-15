@@ -5,10 +5,10 @@
   local composable = (import "../../common-utils.libsonnet").composable,
   local sulong_deps = composable((import "../../common.json").sulong.deps),
 
-  local linux_amd64 = common["linux-amd64"],
-  local linux_aarch64 = common["linux-aarch64"],
-  local darwin_amd64 = common["darwin-amd64"],
-  local windows_amd64 = common["windows-amd64"],
+  local linux_amd64 = common.linux_amd64,
+  local linux_aarch64 = common.linux_aarch64,
+  local darwin_amd64 = common.darwin_amd64,
+  local windows_amd64 = common.windows_amd64,
 
   nameOrEmpty(b):: if std.objectHas(b, "name") then
     ' (build "%s")' % b.name
@@ -42,10 +42,6 @@
     assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
   } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
-  jdk8:: common.oraclejdk8 + {
-    jdk:: "jdk8",
-  },
-
   labsjdk_ce_11: common["labsjdk-ce-11"] {
     jdk:: "jdk11",
     downloads+: {
@@ -75,15 +71,19 @@
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
   windows_amd64:: windows_amd64 + sulong_deps.windows,
 
+  sulong_notifications:: {
+    notify_groups:: ["sulong"],
+  },
+
   gate:: {
     targets+: ["gate"],
   },
 
-  daily:: {
+  daily:: $.sulong_notifications {
     targets+: ["daily"],
   },
 
-  weekly:: {
+  weekly:: $.sulong_notifications {
     targets+: ["weekly"],
   },
 
@@ -134,16 +134,14 @@
       [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
   } + self.Description("Run mx gate --tags " + tags),
 
-  sulong_weekly_notifications:: {
-    notify_groups:: ["sulong"],
-  },
-
   sulong_gateTest_default_tools:: {
     environment+: {
       CLANG_LLVM_AS: "llvm-as",
       CLANG_LLVM_LINK: "llvm-link",
       CLANG_LLVM_DIS: "llvm-dis",
       CLANG_LLVM_OPT: "opt",
+      MX_TEST_RESULTS_PATTERN: "es-XXX.json",
+      MX_TEST_RESULT_TAGS: "sulong",
     },
   },
 

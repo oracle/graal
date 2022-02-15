@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,15 +63,18 @@ import java.nio.file.attribute.FileTime;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.stream.StreamSupport;
+
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class NIOFileSystemTest {
 
-    private static final FileAttribute<?> ATTR_UNKNOWN = new FileAttribute<Object>() {
+    private static final FileAttribute<?> ATTR_UNKNOWN = new FileAttribute<>() {
         @Override
         public String name() {
             return "unknown";
@@ -92,6 +95,11 @@ public class NIOFileSystemTest {
     private static FileSystem fs;
 
     @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    @BeforeClass
     public static void setUp() throws IOException {
         Path tmp = Files.createTempDirectory(NIOFileSystemTest.class.getSimpleName());
         fs = FileSystem.newDefaultFileSystem();
@@ -106,7 +114,9 @@ public class NIOFileSystemTest {
 
     @AfterClass
     public static void tearDown() throws IOException {
-        delete(workDir);
+        if (workDir != null) {
+            delete(workDir);
+        }
     }
 
     @Test
@@ -293,13 +303,13 @@ public class NIOFileSystemTest {
 
     @Test
     public void testNewDirectoryStream() throws IOException {
-        DirectoryStream.Filter<Path> allFilter = new DirectoryStream.Filter<Path>() {
+        DirectoryStream.Filter<Path> allFilter = new DirectoryStream.Filter<>() {
             @Override
             public boolean accept(Path entry) throws IOException {
                 return true;
             }
         };
-        DirectoryStream.Filter<Path> errFilter = new DirectoryStream.Filter<Path>() {
+        DirectoryStream.Filter<Path> errFilter = new DirectoryStream.Filter<>() {
             @Override
             public boolean accept(Path entry) throws IOException {
                 throw new RuntimeException();

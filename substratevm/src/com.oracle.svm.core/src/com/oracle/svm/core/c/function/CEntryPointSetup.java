@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 
@@ -50,58 +51,63 @@ public class CEntryPointSetup {
      */
     public static final Word SINGLE_THREAD_SENTINEL = SINGLE_ISOLATE_SENTINEL.add(SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
 
-    public static final class EnterPrologue {
+    public static final class EnterPrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to enter the specified IsolateThread context.");
 
+        @Uninterruptible(reason = "prologue")
         static void enter(IsolateThread thread) {
             int code = CEntryPointActions.enter(thread);
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }
     }
 
-    public static final class EnterIsolatePrologue {
+    public static final class EnterIsolatePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to enter the provided Isolate in the current thread. The thread might not have been attached to the Isolate first.");
 
+        @Uninterruptible(reason = "prologue")
         static void enter(Isolate isolate) {
             int code = CEntryPointActions.enterIsolate(isolate);
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }
     }
 
-    public static final class EnterCreateIsolatePrologue {
+    public static final class EnterCreateIsolatePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create a new Isolate.");
 
+        @Uninterruptible(reason = "prologue")
         public static void enter() {
             int code = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }
     }
 
-    public static final class LeaveEpilogue {
+    public static final class LeaveEpilogue implements CEntryPointOptions.Epilogue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to leave the current IsolateThread context.");
 
+        @Uninterruptible(reason = "epilogue")
         static void leave() {
             int code = CEntryPointActions.leave();
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }
     }
 
-    public static final class LeaveDetachThreadEpilogue {
+    public static final class LeaveDetachThreadEpilogue implements CEntryPointOptions.Epilogue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to leave the current IsolateThread context and to detach the current thread.");
 
+        @Uninterruptible(reason = "epilogue")
         static void leave() {
             int code = CEntryPointActions.leaveDetachThread();
             if (code != 0) {
@@ -110,10 +116,11 @@ public class CEntryPointSetup {
         }
     }
 
-    public static final class LeaveTearDownIsolateEpilogue {
+    public static final class LeaveTearDownIsolateEpilogue implements CEntryPointOptions.Epilogue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to leave the current IsolateThread context and to tear down the Isolate.");
 
+        @Uninterruptible(reason = "epilogue")
         static void leave() {
             int code = CEntryPointActions.leaveTearDownIsolate();
             if (code != 0) {

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -39,17 +40,17 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
         if (inlinedMethod.leafAssumption()) {
-            StaticObject receiver = fieldVersion.getField().isStatic()
-                            ? fieldVersion.getField().getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(BytecodeNode.popObject(refs, top - 1));
+            StaticObject receiver = field.isStatic()
+                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+                            : nullCheck(BytecodeNode.popObject(frame, top - 1));
             int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
-            return (resultAt - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, resultAt, statementIndex);
+            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
         } else {
-            return root.reQuickenInvoke(frame, primitives, refs, top, curBCI, opCode, statementIndex, inlinedMethod);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return root.reQuickenInvoke(frame, top, curBCI, opCode, statementIndex, inlinedMethod);
         }
     }
-
 }

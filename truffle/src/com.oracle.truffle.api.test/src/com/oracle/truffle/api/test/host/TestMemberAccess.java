@@ -57,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
@@ -67,9 +68,15 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TestMemberAccess extends ProxyLanguageEnvTest {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testFields() throws IllegalAccessException, InteropException {

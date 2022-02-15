@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,7 +87,7 @@ public class NodeFactoryFactory {
     }
 
     public CodeTypeElement create() {
-        Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
+        Modifier visibility = node.getVisibility();
         TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getTypes().NodeFactory), node.getNodeType());
 
         CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(), factoryClassName(node.getTemplateType()), null);

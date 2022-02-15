@@ -69,7 +69,7 @@ final class PolyglotStackFramesRetriever {
                     @Override
                     protected void perform(Access access) {
                         List<FrameInstance> frameInstances = new ArrayList<>();
-                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
                                 return frameInstances.add(frameInstance);
@@ -83,7 +83,7 @@ final class PolyglotStackFramesRetriever {
             }
         }
 
-        TruffleSafepoint.setBlockedThreadInterruptible(context.engine.getUncachedLocation(), new TruffleSafepoint.Interruptible<Future<Void>>() {
+        TruffleSafepoint.setBlockedThreadInterruptible(context.uncachedLocation, new TruffleSafepoint.Interruptible<Future<Void>>() {
             @Override
             public void apply(Future<Void> arg) throws InterruptedException {
                 try {

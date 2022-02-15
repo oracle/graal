@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,7 +102,7 @@ public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProc
             if (!verifyParameters(methodElement)) {
                 throw new ProcessingException(annotatedElement, "Method %s can have either a single JNIEnv parameter or no parameters.", methodElement.getSimpleName());
             }
-            TypeMirror jclass = getTypeElement("org.graalvm.nativebridge.jni.JNI.JClass").asType();
+            TypeMirror jclass = getTypeElement("org.graalvm.jniutils.JNI.JClass").asType();
             if (!processingEnv.getTypeUtils().isSameType(methodElement.getReturnType(), jclass)) {
                 throw new ProcessingException(annotatedElement, "Method %s must return JClass.", methodElement.getSimpleName());
             }
@@ -128,8 +128,8 @@ public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProc
             if (!pkg.equals("org.graalvm.libgraal.jni")) {
                 out.println("import org.graalvm.libgraal.jni.FromLibGraalCalls;");
             }
-            out.println("import org.graalvm.nativebridge.jni.JNI.JClass;");
-            out.println("import org.graalvm.nativebridge.jni.JNI.JNIEnv;");
+            out.println("import org.graalvm.jniutils.JNI.JClass;");
+            out.println("import org.graalvm.jniutils.JNI.JNIEnv;");
             out.printf("import %s;%n", idElement.getQualifiedName());
             out.println("");
             out.printf("class %s extends FromLibGraalCalls<%s> {%n", simpleName, idElement.getSimpleName());
@@ -162,7 +162,7 @@ public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProc
         }
         if (params.size() == 1) {
             VariableElement param = params.get(0);
-            TypeMirror expectedType = processingEnv.getElementUtils().getTypeElement("org.graalvm.nativebridge.jni.JNI.JNIEnv").asType();
+            TypeMirror expectedType = processingEnv.getElementUtils().getTypeElement("org.graalvm.jniutils.JNI.JNIEnv").asType();
             TypeMirror actualType = param.asType();
             return processingEnv.getTypeUtils().isSameType(expectedType, actualType);
         }

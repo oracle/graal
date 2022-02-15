@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -211,6 +211,14 @@ final class TruffleSplittingStrategy {
 
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
+        if (callTarget.isOSR()) {
+            /*
+             * There is no splitting needed for OSR call targets as there are no direct call nodes
+             * created with OSR targets. so there is also no need to increase the splitting budget
+             * from call targets that are created like this.
+             */
+            return;
+        }
         final EngineData engineData = callTarget.engine;
         if (engineData.splitting) {
             engineData.splitLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());

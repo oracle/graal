@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,12 +53,19 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.impl.TruffleLocator;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class IsolatedClassLoaderTest {
     private static final boolean JDK8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void loadLanguageByOwnClassLoaderOnJDK8() throws Exception {

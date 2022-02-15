@@ -28,25 +28,18 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.c.function.CEntryPointOptions.AutomaticPrologueBailout;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
@@ -55,13 +48,12 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -75,14 +67,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The generated method implements one of the following JNI Functions:
  *
  * <ul>
- * <li>{@code NewBooleanArray}</li>
- * <li>{@code NewByteArray}</li>
- * <li>{@code NewCharArray}</li>
- * <li>{@code NewShortArray}</li>
- * <li>{@code NewIntArray}</li>
- * <li>{@code NewLongArray}</li>
- * <li>{@code NewFloatArray}</li>
- * <li>{@code NewDoubleArray}</li>
  * <li>{@code GetBooleanArrayElements}</li>
  * <li>{@code GetByteArrayElements}</li>
  * <li>{@code GetCharArrayElements}</li>
@@ -121,10 +105,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMethod {
+public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMethod {
 
     public enum Operation {
-        NEW,
         GET_ELEMENTS,
         RELEASE_ELEMENTS,
         GET_REGION,
@@ -149,9 +132,6 @@ public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMet
         StringBuilder sb = new StringBuilder(32);
         String kindName = elementKind.name();
         switch (operation) {
-            case NEW:
-                sb.append("New").append(kindName).append("Array");
-                break;
             case GET_ELEMENTS:
                 sb.append("Get").append(kindName).append("ArrayElements");
                 break;
@@ -174,26 +154,21 @@ public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMet
         ResolvedJavaType returnType;
         List<JavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
-        if (operation == Operation.NEW) {
-            args.add(intType); // jsize length;
-            returnType = objectHandleType;
+        args.add(objectHandleType); // j<PrimitiveType>Array array;
+        if (operation == Operation.GET_ELEMENTS) {
+            args.add(metaAccess.lookupJavaType(CCharPointer.class)); // jboolean *isCopy;
+            returnType = metaAccess.lookupJavaType(WordPointer.class);
+        } else if (operation == Operation.RELEASE_ELEMENTS) {
+            args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *elems;
+            args.add(intType); // jint mode;
+            returnType = metaAccess.lookupJavaType(Void.TYPE);
+        } else if (operation == Operation.GET_REGION || operation == Operation.SET_REGION) {
+            args.add(intType); // jsize start;
+            args.add(intType); // jsize len;
+            args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *buf;
+            returnType = metaAccess.lookupJavaType(Void.TYPE);
         } else {
-            args.add(objectHandleType); // j<PrimitiveType>Array array;
-            if (operation == Operation.GET_ELEMENTS) {
-                args.add(metaAccess.lookupJavaType(CCharPointer.class)); // jboolean *isCopy;
-                returnType = metaAccess.lookupJavaType(WordPointer.class);
-            } else if (operation == Operation.RELEASE_ELEMENTS) {
-                args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *elems;
-                args.add(intType); // jint mode;
-                returnType = metaAccess.lookupJavaType(Void.TYPE);
-            } else if (operation == Operation.GET_REGION || operation == Operation.SET_REGION) {
-                args.add(intType); // jsize start;
-                args.add(intType); // jsize len;
-                args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *buf;
-                returnType = metaAccess.lookupJavaType(Void.TYPE);
-            } else {
-                throw VMError.shouldNotReachHere();
-            }
+            throw VMError.shouldNotReachHere();
         }
         return new SimpleSignature(args, returnType);
     }
@@ -212,9 +187,6 @@ public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMet
 
         ValueNode result = null;
         switch (operation) {
-            case NEW:
-                result = newArray(providers, kit, arguments);
-                break;
             case GET_ELEMENTS: {
                 ValueNode arrayHandle = arguments.get(1);
                 ValueNode array = kit.unboxHandle(arrayHandle);
@@ -257,26 +229,8 @@ public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMet
         return kit.finalizeGraph();
     }
 
-    private ValueNode newArray(HostedProviders providers, JNIGraphKit kit, List<ValueNode> arguments) {
-        ResolvedJavaType elementType = providers.getMetaAccess().lookupJavaType(elementKind.toJavaClass());
-        ValueNode length = arguments.get(1);
-        ConstantNode zero = kit.createInt(0);
-        kit.startIf(new IntegerLessThanNode(length, zero), BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
-        kit.thenPart();
-        JavaKind wordKind = providers.getWordTypes().getWordKind();
-        assert wordKind == JavaKind.Long || wordKind == JavaKind.Int;
-        ValueNode nullHandle = kit.createConstant(wordKind == JavaKind.Long ? JavaConstant.LONG_0 : JavaConstant.INT_0, wordKind);
-        kit.elsePart();
-        ValueNode array = kit.append(new NewArrayNode(elementType, kit.createPiNode(length, StampFactory.positiveInt()), true));
-        ValueNode arrayHandle = kit.boxObjectInLocalHandle(array);
-        AbstractMergeNode merge = kit.endIf();
-        merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
-        Stamp handleStamp = providers.getWordTypes().getWordStamp(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
-        return kit.unique(new ValuePhiNode(handleStamp, merge, new ValueNode[]{nullHandle, arrayHandle}));
-    }
-
     public CEntryPointData createEntryPointData() {
         return CEntryPointData.create(this, CEntryPointData.DEFAULT_NAME, CEntryPointData.DEFAULT_NAME_TRANSFORMATION, "",
-                        NoPrologue.class, NoEpilogue.class, FatalExceptionHandler.class, Publish.NotPublished);
+                        NoPrologue.class, AutomaticPrologueBailout.class, NoEpilogue.class, FatalExceptionHandler.class, Publish.NotPublished);
     }
 }

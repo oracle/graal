@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.parser.SimpleLanguageParser;
 
@@ -61,7 +62,7 @@ public final class SLFunctionRegistry {
 
     private final SLLanguage language;
     private final FunctionsObject functionsObject = new FunctionsObject();
-    private final Map<Map<String, RootCallTarget>, Void> registeredFunctions = new IdentityHashMap<>();
+    private final Map<Map<TruffleString, RootCallTarget>, Void> registeredFunctions = new IdentityHashMap<>();
 
     public SLFunctionRegistry(SLLanguage language) {
         this.language = language;
@@ -72,7 +73,7 @@ public final class SLFunctionRegistry {
      * it is created.
      */
     @TruffleBoundary
-    public SLFunction lookup(String name, boolean createIfNotPresent) {
+    public SLFunction lookup(TruffleString name, boolean createIfNotPresent) {
         SLFunction result = functionsObject.functions.get(name);
         if (result == null && createIfNotPresent) {
             result = new SLFunction(language, name);
@@ -86,10 +87,10 @@ public final class SLFunctionRegistry {
      * node. If the function did not exist before, it defines the function. If the function existed
      * before, it redefines the function and the old implementation is discarded.
      */
-    SLFunction register(String name, RootCallTarget callTarget) {
+    SLFunction register(TruffleString name, RootCallTarget callTarget) {
         SLFunction result = functionsObject.functions.get(name);
         if (result == null) {
-            result = new SLFunction(callTarget);
+            result = new SLFunction(name, callTarget);
             functionsObject.functions.put(name, result);
         } else {
             result.setCallTarget(callTarget);
@@ -103,11 +104,11 @@ public final class SLFunctionRegistry {
      * functions might not get registered.
      */
     @TruffleBoundary
-    public void register(Map<String, RootCallTarget> newFunctions) {
+    public void register(Map<TruffleString, RootCallTarget> newFunctions) {
         if (registeredFunctions.containsKey(newFunctions)) {
             return;
         }
-        for (Map.Entry<String, RootCallTarget> entry : newFunctions.entrySet()) {
+        for (Map.Entry<TruffleString, RootCallTarget> entry : newFunctions.entrySet()) {
             register(entry.getKey(), entry.getValue());
         }
         registeredFunctions.put(newFunctions, null);
@@ -117,7 +118,7 @@ public final class SLFunctionRegistry {
         register(SimpleLanguageParser.parseSL(language, newFunctions));
     }
 
-    public SLFunction getFunction(String name) {
+    public SLFunction getFunction(TruffleString name) {
         return functionsObject.functions.get(name);
     }
 
@@ -128,7 +129,8 @@ public final class SLFunctionRegistry {
         List<SLFunction> result = new ArrayList<>(functionsObject.functions.values());
         Collections.sort(result, new Comparator<SLFunction>() {
             public int compare(SLFunction f1, SLFunction f2) {
-                return f1.toString().compareTo(f2.toString());
+                assert SLLanguage.STRING_ENCODING == TruffleString.Encoding.UTF_16 : "SLLanguage.ENCODING changed, string comparison method must be adjusted accordingly!";
+                return f1.getName().compareCharsUTF16Uncached(f2.getName());
             }
         });
         return result;

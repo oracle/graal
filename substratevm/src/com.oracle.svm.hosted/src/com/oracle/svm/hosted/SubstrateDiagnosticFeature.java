@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -52,6 +53,7 @@ class SubstrateDiagnosticFeature implements Feature {
         // Explicitly mark the option as used so that it is possible to specify a value at runtime.
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         registerOptionAsRead(accessImpl, SubstrateOptions.class, SubstrateOptions.DiagnosticDetails.getName());
+        registerOptionAsRead(accessImpl, SubstrateDiagnostics.Options.class, SubstrateDiagnostics.Options.LoopOnFatalError.getName());
     }
 
     private static void registerOptionAsRead(BeforeAnalysisAccessImpl accessImpl, Class<?> clazz, String fieldName) {

@@ -29,15 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.vars;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
@@ -49,10 +50,66 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 public abstract class LLVMReadNode extends LLVMExpressionNode {
 
-    protected final FrameSlot slot;
+    @FunctionalInterface
+    public interface IndexedFunction<T> {
+        T get(int i);
+    }
 
-    public LLVMReadNode(FrameSlot slot) {
-        assert slot != null;
+    public static final class IndexedSlotCache<T extends LLVMNode> {
+        private static final int MIN_CACHE_SIZE = 32;
+        private static final int MAX_CACHE_SIZE = 512;
+
+        private Object[] cache = new Object[MIN_CACHE_SIZE];
+        private final IndexedFunction<T> factory;
+
+        protected IndexedSlotCache(IndexedFunction<T> factory) {
+            this.factory = factory;
+        }
+
+        @SuppressWarnings("unchecked")
+        public T get(int slot) {
+            /*
+             * This can remain completely unsynchronized, since unlikely update races can only ever
+             * lead to a bit of memory duplication, which is acceptable.
+             */
+            Object[] c = cache;
+            if (slot >= c.length) {
+                if (slot >= MAX_CACHE_SIZE) {
+                    return factory.get(slot);
+                }
+                int newLength = Math.min(MAX_CACHE_SIZE, Math.max(slot + 1, c.length * 2));
+                cache = c = Arrays.copyOf(c, newLength);
+            }
+            T result = (T) c[slot];
+            if (result == null) {
+                c[slot] = result = factory.get(slot);
+                assert result != null;
+            }
+            return result;
+        }
+    }
+
+    private abstract static class LLVMReadCachableNode extends LLVMReadNode {
+
+        protected LLVMReadCachableNode(int slot) {
+            super(slot);
+        }
+
+        @Override
+        public final boolean isAdoptable() {
+            return false;
+        }
+
+        @Override
+        public NodeCost getCost() {
+            return NodeCost.MONOMORPHIC;
+        }
+    }
+
+    protected final int slot;
+
+    public LLVMReadNode(int slot) {
+        assert slot >= 0;
         this.slot = slot;
     }
 
@@ -61,52 +118,96 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         return getShortString("slot");
     }
 
-    public abstract static class LLVMI1ReadNode extends LLVMReadNode {
-        protected LLVMI1ReadNode(FrameSlot slot) {
+    public static final class LLVMI1ReadNode extends LLVMReadCachableNode {
+        protected LLVMI1ReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected boolean readI1(VirtualFrame frame) {
-            return FrameUtil.getBooleanSafe(frame, slot);
+        @Override
+        public boolean executeI1(VirtualFrame frame) {
+            return frame.getBoolean(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI1(frame);
+        }
+
+        private static final IndexedSlotCache<LLVMI1ReadNode> CACHE = new IndexedSlotCache<>(LLVMI1ReadNode::new);
+
+        public static LLVMI1ReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVMI8ReadNode extends LLVMReadNode {
-        protected LLVMI8ReadNode(FrameSlot slot) {
+    public static final class LLVMI8ReadNode extends LLVMReadCachableNode {
+        protected LLVMI8ReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected byte readI8(VirtualFrame frame) {
-            return FrameUtil.getByteSafe(frame, slot);
+        @Override
+        public byte executeI8(VirtualFrame frame) {
+            return frame.getByte(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI8(frame);
+        }
+
+        private static final IndexedSlotCache<LLVMI8ReadNode> CACHE = new IndexedSlotCache<>(LLVMI8ReadNode::new);
+
+        public static LLVMI8ReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVMI16ReadNode extends LLVMReadNode {
-        protected LLVMI16ReadNode(FrameSlot slot) {
+    public static final class LLVMI16ReadNode extends LLVMReadCachableNode {
+        protected LLVMI16ReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected short readI16(VirtualFrame frame) {
-            return (short) FrameUtil.getIntSafe(frame, slot);
+        @Override
+        public short executeI16(VirtualFrame frame) {
+            return (short) frame.getInt(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI16(frame);
+        }
+
+        private static final IndexedSlotCache<LLVMI16ReadNode> CACHE = new IndexedSlotCache<>(LLVMI16ReadNode::new);
+
+        public static LLVMI16ReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVMI32ReadNode extends LLVMReadNode {
-        protected LLVMI32ReadNode(FrameSlot slot) {
+    public static final class LLVMI32ReadNode extends LLVMReadCachableNode {
+        protected LLVMI32ReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected int readI32(VirtualFrame frame) {
-            return FrameUtil.getIntSafe(frame, slot);
+        @Override
+        public int executeI32(VirtualFrame frame) {
+            return frame.getInt(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI32(frame);
+        }
+
+        private static final IndexedSlotCache<LLVMI32ReadNode> CACHE = new IndexedSlotCache<>(LLVMI32ReadNode::new);
+
+        public static LLVMI32ReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
     public abstract static class LLVMI64ReadNode extends LLVMReadNode {
-        protected LLVMI64ReadNode(FrameSlot slot) {
+        protected LLVMI64ReadNode(int slot) {
             super(slot);
         }
 
@@ -123,65 +224,105 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         @Specialization
         protected Object readGeneric(VirtualFrame frame) {
             if (frame.isLong(slot)) {
-                return FrameUtil.getLongSafe(frame, slot);
+                return frame.getLong(slot);
             } else {
-                return FrameUtil.getObjectSafe(frame, slot);
+                return frame.getObject(slot);
             }
         }
     }
 
-    public abstract static class LLVMIReadVarBitNode extends LLVMReadNode {
-        protected LLVMIReadVarBitNode(FrameSlot slot) {
+    public static final class LLVMIReadVarBitNode extends LLVMReadCachableNode {
+        protected LLVMIReadVarBitNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected Object readVarBit(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, slot);
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return frame.getObject(slot);
+        }
+
+        private static final IndexedSlotCache<LLVMIReadVarBitNode> CACHE = new IndexedSlotCache<>(LLVMIReadVarBitNode::new);
+
+        public static LLVMIReadVarBitNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVMFloatReadNode extends LLVMReadNode {
-        protected LLVMFloatReadNode(FrameSlot slot) {
+    public static final class LLVMFloatReadNode extends LLVMReadCachableNode {
+        protected LLVMFloatReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected float readFloat(VirtualFrame frame) {
-            return FrameUtil.getFloatSafe(frame, slot);
+        @Override
+        public float executeFloat(VirtualFrame frame) {
+            return frame.getFloat(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeFloat(frame);
+        }
+
+        private static final IndexedSlotCache<LLVMFloatReadNode> CACHE = new IndexedSlotCache<>(LLVMFloatReadNode::new);
+
+        public static LLVMFloatReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVMDoubleReadNode extends LLVMReadNode {
-        protected LLVMDoubleReadNode(FrameSlot slot) {
+    public static final class LLVMDoubleReadNode extends LLVMReadCachableNode {
+        protected LLVMDoubleReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected double readDouble(VirtualFrame frame) {
-            return FrameUtil.getDoubleSafe(frame, slot);
+        @Override
+        public double executeDouble(VirtualFrame frame) {
+            return frame.getDouble(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeDouble(frame);
+        }
+
+        private static final IndexedSlotCache<LLVMDoubleReadNode> CACHE = new IndexedSlotCache<>(LLVMDoubleReadNode::new);
+
+        public static LLVMDoubleReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVM80BitFloatReadNode extends LLVMReadNode {
-        protected LLVM80BitFloatReadNode(FrameSlot slot) {
+    public static final class LLVM80BitFloatReadNode extends LLVMReadCachableNode {
+        protected LLVM80BitFloatReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected Object read80BitFloat(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, slot);
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return frame.getObject(slot);
+        }
+
+        private static final IndexedSlotCache<LLVM80BitFloatReadNode> CACHE = new IndexedSlotCache<>(LLVM80BitFloatReadNode::new);
+
+        public static LLVM80BitFloatReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
-    public abstract static class LLVMAddressReadNode extends LLVMReadNode {
-        protected LLVMAddressReadNode(FrameSlot slot) {
+    public static final class LLVMObjectReadNode extends LLVMReadCachableNode {
+        protected LLVMObjectReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected Object readObject(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, slot);
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return frame.getObject(slot);
+        }
+
+        private static final IndexedSlotCache<LLVMObjectReadNode> CACHE = new IndexedSlotCache<>(LLVMObjectReadNode::new);
+
+        public static LLVMObjectReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 
@@ -223,14 +364,20 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMDebugReadNode extends LLVMReadNode {
-        protected LLVMDebugReadNode(FrameSlot slot) {
+    public static final class LLVMDebugReadNode extends LLVMReadCachableNode {
+        protected LLVMDebugReadNode(int slot) {
             super(slot);
         }
 
-        @Specialization
-        protected Object readObject(VirtualFrame frame) {
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
             return frame.getValue(slot);
+        }
+
+        private static final IndexedSlotCache<LLVMDebugReadNode> CACHE = new IndexedSlotCache<>(LLVMDebugReadNode::new);
+
+        public static LLVMDebugReadNode create(int slot) {
+            return CACHE.get(slot);
         }
     }
 }

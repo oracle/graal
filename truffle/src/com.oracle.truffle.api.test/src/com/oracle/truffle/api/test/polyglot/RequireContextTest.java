@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -56,12 +57,20 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class RequireContextTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     public RequireContextTest() {
         super();
         enterContext = false;
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
     }
 
     @Test
@@ -87,14 +96,12 @@ public class RequireContextTest extends AbstractPolyglotTest {
         });
         assertFails(() -> instrumentEnv.getTruffleFile("file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
-        assertFails(() -> instrumentEnv.findTopScopes(ProxyLanguage.ID), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         context.enter();
         try {
             assertNotNull(instrumentEnv.getTruffleFile("file"));
             assertNotNull(instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()));
-            assertNotNull(instrumentEnv.findTopScopes(ProxyLanguage.ID));
             assertTrue((boolean) instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()).call());
             assertNotNull(instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class));
         } finally {

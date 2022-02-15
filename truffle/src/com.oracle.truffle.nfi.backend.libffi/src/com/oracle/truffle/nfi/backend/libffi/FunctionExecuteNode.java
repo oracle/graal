@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,11 +59,13 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 @GenerateUncached
 @ImportStatic(LibFFILanguage.class)
+@GenerateAOT
 abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
     @Specialization(guards = "signature.signatureInfo == cachedInfo")
+    @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, LibFFISignature signature, Object[] args,
                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
                     @Cached("createCachedSignatureCall(cachedInfo)") DirectCallNode execute) {
@@ -92,16 +95,16 @@ abstract class FunctionExecuteNode extends Node {
     static final class SignatureExecuteNode extends RootNode {
 
         final CachedSignatureInfo signatureInfo;
-        @Children NativeArgumentLibrary[] argLibs;
+        @Children SerializeArgumentNode[] argNodes;
 
         SignatureExecuteNode(LibFFILanguage language, CachedSignatureInfo signatureInfo) {
             super(language);
             this.signatureInfo = signatureInfo;
 
             CachedTypeInfo[] argTypes = signatureInfo.getArgTypes();
-            this.argLibs = new NativeArgumentLibrary[argTypes.length];
+            this.argNodes = new SerializeArgumentNode[argTypes.length];
             for (int i = 0; i < argTypes.length; i++) {
-                argLibs[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
+                argNodes[i] = argTypes[i].createSerializeArgumentNode();
             }
         }
 
@@ -112,17 +115,17 @@ abstract class FunctionExecuteNode extends Node {
             Object[] args = (Object[]) frame.getArguments()[1];
             LibFFISignature signature = (LibFFISignature) frame.getArguments()[2];
 
-            if (args.length != argLibs.length) {
-                throw silenceException(RuntimeException.class, ArityException.create(argLibs.length, argLibs.length, args.length));
+            if (args.length != argNodes.length) {
+                throw silenceException(RuntimeException.class, ArityException.create(argNodes.length, argNodes.length, args.length));
             }
 
             NativeArgumentBuffer.Array buffer = signatureInfo.prepareBuffer();
             try {
                 CachedTypeInfo[] types = signatureInfo.getArgTypes();
-                assert argLibs.length == types.length;
+                assert argNodes.length == types.length;
 
-                for (int i = 0; i < argLibs.length; i++) {
-                    argLibs[i].serialize(types[i], buffer, args[i]);
+                for (int i = 0; i < argNodes.length; i++) {
+                    argNodes[i].serialize(args[i], buffer);
                 }
             } catch (UnsupportedTypeException ex) {
                 throw silenceException(RuntimeException.class, ex);

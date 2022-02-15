@@ -158,7 +158,7 @@ public interface MethodRef {
      *
      * @return the declaring klass
      */
-    KlassRef getDeclaringKlass();
+    KlassRef getDeclaringKlassRef();
 
     /**
      * Returns the first line number for the method, or -1 if unknown.

@@ -58,8 +58,6 @@ import com.oracle.svm.core.windows.headers.WinBase;
 
 import jdk.vm.ci.meta.JavaKind;
 
-//Checkstyle: stop
-
 /**
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
  * implemented via Windows locking primitives.
@@ -68,14 +66,14 @@ import jdk.vm.ci.meta.JavaKind;
 @Platforms(Platform.WINDOWS.class)
 final class WindowsVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected WindowsVMMutex createReplacement(VMMutex source) {
             return new WindowsVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, WindowsVMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected WindowsVMCondition createReplacement(VMCondition source) {
             return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));
@@ -159,7 +157,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static void checkResult(int result, String functionName) {
         if (result == 0) {
             /*

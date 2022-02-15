@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -203,10 +203,10 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
             }
             out.println("");
             out.println("import org.graalvm.nativeimage.StackValue;");
-            out.println("import org.graalvm.nativebridge.jni.JNI.JNIEnv;");
-            out.println("import org.graalvm.nativebridge.jni.JNI.JValue;");
+            out.println("import org.graalvm.jniutils.JNI.JNIEnv;");
+            out.println("import org.graalvm.jniutils.JNI.JValue;");
             if (usesJObject) {
-                out.println("import org.graalvm.nativebridge.jni.JNI.JObject;");
+                out.println("import org.graalvm.jniutils.JNI.JObject;");
             }
             out.println("");
             out.printf("final class %s {%n", genClassName);

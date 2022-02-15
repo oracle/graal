@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
@@ -155,12 +156,12 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
     final PolyglotImpl impl;
-    final PolyglotEngineImpl engine;
+    final PolyglotLanguageInstance languageInstance;
 
-    PolyglotValueDispatch(PolyglotImpl impl, PolyglotEngineImpl engine) {
+    PolyglotValueDispatch(PolyglotImpl impl, PolyglotLanguageInstance languageInstance) {
         super(impl);
         this.impl = impl;
-        this.engine = engine;
+        this.languageInstance = languageInstance;
     }
 
     @Override
@@ -1184,7 +1185,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
-            engine.host.pin(receiver);
+            languageInstance.sharing.engine.host.pin(receiver);
         } catch (Throwable e) {
             throw guestToHostException(context, e, true);
         } finally {
@@ -1277,7 +1278,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguage displayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context.engine, receiver);
         Object view;
         if (displayLanguage == null) {
-            displayLanguage = context.engine.hostLanguageInstance.language;
+            displayLanguage = context.engine.hostLanguage;
             view = context.getHostContext().getLanguageView(receiver);
         } else {
             view = receiver;
@@ -1616,16 +1617,17 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         return new HostNull(polyglot);
     }
 
-    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInsance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
-        addDefaultValue(polyglot, languageInsance, valueCache, false);
-        addDefaultValue(polyglot, languageInsance, valueCache, "");
-        addDefaultValue(polyglot, languageInsance, valueCache, 'a');
-        addDefaultValue(polyglot, languageInsance, valueCache, (byte) 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, (short) 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0L);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0F);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0D);
+    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
+        addDefaultValue(polyglot, languageInstance, valueCache, false);
+        addDefaultValue(polyglot, languageInstance, valueCache, "");
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16));
+        addDefaultValue(polyglot, languageInstance, valueCache, 'a');
+        addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0L);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0F);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0D);
     }
 
     static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache, Object primitive) {
@@ -1638,7 +1640,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         private final PolyglotLanguage language;
 
         private PrimitiveValue(PolyglotImpl impl, PolyglotLanguageInstance instance, Object primitiveValue) {
-            super(impl, instance != null ? instance.getEngine() : null);
+            super(impl, instance);
             /*
              * No caching needed for primitives. We do that to avoid the overhead of crossing a
              * Truffle call boundary.
@@ -1853,7 +1855,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         protected abstract String getOperationName();
 
         protected InteropNode(InteropValue polyglot) {
-            super(polyglot.engine);
+            super(polyglot.languageInstance);
             this.polyglot = polyglot;
         }
 
@@ -2017,7 +2019,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final Class<?> receiverType;
 
         InteropValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
-            super(polyglot, languageInstance.getEngine());
+            super(polyglot, languageInstance);
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
             this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));
@@ -2304,7 +2306,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object prev = hostEnter(context);
             try {
-                return engine.host.isHostObject(receiver);
+                return getEngine().host.isHostObject(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2312,12 +2314,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
         }
 
+        private PolyglotEngineImpl getEngine() {
+            return languageInstance.sharing.engine;
+        }
+
         @Override
         public boolean isProxyObject(Object languageContext, Object receiver) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object prev = hostEnter(context);
             try {
-                return engine.host.isHostProxy(receiver);
+                return getEngine().host.isHostProxy(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2328,7 +2334,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public Object asProxyObject(Object languageContext, Object receiver) {
             if (isProxyObject(languageContext, receiver)) {
-                return engine.host.unboxProxyObject(receiver);
+                return getEngine().host.unboxProxyObject(receiver);
             } else {
                 return super.asProxyObject(languageContext, receiver);
             }
@@ -2337,7 +2343,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public Object asHostObject(Object languageContext, Object receiver) {
             if (isHostObject(languageContext, receiver)) {
-                return engine.host.unboxHostObject(receiver);
+                return getEngine().host.unboxHostObject(receiver);
             } else {
                 return super.asHostObject(languageContext, receiver);
             }

@@ -33,8 +33,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
-// Checkstyle: allow synchronization
-
 public class SubstrateSpeculationLog implements SpeculationLog {
 
     public static final class SubstrateSpeculation extends Speculation {

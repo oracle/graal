@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,12 @@ final class PolyglotSourceDispatch extends AbstractSourceDispatch {
     public String getPath(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
         return source.getPath();
+    }
+
+    @Override
+    public boolean isCached(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.isCached();
     }
 
     @Override

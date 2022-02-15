@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
 # SOFTWARE.
 #
 
+set -e
+
 
 # This script takes the CaseFolding.txt and UnicodeData.txt files of the Unicode
 # character database and extracts from them the files UnicodeFoldTable.txt and
@@ -66,15 +68,12 @@ cat dat/CaseFolding.txt \
     > dat/UnicodeFoldTable.txt
 
 # We produce the table for the Canonicalize abstract function when the Unicode
-# flag is not present. We use the UnicodeData.txt file and extract the
-# Uppercase_Character field. We remove entries which do not have an
-# Uppercase_Character mapping and entries which map from non-ASCII
-# code points (>= 128) to ASCII code points (< 128), as per the ECMAScript spec.
-cat dat/UnicodeData.txt \
-    | cut -d\; -f1,13 \
-    | sed -e '/;$/d' \
-          -e '/^\(00[8-F][0-9A-F]\|0[^0][0-9A-F]\+\|[^0][0-9A-F]\+\);00[0-7][0-9A-F]$/d' \
-    > dat/NonUnicodeFoldTable.txt
+# flag is not present. We extract the Unicode Case Conversion table from the
+# UnicodeData.txt and SpecialCasing.txt files. We remove entries which map from
+# non-ASCII code points (>= 128) to ASCII code points (< 128), as per the
+# ECMAScript spec. We also drop the special entries which produce strings of more
+# than one UTF-16 code unit.
+./generate_nonunicode_fold_table.py > dat/NonUnicodeFoldTable.txt
 
 # In Python's case insensitive regular expressions, characters are considered
 # equivalent if they have the same Lowercase mapping. However, in some cases

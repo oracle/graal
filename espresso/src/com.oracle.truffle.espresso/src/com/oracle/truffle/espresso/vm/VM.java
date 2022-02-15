@@ -67,11 +67,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -139,7 +138,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
-import com.oracle.truffle.espresso.substitutions.EspressoReference;
+import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -483,7 +482,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region system
 
     @VmImpl(isJni = true)
-    // SVM windows has System.currentTimeMillis() BlackListed.
+    // SVM windows has System.currentTimeMillis() blocked for PE.
     @TruffleBoundary(allowInlining = true)
     public static long JVM_CurrentTimeMillis(
                     @SuppressWarnings("unused") @JavaType(Class/* <System> */.class) StaticObject ignored) {
@@ -498,8 +497,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary(allowInlining = true)
     @VmImpl(isJni = true)
     public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object) {
-        // On SVM + Windows, the System.identityHashCode substitution triggers the blacklisted
-        // methods (System.currentTimeMillis?) check.
+        /*
+         * On SVM + Windows, the System.identityHashCode substitution calls methods blocked for PE
+         * (System.currentTimeMillis?).
+         */
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
     }
 
@@ -816,8 +817,10 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         } catch (InterruptedException e) {
             profiler.profile(0);
-            getThreadAccess().clearInterruptStatus(currentThread);
-            throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
+            if (getThreadAccess().isInterrupted(currentThread, true)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
+            }
+            getThreadAccess().checkDeprecation();
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalMonitorStateException, e.getMessage());
@@ -856,7 +859,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl(isJni = true)
     public @JavaType(Class[].class) StaticObject JVM_GetClassInterfaces(@JavaType(Class.class) StaticObject self) {
-        final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
+        final Klass[] superInterfaces = self.getMirrorKlass().getImplementedInterfaces();
 
         StaticObject instance = getMeta().java_lang_Class.allocateReferenceArray(superInterfaces.length, new IntFunction<StaticObject>() {
             @Override
@@ -1469,7 +1472,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert context.getCurrentThread() != null;
         try {
             context.destroyVM(!context.ExitHost);
-        } catch (EspressoExitException exit) {
+        } catch (AbstractTruffleException exit) {
             // expected
         }
         return JNI_OK;
@@ -1556,14 +1559,14 @@ public final class VM extends NativeEnv implements ContextAccess {
             getThreadAccess().terminate(currentThread);
         } catch (EspressoException e) {
             try {
-                StaticObject ex = e.getExceptionObject();
+                StaticObject ex = e.getGuestException();
                 String exception = ex.getKlass().getExternalName();
                 String threadName = getThreadAccess().getThreadName(currentThread);
                 context.getLogger().warning(String.format("Exception: %s thrown while terminating thread \"%s\"", exception, threadName));
                 Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
                 printStackTrace.invokeDirect(ex);
             } catch (EspressoException ee) {
-                String exception = ee.getExceptionObject().getKlass().getExternalName();
+                String exception = ee.getGuestException().getKlass().getExternalName();
                 context.getLogger().warning(String.format("Exception: %s thrown while trying to print stack trace", exception));
             } catch (EspressoExitException ee) {
                 // ignore
@@ -2411,6 +2414,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     /**
      * Returns the caller frame, 'depth' levels up. If securityStackWalk is true, some Espresso
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
+     * 
+     * May return null if there is no Java frame on the stack.
      */
     @TruffleBoundary
     private FrameInstance getCallerFrame(int depth, boolean securityStackWalk, Meta meta) {
@@ -2427,7 +2432,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // [.] [ (skipped intermediate frames) ]
         // ...
         // [n] [ caller ]
-        FrameInstance callerFrame = Truffle.getRuntime().iterateFrames(
+        return Truffle.getRuntime().iterateFrames(
                         new FrameInstanceVisitor<FrameInstance>() {
                             private int n;
 
@@ -2445,12 +2450,6 @@ public final class VM extends NativeEnv implements ContextAccess {
                                 return null;
                             }
                         });
-
-        if (callerFrame != null) {
-            return callerFrame;
-        }
-
-        throw EspressoError.shouldNotReachHere(String.format("Caller frame not found at depth %d", depth));
     }
 
     /**
@@ -2583,7 +2582,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(garcia) This must only be called from SecurityManager.getClassContext
         ArrayList<StaticObject> result = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(
-                        new FrameInstanceVisitor<Object>() {
+                        new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
                                 Method m = getMethodFromFrame(frameInstance);
@@ -2723,11 +2722,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             result = (StaticObject) run.invokeDirect(action);
         } catch (EspressoException e) {
             profiler.profile(2);
-            if (meta.java_lang_Exception.isAssignableFrom(e.getExceptionObject().getKlass()) &&
-                            !meta.java_lang_RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_Exception.isAssignableFrom(e.getGuestException().getKlass()) &&
+                            !meta.java_lang_RuntimeException.isAssignableFrom(e.getGuestException().getKlass())) {
                 profiler.profile(3);
                 StaticObject wrapper = meta.java_security_PrivilegedActionException.allocateInstance();
-                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
+                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getGuestException());
                 throw meta.throwException(wrapper);
             }
             profiler.profile(4);
@@ -2766,17 +2765,10 @@ public final class VM extends NativeEnv implements ContextAccess {
                                     m.getName() == Name.executePrivileged) {
                         isPrivileged[0] = true;
                         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-                        FrameSlot refs = frame.getFrameDescriptor().findFrameSlot("refs");
-                        Object[] refsArray = null;
-                        try {
-                            refsArray = (Object[]) frame.getObject(refs);
-                        } catch (FrameSlotTypeException e) {
-                            throw EspressoError.shouldNotReachHere();
-                        }
                         // 2nd argument: `AccessControlContext context`
-                        stackContext = BytecodeNode.getLocalObject(refsArray, 1);
+                        stackContext = BytecodeNode.getLocalObject(frame, 1);
                         // 3rd argument: Class<?> caller
-                        domainKlass = BytecodeNode.getLocalObject(refsArray, 2);
+                        domainKlass = BytecodeNode.getLocalObject(frame, 2);
                     } else {
                         domainKlass = m.getDeclaringKlass().mirror();
                     }

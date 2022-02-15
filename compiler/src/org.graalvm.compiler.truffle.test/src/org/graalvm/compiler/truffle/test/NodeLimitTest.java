@@ -85,7 +85,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private Function<Integer, Integer> getF() {
-                return new Function<Integer, Integer>() {
+                return new Function<>() {
                     @Override
                     public Integer apply(Integer integer) {
                         return integer < 500 ? getF().apply(integer + 1) : 0;
@@ -136,7 +136,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
     }
 
     private void expectAllOK(Supplier<RootNode> rootNodeFactory) {
-        peRootNode(getBaselineGraphNodeCount(rootNodeFactory.get()) * 2, rootNodeFactory);
+        int adjust = 3; // account for reduction in base graph size by GR-34551
+        peRootNode((getBaselineGraphNodeCount(rootNodeFactory.get()) + adjust) * 2, rootNodeFactory);
     }
 
     private int getBaselineGraphNodeCount(RootNode rootNode) {

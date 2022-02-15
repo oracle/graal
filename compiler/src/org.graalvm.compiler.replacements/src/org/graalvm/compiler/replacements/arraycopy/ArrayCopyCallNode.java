@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,9 @@ import jdk.vm.ci.meta.PrimitiveConstant;
  * based on the element type and memory properties.
  *
  * The target of the call is queried via {@link ArrayCopyLookup#lookupArraycopyDescriptor}.
+ * <p>
+ * <strong>Note:</strong> this node does not have an exception edge. Only use in situations where
+ * the exception edge is not needed.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {

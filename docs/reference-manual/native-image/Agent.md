@@ -16,7 +16,7 @@ $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/conf
 
 Note that `-agentlib` must be specified _before_ a `-jar` option or a class name or any application parameters in the `java` command line.
 
-During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent then generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are standalone configuration files in _JSON_ format which contain all intercepted dynamic accesses.
+During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent then generates the files _jni-config.json_, _reflect-config.json_, _proxy-config.json_ and _resource-config.json_ in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are standalone configuration files in JSON format which contain all intercepted dynamic accesses.
 
 It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses. The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:
 ```shell
@@ -229,7 +229,8 @@ In this case, it is necessary to provide the absolute path of the agent:
 
 ### Native Image Configure Tool
 
-When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure-launcher` tool can be used to merge these configuration files.
+When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files.
+The `native-image-configure` tool can be used to merge these configuration files.
 This tool must first be built with:
 ```shell
 native-image --macro:native-image-configure-launcher
@@ -239,9 +240,8 @@ native-image --macro:native-image-configure-launcher
 
 Then, the tool can be used to merge sets of configuration files as follows:
 ```shell
-native-image-configure-launcher generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
+native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```
 
 This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
-
-An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure-launcher help` for all options.
+An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure help` for all options.

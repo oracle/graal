@@ -24,13 +24,20 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+
 final class DefaultLocaleComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return ImageSingletons.lookup(LocalizationSupport.class).defaultLocale;

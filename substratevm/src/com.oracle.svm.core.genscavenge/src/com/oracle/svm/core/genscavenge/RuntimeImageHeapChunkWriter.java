@@ -34,9 +34,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.image.ImageHeapObject;
 
-// Checkstyle: stop
 import sun.nio.ch.DirectBuffer;
-// Checkstyle: resume
 
 /** Chunk writer that uses the same methods as memory management during image runtime. */
 public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {

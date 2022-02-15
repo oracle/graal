@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,8 @@ final class DefaultInliningPolicy implements InliningPolicy {
 
     @Override
     public void putProperties(CallNode callNode, Map<Object, Object> properties) {
-        properties.put("call diff", data(callNode).callDiff);
+        Data data = data(callNode);
+        properties.put("call diff", data != null ? data.callDiff : 0);
     }
 
     private static final class Data {

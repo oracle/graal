@@ -184,7 +184,7 @@ abstract class BreakpointLocation {
             }
             if (key instanceof URI) {
                 if (key == ANY_SOURCE) {
-                    return new Predicate<Source>() {
+                    return new Predicate<>() {
                         @Override
                         public boolean test(Source s) {
                             return true;
@@ -193,7 +193,7 @@ abstract class BreakpointLocation {
                 }
                 final URI sourceUri = (URI) key;
                 final String sourceRawPath = sourceUri.getRawPath() != null ? sourceUri.getRawPath() : sourceUri.getRawSchemeSpecificPart();
-                return new Predicate<Source>() {
+                return new Predicate<>() {
                     @Override
                     public boolean test(Source s) {
                         URI uri = s.getURI();
@@ -212,7 +212,7 @@ abstract class BreakpointLocation {
             } else {
                 assert key instanceof Source;
                 Source source = (Source) key;
-                return new Predicate<Source>() {
+                return new Predicate<>() {
                     @Override
                     public boolean test(Source s) {
                         return source.equals(s);

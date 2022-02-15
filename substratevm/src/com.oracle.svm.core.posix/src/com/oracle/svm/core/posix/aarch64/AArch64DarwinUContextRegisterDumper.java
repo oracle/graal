@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 
-@Platforms({Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
+@Platforms({Platform.DARWIN_AARCH64.class})
 @AutomaticFeature
 class AArch64DarwinUContextRegisterDumperFeature implements Feature {
     @Override

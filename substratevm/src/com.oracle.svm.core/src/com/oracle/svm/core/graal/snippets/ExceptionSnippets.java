@@ -32,9 +32,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -71,14 +69,12 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new ExceptionSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new ExceptionSnippets(options, providers, lowerings);
     }
 
-    private ExceptionSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private ExceptionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         lowerings.put(UnwindNode.class, new UnwindLowering());
     }
@@ -89,6 +85,13 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(UnwindNode node, LoweringTool tool) {
+            if (node.graph().isSubstitution()) {
+                /*
+                 * Unwind nodes in substitution graph will never survive. They are used as markers,
+                 * though, so we should not replace them.
+                 */
+                return;
+            }
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
             args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());

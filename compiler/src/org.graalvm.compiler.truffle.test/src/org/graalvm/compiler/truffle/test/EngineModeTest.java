@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
@@ -66,7 +65,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                if (GraalCompilerDirectives.hasNextTier()) {
+                if (CompilerDirectives.hasNextTier()) {
                     CompilerAsserts.neverPartOfCompilation("First tier guarded code should not be evaluated in latency mode");
                 }
                 return null;
@@ -85,7 +84,9 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             OptimizedCallTarget inner = (OptimizedCallTarget) new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    reportPolymorphicSpecialize();
+                    if (CompilerDirectives.inInterpreter()) {
+                        reportPolymorphicSpecialize();
+                    }
                     return null;
                 }
 

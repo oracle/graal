@@ -69,6 +69,7 @@ import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -84,7 +85,6 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -100,14 +100,20 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class IteratorTest extends AbstractPolyglotTest {
 
-    private static final TypeLiteral<Function<Object, Object>> FUNCTION_OBJECT_OBJECT = new TypeLiteral<Function<Object, Object>>() {
+    private static final TypeLiteral<Function<Object, Object>> FUNCTION_OBJECT_OBJECT = new TypeLiteral<>() {
     };
 
-    private static final TypeLiteral<Iterable<Value>> ITERABLE_VALUE = new TypeLiteral<Iterable<Value>>() {
+    private static final TypeLiteral<Iterable<Value>> ITERABLE_VALUE = new TypeLiteral<>() {
     };
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private VerifyingHandler verifyingHandler;
 
@@ -210,7 +216,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         Object[] values = {"a", "b"};
         List<Object> valuesList = Arrays.asList(values);
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterable = context.asValue(new Iterable<Object>() {
+        Value iterable = context.asValue(new Iterable<>() {
 
             private final List<Object> elements = new ArrayList<>(valuesList);
 
@@ -486,9 +492,10 @@ public class IteratorTest extends AbstractPolyglotTest {
     }
 
     private static CallTarget createAST(TruffleLanguage<?> lang, Object iterable) {
-        FrameDescriptor fd = new FrameDescriptor();
-        FrameSlot iterableSlot = fd.addFrameSlot("iterable", FrameSlotKind.Object);
-        FrameSlot itemSlot = fd.addFrameSlot("item", FrameSlotKind.Object);
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int iterableSlot = builder.addSlot(FrameSlotKind.Object, "iterable", null);
+        int itemSlot = builder.addSlot(FrameSlotKind.Object, "item", null);
+        FrameDescriptor fd = builder.build();
         StatementNode log = new LogStatement(IteratorTestFactory.ReadVariableNodeGen.create(itemSlot));
         StatementNode main = new BlockStatement(
                         new ExpressionStatement(IteratorTestFactory.WriteVariableNodeGen.create(new ConstantNode(iterable), iterableSlot)),
@@ -854,10 +861,10 @@ public class IteratorTest extends AbstractPolyglotTest {
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
+    @NodeField(name = "slot", type = int.class)
     abstract static class ReadVariableNode extends ExpressionNode {
 
-        protected abstract FrameSlot getSlot();
+        protected abstract int getSlot();
 
         @Specialization
         protected Object readObject(VirtualFrame frame) {
@@ -870,14 +877,14 @@ public class IteratorTest extends AbstractPolyglotTest {
     }
 
     @NodeChild("valueNode")
-    @NodeField(name = "slot", type = FrameSlot.class)
+    @NodeField(name = "slot", type = int.class)
     abstract static class WriteVariableNode extends ExpressionNode {
 
-        protected abstract FrameSlot getSlot();
+        protected abstract int getSlot();
 
         @Specialization
         protected Object write(VirtualFrame frame, Object value) {
-            frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
+            frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Object);
             frame.setObject(getSlot(), value);
             return value;
         }
@@ -946,7 +953,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         private @Child StatementNode repeat;
         private @Child InteropLibrary iterators;
 
-        IterateNode(FrameSlot localVariable, StatementNode repeat) {
+        IterateNode(int localVariable, StatementNode repeat) {
             this.setLocal = IteratorTestFactory.WriteVariableNodeGen.create(null, localVariable);
             this.repeat = repeat;
             this.iterators = InteropLibrary.getFactory().createDispatched(1);
@@ -974,7 +981,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         private @Child IterateNode iterate;
         private @Child InteropLibrary iterables;
 
-        ForEachStatement(FrameSlot iterableVariable, FrameSlot localVariable, StatementNode repeat) {
+        ForEachStatement(int iterableVariable, int localVariable, StatementNode repeat) {
             this.readIterable = IteratorTestFactory.ReadVariableNodeGen.create(iterableVariable);
             this.iterate = new IterateNode(localVariable, repeat);
             this.iterables = InteropLibrary.getFactory().createDispatched(1);

@@ -91,6 +91,7 @@ import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
@@ -98,6 +99,7 @@ import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -119,7 +121,9 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
@@ -387,7 +391,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
-            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
             int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = getRuntimeConfiguration().getImageCodeInfoCodeStartOffset();
@@ -444,7 +448,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public void emitPrefetchAllocate(Value address) {
-            append(new AArch64PrefetchOp(asAddressValue(address), PrefetchMode.PSTL1KEEP));
+            append(new AArch64PrefetchOp(asAddressValue(address, AArch64Address.ANY_SIZE), PrefetchMode.PSTL1KEEP));
         }
 
         @Override
@@ -527,6 +531,35 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         private boolean getDestroysCallerSavedRegisters(ResolvedJavaMethod targetMethod) {
             return ((SubstrateAArch64LIRGenerator) gen).getDestroysCallerSavedRegisters(targetMethod);
+        }
+
+        @Override
+        protected void prologSetParameterNodes(StructuredGraph graph, Value[] params) {
+            SubstrateCallingConvention convention = (SubstrateCallingConvention) gen.getResult().getCallingConvention();
+            for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
+                Value inputValue = params[param.index()];
+                Value paramValue = gen.emitMove(inputValue);
+
+                /*
+                 * In the native ABI some parameters are not extended to the equivalent Java stack
+                 * kinds.
+                 */
+                if (inputValue.getPlatformKind().getSizeInBytes() < Integer.BYTES) {
+                    SubstrateCallingConventionType type = (SubstrateCallingConventionType) convention.getType();
+                    assert !type.outgoing && type.nativeABI();
+                    JavaKind kind = convention.getArgumentStorageKinds()[param.index()];
+                    JavaKind stackKind = kind.getStackKind();
+                    if (kind.isUnsigned()) {
+                        paramValue = gen.getArithmetic().emitZeroExtend(paramValue, kind.getBitCount(), stackKind.getBitCount());
+                    } else {
+                        paramValue = gen.getArithmetic().emitSignExtend(paramValue, kind.getBitCount(), stackKind.getBitCount());
+                    }
+                }
+
+                assert paramValue.getValueKind().equals(gen.getLIRKind(param.stamp(NodeView.DEFAULT)));
+
+                setResult(param, paramValue);
+            }
         }
 
         /**
@@ -900,7 +933,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             Register resultReg = getResultRegister();
             int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             Constant inputConstant = asConstantValue(getInput()).getConstant();
-            if (masm.target.inlineObjects) {
+            if (masm.inlineObjects()) {
                 crb.recordInlineDataInCode(inputConstant);
                 if (referenceSize == 4) {
                     masm.mov(resultReg, 0xDEADDEAD, true);
@@ -955,10 +988,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
-        CompilationResultBuilder tasm = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
                         uncompressedNullRegister);
-        tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
-        return tasm;
+        crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
+        return crb;
     }
 
     protected FrameContext createFrameContext(SharedMethod method) {

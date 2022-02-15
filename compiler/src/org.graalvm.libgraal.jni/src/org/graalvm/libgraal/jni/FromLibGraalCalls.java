@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,12 @@
  */
 package org.graalvm.libgraal.jni;
 
-import static org.graalvm.nativebridge.jni.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
+import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
 
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
-import static org.graalvm.nativebridge.jni.JNIUtil.GetStaticMethodID;
-import static org.graalvm.nativebridge.jni.JNIUtil.NewGlobalRef;
-import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
+import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
+import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
+import static org.graalvm.jniutils.JNIUtil.getBinaryName;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import java.util.EnumMap;
@@ -37,14 +37,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.nativebridge.jni.HotSpotCalls;
-import org.graalvm.nativebridge.jni.JNI;
-import org.graalvm.nativebridge.jni.JNI.JClass;
-import org.graalvm.nativebridge.jni.JNI.JMethodID;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNI.JValue;
-import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.jniutils.HotSpotCalls;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JMethodID;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JValue;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**

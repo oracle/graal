@@ -26,7 +26,7 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
@@ -599,28 +599,28 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final int modCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            return graph.modCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            return graph.getNodeModCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            graph.incModCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            graph.incNodeModCount(this);
         }
     }
 
     final int usageModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            return graph.usageModCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            return graph.nodeUsageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            graph.incUsageModCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            graph.incNodeUsageModCount(this);
         }
     }
 
@@ -1092,6 +1092,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (listener != null) {
                 listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
             }
+            graph.edgeModificationCount++;
         }
     }
 

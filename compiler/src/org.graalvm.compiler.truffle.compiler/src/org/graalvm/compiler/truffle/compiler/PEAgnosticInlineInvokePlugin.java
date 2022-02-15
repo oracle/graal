@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,16 +72,12 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod original, Invoke invoke) {
         if (original.equals(partialEvaluator.callDirectMethod)) {
-            if (lastDirectCallNode == null) {
-                if (indirectCall) {
-                    indirectCall = false;
-                    indirectInvokes.add(invoke);
-                }
-                return;
-            }
             TruffleCallNode truffleCallNode = truffleInliningData.findCallNode(lastDirectCallNode);
             invokeToTruffleCallNode.put(invoke, truffleCallNode);
             lastDirectCallNode = null;
+        } else if (lastDirectCallNode == null && indirectCall) {
+            indirectCall = false;
+            indirectInvokes.add(invoke);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,7 +111,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
 
             // Attempt to optimize the pattern of an extend node between two add nodes.
             if (c instanceof JavaConstant && (forX instanceof SignExtendNode || forX instanceof ZeroExtendNode)) {
-                IntegerConvertNode<?, ?> integerConvertNode = (IntegerConvertNode<?, ?>) forX;
+                IntegerConvertNode<?> integerConvertNode = (IntegerConvertNode<?>) forX;
                 ValueNode valueNode = integerConvertNode.getValue();
                 long constant = ((JavaConstant) c).asLong();
                 if (valueNode instanceof AddNode) {

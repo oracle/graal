@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -34,7 +33,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -45,11 +43,14 @@ public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-        Method resolutionSeed = method;
-        if (resolutionSeed.isRemovedByRedefition()) {
-            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass());
+        Method.MethodVersion resolutionSeed = method.getMethodVersion();
+        if (!resolutionSeed.getRedefineAssumption().isValid()) {
+            // OK, we know it's a removed method then
+            resolutionSeed = method.getContext().getClassRedefinition().handleRemovedMethod(
+                            method,
+                            method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass()).getMethodVersion();
         }
-        Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
+        Object result = executeMethod(resolutionSeed, receiver, arguments);
         /*
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
          * Espresso and unwrapped when going out)
@@ -75,22 +76,15 @@ public abstract class InvokeEspressoNode extends Node {
     abstract Object executeMethod(Method.MethodVersion method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @ExplodeLoop
-    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getAssumption()")
+    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getRedefineAssumption()")
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments,
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
-                    @Cached(value = "createDirectCallNode(method.getCallTargetNoInit())") DirectCallNode directCallNode,
+                    @Cached(value = "createDirectCallNode(method.getMethod().getCallTargetForceInit())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
         checkValidInvoke(method.getMethod(), receiver);
-        // explicitly ensure declaring class is initialized, since we use the
-        // NoInit variant of getCallTarget, because obtaining the cached direct
-        // call node is run under AST locking
-        if (!cachedMethod.getMethod().getDeclaringKlass().isInitialized()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            cachedMethod.getMethod().getDeclaringKlass().safeInitialize();
-        }
 
         int expectedArity = cachedMethod.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
@@ -142,7 +136,10 @@ public abstract class InvokeEspressoNode extends Node {
             return indirectCallNode.call(method.getCallTarget(), argumentsWithReceiver);
         }
 
-        return indirectCallNode.call(method.getCallTarget(), /* static => no receiver */ convertedArguments);
+        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*
+                                                                                   * static => no
+                                                                                   * receiver
+                                                                                   */ convertedArguments);
     }
 
     private static void checkValidInvoke(Method method, Object receiver) {

@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
@@ -137,11 +137,11 @@ public class PhysicalMemory {
     }
 
     private static boolean isInitializationDisallowed() {
-        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() ||
+        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !PlatformThreads.isCurrentAssigned() ||
                         !CEntryPointSnippets.isIsolateInitialized() || StackOverflowCheck.singleton().isYellowZoneAvailable();
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only called if allocation is allowed.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Only called if allocation is allowed.")
     private static void doInitialize() {
         long memoryLimit = Containers.memoryLimitInBytes();
         cachedSize = memoryLimit == Containers.UNKNOWN

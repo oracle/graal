@@ -63,6 +63,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected boolean osrLoop;
     protected boolean stripMinedOuter;
     protected boolean stripMinedInner;
+    protected boolean rotated;
     /**
      * Flag to indicate that this loop must not be detected as a counted loop.
      */
@@ -181,6 +182,14 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public boolean canNeverOverflow() {
         return canNeverOverflow;
+    }
+
+    public boolean isRotated() {
+        return rotated;
+    }
+
+    public void setRotated(boolean rotated) {
+        this.rotated = rotated;
     }
 
     public void setCanNeverOverflow() {

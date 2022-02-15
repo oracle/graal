@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.substitute;
 
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.TranslateFieldOffset;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -33,6 +36,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
@@ -45,8 +49,10 @@ import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
@@ -75,14 +81,17 @@ import sun.misc.Unsafe;
 public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
 
     private final RecomputeFieldValue.Kind kind;
     private final Class<?> targetClass;
     private final Field targetField;
+    private final CustomFieldValueProvider customValueProvider;
     private final boolean isFinal;
     private final boolean disableCaching;
+    private final boolean isValueAvailableBeforeAnalysis;
 
     private JavaConstant constantValue;
 
@@ -94,8 +103,15 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     private JavaConstant valueCacheNullKey;
     private final ReentrantReadWriteLock valueCacheLock = new ReentrantReadWriteLock();
 
+    public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal) {
+        this(original, annotated, kind, targetClass, targetName, isFinal, false);
+    }
+
     public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal,
                     boolean disableCaching) {
+        assert original != null;
+        assert targetClass != null;
+
         this.original = original;
         this.annotated = annotated;
         this.kind = kind;
@@ -103,6 +119,8 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         this.isFinal = isFinal;
         this.disableCaching = disableCaching;
 
+        boolean customValueAvailableBeforeAnalysis = true;
+        CustomFieldValueProvider customProvider = null;
         Field f = null;
         switch (kind) {
             case Reset:
@@ -115,20 +133,45 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                     throw shouldNotReachHere("could not find target field " + targetClass.getName() + "." + targetName + " for alias " + annotated.format("%H.%n"));
                 }
                 break;
+            case Custom:
+                try {
+                    Constructor<?>[] constructors = targetClass.getDeclaredConstructors();
+                    if (constructors.length != 1) {
+                        throw UserError.abort("The custom field value computer class %s has more than one constructor", targetClass.getName());
+                    }
+                    Constructor<?> constructor = constructors[0];
+
+                    Object[] constructorArgs = new Object[constructor.getParameterCount()];
+                    for (int i = 0; i < constructorArgs.length; i++) {
+                        constructorArgs[i] = configurationValue(constructor.getParameterTypes()[i]);
+                    }
+                    constructor.setAccessible(true);
+                    customProvider = (CustomFieldValueProvider) constructor.newInstance(constructorArgs);
+                    customValueAvailableBeforeAnalysis = customProvider.isAvailableBeforeAnalysis();
+                } catch (InvocationTargetException | InstantiationException | IllegalAccessException ex) {
+                    throw shouldNotReachHere("Error creating custom field value computer for alias " + annotated.format("%H.%n"), ex);
+                }
         }
-        guarantee(!isFinal || isFinalValid(kind));
+        boolean isOffsetField = isOffsetRecomputation(kind);
+        guarantee(!isFinal || !isOffsetField);
+        this.isValueAvailableBeforeAnalysis = customValueAvailableBeforeAnalysis && !isOffsetField;
         this.targetField = f;
+        this.customValueProvider = customProvider;
         this.valueCache = EconomicMap.create();
     }
 
-    public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal) {
-        this(original, annotated, kind, targetClass, targetName, isFinal, false);
+    public static boolean isOffsetRecomputation(RecomputeFieldValue.Kind kind) {
+        return offsetComputationKinds.contains(kind);
     }
 
-    public static boolean isFinalValid(RecomputeFieldValue.Kind kind) {
-        EnumSet<RecomputeFieldValue.Kind> finalIllegal = EnumSet.of(RecomputeFieldValue.Kind.FieldOffset,
-                        RecomputeFieldValue.Kind.TranslateFieldOffset, RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset);
-        return !finalIllegal.contains(kind);
+    @Override
+    public boolean isValueAvailableBeforeAnalysis() {
+        return isValueAvailableBeforeAnalysis;
+    }
+
+    @Override
+    public boolean isValueAvailable() {
+        return constantValue != null || BuildPhaseProvider.isAnalysisFinished() || isValueAvailableBeforeAnalysis();
     }
 
     public ResolvedJavaField getAnnotated() {
@@ -288,43 +331,26 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 result = translateFieldOffset(metaAccess, receiver, targetClass);
                 break;
             case Custom:
-                try {
-                    Constructor<?>[] constructors = targetClass.getDeclaredConstructors();
-                    if (constructors.length != 1) {
-                        throw UserError.abort("The custom field value computer class %s has more than one constructor", targetClass.getName());
-                    }
-                    Constructor<?> constructor = constructors[0];
-
-                    Object[] constructorArgs = new Object[constructor.getParameterCount()];
-                    for (int i = 0; i < constructorArgs.length; i++) {
-                        constructorArgs[i] = configurationValue(constructor.getParameterTypes()[i]);
-                    }
-                    constructor.setAccessible(true);
-                    Object instance = constructor.newInstance(constructorArgs);
-
-                    Object receiverValue = receiver == null ? null : originalSnippetReflection.asObject(Object.class, receiver);
-                    Object newValue;
-                    if (instance instanceof CustomFieldValueComputer) {
-                        newValue = ((CustomFieldValueComputer) instance).compute(metaAccess, original, annotated, receiverValue);
-                    } else if (instance instanceof CustomFieldValueTransformer) {
-                        JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
-                        Object originalValue;
-                        if (originalValueConstant.getJavaKind().isPrimitive()) {
-                            originalValue = originalValueConstant.asBoxedPrimitive();
-                        } else {
-                            originalValue = originalSnippetReflection.asObject(Object.class, originalValueConstant);
-                        }
-                        newValue = ((CustomFieldValueTransformer) instance).transform(metaAccess, original, annotated, receiverValue, originalValue);
+                Object receiverValue = receiver == null ? null : originalSnippetReflection.asObject(Object.class, receiver);
+                Object newValue;
+                if (customValueProvider instanceof CustomFieldValueComputer) {
+                    newValue = ((CustomFieldValueComputer) customValueProvider).compute(metaAccess, original, annotated, receiverValue);
+                } else if (customValueProvider instanceof CustomFieldValueTransformer) {
+                    JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+                    Object originalValue;
+                    if (originalValueConstant.getJavaKind().isPrimitive()) {
+                        originalValue = originalValueConstant.asBoxedPrimitive();
                     } else {
-                        throw UserError.abort("The custom field value computer class %s does not implement %s or %s", targetClass.getName(),
-                                        CustomFieldValueComputer.class.getSimpleName(), CustomFieldValueTransformer.class.getSimpleName());
+                        originalValue = originalSnippetReflection.asObject(Object.class, originalValueConstant);
                     }
-
-                    result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), newValue);
-                    assert result.getJavaKind() == annotated.getJavaKind();
-                } catch (InvocationTargetException | InstantiationException | IllegalAccessException ex) {
-                    throw shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex);
+                    newValue = ((CustomFieldValueTransformer) customValueProvider).transform(metaAccess, original, annotated, receiverValue, originalValue);
+                } else {
+                    throw UserError.abort("The custom field value computer class %s does not implement %s or %s", targetClass.getName(),
+                                    CustomFieldValueComputer.class.getSimpleName(), CustomFieldValueTransformer.class.getSimpleName());
                 }
+
+                result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), newValue);
+                assert result.getJavaKind() == annotated.getJavaKind();
                 break;
             default:
                 throw shouldNotReachHere("Field recomputation of kind " + kind + " for field " + original.format("%H.%n") +
@@ -436,6 +462,18 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return original.getAnnotation(annotationClass);
+    }
+
+    public boolean isCompatible(ResolvedJavaField o) {
+        if (this.equals(o)) {
+            return true;
+        } else if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        ComputedValueField that = (ComputedValueField) o;
+        return isFinal == that.isFinal && disableCaching == that.disableCaching && original.equals(that.original) && kind == that.kind &&
+                        Objects.equals(targetClass, that.targetClass) && Objects.equals(targetField, that.targetField) && Objects.equals(constantValue, that.constantValue);
     }
 
     @Override

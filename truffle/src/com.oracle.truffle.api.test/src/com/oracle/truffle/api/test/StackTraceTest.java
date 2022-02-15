@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -62,15 +63,21 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("deprecation")
 public class StackTraceTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testFirstFrameIsCurrentFrame() {
@@ -172,12 +179,12 @@ public class StackTraceTest {
         CallTarget test = createCallTarget(new TestCallNode(null) {
             @Override
             Object execute(VirtualFrame frame) {
-                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     @SuppressWarnings("deprecation")
                     public Object visitFrame(FrameInstance frameInstance) {
 
                         Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-                        FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
+                        com.oracle.truffle.api.frame.FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
                         Assert.assertEquals(42, readOnlyFrame.getValue(slot));
 
                         Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE);
@@ -211,7 +218,7 @@ public class StackTraceTest {
 
             @Override
             Object execute(VirtualFrame frame) {
-                Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
                         visitCount++;
                         return "foobar";
@@ -221,7 +228,7 @@ public class StackTraceTest {
                 Assert.assertEquals("foobar", result);
 
                 visitCount = 0;
-                result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
                         visitCount++;
                         if (visitCount == 2) {

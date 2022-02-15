@@ -77,6 +77,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -102,6 +103,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -111,6 +113,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleSafepointTest {
 
@@ -128,6 +131,11 @@ public class TruffleSafepointTest {
      * debugging failures in this class.
      */
     private static final boolean RERUN_THREAD_CONFIG_ASYNC = true;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Rule public TestName name = new TestName();
 
@@ -221,7 +229,7 @@ public class TruffleSafepointTest {
     public void testEnterSlowPathFallback() throws ExecutionException, InterruptedException {
         ExecutorService executorService = Executors.newFixedThreadPool(1);
         try {
-            for (int itNo = 0; itNo < 10000; itNo++) {
+            for (int itNo = 0; itNo < 1000; itNo++) {
                 CountDownLatch enterLeaveLoopLatch = new CountDownLatch(1);
                 AtomicReference<Env> envAtomicReference = new AtomicReference<>();
                 AtomicReference<Context> contextAtomicReference = new AtomicReference<>();
@@ -242,7 +250,7 @@ public class TruffleSafepointTest {
                     enterLeaveLoopLatch.countDown();
                     TruffleContext truffleContext = envAtomicReference.get().getContext();
                     try {
-                        for (int i = 0; i < 1000000; i++) {
+                        for (int i = 0; i < 100000; i++) {
                             Object prev = truffleContext.enter(INVALID_NODE);
                             truffleContext.leave(INVALID_NODE, prev);
                         }
@@ -430,11 +438,94 @@ public class TruffleSafepointTest {
         }
     }
 
+    static final ThreadLocalHandshake TL_HANDSHAKE = TestAPIAccessor.runtimeAccess().getThreadLocalHandshake();
+
+    @Test
+    public void testAllowActions() {
+        forEachConfig((threads, events) -> {
+            AtomicBoolean stopped = new AtomicBoolean(false);
+
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint config = TruffleSafepoint.getCurrent();
+                TL_HANDSHAKE.setChangeAllowActions(config, true);
+                boolean prev = config.setAllowActions(false);
+                try {
+                    while (true) {
+                        TruffleSafepoint.poll(node);
+                        if (isStopped(stopped)) {
+                            return true;
+                        }
+                    }
+                } finally {
+                    config.setAllowActions(prev);
+                    TL_HANDSHAKE.setChangeAllowActions(config, false);
+                }
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, false, false);
+                for (int i = 0; i < events; i++) {
+                    setup.env.submitThreadLocal(null, runnable);
+                }
+                assertEquals(0, eventCounter.get());
+
+                stopped.set(true);
+                setup.stopAndAwait();
+                assertActionsAnyOrder(threads, events, runnable);
+            }
+        });
+    }
+
+    @TruffleLanguage.Registration(id = AllowActionsTestLanguage.ID, name = AllowActionsTestLanguage.ID)
+    static class AllowActionsTestLanguage extends TruffleLanguage<Env> {
+        static final String ID = "TruffleSafepointTest_AllowActionsTestLanguage";
+
+        boolean keepDisabled;
+
+        @Override
+        protected Env createContext(Env env) {
+            this.keepDisabled = env.getApplicationArguments()[0].equals("true");
+            return env;
+        }
+
+        @Override
+        protected void finalizeContext(Env context) {
+            // test that is succeeds
+            TruffleSafepoint.getCurrent().setAllowActions(false);
+            if (!keepDisabled) {
+                TruffleSafepoint.getCurrent().setAllowActions(true);
+                // second close succeeds
+                keepDisabled = false;
+            }
+            super.finalizeContext(context);
+        }
+
+    }
+
+    @Test
+    public void testAllowActionsSupportedInFinalizeContext() {
+        assertFails(() -> TruffleSafepoint.getCurrent().setAllowActions(false), IllegalStateException.class);
+        assertFails(() -> TruffleSafepoint.getCurrent().setAllowActions(true), IllegalStateException.class);
+
+        try (Context c = Context.newBuilder().arguments(AllowActionsTestLanguage.ID, new String[]{"false"}).build()) {
+            c.initialize(AllowActionsTestLanguage.ID);
+        }
+
+        // keep disabled so close succeeds
+        Context c = Context.newBuilder().arguments(AllowActionsTestLanguage.ID, new String[]{"true"}).build();
+        c.initialize(AllowActionsTestLanguage.ID);
+        assertFails(() -> c.close(), PolyglotException.class, (e) -> {
+            assertTrue(e.getMessage().contains("IllegalStateException"));
+            // make sure even though it failed allow actions was reset.
+            // it must not remain true.
+            assertTrue(TL_HANDSHAKE.isAllowActions(TruffleSafepoint.getCurrent()));
+        });
+        c.close();
+    }
+
     @Test
     public void testSideEffecting() {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean(false);
-            AtomicBoolean allowSideEffects = new AtomicBoolean(true);
 
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint config = TruffleSafepoint.getCurrent();
@@ -457,7 +548,6 @@ public class TruffleSafepointTest {
                 }
                 assertEquals(0, eventCounter.get());
 
-                allowSideEffects.set(false);
                 stopped.set(true);
                 setup.stopAndAwait();
                 assertActionsAnyOrder(threads, events, runnable);

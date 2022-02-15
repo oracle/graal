@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.truffle.jfr.impl;
 
+import jdk.jfr.FlightRecorder;
 import org.graalvm.compiler.truffle.jfr.EventFactory;
 
 public final class ProviderImpl implements EventFactory.Provider {
-
     @Override
     public EventFactory getEventFactory() {
-        throw new InternalError("JDK specific overlay for " + ProviderImpl.class.getName() + " missing");
+        return FlightRecorder.isAvailable() ? new EventFactoryImpl() : null;
     }
 }

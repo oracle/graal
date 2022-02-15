@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,6 @@ import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
-// Checkstyle: allow reflection
-
 /**
  * Parses JSON describing classes, methods and fields and delegates their registration to a
  * {@link ReflectionConfigurationParserDelegate}.
@@ -52,7 +50,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final boolean allowIncompleteClasspath;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
+                    "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
@@ -137,6 +135,11 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     case "allDeclaredClasses":
                         if (asBoolean(value, "allDeclaredClasses")) {
                             delegate.registerDeclaredClasses(clazz);
+                        }
+                        break;
+                    case "allPermittedSubclasses":
+                        if (asBoolean(value, "allPermittedSubclasses")) {
+                            delegate.registerPermittedSubclasses(clazz);
                         }
                         break;
                     case "allPublicClasses":
@@ -284,7 +287,6 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void handleError(String msg, Throwable cause) {
-        // Checkstyle: stop
         String message = msg;
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
@@ -294,6 +296,5 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         } else {
             throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option --allow-incomplete-classpath");
         }
-        // Checkstyle: resume
     }
 }

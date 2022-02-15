@@ -71,21 +71,21 @@ public class InlinedSetterNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
-        setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
+                        : nullCheck(BytecodeNode.popObject(frame, top - 1 - slotCount));
+        setFieldNode.setField(frame, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
     }
 
     private static Field getInlinedField(Method inlinedMethod) {
         BytecodeStream code = new BytecodeStream(inlinedMethod.getOriginalCode());
         if (inlinedMethod.isStatic()) {
-            return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(STATIC_SETTER_BCI)).getField();
+            return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(STATIC_SETTER_BCI));
         } else {
-            return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(INSTANCE_SETTER_BCI)).getField();
+            return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(INSTANCE_SETTER_BCI));
         }
     }
 }

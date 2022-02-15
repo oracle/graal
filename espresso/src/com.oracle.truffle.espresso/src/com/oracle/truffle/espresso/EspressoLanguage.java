@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -54,7 +55,6 @@ import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
@@ -64,7 +64,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                dependentLanguages = {"nfi", "llvm"})
+                dependentLanguages = "nfi")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
@@ -156,9 +156,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.prepareDispose();
         try {
             context.doExit(0);
-        } catch (EspressoExitException e) {
+        } catch (AbstractTruffleException e) {
             // Expected. Suppress. We do not want to throw during context closing.
         }
+
+        context.setFinalized();
     }
 
     @Override

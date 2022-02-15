@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,9 +139,7 @@ public class DebugOptions {
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
 
-    @Option(help = "Enable dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
-    @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
+    @Option(help = "Enable dumping scheduled HIR, LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
@@ -149,8 +147,12 @@ public class DebugOptions {
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
+    @Option(help = "Dump a graph even if it has not changed since it was last dumped.  " +
+            "Change detection is based on adding and deleting nodes or changing inputs.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
+
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
+    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PrintGraphTarget v = PrintGraph.getValueOrDefault(values);

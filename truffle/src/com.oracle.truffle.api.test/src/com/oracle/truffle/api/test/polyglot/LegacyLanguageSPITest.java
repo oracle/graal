@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -53,18 +53,28 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class LegacyLanguageSPITest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @After
     public void cleanup() {
@@ -81,7 +91,7 @@ public class LegacyLanguageSPITest {
             CountDownLatch beforeSleep = new CountDownLatch(1);
             CountDownLatch interrupt = new CountDownLatch(1);
             AtomicInteger gotInterrupt = new AtomicInteger(0);
-            Function<TruffleLanguage.Env, Object> f = new Function<TruffleLanguage.Env, Object>() {
+            Function<TruffleLanguage.Env, Object> f = new Function<>() {
                 public Object apply(TruffleLanguage.Env t) {
                     try {
                         beforeSleep.countDown();

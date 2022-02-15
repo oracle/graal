@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
  * or {@link Class} type.
  */
 @NodeInfo(size = NodeSize.SIZE_8, cycles = NodeCycles.CYCLES_8, cyclesRationale = "Performs multiple checks.")
-public class ValidateNewInstanceClassNode extends WithExceptionNode implements Lowerable, Simplifiable {
+public final class ValidateNewInstanceClassNode extends WithExceptionNode implements Lowerable, Simplifiable {
 
     @Input ValueNode clazz;
 
@@ -56,7 +56,7 @@ public class ValidateNewInstanceClassNode extends WithExceptionNode implements L
 
     public static final NodeClass<ValidateNewInstanceClassNode> TYPE = NodeClass.create(ValidateNewInstanceClassNode.class);
 
-    public ValidateNewInstanceClassNode(ValueNode clazz) {
+    protected ValidateNewInstanceClassNode(ValueNode clazz) {
         super(TYPE, AbstractPointerStamp.pointerNonNull(clazz.stamp(NodeView.DEFAULT)));
         this.clazz = clazz;
     }
@@ -76,7 +76,7 @@ public class ValidateNewInstanceClassNode extends WithExceptionNode implements L
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (DynamicNewInstanceNode.canConvertToNonDynamic(clazz, tool)) {
+        if (DynamicNewInstanceNode.tryConvertToNonDynamic(clazz, tool) != null) {
             killExceptionEdge();
             tool.addToWorkList(usages());
             replaceAtUsages(clazz);

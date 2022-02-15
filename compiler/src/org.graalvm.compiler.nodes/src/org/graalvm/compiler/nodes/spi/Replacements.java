@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import java.util.BitSet;
+
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -37,9 +39,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -64,18 +64,23 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
 
     /**
+     * Create a {@link DebugContext} for use with {@link Snippet} related work. Snippet processingis
+     * hidden by default using the flags {@code DebugStubsAndSnippets}.
+     */
+    DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options);
+
+    /**
      * Gets the snippet graph derived from a given method.
      *
-     * @param recursiveEntry if the snippet contains a call to this method, it's considered as
-     *            recursive call and won't be processed for {@linkplain MethodSubstitution
-     *            substitutions}.
+     * @param recursiveEntry XXX always null now?.
      * @param args arguments to the snippet if available, otherwise {@code null}
+     * @param nonNullParameters
      * @param trackNodeSourcePosition
      * @param options
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options);
+    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options);
 
     /**
      * Get the snippet metadata required to inline the snippet.
@@ -99,27 +104,6 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      * Registers a method as snippet.
      */
     void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);
-
-    /**
-     * Gets a graph that is a substitution for a given {@link MethodSubstitutionPlugin plugin} in
-     * the {@link org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext
-     * context}.
-     *
-     * @param plugin the plugin being substituted
-     * @param original the method being substituted
-     * @param context the kind of inlining to be performed for the substitution
-     * @param allowAssumptions
-     * @param cancellable
-     * @param options
-     * @return the method substitution graph, if any, that is derived from {@code method}
-     */
-    StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
-                    AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options);
-
-    /**
-     * Registers a plugin as a substitution.
-     */
-    void registerMethodSubstitution(MethodSubstitutionPlugin plugin);
 
     /**
      * Marks a plugin as conditionally applied. In the contenxt of libgraal conditional plugins
@@ -166,7 +150,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      *
      * @return true iff there may be a substitution graph available for {@code method}
      */
-    boolean hasSubstitution(ResolvedJavaMethod method);
+    boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options);
 
     /**
      * Gets the provider for accessing the bytecode of a substitution method if no other provider is

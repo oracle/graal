@@ -46,10 +46,10 @@ public final class ByteArrayLoadQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        int index = BytecodeNode.popInt(primitives, top - 1);
-        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 2));
-        BytecodeNode.putInt(primitives, top - 2, byteArrayLoad.execute(array, index));
+    public int execute(VirtualFrame frame) {
+        int index = BytecodeNode.popInt(frame, top - 1);
+        StaticObject array = nullCheck(BytecodeNode.popObject(frame, top - 2));
+        BytecodeNode.putInt(frame, top - 2, byteArrayLoad.execute(array, index));
         return stackEffectOf_BALOAD;
     }
 }

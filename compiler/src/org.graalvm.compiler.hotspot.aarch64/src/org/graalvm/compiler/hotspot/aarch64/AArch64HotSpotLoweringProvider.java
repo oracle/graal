@@ -60,17 +60,14 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
-        integerArithmeticSnippets = new AArch64IntegerArithmeticSnippets(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
+        integerArithmeticSnippets = new AArch64IntegerArithmeticSnippets(options, providers);
         super.initialize(options, factories, providers, config, allocationSnippetTemplates);
     }
 
     @Override
     public void lower(Node n, LoweringTool tool) {
         if (n instanceof IntegerDivRemNode) {
-            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-                // wait more precise stamp information
-                integerArithmeticSnippets.lower((IntegerDivRemNode) n, tool);
-            }
+            integerArithmeticSnippets.lower((IntegerDivRemNode) n, tool);
         } else if (n instanceof FloatConvertNode) {
             // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
             // to see a ConvertNode and throws an error, just do nothing here.

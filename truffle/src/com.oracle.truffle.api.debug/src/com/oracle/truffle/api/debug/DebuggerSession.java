@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -304,7 +303,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.30
      */
     public Map<String, ? extends DebugValue> getExportedSymbols() {
-        return new AbstractMap<String, DebugValue>() {
+        return new AbstractMap<>() {
             private final DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
 
             @Override
@@ -1094,13 +1093,20 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
+    @SuppressWarnings("deprecation")
     private static void clearFrame(RootNode root, MaterializedFrame frame) {
         FrameDescriptor descriptor = frame.getFrameDescriptor();
         if (root.getFrameDescriptor() == descriptor) {
             // Clear only those frames that correspond to the current root
             Object value = descriptor.getDefaultValue();
-            for (FrameSlot slot : descriptor.getSlots()) {
+            for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
                 frame.setObject(slot, value);
+            }
+            for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
+                frame.setObject(slot, value);
+            }
+            for (int slot = 0; slot < descriptor.getNumberOfAuxiliarySlots(); slot++) {
+                frame.setAuxiliarySlot(slot, null);
             }
         }
     }

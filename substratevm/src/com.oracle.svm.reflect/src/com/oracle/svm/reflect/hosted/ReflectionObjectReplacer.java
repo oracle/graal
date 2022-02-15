@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -41,7 +39,6 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
 
 import sun.reflect.generics.repository.AbstractRepository;
@@ -50,6 +47,7 @@ import sun.reflect.generics.repository.ConstructorRepository;
 import sun.reflect.generics.repository.FieldRepository;
 import sun.reflect.generics.repository.GenericDeclRepository;
 import sun.reflect.generics.repository.MethodRepository;
+import sun.reflect.generics.scope.AbstractScope;
 
 public class ReflectionObjectReplacer implements Function<Object, Object> {
     private final AnalysisMetaAccess metaAccess;
@@ -80,7 +78,8 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
 
     @Override
     public Object apply(Object original) {
-        if (original instanceof AccessibleObject || original instanceof Parameter || original instanceof AbstractRepository) {
+        if (original instanceof AccessibleObject || original instanceof Parameter ||
+                        original instanceof AbstractRepository || original instanceof AbstractScope) {
             if (scanned.add(new Identity(original))) {
                 scan(original);
             }
@@ -115,7 +114,7 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
 
                     if (!analysisField.isUnsafeAccessed()) {
                         analysisField.registerAsAccessed();
-                        analysisField.registerAsUnsafeAccessed((AnalysisUniverse) metaAccess.getUniverse());
+                        analysisField.registerAsUnsafeAccessed();
                     }
                 }
             }
@@ -181,6 +180,23 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
             ClassRepository classRepository = (ClassRepository) original;
             classRepository.getSuperclass();
             classRepository.getSuperInterfaces();
+        }
+        if (original instanceof AbstractScope) {
+            AbstractScope<?> abstractScope = (AbstractScope<?>) original;
+            /*
+             * Lookup a type variable in the scope to trigger creation of
+             * sun.reflect.generics.scope.AbstractScope.enclosingScope. The looked-up value is not
+             * important, we just want to trigger creation of lazy internal state. The same eager
+             * initialization is triggered by
+             * sun.reflect.generics.repository.MethodRepository.getReturnType() called above,
+             * however if the AbstractScope is seen first by the heap scanner then a `null` value
+             * will be snapshotted for the `enclosingScope`.
+             */
+            try {
+                abstractScope.lookup("");
+            } catch (LinkageError | InternalError e) {
+                /* The lookup calls Class.getEnclosingClass() which may fail. */
+            }
         }
     }
 }

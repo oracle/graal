@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.OSUtils.toUnixString;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -51,8 +52,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class NodeUtilTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testReplaceReplaced() {

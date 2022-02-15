@@ -29,13 +29,13 @@ import static com.oracle.truffle.espresso.threads.KillStatus.NORMAL;
 import static com.oracle.truffle.espresso.threads.KillStatus.STOP;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -151,6 +151,9 @@ public final class ThreadsAccess implements ContextAccess {
      * Implementation of {@link Thread#isInterrupted()}.
      */
     public boolean isInterrupted(StaticObject guest, boolean clear) {
+        if (context.getJavaVersion().java13OrEarlier() && !isAlive(guest)) {
+            return false;
+        }
         boolean isInterrupted = meta.HIDDEN_INTERRUPTED.getBoolean(guest, true);
         if (clear) {
             Thread host = getHost(guest);
@@ -167,7 +170,7 @@ public final class ThreadsAccess implements ContextAccess {
      * Implementation of {@link Thread#interrupt()}.
      */
     public void interrupt(StaticObject guest) {
-        if (context.getJavaVersion().java13OrEarlier()) {
+        if (context.getJavaVersion().java13OrEarlier() && isAlive(guest)) {
             // In JDK 13+, the interrupted status is set in java code.
             meta.HIDDEN_INTERRUPTED.setBoolean(guest, true, true);
         }
@@ -235,7 +238,6 @@ public final class ThreadsAccess implements ContextAccess {
         assert support != null;
         support.stop(throwable);
         Thread host = getHost(guest);
-        interrupt(guest);
         if (host != null) {
             host.interrupt();
         }
@@ -296,7 +298,7 @@ public final class ThreadsAccess implements ContextAccess {
             } else {
                 exit.call(thread);
             }
-        } catch (EspressoException | EspressoExitException e) {
+        } catch (AbstractTruffleException e) {
             // just drop it
         }
         setTerminateStatusAndNotify(thread);

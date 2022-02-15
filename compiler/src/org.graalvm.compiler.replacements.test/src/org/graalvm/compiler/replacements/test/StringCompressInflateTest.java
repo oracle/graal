@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.UnsupportedEncodingException;
@@ -35,7 +34,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16CompressNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,7 +54,6 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
     @Before
     public void checkAMD64() {
-        assumeFalse(JavaVersionUtil.JAVA_SPEC <= 8);
         // Test case is (currently) AMD64 only.
         assumeTrue(getTarget().arch instanceof AMD64);
     }

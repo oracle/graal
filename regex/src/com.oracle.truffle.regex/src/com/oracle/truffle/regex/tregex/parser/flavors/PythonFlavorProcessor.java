@@ -45,18 +45,22 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
@@ -389,8 +393,16 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // actually want to match on the individual code points of the Unicode string. In 'bytes'
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
-        return new RegexSource(outPattern.toString(), getGlobalFlags().isSticky() ? "suy" : "su",
-                        inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16), inSource.getSource());
+        // TODO: Passing in the sticky flag should be deprecated in favor of using the PythonMethod
+        // option. After the sticky flag is no longer used, support for it should be removed.
+        if (inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+            outPattern.insert(0, "(?:");
+            outPattern.append(")$");
+        }
+        boolean sticky = inSource.getOptions().getPythonMethod() == PythonMethod.match || inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch || getGlobalFlags().isSticky();
+        String outFlags = sticky ? "suy" : "su";
+        RegexOptions outOptions = inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16).withoutPythonMethod();
+        return new RegexSource(outPattern.toString(), outFlags, outOptions, inSource.getSource());
     }
 
     private PythonFlags getLocalFlags() {
@@ -436,6 +448,25 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             found++;
         }
         return out.toString();
+    }
+
+    private String getUntil(char terminator, String name) {
+        StringBuilder out = new StringBuilder();
+        while (!atEnd() && curChar() != terminator) {
+            out.appendCodePoint(consumeChar());
+        }
+        if (out.length() == 0) {
+            throw syntaxErrorHere(PyErrorMessages.missing(name));
+        }
+        if (atEnd()) {
+            throw syntaxErrorAtRel(PyErrorMessages.missingUnterminatedName(terminator), out.length());
+        }
+        if (curChar() == '}') {
+            advance();
+            return out.toString();
+        } else {
+            throw syntaxErrorHere(PyErrorMessages.missing(Character.toString(terminator)));
+        }
     }
 
     private void advance() {
@@ -1087,6 +1118,20 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                     // \\u or \\U in 'bytes' patterns
                     throw syntaxErrorAtRel(PyErrorMessages.badEscape(curChar()), 1);
                 }
+            case 'N': {
+                if (mode != PythonREMode.Str) {
+                    throw syntaxErrorAtRel(PyErrorMessages.badEscape(ch), 2);
+                }
+                if (!match("{")) {
+                    throw syntaxErrorHere(PyErrorMessages.missing("{"));
+                }
+                String characterName = getUntil('}', "character name");
+                int codePoint = lookupCharacterByName(characterName);
+                if (codePoint == -1) {
+                    throw syntaxErrorAtRel(PyErrorMessages.undefinedCharacterName(characterName), characterName.length() + 4);
+                }
+                return codePoint;
+            }
             default:
                 if (isOctDigit(ch)) {
                     retreat();
@@ -1101,6 +1146,23 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 } else {
                     return ch;
                 }
+        }
+    }
+
+    public static int lookupCharacterByName(String characterName) {
+        // CPython's logic for resolving these character names goes like this:
+        // 1) handle Hangul Syllables in region AC00-D7A3
+        // 2) handle CJK Ideographs
+        // 3) handle character names as given in UnicodeData.txt
+        // 4) handle all aliases as given in NameAliases.txt
+        // With ICU's UCharacter, we get cases 1), 2) and 3). As for 4), the aliases, ICU only
+        // handles aliases of type 'correction'. Therefore, we extract the contents of
+        // NameAliases.txt and handle aliases by ourselves.
+        String normalizedName = characterName.trim().toUpperCase(Locale.ROOT);
+        if (UnicodeCharacterAliases.CHARACTER_ALIASES.containsKey(normalizedName)) {
+            return UnicodeCharacterAliases.CHARACTER_ALIASES.get(normalizedName);
+        } else {
+            return UCharacter.getCharFromName(characterName);
         }
     }
 

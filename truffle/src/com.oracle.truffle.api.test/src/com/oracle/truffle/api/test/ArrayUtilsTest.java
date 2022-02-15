@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.ArrayUtils;
-import org.junit.Test;
-
 import static com.oracle.truffle.api.test.ArrayUtilsIndexOfWithMaskTest.mask;
 import static org.junit.Assert.assertEquals;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.api.ArrayUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ArrayUtilsTest {
 
@@ -176,6 +179,11 @@ public class ArrayUtilsTest {
                     204,
     };
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void testIndexOf() {
         int i = 0;
@@ -188,6 +196,15 @@ public class ArrayUtilsTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testIndexOf2() {
+        String s = strS + " \u00ff";
+        int maxIndex = s.length();
+        assertEquals(206, ArrayUtils.indexOf(s, 0, maxIndex, "\u00ff".toCharArray()));
+        assertEquals(206, ArrayUtils.indexOf(s.toCharArray(), 0, maxIndex, "\u00ff".toCharArray()));
+        assertEquals(166, ArrayUtils.indexOf(toByteArray(s), 0, maxIndex, toByteArray("\u00ff")));
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -351,9 +368,9 @@ public class ArrayUtilsTest {
     }
 
     private static void doTestIndexOf(String haystack, int fromIndex, int maxIndex, String needle, int expected) {
-        assertEquals(ArrayUtils.indexOf(haystack, fromIndex, maxIndex, needle.toCharArray()), expected);
-        assertEquals(ArrayUtils.indexOf(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray()), expected);
-        assertEquals(ArrayUtils.indexOf(toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle)), expected);
+        assertEquals(expected, ArrayUtils.indexOf(haystack, fromIndex, maxIndex, needle.toCharArray()));
+        assertEquals(expected, ArrayUtils.indexOf(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray()));
+        assertEquals(expected, ArrayUtils.indexOf(toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle)));
     }
 
     public static byte[] toByteArray(String s) {
@@ -365,5 +382,9 @@ public class ArrayUtilsTest {
             ret[i] = (byte) s.charAt(i);
         }
         return ret;
+    }
+
+    public static char[] toCharArray(String s) {
+        return s == null ? null : s.toCharArray();
     }
 }

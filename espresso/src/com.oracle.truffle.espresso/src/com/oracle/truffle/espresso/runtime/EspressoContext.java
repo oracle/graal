@@ -44,8 +44,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
-import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -67,8 +65,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.FinalizationSupport;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -78,11 +77,15 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -90,7 +93,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
+import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
+import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
@@ -162,9 +168,14 @@ public final class EspressoContext {
     private final JDWPContextImpl jdwpContext;
     private final boolean shouldReportVMEvents;
     private final VMEventListenerImpl eventListener;
+    private ClassRedefinition classRedefinition;
+    private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
+
+    // After a context is finalized, guest code cannot be executed.
+    private volatile boolean isFinalized;
 
     // region Options
     // Checkstyle: stop field name check
@@ -188,6 +199,7 @@ public final class EspressoContext {
     public final boolean NativeAccessAllowed;
     public final boolean EnableAgents;
     public final int TrivialMethodSize;
+    public final boolean UseHostFinalReference;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -280,6 +292,14 @@ public final class EspressoContext {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
+        boolean useHostFinalReferenceOption = getEnv().getOptions().get(EspressoOptions.UseHostFinalReference);
+        this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
+        if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
+            getLogger().warning("--java.UseHostFinalReference is set to 'true' but Espresso cannot access the host java.lang.ref.FinalReference class.\n" +
+                            "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
+                            "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
+        }
+
         String multiThreadingDisabledReason = null;
         if (!env.getOptions().get(EspressoOptions.MultiThreaded)) {
             multiThreadingDisabledReason = "java.MultiThreaded option is set to false";
@@ -468,11 +488,11 @@ public final class EspressoContext {
 
             long initStartTimeNanos = System.nanoTime();
 
+            this.nativeAccess = spawnNativeAccess();
             initVmProperties();
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
-                this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
             }
@@ -597,13 +617,14 @@ public final class EspressoContext {
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
             nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
         } else {
+            // Pick a sane "default" native backend depending on the platform.
             if (EspressoOptions.RUNNING_ON_SVM) {
-                nativeBackend = "nfi-native";
+                nativeBackend = NFINativeAccess.Provider.ID;
             } else {
                 if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = "nfi-dlmopen";
+                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
                 } else {
-                    nativeBackend = "nfi-sulong";
+                    nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
             }
         }
@@ -644,7 +665,9 @@ public final class EspressoContext {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
-        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
+        EspressoProperties.processOptions(builder, getEnv().getOptions());
+        getNativeAccess().updateEspressoProperties(builder, getEnv().getOptions());
+        vmProperties = builder.build();
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -683,6 +706,10 @@ public final class EspressoContext {
 
     public JavaVersion getJavaVersion() {
         return vm.getJavaVersion();
+    }
+
+    public boolean advancedRedefinitionEnabled() {
+        return JDWPOptions != null;
     }
 
     public Types getTypes() {
@@ -812,6 +839,10 @@ public final class EspressoContext {
         if (hostThread != Thread.currentThread()) {
             String guestName = threads.getThreadName(guestThread);
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
+            return;
+        }
+        // Cannot run guest code after finalizeContext was called (GR-35712).
+        if (isFinalized()) {
             return;
         }
         if (vm.DetachCurrentThread(this) != JNI_OK) {
@@ -1035,7 +1066,34 @@ public final class EspressoContext {
         return REFERENCE.get(node);
     }
 
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
+        if (classRedefinition == null) {
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
+        }
+        return classRedefinition;
+    }
+
+    public ClassRedefinition getClassRedefinition() {
+        return classRedefinition;
+    }
+
+    public boolean anyHierarchyChanged() {
+        return !anyHierarchyChanges.isValid();
+    }
+
+    public void markChangedHierarchy() {
+        anyHierarchyChanges.invalidate();
+    }
+
     public ClassHierarchyOracle getClassHierarchyOracle() {
         return classHierarchyOracle;
+    }
+
+    public boolean isFinalized() {
+        return isFinalized;
+    }
+
+    public void setFinalized() {
+        isFinalized = true;
     }
 }

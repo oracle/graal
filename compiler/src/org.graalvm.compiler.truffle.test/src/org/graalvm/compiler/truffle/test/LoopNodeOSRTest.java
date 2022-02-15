@@ -37,24 +37,23 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
 
     static final Object[] ARGUMENTS = IntStream.range(21, 36).mapToObj(Integer::valueOf).toArray();
 
     private static class TestLoopRootNode extends RootNode {
         @Child private LoopNode loop;
-        private final FrameSlot iterationSlot;
+        private final com.oracle.truffle.api.frame.FrameSlot iterationSlot;
 
-        TestLoopRootNode(RepeatingNode body, FrameDescriptor frameDescriptor, FrameSlot iterationSlot) {
+        TestLoopRootNode(RepeatingNode body, FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot iterationSlot) {
             super(null, frameDescriptor);
             this.loop = Truffle.getRuntime().createLoopNode(body);
             this.iterationSlot = iterationSlot;
@@ -69,11 +68,11 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
 
     private final class CheckStackWalkBody extends Node implements RepeatingNode {
         private final int total;
-        private final FrameSlot iterationSlot;
+        private final com.oracle.truffle.api.frame.FrameSlot iterationSlot;
         private final FrameDescriptor frameDescriptor;
         boolean compiled;
 
-        private CheckStackWalkBody(int total, FrameDescriptor frameDescriptor, FrameSlot iterationSlot) {
+        private CheckStackWalkBody(int total, FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot iterationSlot) {
             this.total = total;
             this.iterationSlot = iterationSlot;
             this.frameDescriptor = frameDescriptor;
@@ -81,7 +80,7 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
-            int iteration = FrameUtil.getIntSafe(frame, iterationSlot);
+            int iteration = frame.getInt(iterationSlot);
             if (iteration < total) {
                 if (iteration % (total / 10) == 0) {
                     checkStack();
@@ -118,7 +117,7 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
                         "engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
 
         FrameDescriptor desc = new FrameDescriptor();
-        FrameSlot iterationSlot = desc.addFrameSlot("iteration", FrameSlotKind.Int);
+        com.oracle.truffle.api.frame.FrameSlot iterationSlot = desc.addFrameSlot("iteration", FrameSlotKind.Int);
         CheckStackWalkBody loop = new CheckStackWalkBody(osrThreshold * 2, desc, iterationSlot);
         TestLoopRootNode rootNode = new TestLoopRootNode(loop, desc, iterationSlot);
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();

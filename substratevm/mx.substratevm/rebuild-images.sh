@@ -100,6 +100,12 @@ function launcher() {
     fi
 }
 
+function library() {
+    common
+    local launcher="$1"
+    cmd_line+=("--macro:${launcher}-library")
+}
+
 for binary in "${to_build[@]}"; do
     cmd_line=()
     case "${binary}" in
@@ -110,7 +116,7 @@ for binary in "${to_build[@]}"; do
             libpolyglot
             ;;
         js)
-            launcher js
+            library jsvm
             ;;
         llvm)
             launcher lli

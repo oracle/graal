@@ -26,7 +26,6 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -57,8 +56,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * <ul>
  * <li>If {@link #getLoweredSnippetGraph(LoweringTool)} returns a non-null result, this graph is
  * used as a replacement.</li>
- * <li>If a {@link MethodSubstitution} for the target method is found, this substitution is used as
- * a replacement.</li>
  * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}.</li>
  * </ul>
  */

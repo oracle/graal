@@ -29,9 +29,13 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCo
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -39,6 +43,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -54,11 +59,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -67,8 +73,10 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 @RunWith(Theories.class)
+@SuppressWarnings("deprecation")
 public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
@@ -81,6 +89,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
                     writtenFrameSlots) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
 
     private int osrThreshold;
+    private Context context;
+    private TruffleLanguage.Env languageEnv;
 
     @BeforeClass
     public static void doBefore() {
@@ -97,9 +107,11 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
-        setupContext("engine.MultiTier", "false");
+        context = setupContext("engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         osrThreshold = target.getOptionValue(OSRCompilationThreshold);
+        context.initialize(ProxyLanguage.ID);
+        languageEnv = ProxyLanguage.LanguageContext.get(null).getEnv();
     }
 
     /*
@@ -459,7 +471,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object execute(VirtualFrame frame) {
             super.execute(frame);
-            loopNode2.executeLoop(frame);
+            loopNode2.execute(frame);
             return null;
         }
     }
@@ -518,7 +530,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             }
             boolean next = super.executeRepeating(frame);
             if (next) {
-                loopNode2.executeLoop(frame);
+                loopNode2.execute(frame);
             } else {
                 onBackedge.apply(this);
             }
@@ -613,6 +625,43 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         target.call(1);
     }
 
+    /*
+     * Test that thread local actions never expose the OSR root node.
+     */
+    @Theory
+    public void testSafepointLocationInLoop(OSRLoopFactory factory) {
+        TestRootNode rootNode = new TestRootNode(osrThreshold, factory, new TestRepeatingNode());
+
+        // avoid thread local action being processed right away
+        context.leave();
+        AtomicBoolean locationAssertEnabled = new AtomicBoolean(false);
+        AtomicInteger safepointCounter = new AtomicInteger(0);
+        Future<?> f = languageEnv.submitThreadLocal(null, new ThreadLocalAction(false, false, true) {
+            @Override
+            protected void perform(Access access) { // recurring
+                if (locationAssertEnabled.get()) {
+                    // we need to make sure we never observe the OSR root node here.
+                    // we expect either the loop node or the root node of the loop node as location.
+                    Assert.assertTrue(access.getLocation().toString(), access.getLocation() == rootNode || access.getLocation() == rootNode.loopNode);
+                    Assert.assertSame(Truffle.getRuntime().getCurrentFrame().getCallTarget(), rootNode.getCallTarget());
+                    safepointCounter.incrementAndGet();
+                }
+            }
+        });
+        context.enter();
+
+        // enter or close might trigger safepoints, but we have no guarantees on the location there
+        locationAssertEnabled.set(true);
+        try {
+            assertNotCompiled(rootNode.getOSRTarget());
+            rootNode.getCallTarget().call(osrThreshold + 1); // triggers
+            assertCompiled(rootNode.getOSRTarget());
+            assertTrue(safepointCounter.get() > 0);
+        } finally {
+            f.cancel(true);
+        }
+    }
+
     private static class TestOSRStackTrace extends TestRepeatingNode {
 
         @Override
@@ -677,7 +726,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     }
 
     private interface OSRLoopFactory {
-        OptimizedOSRLoopNode createOSRLoop(int threshold, RepeatingNode repeating, FrameSlot[] readFrameSlots, FrameSlot[] writtenframeSlots);
+        OptimizedOSRLoopNode createOSRLoop(int threshold, RepeatingNode repeating, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots, com.oracle.truffle.api.frame.FrameSlot[] writtenframeSlots);
     }
 
     private static void waitForCompiled(OptimizedCallTarget target) {
@@ -695,7 +744,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         TestRootNodeWithReplacement(int threshold, OSRLoopFactory factory, TestRepeatingNode repeating) {
             super(threshold, factory, repeating);
-            toReplace = factory.createOSRLoop(threshold, repeating, new FrameSlot[]{param1, param2}, new FrameSlot[]{param1, param2});
+            toReplace = factory.createOSRLoop(threshold, repeating, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2}, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2});
         }
     }
 
@@ -703,14 +752,14 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         @Child OptimizedOSRLoopNode loopNode;
 
-        final FrameSlot param1;
-        final FrameSlot param2;
+        final com.oracle.truffle.api.frame.FrameSlot param1;
+        final com.oracle.truffle.api.frame.FrameSlot param2;
 
         protected TestRootNode(int threshold, OSRLoopFactory factory, TestRepeatingNode repeating) {
             super(null, new FrameDescriptor());
             param1 = getFrameDescriptor().addFrameSlot("param1", FrameSlotKind.Int);
             param2 = getFrameDescriptor().addFrameSlot("param2", FrameSlotKind.Int);
-            loopNode = factory.createOSRLoop(threshold, repeating, new FrameSlot[]{param1, param2}, new FrameSlot[]{param1, param2});
+            loopNode = factory.createOSRLoop(threshold, repeating, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2}, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2});
             repeating.param1 = param1;
             repeating.param2 = param2;
         }
@@ -736,7 +785,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             } else {
                 frame.setInt(param2, 0);
             }
-            loopNode.executeLoop(frame);
+            loopNode.execute(frame);
             return null;
         }
     }
@@ -744,8 +793,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     private static class TestRepeatingNode extends Node implements RepeatingNode {
         int invalidationCounter = -1;
 
-        @CompilationFinal FrameSlot param1;
-        @CompilationFinal FrameSlot param2;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot param1;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot param2;
 
         boolean compiled;
 

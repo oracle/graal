@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "22.0.0",
-    "mxversion" : "5.309.2",
+    "version" : "22.1.0",
+    "mxversion" : "5.317.12",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "0dfde8bc88e444ec77a96e883e70a666e3c97272",
+                "version": "4c9ec6e13510460079a398abc1eccadad5e5879d",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "0dfde8bc88e444ec77a96e883e70a666e3c97272",
+                "version": "4c9ec6e13510460079a398abc1eccadad5e5879d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "d4945821ec84d8b498a9a4bb30825f7087886b3d",
+                "version": "2a84e02143ccb5b82ddbea70628d385b8cb7177d",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "e80a7bc4bec3cfb18754b578212cf0d5e8122058",
+                "version": "fe7347a5e38f7672eaf1529b74a406ac34bb6e1e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "18731288f709e838b382342bda8fad88c4397225",
+                "version": "4b72be5f20e539b9138311b5e7873d0554a19feb",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -89,13 +89,14 @@ suite = {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyleVersion" : "8.36.1",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "truffle:TruffleJSON",
             ],
+            "requires" : ["java.logging"],
         },
         "org.graalvm.component.installer.test" : {
             "subDir" : "src",
@@ -104,28 +105,48 @@ suite = {
                 "mx:JUNIT",
                 "org.graalvm.component.installer"
             ],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
+            "requires" : ["java.logging"],
         },
         "org.graalvm.polybench" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
             ],
+            "requires": [
+                "java.logging",
+            ],
         },
         "org.graalvm.polybench.micro" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+        },
+        "org.graalvm.polybench.instruments" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "11+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "requires": [
+                "jdk.management",
             ],
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
@@ -150,8 +171,8 @@ suite = {
         # Note: small warmup benchmarks can be placed directly under `graal/vm/benchmarks/warmup`
         # and uncomment the corresponding line for the `layout` of `POLYBENCH_BENCHMARKS` in current suite.
         "WARMUP_BENCHMARKS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.1.tar.gz"],
-            "sha1" : "4e4a81c096ecc4ba7c4de9ab8ca5180e93c85e60"
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
+            "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
         }
     },
 
@@ -211,6 +232,23 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "maven" : False,
+        },
+        "POLYBENCH_INSTRUMENTS": {
+            "subDir": "src",
+            "dependencies": [
+                "org.graalvm.polybench.instruments",
+            ],
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : False,
+        },
+        "POLYBENCH_INSTRUMENTS_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Profiler support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.vm/polybench-instruments.properties",
+            },
         },
         "PMH": {
             "subDir": "src",

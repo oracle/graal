@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,6 +36,7 @@ import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
@@ -75,6 +76,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -208,10 +210,10 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         Value localX = x;
         Value localY = y;
         if (localX instanceof HotSpotObjectConstant) {
-            localX = load(localX);
+            localX = asAllocatable(localX);
         }
         if (localY instanceof HotSpotObjectConstant) {
-            localY = load(localY);
+            localY = asAllocatable(localY);
         }
         super.emitCompareBranch(cmpKind, localX, localY, cond, unorderedIsTrue, trueDestination, falseDestination, trueDestinationProbability);
     }
@@ -225,7 +227,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
                 localA = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
             } else if (c instanceof HotSpotObjectConstant) {
-                localA = load(localA);
+                localA = asAllocatable(localA);
             }
         }
         if (isConstantValue(b)) {
@@ -233,7 +235,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
                 localB = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
             } else if (c instanceof HotSpotObjectConstant) {
-                localB = load(localB);
+                localB = asAllocatable(localB);
             }
         }
         return super.emitCompare(cmpKind, localA, localB, condition, unorderedIsTrue);
@@ -286,7 +288,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         if (address.getValueKind().getPlatformKind() == AArch64Kind.DWORD) {
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed = emitUncompress(address, encoding, false);
-            append(new AArch64Move.NullCheckOp(asAddressValue(uncompressed), state));
+            append(new AArch64Move.NullCheckOp(asAddressValue(uncompressed, AArch64Address.ANY_SIZE), state));
         } else {
             super.emitNullCheck(address, state);
         }
@@ -316,7 +318,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
         if (BenchmarkCounters.enabled) {
-            Value[] incrementValues = (Value[]) Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray();
+            Value[] incrementValues = Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray(Value[]::new);
             return new AArch64HotSpotCounterOp(names, groups, incrementValues, getProviders().getRegisters(), config);
         }
         throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
@@ -324,7 +326,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public void emitPrefetchAllocate(Value address) {
-        append(new AArch64PrefetchOp(asAddressValue(address), PrefetchMode.PSTL1KEEP));
+        append(new AArch64PrefetchOp(asAddressValue(address, AArch64Address.ANY_SIZE), PrefetchMode.PSTL1KEEP));
     }
 
     @Override
@@ -421,7 +423,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         int bitMemoryTransferSize = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, bitMemoryTransferSize, thread, offset);
-        append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
+        append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, asAllocatable(value), null));
     }
 
     @Override
@@ -459,8 +461,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
-                    Function<Condition, ConditionFlag> converter) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Function<Condition, ConditionFlag> converter) {
         return new AArch64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 
@@ -473,10 +474,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
         boolean isDcZvaProhibited = true;
-        int zvaLength = 0;
-        if (GraalHotSpotVMConfig.JDK >= 16) {
-            zvaLength = config.zvaLength;
-            isDcZvaProhibited = 0 == config.zvaLength;
+        int zvaLength = config.zvaLength;
+        if (zvaLength != Integer.MAX_VALUE) {
+            isDcZvaProhibited = 0 == zvaLength;
         } else {
             int dczidValue = config.psrInfoDczidValue;
 

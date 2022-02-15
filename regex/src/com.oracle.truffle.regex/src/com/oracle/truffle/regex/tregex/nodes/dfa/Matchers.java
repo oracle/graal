@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -145,13 +145,19 @@ public abstract class Matchers {
 
     public static final class UTF16RawMatchers extends Matchers {
 
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
 
-        public UTF16RawMatchers(CharMatcher[] latin1, CharMatcher[] bmp, short noMatchSuccessor) {
+        public UTF16RawMatchers(CharMatcher[] ascii, CharMatcher[] latin1, CharMatcher[] bmp, short noMatchSuccessor) {
             super(noMatchSuccessor);
+            this.ascii = ascii;
             this.latin1 = latin1;
             this.bmp = bmp;
+        }
+
+        public CharMatcher[] getAscii() {
+            return ascii;
         }
 
         public CharMatcher[] getLatin1() {
@@ -181,15 +187,21 @@ public abstract class Matchers {
 
     public static final class UTF16Matchers extends Matchers {
 
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] astral;
 
-        public UTF16Matchers(CharMatcher[] latin1, CharMatcher[] bmp, CharMatcher[] astral, short noMatchSuccessor) {
+        public UTF16Matchers(CharMatcher[] ascii, CharMatcher[] latin1, CharMatcher[] bmp, CharMatcher[] astral, short noMatchSuccessor) {
             super(noMatchSuccessor);
+            this.ascii = ascii;
             this.latin1 = latin1;
             this.bmp = bmp;
             this.astral = astral;
+        }
+
+        public CharMatcher[] getAscii() {
+            return ascii;
         }
 
         public CharMatcher[] getLatin1() {

@@ -50,7 +50,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -99,12 +98,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -121,6 +120,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -143,7 +143,6 @@ import jdk.vm.ci.services.Services;
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
-    private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
 
     /**
      * Used only to reset state for native image compilation.
@@ -373,6 +372,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static UnmodifiableEconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
@@ -384,13 +384,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         OptimizedDirectCallNode.class,
                         OptimizedAssumption.class,
                         CompilerDirectives.class,
-                        GraalCompilerDirectives.class,
                         InlineDecision.class,
                         CompilerAsserts.class,
                         ExactMath.class,
                         ArrayUtils.class,
                         FrameDescriptor.class,
-                        FrameSlot.class,
+                        com.oracle.truffle.api.frame.FrameSlot.class,
                         FrameSlotKind.class,
                         MethodHandle.class,
                         ArrayList.class,
@@ -401,7 +400,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         BranchProfile.class,
                         ConditionProfile.class,
                         Objects.class,
-                        TruffleSafepoint.class
+                        TruffleSafepoint.class,
+                        BaseOSRRootNode.class
         }) {
             m.put(c.getName(), c);
         }
@@ -421,6 +421,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             } catch (ClassNotFoundException e) {
                 throw new NoClassDefFoundError(className);
             }
+        }
+        String className = "com.oracle.truffle.api.strings.TStringOps";
+        try {
+            Class<?> c = Class.forName(className);
+            m.put(c.getName(), c);
+        } catch (ClassNotFoundException e) {
+            throw new NoClassDefFoundError(className);
         }
         return m;
     }
@@ -686,7 +693,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try {
             return loadServiceProvider(capability, false);
         } catch (ServiceConfigurationError e) {
-            // Happens on JDK 9 when a service type has not been exported to Graal
+            // Happens when a service type has not been exported to Graal
             // or Graal's module descriptor does not declare a use of capability.
             return null;
         }
@@ -701,26 +708,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return rootNode.getCallTarget();
     }
 
-    public final OptimizedCallTarget newCallTarget(RootNode rootNode, OptimizedCallTarget source) {
-        CompilerAsserts.neverPartOfCompilation();
-        OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
-        GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
-        if (target.engine.compileAOTOnCreate) {
-            if (target.prepareForAOT()) {
-                target.compile(true);
-            }
-        }
-        return target;
-    }
-
-    public final OptimizedCallTarget createOSRCallTarget(RootNode rootNode) {
-        CompilerAsserts.neverPartOfCompilation();
-        OptimizedCallTarget target = createOptimizedCallTarget(null, rootNode);
-        GraalRuntimeAccessor.INSTRUMENT.onLoad(rootNode);
-        return target;
-    }
-
-    public abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
+    protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
 
     public void addListener(GraalTruffleRuntimeListener listener) {
         listeners.add(listener);
@@ -831,7 +819,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         } finally {
             Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
-            callTarget.onCompilationFailed(serializedException, isSuppressedFailure(callTarget, serializedException), false, false, false);
+            callTarget.onCompilationFailed(serializedException, isSuppressedTruffleRuntimeException(t) || isSuppressedFailure(callTarget, serializedException), false, false, false);
         }
     }
 
@@ -939,18 +927,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
         ServiceLoader<T> graalLoader = ServiceLoader.load(service, GraalTruffleRuntime.class.getClassLoader());
-        if (Java8OrEarlier) {
-            return Collections.singletonList(graalLoader);
-        } else {
-            /*
-             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
-             * loader on JDK 9+. Its module dependencies such as Truffle are supplied via
-             * --module-path which means they are loaded by the app class loader. As such, we need
-             * to search the app class loader path as well.
-             */
-            ServiceLoader<T> appLoader = ServiceLoader.load(service, service.getClassLoader());
-            return Arrays.asList(graalLoader, appLoader);
-        }
+        /*
+         * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader.
+         * Its module dependencies such as Truffle are supplied via --module-path which means they
+         * are loaded by the app class loader. As such, we need to search the app class loader path
+         * as well.
+         */
+        ServiceLoader<T> appLoader = ServiceLoader.load(service, service.getClassLoader());
+        return Arrays.asList(graalLoader, appLoader);
     }
 
     private static LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<LayoutFactory>> availableLayoutFactories) {
@@ -1122,6 +1106,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
     }
 
+    /**
+     * Allows {@link GraalTruffleRuntime} subclasses to suppress exceptions such as an exception
+     * thrown during VM exit. Unlike {@link #isSuppressedFailure(CompilableTruffleAST, Supplier)}
+     * this method is called only for exceptions thrown on the Truffle runtime side, so it does not
+     * need to stringify the passed exception.
+     */
+    @SuppressWarnings("unused")
+    protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
+        return false;
+    }
+
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 
     private static BailoutException handleAnnotationFailure(NoClassDefFoundError e, String attemptedAction) {
@@ -1247,7 +1242,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("unused")
-    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         throw new UnsupportedOperationException();
     }
 
@@ -1257,6 +1252,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected abstract AbstractFastThreadLocal getFastThreadLocalImpl();
+
+    public long getStackOverflowLimit() {
+        throw new UnsupportedOperationException();
+    }
 
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {

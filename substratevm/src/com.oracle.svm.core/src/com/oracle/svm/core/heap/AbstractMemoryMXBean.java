@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-//Checkstyle: stop
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -45,11 +44,9 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
-import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 public abstract class AbstractMemoryMXBean implements MemoryMXBean, NotificationEmitter {
     protected static final long UNDEFINED_MEMORY_USAGE = -1L;
@@ -87,7 +84,7 @@ public abstract class AbstractMemoryMXBean implements MemoryMXBean, Notification
 
     @Override
     public void setVerbose(boolean value) {
-        RuntimeOptionValues.singleton().update(SubstrateGCOptions.PrintGC, value);
+        SubstrateGCOptions.PrintGC.update(value);
     }
 
     @Override

@@ -45,13 +45,13 @@ public class LibCFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(Platform.LINUX.class);
+        return LibCBase.isPlatformEquivalent(Platform.LINUX.class);
     }
 
     public static class LibCOptions {
         @APIOption(name = "libc")//
         @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
-        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<String>(null) {
+        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
             @Override
             public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 if (!values.containsKey(this)) {

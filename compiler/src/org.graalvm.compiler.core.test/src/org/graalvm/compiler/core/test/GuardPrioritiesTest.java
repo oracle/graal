@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 import static org.graalvm.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static org.graalvm.compiler.graph.test.matchers.NodeIterableIsEmpty.isNotEmpty;
 import static org.junit.Assert.assertThat;
@@ -58,7 +60,7 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
     public void growing(int e) {
         if (size >= array.length) {
             // grow
-            GraalDirectives.deoptimizeAndInvalidateWithSpeculation();
+            GraalDirectives.deoptimize(InvalidateReprofile, TransferToInterpreter, true);
         }
         array[size++] = e;
     }
@@ -101,7 +103,7 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
             GraalDirectives.deoptimizeAndInvalidate();
         }
         if (c >= 10) {
-            GraalDirectives.deoptimizeAndInvalidateWithSpeculation();
+            GraalDirectives.deoptimize(InvalidateReprofile, TransferToInterpreter, true);
         }
         return array[8] + a[i];
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,8 +118,8 @@ class ReflectionProcessor extends AbstractProcessor {
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
             return;
         }
-        ConfigurationMemberDeclaration memberKind = ConfigurationMemberDeclaration.PUBLIC;
-        ConfigurationMemberAccessibility accessKind = ConfigurationMemberAccessibility.QUERIED;
+        ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
+        ConfigurationMemberAccessibility accessibility = ConfigurationMemberAccessibility.QUERIED;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "getDeclaredFields": {
@@ -132,28 +132,32 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getDeclaredMethods": {
-                configuration.getOrCreateType(condition, clazz).setAllDeclaredMethods(accessKind);
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredMethods(accessibility);
                 break;
             }
             case "asInterfaceInstance":
-                accessKind = ConfigurationMemberAccessibility.ACCESSED;
+                accessibility = ConfigurationMemberAccessibility.ACCESSED;
                 // fallthrough
             case "getMethods": {
-                configuration.getOrCreateType(condition, clazz).setAllPublicMethods(accessKind);
+                configuration.getOrCreateType(condition, clazz).setAllPublicMethods(accessibility);
                 break;
             }
 
             case "getDeclaredConstructors": {
-                configuration.getOrCreateType(condition, clazz).setAllDeclaredConstructors(accessKind);
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredConstructors(accessibility);
                 break;
             }
             case "getConstructors": {
-                configuration.getOrCreateType(condition, clazz).setAllPublicConstructors(accessKind);
+                configuration.getOrCreateType(condition, clazz).setAllPublicConstructors(accessibility);
                 break;
             }
 
             case "getDeclaredClasses": {
                 configuration.getOrCreateType(condition, clazz).setAllDeclaredClasses();
+                break;
+            }
+            case "getPermittedSubclasses": {
+                configuration.getOrCreateType(condition, clazz).setAllPermittedSubclasses();
                 break;
             }
             case "getClasses": {
@@ -165,10 +169,10 @@ class ReflectionProcessor extends AbstractProcessor {
             case "findFieldHandle":
             case "unreflectField":
             case "getDeclaredField":
-                memberKind = "findFieldHandle".equals(function) ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
+                declaration = "findFieldHandle".equals(function) ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addField(singleElement(args), memberKind, false);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addField(singleElement(args), declaration, false);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
                     configuration.getOrCreateType(condition, clazz);
                 }
@@ -178,17 +182,17 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getDeclaredMethod":
             case "findMethodHandle":
             case "invokeMethod":
-                memberKind = "getDeclaredMethod".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
+                declaration = "getDeclaredMethod".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getMethod": {
-                accessKind = (function.equals("invokeMethod") || function.equals("findMethodHandle")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
+                accessibility = (function.equals("invokeMethod") || function.equals("findMethodHandle")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind, accessKind);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
                     configuration.getOrCreateType(condition, clazz);
                 }
@@ -198,17 +202,18 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getDeclaredConstructor":
             case "findConstructorHandle":
             case "invokeConstructor":
-                memberKind = "getDeclaredConstructor".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
+                declaration = "getDeclaredConstructor".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getConstructor": {
-                accessKind = (function.equals("invokeConstructor") || function.equals("findConstructorHandle")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
+                accessibility = (function.equals("invokeConstructor") || function.equals("findConstructorHandle")) ? ConfigurationMemberAccessibility.ACCESSED
+                                : ConfigurationMemberAccessibility.QUERIED;
                 List<String> parameterTypes = singleElement(args);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
                 assert clazz.equals(clazzOrDeclaringClass) : "Constructor can only be accessed via declaring class";
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind, accessKind);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
                 break;
             }
 
@@ -246,13 +251,23 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getBundleImplJDK8OrEarlier": {
-                expectSize(args, 4);
-                resourceConfiguration.addBundle(condition, (String) args.get(0));
+                expectSize(args, 6);
+                String baseName = (String) args.get(0);
+                @SuppressWarnings("unchecked")
+                List<String> classNames = (List<String>) args.get(4);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(5);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             case "getBundleImplJDK11OrLater": {
-                expectSize(args, 5);
-                resourceConfiguration.addBundle(condition, (String) args.get(2));
+                expectSize(args, 7);
+                String baseName = (String) args.get(2);
+                @SuppressWarnings("unchecked")
+                List<String> classNames = (List<String>) args.get(5);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(6);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             default:

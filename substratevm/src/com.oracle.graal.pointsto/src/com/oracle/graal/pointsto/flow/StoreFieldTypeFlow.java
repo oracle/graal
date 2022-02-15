@@ -24,19 +24,21 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * Implements a field store operation type flow.
  */
 public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
-    protected StoreFieldTypeFlow(StoreFieldNode node) {
-        super(node);
+    protected StoreFieldTypeFlow(BytecodePosition storeLocation, AnalysisField field) {
+        super(storeLocation, field);
     }
 
     protected StoreFieldTypeFlow(StoreFieldTypeFlow original, MethodFlowsGraph methodFlows) {
@@ -60,8 +62,8 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         /** The flow of the input value. */
         private final TypeFlow<?> valueFlow;
 
-        StoreStaticFieldTypeFlow(StoreFieldNode node, TypeFlow<?> valueFlow, FieldTypeFlow fieldFlow) {
-            super(node);
+        StoreStaticFieldTypeFlow(BytecodePosition storeLocation, AnalysisField field, TypeFlow<?> valueFlow, FieldTypeFlow fieldFlow) {
+            super(storeLocation, field);
             this.valueFlow = valueFlow;
             this.fieldFlow = fieldFlow;
         }
@@ -107,16 +109,31 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         /** The flow of the store operation receiver object. */
         private TypeFlow<?> objectFlow;
 
-        StoreInstanceFieldTypeFlow(StoreFieldNode node, TypeFlow<?> valueFlow, TypeFlow<?> objectFlow) {
-            super(node);
+        private boolean isContextInsensitive;
+
+        public StoreInstanceFieldTypeFlow(BytecodePosition storeLocation, AnalysisField field, TypeFlow<?> objectFlow) {
+            this(storeLocation, field, null, objectFlow);
+        }
+
+        public StoreInstanceFieldTypeFlow(BytecodePosition storeLocation, AnalysisField field, TypeFlow<?> valueFlow, TypeFlow<?> objectFlow) {
+            super(storeLocation, field);
             this.valueFlow = valueFlow;
             this.objectFlow = objectFlow;
         }
 
         StoreInstanceFieldTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, StoreInstanceFieldTypeFlow original) {
             super(original, methodFlows);
-            this.valueFlow = methodFlows.lookupCloneOf(bb, original.valueFlow);
+            this.valueFlow = original.valueFlow != null ? methodFlows.lookupCloneOf(bb, original.valueFlow) : null;
             this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
+        }
+
+        public void markAsContextInsensitive() {
+            isContextInsensitive = true;
+        }
+
+        @Override
+        public boolean isContextInsensitive() {
+            return isContextInsensitive;
         }
 
         @Override
@@ -136,8 +153,8 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
+            /* Only a clone or a context insensitive flow should be updated */
+            assert this.isClone() || this.isContextInsensitive();
 
             /*
              * The state of the receiver object has changed. Add an use link between the value flow
@@ -156,9 +173,27 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone();
-            /* When receiver flow saturates start observing the flow of the field declaring type. */
-            replaceObservedWith(bb, field.getDeclaringClass());
+            assert this.isClone() && !this.isContextInsensitive();
+            /*
+             * When receiver flow saturates swap in the saturated store type flow. When the store
+             * itself saturates it propagates the saturation state to the uses/observers and unlinks
+             * them, but it still observes the receiver state to notify no-yet-reachable fields of
+             * saturation.
+             */
+
+            /* Deregister the store as an observer of the receiver. */
+            objectFlow.removeObserver(this);
+
+            /* Deregister the store as a use of the value flow. */
+            valueFlow.removeUse(this);
+
+            /* Link the saturated store. */
+            StoreFieldTypeFlow contextInsensitiveStore = ((PointsToAnalysisField) field).initAndGetContextInsensitiveStore(bb, source);
+            /*
+             * Link the value flow to the saturated store. The receiver is already set in the
+             * saturated store.
+             */
+            valueFlow.addUse(bb, contextInsensitiveStore);
         }
 
         @Override

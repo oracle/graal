@@ -28,10 +28,10 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.LPHANDLE;
@@ -51,8 +51,8 @@ public class Process {
     public static native int TOKEN_QUERY();
 
     @CFunction
-    public static native HANDLE _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,
-                    PointerBase arglist, int initflag, CIntPointer thrdaddr);
+    public static native HANDLE _beginthreadex(PointerBase security, int stacksize, PointerBase start_address,
+                    WordBase arglist, int initflag, CIntPointer thrdaddr);
 
     @CConstant
     public static native int CREATE_SUSPENDED();
@@ -92,6 +92,10 @@ public class Process {
     public static native int SleepConditionVariableCS(PCONDITION_VARIABLE cond, PCRITICAL_SECTION mutex, int dwMilliseconds);
 
     public static class NoTransitions {
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native HANDLE _beginthreadex(PointerBase security, int stacksize, PointerBase start_address,
+                        WordBase arglist, int initflag, CIntPointer thrdaddr);
+
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native HANDLE GetCurrentProcess();
 

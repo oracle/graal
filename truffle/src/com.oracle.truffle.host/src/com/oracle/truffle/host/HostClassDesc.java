@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -128,7 +128,7 @@ final class HostClassDesc {
         final Map<String, HostFieldDesc> staticFields;
         final HostMethodDesc functionalMethod;
 
-        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc>() {
+        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<>() {
             @Override
             public HostMethodDesc apply(HostMethodDesc m1, HostMethodDesc m2) {
                 return merge(m1, m2);

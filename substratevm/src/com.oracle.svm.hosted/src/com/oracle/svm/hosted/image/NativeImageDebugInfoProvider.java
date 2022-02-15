@@ -119,8 +119,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
         this.referenceAlignment = getObjectLayout().getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
-        primitiveStartOffset = (int) primitiveFields.getOffset();
-        referenceStartOffset = (int) objectFields.getOffset();
+        primitiveStartOffset = (int) primitiveFields.getAddress();
+        referenceStartOffset = (int) objectFields.getAddress();
     }
 
     @Override
@@ -660,7 +660,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
             @Override
             public String valueType() {
-                return hostedMethod.getSignature().getReturnType(null).toJavaName();
+                return toJavaName((HostedType) hostedMethod.getSignature().getReturnType(null));
             }
 
             @Override
@@ -669,7 +669,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 int parameterCount = signature.getParameterCount(false);
                 List<String> paramTypes = new ArrayList<>(parameterCount);
                 for (int i = 0; i < parameterCount; i++) {
-                    paramTypes.add(signature.getParameterType(i, null).toJavaName());
+                    paramTypes.add(toJavaName((HostedType) signature.getParameterType(i, null)));
                 }
                 return paramTypes;
             }
@@ -1228,7 +1228,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @SuppressWarnings("try")
         @Override
         public void debugContext(Consumer<DebugContext> action) {
-            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", provenance)) {
+            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo", provenance)) {
                 action.accept(debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
@@ -1278,7 +1278,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private boolean acceptObjectInfo(ObjectInfo objectInfo) {
-        /* This condiiton rejects filler partition objects. */
+        /* This condition rejects filler partition objects. */
         return (objectInfo.getPartition().getStartOffset() > 0);
     }
 

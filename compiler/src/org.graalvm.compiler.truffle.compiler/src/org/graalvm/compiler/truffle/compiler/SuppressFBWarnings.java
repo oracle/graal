@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,21 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 /**
- * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
+ * Used to suppress <a href="https://spotbugs.readthedocs.io">SpotBugs</a> warnings.
  */
+@Retention(RetentionPolicy.CLASS)
 @interface SuppressFBWarnings {
     /**
-     * The set of FindBugs
-     * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
-     * suppressed in annotated element. The value can be a bug category, kind or pattern.
+     * @see "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html"
      */
     String[] value();
 
     /**
-     * Reason why the warning is suppressed.
+     * Reason why the warning is suppressed. Use a SpotBugs issue id where appropriate.
      */
     String justification();
 }

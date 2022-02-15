@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_DECRYPTBLOCK;
@@ -56,7 +57,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCH;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK;
@@ -99,7 +99,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
@@ -120,7 +119,6 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -275,10 +273,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private boolean registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
-        if (config.invokeJavaMethodAddress == 0) {
-            return true;
+    private void registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        if (config.invokeJavaMethodAddress == 0 || IS_IN_NATIVE_IMAGE) {
+            return;
         }
+        // These functions are only used for testing purposes but their registration also ensures
+        // that libgraal has support for InvokeJavaMethodStub built into the image, which is
+        // required for support of Truffle. Because of the lazy initialization of this support in
+        // Truffle we rely on this code to ensure the support is built into the image.
         ResolvedJavaMethod booleanReturnsBoolean = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "booleanReturnsBoolean");
         invokeJavaMethodStub(options, providers, TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, config.invokeJavaMethodAddress, booleanReturnsBoolean);
         ResolvedJavaMethod byteReturnsByte = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "byteReturnsByte");
@@ -293,8 +295,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         invokeJavaMethodStub(options, providers, TestForeignCalls.LONG_RETURNS_LONG, config.invokeJavaMethodAddress, longReturnsLong);
         ResolvedJavaMethod objectReturnsObject = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "objectReturnsObject");
         invokeJavaMethodStub(options, providers, TestForeignCalls.OBJECT_RETURNS_OBJECT, config.invokeJavaMethodAddress, objectReturnsObject);
-
-        return true;
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
@@ -431,37 +431,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
         }
 
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_BYTE, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_CHAR, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER.getSignature())));
         link(new UnwindExceptionToCallerStub(options, providers,
                         registerStubCall(UNWIND_EXCEPTION_TO_CALLER, DESTROYS_ALL_CALLER_SAVE_REGISTERS)));
@@ -597,7 +566,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
         }
 
-        assert registerStubCallFunctions(options, providers, runtime.getVMConfig());
+        registerStubCallFunctions(options, providers, runtime.getVMConfig());
     }
 
     @SuppressWarnings("unused")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -69,6 +70,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostStackTraceTest extends AbstractPolyglotTest {
 
@@ -163,6 +165,15 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
 
     }
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public HostStackTraceTest() {
+        needsLanguageEnv = true;
+    }
+
     @Before
     public void setup() {
         setupEnv();
@@ -170,7 +181,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
 
     @Test
     public void testExecute() {
-        Value v = context.asValue(new Supplier<Object>() {
+        Value v = context.asValue(new Supplier<>() {
             public Object get() {
                 throw new RuntimeException();
             }

@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -57,7 +58,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
      */
     @SuppressWarnings("unused") protected volatile Object invokeLocations;
 
-    protected AbstractVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected AbstractVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
@@ -70,6 +71,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         isContextInsensitive = true;
     }
 
+    @Override
     public boolean isContextInsensitive() {
         return isContextInsensitive;
     }
@@ -81,7 +83,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         return false;
     }
 
-    /** The context insensitive virual invoke returns all the locations where it is swapped in. */
+    /** The context insensitive virtual invoke returns all the locations where it is swapped in. */
     public Collection<BytecodePosition> getInvokeLocations() {
         if (isContextInsensitive) {
             return getElements(this, INVOKE_LOCATIONS_UPDATER);
@@ -109,11 +111,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
-        /* When the receiver flow saturates start observing the flow of the receiver type. */
-        replaceObservedWith(bb, receiverType);
-    }
+    public abstract void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed);
 
     protected boolean addCallee(AnalysisMethod callee) {
         boolean add = addElement(this, CALLEES_UPDATER, callee);

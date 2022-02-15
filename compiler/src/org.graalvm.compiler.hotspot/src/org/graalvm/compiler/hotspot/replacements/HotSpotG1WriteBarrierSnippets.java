@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.
 
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
@@ -58,7 +57,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -197,8 +195,8 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
         private final G1WriteBarrierLowerer lowerer;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Group.Factory factory, HotSpotProviders providers, TargetDescription target, GraalHotSpotVMConfig config) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Group.Factory factory, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+            super(options, providers);
             this.lowerer = new HotspotG1WriteBarrierLowerer(config, factory);
 
             HotSpotG1WriteBarrierSnippets receiver = new HotSpotG1WriteBarrierSnippets(providers.getRegisters());

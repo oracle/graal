@@ -41,13 +41,13 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -56,7 +56,6 @@ import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
@@ -231,7 +230,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             HostedMethod method = entry.getKey();
             CompilationResult compilation = entry.getValue();
 
-            BufferUtil.asBaseBuffer(bufferBytes).position(startPos + method.getCodeAddressOffset());
+            bufferBytes.position(startPos + method.getCodeAddressOffset());
             int codeSize = compilation.getTargetCodeSize();
             bufferBytes.put(compilation.getTargetCode(), 0, codeSize);
 
@@ -239,7 +238,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 bufferBytes.put(CODE_FILLER_BYTE);
             }
         }
-        BufferUtil.asBaseBuffer(bufferBytes).position(startPos);
+        bufferBytes.position(startPos);
     }
 
     @Override

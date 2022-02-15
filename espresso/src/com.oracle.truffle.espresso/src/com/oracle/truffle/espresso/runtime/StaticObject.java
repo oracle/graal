@@ -86,7 +86,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         CompilerAsserts.partialEvaluationConstant(thisKlass);
         for (Field f : thisKlass.getFieldTable()) {
             assert !f.isStatic();
-            if (!f.isHidden()) {
+            if (!f.isHidden() && !f.isRemoved()) {
                 if (f.getKind() == JavaKind.Object) {
                     f.setObject(this, StaticObject.NULL);
                 }
@@ -95,13 +95,17 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     @ExplodeLoop
-    private void initStaticFields(ObjectKlass thisKlass) {
+    private void initInitialStaticFields(ObjectKlass thisKlass) {
         checkNotForeign();
         CompilerAsserts.partialEvaluationConstant(thisKlass);
-        for (Field f : thisKlass.getStaticFieldTable()) {
+        for (Field f : thisKlass.getInitialStaticFields()) {
             assert f.isStatic();
-            if (f.getKind() == JavaKind.Object) {
-                f.setObject(this, StaticObject.NULL);
+            if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
+                if (f.isHidden()) { // extension field
+                    f.setHiddenObject(this, StaticObject.NULL);
+                } else {
+                    f.setObject(this, StaticObject.NULL);
+                }
             }
         }
     }
@@ -134,7 +138,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static StaticObject createStatics(ObjectKlass klass) {
         assert klass != null;
         StaticObject newObj = klass.getLinkedKlass().getShape(true).getFactory().create(klass);
-        newObj.initStaticFields(klass);
+        newObj.initInitialStaticFields(klass);
         return trackAllocation(klass, newObj);
     }
 
@@ -144,6 +148,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
+        assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
         StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
         EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
@@ -178,7 +183,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert foreignObject != null;
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
-        assert klass == null || klass.isInitializedOrInitializing();
+        if (klass != null) {
+            klass.safeInitialize();
+        }
         return trackAllocation(klass, newObj);
     }
 
@@ -389,10 +396,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
             // Also prints hidden fields
-            if (!f.isHidden()) {
+            if (!f.isRemoved()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
-            } else {
-                str.append("\n    ").append(f.getName()).append(": ").append((f.getHiddenObject(this)).toString());
             }
         }
         return str.toString();

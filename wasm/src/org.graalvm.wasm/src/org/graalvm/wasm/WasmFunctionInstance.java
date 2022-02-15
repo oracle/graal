@@ -40,21 +40,24 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
-public class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
+public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
     private final WasmContext context;
     private final WasmFunction function;
     private final CallTarget target;
+    private final TruffleContext truffleContext;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
@@ -66,6 +69,7 @@ public class WasmFunctionInstance extends EmbedderDataHolder implements TruffleO
         this.context = context;
         this.function = function;
         this.target = target;
+        this.truffleContext = context.environment().getContext();
     }
 
     @Override
@@ -92,19 +96,26 @@ public class WasmFunctionInstance extends EmbedderDataHolder implements TruffleO
         return target;
     }
 
+    public TruffleContext getTruffleContext() {
+        return truffleContext;
+    }
+
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isExecutable() {
         return true;
     }
 
     @ExportMessage
-    Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
-        TruffleContext truffleContext = context.environment().getContext();
-        Object prev = truffleContext.enter(null);
+    Object execute(Object[] arguments,
+                    @CachedLibrary("this") InteropLibrary self,
+                    @Cached WasmIndirectCallNode callNode) {
+        TruffleContext c = getTruffleContext();
+        Object prev = c.enter(self);
         try {
             return callNode.execute(target, arguments);
         } finally {
-            truffleContext.leave(null, prev);
+            c.leave(self, prev);
         }
     }
 }

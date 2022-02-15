@@ -24,25 +24,54 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * JDK versioned functionality used by the HotSpot Truffle runtime.
+ *
+ * This version is for JDK 11 without the changes from JDK-8220623.
  */
 class HotSpotTruffleRuntimeServices {
 
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay missing");
+    private static final Constructor<? extends SpeculationLog> sharedHotSpotSpeculationLogConstructor;
+
+    static {
+        Constructor<? extends SpeculationLog> constructor = null;
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends SpeculationLog> theClass = (Class<? extends SpeculationLog>) Class.forName("jdk.vm.ci.hotspot.SharedHotSpotSpeculationLog");
+            constructor = theClass.getDeclaredConstructor(HotSpotSpeculationLog.class);
+        } catch (ClassNotFoundException e) {
+        } catch (NoSuchMethodException e) {
+            throw new InternalError("SharedHotSpotSpeculationLog exists but constructor is missing", e);
+        }
+        sharedHotSpotSpeculationLogConstructor = constructor;
     }
 
     /**
      * Gets a speculation log to be used for compiling {@code callTarget}.
-     *
-     * @param callTarget
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
-        throw shouldNotReachHere();
+        if (sharedHotSpotSpeculationLogConstructor != null) {
+            HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
+            try {
+                SpeculationLog compilationSpeculationLog = sharedHotSpotSpeculationLogConstructor.newInstance(log);
+                compilationSpeculationLog.collectFailedSpeculations();
+                return compilationSpeculationLog;
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new InternalError(e);
+            }
+        }
+        SpeculationLog log = callTarget.getSpeculationLog();
+        if (log != null) {
+            log.collectFailedSpeculations();
+        }
+        return log;
     }
 }

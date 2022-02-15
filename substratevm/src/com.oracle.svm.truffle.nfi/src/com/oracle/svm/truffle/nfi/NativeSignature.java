@@ -41,9 +41,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.VMThreads;
@@ -173,9 +173,9 @@ final class NativeSignature {
              * Set / get the error number immediately before / after the ffi call. We must be
              * uninterruptible, so that no safepoint can interfere.
              */
-            CErrorNumber.setCErrorNumber(errnoMirror.read());
+            LibC.setErrno(errnoMirror.read());
             LibFFI.NoTransitions.ffi_call(cif, fn, rvalue, avalue);
-            errnoMirror.write(CErrorNumber.getCErrorNumber());
+            errnoMirror.write(LibC.errno());
         }
     }
 

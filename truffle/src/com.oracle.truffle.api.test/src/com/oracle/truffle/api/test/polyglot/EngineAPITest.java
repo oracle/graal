@@ -67,6 +67,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class EngineAPITest {
 
@@ -141,7 +142,9 @@ public class EngineAPITest {
         assertEquals(EngineAPITestLanguage.VERSION, language.getVersion());
         assertEquals(EngineAPITestLanguage.IMPL_NAME, language.getImplementationName());
 
-        assertSame(language, engine.getLanguages().get(EngineAPITestLanguage.ID));
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(language, engine.getLanguages().get(EngineAPITestLanguage.ID));
+        }
 
         engine.close();
     }
@@ -155,19 +158,25 @@ public class EngineAPITest {
         OptionDescriptor descriptor2 = language.getOptions().get(EngineAPITestLanguage.Option2_NAME);
         OptionDescriptor descriptor3 = language.getOptions().get(EngineAPITestLanguage.Option3_NAME);
 
-        assertSame(EngineAPITestLanguage.Option1, descriptor1.getKey());
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(EngineAPITestLanguage.Option1, descriptor1.getKey());
+        }
         assertEquals(EngineAPITestLanguage.Option1_NAME, descriptor1.getName());
         assertEquals(EngineAPITestLanguage.Option1_CATEGORY, descriptor1.getCategory());
         assertEquals(EngineAPITestLanguage.Option1_DEPRECATED, descriptor1.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option1_HELP, descriptor1.getHelp());
 
-        assertSame(EngineAPITestLanguage.Option2, descriptor2.getKey());
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(EngineAPITestLanguage.Option2, descriptor2.getKey());
+        }
         assertEquals(EngineAPITestLanguage.Option2_NAME, descriptor2.getName());
         assertEquals(EngineAPITestLanguage.Option2_CATEGORY, descriptor2.getCategory());
         assertEquals(EngineAPITestLanguage.Option2_DEPRECATED, descriptor2.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option2_HELP, descriptor2.getHelp());
 
-        assertSame(EngineAPITestLanguage.Option3, descriptor3.getKey());
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(EngineAPITestLanguage.Option3, descriptor3.getKey());
+        }
         assertEquals(EngineAPITestLanguage.Option3_NAME, descriptor3.getName());
         assertEquals(EngineAPITestLanguage.Option3_CATEGORY, descriptor3.getCategory());
         assertEquals(EngineAPITestLanguage.Option3_DEPRECATED, descriptor3.isDeprecated());
@@ -178,6 +187,7 @@ public class EngineAPITest {
 
     @Test
     public void testStableOption() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         try (Engine engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "Hello").build()) {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.enter();
@@ -192,6 +202,7 @@ public class EngineAPITest {
 
     @Test
     public void testExperimentalOption() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestinstr1.StringOption2", "Allow").build()) {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.enter();
@@ -261,12 +272,13 @@ public class EngineAPITest {
     public void testEngineName() {
         Engine engine = Engine.create();
         String implName = engine.getImplementationName();
-        assertEquals(Truffle.getRuntime().getName(), engine.getImplementationName());
+        String suffix = TruffleTestAssumptions.isWeakEncapsulation() ? "" : " Isolated";
+        assertEquals(Truffle.getRuntime().getName() + suffix, engine.getImplementationName());
         String name = RootNode.createConstantNode(0).getCallTarget().getClass().getSimpleName();
         if (name.equals("DefaultCallTarget")) {
             assertEquals(implName, "Interpreted");
         } else if (name.endsWith("OptimizedCallTarget")) {
-            assertTrue(implName, implName.equals("GraalVM EE") || implName.equals("GraalVM CE"));
+            assertTrue(implName, implName.equals("GraalVM EE" + suffix) || implName.equals("GraalVM CE"));
         }
     }
 

@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -92,7 +93,8 @@ abstract class CallSignatureNode extends Node {
                         @Cached BranchProfile exception,
                         @Cached ConvertToNativeNode convertArg,
                         @Cached ConvertFromNativeNode convertRet,
-                        @CachedLibrary(limit = "3") NFIBackendSignatureLibrary nativeLibrary) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @CachedLibrary(limit = "3") NFIBackendSignatureLibrary nativeLibrary,
+                        @Cached BackendSymbolUnwrapNode backendSymbolUnwrapNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != signature.managedArgCount) {
                 exception.enter();
                 throw ArityException.create(signature.managedArgCount, signature.managedArgCount, args.length);
@@ -108,7 +110,7 @@ abstract class CallSignatureNode extends Node {
                 preparedArgs[i] = convertArg.execute(signature.argTypes[i], input);
             }
 
-            Object ret = nativeLibrary.call(signature.nativeSignature, function, preparedArgs);
+            Object ret = nativeLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(function), preparedArgs);
             return convertRet.execute(signature.retType, ret);
         }
     }
@@ -129,20 +131,20 @@ abstract class CallSignatureNode extends Node {
         private final int managedArgCount;
 
         OptimizedCallSignatureNode(TypeCachedState retType, ArgsCachedState argsState) {
-            this.convertRet = ConvertTypeNode.createOptimizedFromNative(retType);
+            this.convertRet = retType.createFromNative();
 
             this.convertArgs = new OptimizedConvertTypeNode[argsState.nativeArgCount];
             this.managedArgCount = argsState.managedArgCount;
 
             ArgsCachedState cur = argsState;
             for (int i = argsState.nativeArgCount - 1; i >= 0; i--) {
-                convertArgs[i] = ConvertTypeNode.createOptimizedToNative(cur.argType);
+                convertArgs[i] = cur.argType.createToNative();
                 cur = cur.prev;
             }
         }
 
         @ExplodeLoop
-        Object[] prepareArgs(NFISignature signature, Object[] args) {
+        Object[] prepareArgs(NFISignature signature, Object[] args) throws UnsupportedTypeException {
             Object[] preparedArgs = new Object[convertArgs.length];
             int argIdx = 0;
             for (int i = 0; i < convertArgs.length; i++) {
@@ -159,13 +161,14 @@ abstract class CallSignatureNode extends Node {
         @Specialization
         Object doCall(NFISignature signature, Object function, Object[] args,
                         @Cached BranchProfile exception,
-                        @CachedLibrary(limit = "1") NFIBackendSignatureLibrary backendLibrary) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @CachedLibrary(limit = "1") NFIBackendSignatureLibrary backendLibrary,
+                        @Cached BackendSymbolUnwrapNode backendSymbolUnwrapNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != managedArgCount) {
                 exception.enter();
                 throw ArityException.create(managedArgCount, managedArgCount, args.length);
             }
             Object[] preparedArgs = prepareArgs(signature, args);
-            Object ret = backendLibrary.call(signature.nativeSignature, function, preparedArgs);
+            Object ret = backendLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(function), preparedArgs);
             return convertRet.execute(signature.retType, ret);
         }
     }
@@ -178,20 +181,20 @@ abstract class CallSignatureNode extends Node {
         final int managedArgCount;
 
         OptimizedCallClosureNode(TypeCachedState retType, ArgsCachedState argsState) {
-            this.convertRet = ConvertTypeNode.createOptimizedToNative(retType);
+            this.convertRet = retType.createToNative();
 
             this.convertArgs = new OptimizedConvertTypeNode[argsState.nativeArgCount];
             this.managedArgCount = argsState.managedArgCount;
 
             ArgsCachedState cur = argsState;
             for (int i = argsState.nativeArgCount - 1; i >= 0; i--) {
-                convertArgs[i] = ConvertTypeNode.createOptimizedFromNative(cur.argType);
+                convertArgs[i] = cur.argType.createFromNative();
                 cur = cur.prev;
             }
         }
 
         @ExplodeLoop
-        Object[] prepareArgs(NFISignature signature, Object[] args) {
+        Object[] prepareArgs(NFISignature signature, Object[] args) throws UnsupportedTypeException {
             Object[] preparedArgs = new Object[managedArgCount];
             int argIdx = 0;
             for (int i = 0; i < convertArgs.length; i++) {
@@ -244,6 +247,22 @@ abstract class CallSignatureNode extends Node {
         @SuppressWarnings({"unchecked", "unused"})
         static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
             throw (E) ex;
+        }
+    }
+
+    @GenerateAOT
+    @GenerateUncached
+    abstract static class BackendSymbolUnwrapNode extends Node {
+        abstract Object execute(Object symbol);
+
+        @Specialization
+        Object unwrapNFISymbol(NFISymbol symbol) {
+            return symbol.nativeSymbol;
+        }
+
+        @Fallback
+        Object noUnwrap(Object symbol) {
+            return symbol;
         }
     }
 }

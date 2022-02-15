@@ -199,17 +199,17 @@ public class ComponentInstaller extends Launcher {
     private static void printHelp(Feedback output) {
         StringBuilder extra = new StringBuilder();
 
-        forSoftwareChannels(false, (ch) -> {
+        forSoftwareChannels(true, (ch) -> {
             ch.init(SIMPLE_ENV, output);
             String s = ch.globalOptionsHelp();
-            if (s != null) {
-                extra.append(s);
+            if (s != null && !s.isBlank()) {
+                extra.append(s).append("\n");
             }
         });
         String extraS;
 
         if (extra.length() != 0) {
-            extraS = output.l10n("INFO_UsageExtensions", extra.toString());
+            extraS = output.l10n("INFO_UsageExtensions", extra.substring(0, extra.length() - 1));
         } else {
             extraS = ""; // NOI18N
         }

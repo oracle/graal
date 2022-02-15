@@ -43,6 +43,7 @@ import org.graalvm.options.OptionStability;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 
 public final class SulongEngineOption {
 
@@ -79,40 +80,17 @@ public final class SulongEngineOption {
             help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
-    @Option(name = "llvm.debugSysCalls",
-            category = OptionCategory.INTERNAL,
-            help = "Turns syscall debugging on/off. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
-
-    @Option(name = "llvm.printNativeCallStats",
-            category = OptionCategory.INTERNAL,
-            help = "Outputs stats about native call site frequencies." +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> NATIVE_CALL_STATS = new OptionKey<>(String.valueOf(false));
-
-    @Option(name = "llvm.printLifetimeAnalysisStats",
-            category = OptionCategory.INTERNAL,
-            help = "Prints the results of the lifetime analysis." +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
-
-    @Option(name = "llvm.debugLoader",
-            category = OptionCategory.EXPERT,
-            help = "Turns dynamic loader debugging on/off. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
-
     @Option(name = "llvm.optimizeFrameSlots",
             category = OptionCategory.INTERNAL,
             help = "Enable fusing of instructions producing values with instructions consuming values.")
     public static final OptionKey<Boolean> OPTIMIZE_FRAME_SLOTS = new OptionKey<>(true);
 
-    @Option(name = "llvm.printAST",
+    @Option(name = "llvm.printASTFilter",
             category = OptionCategory.INTERNAL,
-            help = "Prints the Truffle AST of functions when it is created. " +
+            help = "Restricts which functions should have their abstract syntax tree printed on creation. " +
+                   "Printing is enabled by setting '--log.llvm.AST.level=FINEST. " +
                    "A comma-separated list of regular expressions that will be matched against function names.")
-    public static final OptionKey<String> PRINT_AST = new OptionKey<>("");
+    public static final OptionKey<String> PRINT_AST_FILTER = new OptionKey<>(".*");
 
     @Option(name = "llvm.parseOnly",
             category = OptionCategory.EXPERT,
@@ -141,13 +119,6 @@ public final class SulongEngineOption {
             help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
 
-    public static final String LL_DEBUG_VERBOSE_NAME = "llvm.llDebug.verbose";
-    @Option(name = LL_DEBUG_VERBOSE_NAME,
-            category = OptionCategory.EXPERT,
-            help = "Enables diagnostics for IR-level debugging (e.g., report missing .ll files). Requires \'--llvm.llDebug=true\'. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("stderr");
-
     @Option(name = "llvm.llDebug.sources",
             category = OptionCategory.EXPERT,
             help = "Provide the locations of *.ll files for debugging. " +
@@ -158,12 +129,6 @@ public final class SulongEngineOption {
             category = OptionCategory.INTERNAL,
             help = "Prints a C stack trace when abort() is called.")
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
-
-    @Option(name = "llvm.traceIR",
-            category = OptionCategory.EXPERT,
-            help = "Prints a trace of the executed bitcode. Requires \'--llvm.llDebug=true\'. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> TRACE_IR = new OptionKey<>("");
 
     @Option(name = "llvm.libraries",
             category = OptionCategory.USER,
@@ -221,6 +186,6 @@ public final class SulongEngineOption {
     }
 
     public static boolean shouldVerifyCompileUnitChecksums(TruffleLanguage.Env env) {
-        return env.getOptions().get(LL_DEBUG) && optionEnabled(env.getOptions().get(LL_DEBUG_VERBOSE));
+        return env.getOptions().get(LL_DEBUG) && LLVMContext.llDebugVerboseEnabled();
     }
 }

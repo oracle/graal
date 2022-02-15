@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -312,7 +312,7 @@ public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase
     @Override
     protected void prepareGraph(StructuredGraph graph, CanonicalizerPhase canonicalizer, CoreProviders context, boolean applyLowering) {
         super.prepareGraph(graph, canonicalizer, context, applyLowering);
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         graph.setGuardsStage(StructuredGraph.GuardsStage.AFTER_FSA);
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After preparation");

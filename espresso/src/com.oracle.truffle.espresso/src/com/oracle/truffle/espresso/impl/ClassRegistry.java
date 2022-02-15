@@ -314,7 +314,10 @@ public abstract class ClassRegistry implements ContextAccess {
             loadKlassCacheHitsInc();
         }
         assert entry != null;
-        entry.checkPackageAccess(getMeta(), getClassLoader(), protectionDomain);
+        StaticObject classLoader = getClassLoader();
+        if (!StaticObject.isNull(classLoader)) {
+            entry.checkPackageAccess(getMeta(), classLoader, protectionDomain);
+        }
         return entry.klass();
     }
 
@@ -445,9 +448,10 @@ public abstract class ClassRegistry implements ContextAccess {
 
         ObjectKlass klass;
 
-        try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
+        try (DebugCloseable define = KLASS_DEFINE.scope(context.getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            LinkedKlass linkedKlass = LinkedKlass.create(context.getLanguage(), context.getJavaVersion(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion());
+            LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
@@ -492,10 +496,10 @@ public abstract class ClassRegistry implements ContextAccess {
         try {
             klass = loadKlass(type, StaticObject.NULL);
         } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
                 StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
                 throw meta.throwException(ncdfe);
             }
             throw e;

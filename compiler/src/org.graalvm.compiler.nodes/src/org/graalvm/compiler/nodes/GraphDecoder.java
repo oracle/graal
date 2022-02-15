@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -400,7 +400,6 @@ public class GraphDecoder {
         public final int stateAfterOrderId;
         public final int nextOrderId;
 
-        public final int nextNextOrderId;
         public final int exceptionOrderId;
         public final int exceptionStateOrderId;
         public final int exceptionNextOrderId;
@@ -408,16 +407,14 @@ public class GraphDecoder {
         public CallTargetNode callTarget;
         public FixedWithNextNode invokePredecessor;
 
-        protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId, int nextNextOrderId,
-                        int exceptionOrderId,
-                        int exceptionStateOrderId, int exceptionNextOrderId) {
+        protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId,
+                        int exceptionOrderId, int exceptionStateOrderId, int exceptionNextOrderId) {
             this.invoke = invoke;
             this.contextType = contextType;
             this.invokeOrderId = invokeOrderId;
             this.callTargetOrderId = callTargetOrderId;
             this.stateAfterOrderId = stateAfterOrderId;
             this.nextOrderId = nextOrderId;
-            this.nextNextOrderId = nextNextOrderId;
             this.exceptionOrderId = exceptionOrderId;
             this.exceptionStateOrderId = exceptionStateOrderId;
             this.exceptionNextOrderId = exceptionNextOrderId;
@@ -813,14 +810,13 @@ public class GraphDecoder {
         int nextOrderId = readOrderId(methodScope);
 
         if (invoke instanceof InvokeWithExceptionNode) {
-            int nextNextOrderId = readOrderId(methodScope);
             int exceptionOrderId = readOrderId(methodScope);
             int exceptionStateOrderId = readOrderId(methodScope);
             int exceptionNextOrderId = readOrderId(methodScope);
-            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, nextNextOrderId, exceptionOrderId, exceptionStateOrderId,
+            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, exceptionOrderId, exceptionStateOrderId,
                             exceptionNextOrderId);
         } else {
-            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, -1, -1, -1, -1);
+            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, -1, -1, -1);
         }
     }
 
@@ -1071,10 +1067,17 @@ public class GraphDecoder {
         assert loopExit.stateAfter() == null;
         int stateAfterOrderId = readOrderId(methodScope);
 
-        BeginNode begin = graph.add(new BeginNode());
-
         FixedNode loopExitSuccessor = loopExit.next();
-        loopExit.replaceAtPredecessor(begin);
+
+        BeginNode begin;
+        if (loopExit.predecessor() instanceof BeginNode) {
+            // Optimization: Reuse an existing BeginNode rather than creating a new one.
+            begin = (BeginNode) loopExit.predecessor();
+            loopExit.replaceAtPredecessor(null);
+        } else {
+            begin = graph.add(new BeginNode());
+            loopExit.replaceAtPredecessor(begin);
+        }
 
         MergeNode loopExitPlaceholder = null;
         if (methodScope.loopExplosion.mergeLoops() && loopScope.loopDepth == 1) {
@@ -1286,7 +1289,7 @@ public class GraphDecoder {
         return false;
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected void readProperties(MethodScope methodScope, Node node) {
         try (DebugCloseable a = ReadPropertiesTimer.start(debug)) {
             NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
@@ -1506,7 +1509,7 @@ public class GraphDecoder {
      * successor list, but no properties or edges are loaded yet. That is done when the successor is
      * on top of the worklist in {@link #processNextNode}.
      */
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected void makeSuccessorStubs(MethodScope methodScope, LoopScope loopScope, Node node, boolean updatePredecessors) {
         try (DebugCloseable a = MakeSuccessorStubsTimer.start(debug)) {
             Edges edges = node.getNodeClass().getSuccessorEdges();
@@ -1537,6 +1540,22 @@ public class GraphDecoder {
                 }
             }
         }
+    }
+
+    protected NodeClass<?> getNodeClass(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {
+        if (nodeOrderId == GraphEncoder.NULL_ORDER_ID) {
+            return null;
+        }
+        FixedNode node = (FixedNode) lookupNode(loopScope, nodeOrderId);
+        if (node != null) {
+            return node.getNodeClass();
+        }
+
+        long readerByteIndex = methodScope.reader.getByteIndex();
+        methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        methodScope.reader.setByteIndex(readerByteIndex);
+        return nodeClass;
     }
 
     protected FixedNode makeStubNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {

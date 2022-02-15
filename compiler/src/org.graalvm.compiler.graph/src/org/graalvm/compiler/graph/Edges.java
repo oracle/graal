@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.graph;
 
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.graph.Node.NOT_ITERABLE;
 
 import java.util.ArrayList;
@@ -223,7 +223,7 @@ public abstract class Edges extends Fields {
 
     private void verifyUpdateValid(Node node, int index, Object newValue) {
         if (newValue != null && !getType(index).isAssignableFrom(newValue.getClass())) {
-            throw new IllegalArgumentException("Can not assign " + newValue.getClass() + " to " + getType(index) + " in " + node);
+            throw new IllegalArgumentException("Can not assign " + newValue + " to " + getType(index) + " in " + node);
         }
     }
 
@@ -348,7 +348,7 @@ public abstract class Edges extends Fields {
 
         private EdgesWithModCountIterator(Node node, Edges edges) {
             super(node, edges);
-            assert isModificationCountsEnabled();
+            assert isNodeModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -372,11 +372,11 @@ public abstract class Edges extends Fields {
     }
 
     public Iterable<Position> getPositionsIterable(final Node node) {
-        return new Iterable<Position>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Position> iterator() {
-                if (isModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new EdgesWithModCountIterator(node, Edges.this);
                 } else {
                     return new EdgesIterator(node, Edges.this);

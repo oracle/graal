@@ -137,10 +137,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
+            Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
     }
 
     private void teardown() {
@@ -226,14 +226,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
-            // Checkstyle: stop
             synchronized (this) {
                 if (!initialized) {
                     initializeAtRuntime(callTarget);
                     initialized = true;
                 }
             }
-            // Checkstyle: resume
         }
     }
 
@@ -418,5 +416,4 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
     }
-
 }

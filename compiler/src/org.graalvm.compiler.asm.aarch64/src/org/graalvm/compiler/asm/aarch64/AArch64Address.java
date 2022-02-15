@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -427,12 +427,14 @@ public final class AArch64Address extends AbstractAddress {
             case REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
+                assert !base.equals(offset);
                 assert extendType == null;
                 assert immediate == 0;
                 break;
             case EXTENDED_REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
+                assert !base.equals(offset);
                 assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
                 assert immediate == 0;
                 break;

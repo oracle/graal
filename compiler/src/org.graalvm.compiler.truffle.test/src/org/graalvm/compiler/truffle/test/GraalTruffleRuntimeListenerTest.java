@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,16 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -74,46 +78,55 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     }
 
     @Test
-    public void testCompilationFailure() {
-        setupContext("engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false");
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
-        TestListener listener = new TestListener(compilable);
-        try {
-            runtime.addListener(listener);
-            compilable.call();
-            listener.assertEvents(
-                            EventType.ENQUEUED,
-                            EventType.COMPILATION_STARTED,
-                            EventType.COMPILATION_FAILURE);
-        } finally {
-            runtime.removeListener(listener);
-        }
+    public void testCompilationFailure() throws IOException, InterruptedException {
+        // Run in a subprocess to clean dumped graal graphs
+        executeInSubprocess(() -> {
+            Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
+            builder.option("engine.CompileImmediately", "true");
+            builder.option("engine.BackgroundCompilation", "false");
+            setupContext(builder);
+            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
+            TestListener listener = new TestListener(compilable);
+            try {
+                runtime.addListener(listener);
+                compilable.call();
+                listener.assertEvents(
+                                EventType.ENQUEUED,
+                                EventType.COMPILATION_STARTED,
+                                EventType.COMPILATION_FAILURE);
+            } finally {
+                runtime.removeListener(listener);
+            }
+        });
     }
 
     @Test
-    public void testCompilationFailureRetry() {
-        setupContext(Context.newBuilder().logHandler(new OutputStream() {
-            @Override
-            public void write(int b) throws IOException {
+    public void testCompilationFailureRetry() throws IOException, InterruptedException {
+        // Run in a subprocess to clean dumped graal graphs
+        executeInSubprocess(() -> {
+            setupContext(Context.newBuilder().logHandler(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                }
+            }).allowExperimentalOptions(true).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false").option("engine.CompilationFailureAction", "Diagnose"));
+            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
+            TestListener listener = new TestListener(compilable);
+            try {
+                runtime.addListener(listener);
+                compilable.call();
+                listener.assertEvents(
+                                EventType.ENQUEUED,
+                                EventType.COMPILATION_STARTED,
+                                EventType.COMPILATION_FAILURE,
+                                EventType.ENQUEUED,
+                                EventType.COMPILATION_STARTED,
+                                EventType.COMPILATION_FAILURE);
+            } finally {
+                runtime.removeListener(listener);
             }
-        }).allowExperimentalOptions(true).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false").option("engine.CompilationFailureAction", "Diagnose"));
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
-        TestListener listener = new TestListener(compilable);
-        try {
-            runtime.addListener(listener);
-            compilable.call();
-            listener.assertEvents(
-                            EventType.ENQUEUED,
-                            EventType.COMPILATION_STARTED,
-                            EventType.COMPILATION_FAILURE,
-                            EventType.ENQUEUED,
-                            EventType.COMPILATION_STARTED,
-                            EventType.COMPILATION_FAILURE);
-        } finally {
-            runtime.removeListener(listener);
-        }
+        });
     }
 
     @Test
@@ -436,6 +449,25 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         private synchronized void notifyInitialCallTarget() {
             initialCallTargetEnqueued = true;
             notifyAll();
+        }
+    }
+
+    private static void executeInSubprocess(Runnable action) throws IOException, InterruptedException {
+        Path tmpDir = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory(GraalTruffleRuntimeListenerTest.class.getSimpleName());
+        try {
+            SubprocessTestUtils.executeInSubprocess(GraalTruffleRuntimeListenerTest.class, action, String.format("-Dgraal.DumpPath=%s", tmpDir));
+        } finally {
+            if (tmpDir != null) {
+                Files.walk(tmpDir).sorted(Comparator.reverseOrder()).forEach(GraalTruffleRuntimeListenerTest::delete);
+            }
+        }
+    }
+
+    private static void delete(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ioException) {
+            throw new AssertionError(ioException.getMessage(), ioException);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,9 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -65,6 +68,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.builtins.SLAddToHostClassPathBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLEvalBuiltinFactory;
@@ -87,7 +91,6 @@ import com.oracle.truffle.sl.builtins.SLRegisterShutdownHookBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLTypeOfBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
-import org.graalvm.polyglot.Context;
 
 /**
  * The run-time state of SL during execution. The context is created by the {@link SLLanguage}. It
@@ -185,13 +188,13 @@ public final class SLContext {
         installBuiltin(SLJavaTypeBuiltinFactory.getInstance());
         installBuiltin(SLExitBuiltinFactory.getInstance());
         installBuiltin(SLRegisterShutdownHookBuiltinFactory.getInstance());
+        installBuiltin(SLAddToHostClassPathBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
         /* Register the builtin function in our function registry. */
         RootCallTarget target = language.lookupBuiltin(factory);
-        String rootName = target.getRootNode().getName();
-        getFunctionRegistry().register(rootName, target);
+        getFunctionRegistry().register(SLStrings.getSLRootName(target.getRootNode()), target);
     }
 
     /*
@@ -205,7 +208,7 @@ public final class SLContext {
      * Methods for language interoperability.
      */
     public static Object fromForeignValue(Object a) {
-        if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof Boolean) {
+        if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof TruffleString || a instanceof Boolean) {
             return a;
         } else if (a instanceof Character) {
             return fromForeignCharacter((Character) a);

@@ -60,7 +60,6 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
@@ -84,7 +83,7 @@ public class NFINativeAccess implements NativeAccess {
 
     protected final InteropLibrary uncachedInterop = InteropLibrary.getUncached();
     protected final SignatureLibrary uncachedSignature = SignatureLibrary.getUncached();
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "NFINativeAccess");
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, NFINativeAccess.class);
 
     protected final TruffleLanguage.Env env;
 
@@ -173,6 +172,12 @@ public class NFINativeAccess implements NativeAccess {
         return loadLibraryHelper("default");
     }
 
+    private static boolean isExpectedException(AbstractTruffleException e) {
+        String className = e.getClass().getName();
+        return "com.oracle.truffle.nfi.backend.libffi.NFIUnsatisfiedLinkError".equals(className) ||
+                        "com.oracle.truffle.llvm.nfi.SulongNFIException".equals(className);
+    }
+
     protected @Pointer TruffleObject loadLibraryHelper(String nfiSource) {
         Source source = Source.newBuilder("nfi", nfiSource, "loadLibrary").build();
         CallTarget target = env.parseInternal(source);
@@ -183,8 +188,8 @@ public class NFINativeAccess implements NativeAccess {
             throw EspressoError.shouldNotReachHere(e);
         } catch (AbstractTruffleException e) {
             // TODO(peterssen): Remove assert once GR-27045 reaches a definitive consensus.
-            assert "com.oracle.truffle.nfi.backend.libffi.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
-            // We treat AbstractTruffleException as if it were an UnsatisfiedLinkError.
+            assert isExpectedException(e);
+            // AbstractTruffleException is treated as if it were an UnsatisfiedLinkError.
             getLogger().fine("AbstractTruffleException while loading library though NFI (" + nfiSource + ") : " + e.getMessage());
             return null;
         }
@@ -213,7 +218,7 @@ public class NFINativeAccess implements NativeAccess {
 
     @ExportLibrary(InteropLibrary.class)
     static final class NativeToJavaWrapper implements TruffleObject {
-        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "NativeToJavaWrapper");
+        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, NativeToJavaWrapper.class);
 
         final TruffleObject delegate;
         final NativeSignature nativeSignature;
@@ -275,7 +280,7 @@ public class NFINativeAccess implements NativeAccess {
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);
-            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+            } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 throw e;
             } catch (Throwable t) {
                 logger.log(Level.FINE, "Exception seen", t);
@@ -326,7 +331,7 @@ public class NFINativeAccess implements NativeAccess {
 
     @ExportLibrary(InteropLibrary.class)
     static final class JavaToNativeWrapper implements TruffleObject {
-        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "JavaToNativeWrapper");
+        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JavaToNativeWrapper.class);
 
         final TruffleObject delegate;
         final NativeSignature nativeSignature;
@@ -388,7 +393,7 @@ public class NFINativeAccess implements NativeAccess {
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);
-            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+            } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 throw e;
             } catch (Throwable t) {
                 logger.log(Level.FINE, "Exception seen", t);
@@ -466,9 +471,12 @@ public class NFINativeAccess implements NativeAccess {
 
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
+
+        public static final String ID = "nfi-native";
+
         @Override
         public String id() {
-            return "nfi-native";
+            return ID;
         }
 
         @Override

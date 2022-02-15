@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
-import java.lang.management.ThreadInfo;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -246,7 +245,7 @@ public final class Management extends NativeEnv {
         }
     }
 
-    private static void validateThreadInfoArray(Meta meta, @JavaType(ThreadInfo[].class) StaticObject infoArray, SubstitutionProfiler profiler) {
+    private static void validateThreadInfoArray(Meta meta, @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject infoArray, SubstitutionProfiler profiler) {
         // check if the element of infoArray is of type ThreadInfo class
         Klass infoArrayKlass = infoArray.getKlass();
         if (infoArray.isArray()) {
@@ -434,7 +433,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    @TruffleBoundary // Lots of SVM + Windows blacklisted methods.
+    @TruffleBoundary // Lots of SVM + Windows methods blocked for PE.
     public long GetLongAttribute(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
                     /* jmmLongAttribute */ int att) {
         switch (att) {
@@ -448,9 +447,7 @@ public final class Management extends NativeEnv {
                 long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
                 return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
             case JMM_OS_PROCESS_ID:
-                String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-                String[] parts = processName.split("@");
-                return Long.parseLong(parts[0]);
+                return ProcessHandle.current().pid();
             case JMM_THREAD_DAEMON_COUNT:
                 int daemonCount = 0;
                 for (StaticObject t : getContext().getActiveThreads()) {
@@ -561,7 +558,7 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     @SuppressWarnings("unused")
-    public @JavaType(ThreadInfo[].class) StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
+    public @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
                     @Inject SubstitutionProfiler profiler) {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {

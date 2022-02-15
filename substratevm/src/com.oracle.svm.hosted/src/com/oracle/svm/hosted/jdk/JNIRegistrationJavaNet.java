@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.Proxy;
@@ -66,14 +67,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                         "javax.net.ssl.SSLContext");
         if (isWindows()) {
             rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl",
-                                /* Caches networking properties. */
-                                "java.net.PlainSocketImpl");
-            } else {
-                /* The other implementations are merged into PlainSocketImpl. */
-                rerunClassInit(a, "java.net.PlainSocketImpl");
-            }
+            /* Caches networking properties. */
+            rerunClassInit(a, "java.net.PlainSocketImpl");
         } else {
             assert isPosix();
             rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
@@ -147,7 +142,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplSocketGetOption,
                         method(a, "java.net." + plainDatagramSocketImpl, "socketGetOption", int.class));
 
-        if (JavaVersionUtil.JAVA_SPEC <= 8 || isPosix()) {
+        if (isPosix()) {
             String plainSocketImpl = isWindows() ? "TwoStacksPlainSocketImpl" : "PlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
                             method(a, "java.net." + plainSocketImpl, "initProto"));
@@ -157,12 +152,10 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         if (isWindows()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainDatagramSocketImplInitIDs,
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
-
-            String dualStackPlainSocketImpl = JavaVersionUtil.JAVA_SPEC <= 8 ? "DualStackPlainSocketImpl" : "PlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainSocketImplInitIDs,
-                            method(a, "java.net." + dualStackPlainSocketImpl, "initIDs"));
+                            method(a, "java.net.PlainSocketImpl", "initIDs"));
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainSocketImplLocalAddress,
-                            method(a, "java.net." + dualStackPlainSocketImpl, "localAddress", int.class, clazz(a, "java.net.InetAddressContainer")));
+                            method(a, "java.net.PlainSocketImpl", "localAddress", int.class, clazz(a, "java.net.InetAddressContainer")));
         } else {
             assert isPosix();
             if (hasExtendedOptionsImpl) {
@@ -235,9 +228,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     private static void registerDatagramSocketCheckOldImpl(DuringAnalysisAccess a) {
         a.registerSubtypeReachabilityHandler((access, clazz) -> {
-            // Checkstyle: stop
-            if (!java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
-                // Checkstyle: resume
+            if (!Modifier.isAbstract(clazz.getModifiers())) {
                 RuntimeReflection.register(method(access, clazz.getName(), "peekData", DatagramPacket.class));
             }
         }, clazz(a, "java.net.DatagramSocketImpl"));
@@ -311,7 +302,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerDefaultProxySelectorInit(DuringAnalysisAccess a) {
-        if (isWindows() && JavaVersionUtil.JAVA_SPEC >= 11) {
+        if (isWindows()) {
             DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
             access.getNativeLibraries().addDynamicNonJniLibrary("winhttp");
         }

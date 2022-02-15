@@ -29,6 +29,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 
 /**
  * Provides access to {@link UntetheredCodeInfo} objects. All methods in here should only be called
@@ -91,6 +92,11 @@ public final class UntetheredCodeInfoAccess {
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     public static String getName(UntetheredCodeInfo info) {
         return getObjectFieldUnsafe(info, CodeInfoImpl.NAME_OBJFIELD);
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static SubstrateInstalledCode getInstalledCode(UntetheredCodeInfo info) {
+        return getObjectFieldUnsafe(info, CodeInfoImpl.INSTALLEDCODE_OBJFIELD);
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)

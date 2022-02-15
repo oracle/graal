@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,13 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+
+import org.graalvm.compiler.debug.DebugContext;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A singleton class responsible for locating source files for classes included in a native image

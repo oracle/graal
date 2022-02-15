@@ -30,7 +30,6 @@ import java.util.List;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.UserError;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class MuslLibC implements LibCBase {
 
@@ -66,9 +65,6 @@ public class MuslLibC implements LibCBase {
     public void checkIfLibCSupported() {
         if (!SubstrateOptions.StaticExecutable.getValue()) {
             throw UserError.abort("Musl can only be used for statically linked executables.");
-        }
-        if (JavaVersionUtil.JAVA_SPEC != 11) {
-            throw UserError.abort("Musl can only be used with labsjdk 11.");
         }
     }
 }

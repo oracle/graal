@@ -45,7 +45,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -122,7 +122,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
-    @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+    @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED)
     private static void invokeProcessHandshake(Object enclosingNode) {
         SINGLETON.processHandshake((Node) enclosingNode);
     }
@@ -170,7 +170,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
              * thread is active.
              */
             assert t.isAlive() : "thread must remain alive while setting fast pending";
-            IsolateThread isolateThread = JavaThreads.getIsolateThreadUnsafe(t);
+            IsolateThread isolateThread = PlatformThreads.getIsolateThreadUnsafe(t);
             VMError.guarantee(isolateThread.isNonNull(), "Java thread must remain alive.");
             PENDING.setVolatile(isolateThread, 1);
         }

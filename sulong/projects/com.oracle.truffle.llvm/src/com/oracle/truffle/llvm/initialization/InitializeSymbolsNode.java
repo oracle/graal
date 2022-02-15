@@ -176,7 +176,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     }
 
     public LLVMPointer execute(LLVMContext ctx) {
-        if (ctx.loaderTraceStream() != null) {
+        if (LibraryLocator.loggingEnabled()) {
             LibraryLocator.traceStaticInits(ctx, "symbol initializers", moduleName);
         }
         LLVMPointer roBase = allocOrNull(allocRoSection);

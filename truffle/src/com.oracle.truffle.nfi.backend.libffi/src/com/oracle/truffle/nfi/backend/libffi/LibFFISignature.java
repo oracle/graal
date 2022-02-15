@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,25 +104,49 @@ final class LibFFISignature {
         return ret;
     }
 
-    @ExportMessage(limit = "3")
-    @GenerateAOT.Exclude
-    static Object call(LibFFISignature self, Object functionPointer, Object[] args,
-                    @CachedLibrary("functionPointer") InteropLibrary interop,
-                    @Cached BranchProfile toNative,
-                    @Cached BranchProfile error,
-                    @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
-        if (!interop.isPointer(functionPointer)) {
-            toNative.enter();
-            interop.toNative(functionPointer);
+    @ExportMessage
+    static class Call {
+
+        @Specialization
+        static Object callLibFFI(LibFFISignature self, LibFFISymbol functionPointer, Object[] args,
+                        @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+            long pointer = functionPointer.asPointer();
+            return functionExecute.execute(pointer, self, args);
         }
-        long pointer;
-        try {
-            pointer = interop.asPointer(functionPointer);
-        } catch (UnsupportedMessageException e) {
-            error.enter();
-            throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
+        static Object callGeneric(LibFFISignature self, Object functionPointer, Object[] args,
+                        @CachedLibrary("functionPointer") InteropLibrary interop,
+                        @Cached BranchProfile isExecutable,
+                        @Cached BranchProfile toNative,
+                        @Cached BranchProfile error,
+                        @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+            if (interop.isExecutable(functionPointer)) {
+                // This branch can be invoked when SignatureLibrary is used to invoke a function
+                // pointer without prior engaging the interop to execute executable function
+                // pointers. It may happen, for example, in SVM for function substitutes.
+                try {
+                    isExecutable.enter();
+                    return interop.execute(functionPointer, args);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+                }
+            }
+            if (!interop.isPointer(functionPointer)) {
+                toNative.enter();
+                interop.toNative(functionPointer);
+            }
+            long pointer;
+            try {
+                pointer = interop.asPointer(functionPointer);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+            }
+            return functionExecute.execute(pointer, self, args);
         }
-        return functionExecute.execute(pointer, self, args);
     }
 
     @ExportMessage

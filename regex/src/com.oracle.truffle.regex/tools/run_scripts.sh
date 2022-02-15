@@ -40,6 +40,7 @@
 # SOFTWARE.
 #
 
+set -e
 
 if [[ $(pwd) != *graal/regex/src/com.oracle.truffle.regex/tools ]]
 then
@@ -56,6 +57,7 @@ wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/CaseFolding.txt -O da
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/NameAliases.txt -O dat/NameAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/emoji/emoji-data.txt -O dat/emoji-data.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
 
@@ -65,11 +67,13 @@ unzip -d dat dat/ucd.nounihan.flat.zip
 
 ./unicode-script.sh
 
-clojure --init generate_case_fold_table.clj --eval '(-main)' > dat/case-fold-table.txt
+clojure -Sdeps '{:paths ["."]}' -M --main generate-case-fold-table > dat/case-fold-table.txt
 
 ./update_case_fold_table.py
 
 ./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
+
+./generate_name_alias_table.py > ../src/com/oracle/truffle/regex/chardata/UnicodeCharacterAliases.java
 
 rm -r ./dat
 

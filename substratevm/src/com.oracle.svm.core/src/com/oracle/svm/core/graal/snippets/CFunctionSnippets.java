@@ -30,8 +30,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -121,21 +119,15 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-                /*
-                 * Change the VMThread status from native to Java, blocking if necessary. At this
-                 * point the JavaFrameAnchor still needs to be pushed: a concurrently running
-                 * safepoint code can start a stack traversal at any time.
-                 */
-                Safepoint.transitionNativeToJava();
+                Safepoint.transitionNativeToJava(true);
             } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-                Safepoint.transitionVMToJava();
+                Safepoint.transitionVMToJava(true);
             } else {
                 ReplacementsUtil.staticAssert(false, "Unexpected thread status");
             }
+        } else {
+            JavaFrameAnchors.popFrameAnchor();
         }
-
-        /* The thread is now back in the Java state, it is safe to pop the JavaFrameAnchor. */
-        JavaFrameAnchors.popFrameAnchor();
 
         /*
          * Ensure that no floating reads are scheduled before we are done with the transition. All
@@ -145,9 +137,8 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
     }
 
-    private CFunctionSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
         lowerings.put(CFunctionEpilogueNode.class, new CFunctionEpilogueLowering());
@@ -256,9 +247,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         @SuppressWarnings("unused")
-        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                        SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-            new CFunctionSnippets(options, factories, providers, snippetReflection, lowerings);
+        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                        Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+            new CFunctionSnippets(options, providers, lowerings);
         }
     }
 }

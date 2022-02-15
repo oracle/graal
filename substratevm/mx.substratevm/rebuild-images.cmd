@@ -107,7 +107,7 @@ for %%f in (%to_build%) do (
   ) else if "%%f"=="libpolyglot" (
     call :libpolyglot cmd_line
   ) else if "%%f"=="js" (
-    call :launcher js cmd_line
+    call :library jsvm cmd_line
   ) else if "%%f"=="llvm" (
     call :launcher lli cmd_line
   ) else if "%%f"=="python" (
@@ -170,5 +170,12 @@ goto :eof
   if "%1"=="polyglot" (
     call :polyglot_common cmd_line
   )
+  endlocal & set "%2=%cmd_line%"
+  exit /b 0
+
+:library cmd cmd_line
+  call :common cmd_line
+  setlocal
+  set "cmd_line=%cmd_line% --macro:%1-library"
   endlocal & set "%2=%cmd_line%"
   exit /b 0

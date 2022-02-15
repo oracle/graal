@@ -7,8 +7,7 @@
   local jdks = common_json.jdks,
   local deps = common_json.deps,
   local downloads = common_json.downloads,
-  # This must always point to HEAD in the master branch but can be used to point
-  # to another branch/commit in a Graal PR when mx changes are required for the PR.
+
   mx:: {
     packages +: {
       mx: mx_version
@@ -17,6 +16,7 @@
 
   eclipse:: downloads.eclipse,
   jdt:: downloads.jdt,
+  devkits:: common_json.devkits,
 
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
@@ -36,6 +36,9 @@
   },
   weekly:: {
     targets+: ["weekly"],
+  },
+  monthly:: {
+    targets+: ["monthly"],
   },
 
   // Heap settings
@@ -89,52 +92,46 @@
 
   "labsjdk-ce-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11"] }},
   "labsjdk-ee-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11"] }},
-  labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   "labsjdk-ce-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17"] }},
   "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
-  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
+
+  # Aliases to edition specific labsjdks
+  labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
+  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
+  labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
+  labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
 
 
   // Hardware definitions
   // ********************
   common:: deps.common + self.mx + {
+    local where = if std.objectHas(self, "name") then " in " + self.name else "",
     # enforce self.os (useful for generating job names)
-    os:: error "self.os not set",
+    os:: error "self.os not set" + where,
     # enforce self.arch (useful for generating job names)
-    arch:: error "self.arch not set",
+    arch:: error "self.arch not set" + where,
     capabilities +: [],
-    catch_files +: common_json.catch_files
+    catch_files +: common_json.catch_files,
+    logs +: [
+      "*.bgv",
+      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
+      "*/es-*.json"
+    ]
   },
 
-  linux:: deps.linux + self.common + {
-    os::"linux",
-    capabilities+: [self.os],
-  },
+  linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},
+  darwin::  deps.darwin  + self.common + {os::"darwin",  capabilities+: [self.os]},
+  windows:: deps.windows + self.common + {os::"windows", capabilities+: [self.os]},
+  windows_server_2016:: self.windows + {capabilities+: ["windows_server_2016"]},
 
-  darwin:: deps.darwin + self.common + {
-    os::"darwin",
-    capabilities+: [self.os],
-  },
+  amd64::   { arch::"amd64",   capabilities+: [self.arch]},
+  aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
 
-  windows:: deps.windows + self.common + {
-    os::"windows",
-    capabilities+: [self.os],
-  },
-
-  amd64:: {
-    arch::"amd64",
-    capabilities+: [self.arch]
-  },
-
-  aarch64:: {
-    arch::"aarch64",
-    capabilities+: [self.arch],
-  },
-
-  "linux-amd64"::     self.linux + self.amd64,
-  "darwin-amd64"::    self.darwin + self.amd64,
-  "windows-amd64"::   self.windows + self.amd64,
-  "linux-aarch64"::   self.linux + self.aarch64,
+  linux_amd64::               self.linux               + self.amd64,
+  darwin_amd64::              self.darwin              + self.amd64,
+  windows_amd64::             self.windows             + self.amd64,
+  windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
+  linux_aarch64::             self.linux               + self.aarch64,
 }

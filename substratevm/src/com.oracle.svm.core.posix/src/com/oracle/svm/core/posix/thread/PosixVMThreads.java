@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import com.oracle.svm.core.posix.headers.Sched;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -38,9 +37,10 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.Sched;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
@@ -83,8 +83,9 @@ public final class PosixVMThreads extends VMThreads {
         Sched.NoTransitions.sched_yield();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean supportsPatientSafepoints() {
+    public boolean supportsNativeYieldAndSleep() {
         return true;
     }
 

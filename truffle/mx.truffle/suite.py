@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.300.4",
   "name" : "truffle",
-  "version" : "22.0.0",
+  "version" : "22.1.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -105,9 +105,38 @@ suite = {
       "sha1": "3ce2e9d96baa6e5de18eb370efc71cbb820021fb",
     },
 
+    "TRUFFLE_JCODINGS": {
+      "sha1" : "c88c640b82534bea6bdb0dfacf4035665ad91e26",
+      "version" : "1.0.56.6",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
+      "exports" : [],
+      "license": ["MIT"],
+    },
+
     "TRUFFLE_ASM_9.1" : {
       "sha1" : "956cc657b3f1aa2c08ebbb3bbe4092aea1daf54a",
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.1.0.jar"],
+    },
+
+    "ICU4J" : {
+      "moduleName" : "com.ibm.icu",
+      "sha1" : "dfa3a1fbc55bf5db8c6e79fc0935ac7ab1202950",
+      "sourceSha1" : "21551c094193ab59d284b434c1e33a3ddf4b5c0e",
+      "maven" : {
+        "groupId" : "com.ibm.icu",
+        "artifactId" : "icu4j",
+        "version" : "70.1",
+      },
+    },
+    "ICU4J-CHARSET" : {
+      "moduleName" : "com.ibm.icu.charset",
+      "sha1" : "9d220e65da007d8ed60cd7970a74d14a8205dfe7",
+      "sourceSha1" : "8f38201691b79d28e424daaa1c9a95039468e946",
+      "maven" : {
+        "groupId" : "com.ibm.icu",
+        "artifactId" : "icu4j-charset",
+        "version" : "70.1",
+      },
     },
 
     "TruffleJSON" : {
@@ -128,32 +157,15 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      "requires" : [
+        "java.logging",
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
       # if warnings as errors is enabled. See GR-14683.
       "forceJavac" : "true",
-      "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.36.1",
-      "workingSets" : "API,Truffle",
-    },
-
-    "com.oracle.truffle.api.jdk8" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "overlayTarget" : "com.oracle.truffle.api",
-      "checkPackagePrefix" : "false",
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8",
-      "workingSets" : "API,Truffle",
-    },
-
-    "com.oracle.truffle.api.jdk11" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "overlayTarget" : "com.oracle.truffle.api",
-      "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "11",
-      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "API,Truffle",
     },
 
@@ -164,7 +176,7 @@ suite = {
         "com.oracle.truffle.api"
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -176,9 +188,13 @@ suite = {
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
       ],
+      "requires" : [
+        "java.logging",
+        "jdk.management",
+      ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -190,9 +206,13 @@ suite = {
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_9.1",
       ],
+      "requires" : [
+        "java.sql",
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -205,13 +225,19 @@ suite = {
         "TRUFFLE_SL",
         "mx:JUNIT",
       ],
+      "requires" : [
+        "java.desktop",
+        "java.logging",
+        "java.sql",
+        "jdk.management",
+      ],
       "requiresConcealed" : {
         "java.base" : [
           "jdk.internal.loader"
         ],
       },
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
@@ -225,11 +251,14 @@ suite = {
         "TRUFFLE_API",
         "mx:JMH_1_21",
       ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "requiresConcealed" : {
         "java.base" : ["jdk.internal.loader"],
       },
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "spotbugsIgnoresGenerated" : True,
       "testProject" : True,
       "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
@@ -241,9 +270,12 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities"],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -251,8 +283,11 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle,Codegen",
     },
 
@@ -266,7 +301,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
       "jacoco" : "exclude",
@@ -282,8 +317,11 @@ suite = {
         "com.oracle.truffle.api.interop",
         "mx:JUNIT",
       ],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
       "jacoco" : "exclude",
@@ -297,7 +335,7 @@ suite = {
         "sdk:POLYGLOT_TCK"
       ],
       "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "SimpleLanguage,Test",
       "jacoco" : "exclude",
     },
@@ -308,8 +346,11 @@ suite = {
       "dependencies" : [
         "truffle:ANTLR4"
       ],
+      "requires" : [
+        "java.compiler",
+      ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,Codegen",
     },
@@ -324,9 +365,9 @@ suite = {
         "java.compiler",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "9+",
+      "javaCompliance" : "11+",
       "overlayTarget" : "com.oracle.truffle.dsl.processor",
-      "multiReleaseJarVersion" : "9",
+      "multiReleaseJarVersion" : "11",
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -334,12 +375,11 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.library",
-        "com.oracle.truffle.api.profiles",
+        "com.oracle.truffle.api.strings",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -351,7 +391,7 @@ suite = {
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -359,9 +399,12 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.interop"],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -373,9 +416,12 @@ suite = {
         "com.oracle.truffle.api.dsl.test",
         "mx:JUNIT"
       ],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
       "jacoco" : "exclude",
     },
@@ -387,7 +433,7 @@ suite = {
       "generatedDependencies" : ["com.oracle.truffle.polyglot"],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -403,7 +449,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
       "testProject" : True,
       "jacoco" : "exclude",
@@ -415,59 +461,104 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.interop",
       ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.object.dsl" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.object"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "workingSets" : "API,Truffle",
-    },
-
-    "com.oracle.truffle.api.object.dsl.test" : {
+    "com.oracle.truffle.api.strings" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.object",
-        "com.oracle.truffle.object",
-        "com.oracle.truffle.api.object.dsl",
+        "com.oracle.truffle.api.profiles",
+        "TRUFFLE_JCODINGS",
+      ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "generatedDependencies": [
+        "com.oracle.truffle.api.library",
+      ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.loader"],
+      },
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "11+",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.strings.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "TRUFFLE_API",
         "mx:JUNIT",
+        "mx:JMH_1_21",
+      ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "11+",
+      "annotationProcessors" : [
+        "TRUFFLE_DSL_PROCESSOR",
+        "mx:JMH_1_21",
+      ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.loader"],
+      },
       "workingSets" : "API,Truffle,Codegen,Test",
       "jacoco" : "exclude",
       "testProject" : True,
     },
 
-    "com.oracle.truffle.object.dsl.processor" : {
+
+    "com.oracle.truffle.api.staticobject" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.dsl.processor"
-      ],
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle,Codegen",
-    },
-
-    "com.oracle.truffle.api.staticobject": {
-      "subDir": "src",
-      "sourceDirs": ["src"],
-      "dependencies": [
         "com.oracle.truffle.api",
         "truffle:TRUFFLE_ASM_9.1",
       ],
-      "checkstyle": "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "javadocType": "api",
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "11+",
+      "javadocType" : "api",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.staticobject.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject"
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.staticobject",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "11",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "11+",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.staticobject.jdk17" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject"
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.staticobject",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "17",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
     },
 
@@ -480,7 +571,20 @@ suite = {
         "mx:JUNIT"
       ],
       "checkstyle": "com.oracle.truffle.api",
-      "javaCompliance": "8+",
+      "javaCompliance" : "11+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.api.staticobject.test.jdk17": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject.test",
+      ],
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "testProject" : True,
@@ -491,7 +595,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
 
@@ -499,8 +603,11 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.object"],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
@@ -513,8 +620,11 @@ suite = {
         "com.oracle.truffle.api.test",
         "mx:JUNIT"
       ],
+      "requires" : [
+        "jdk.unsupported", # GR-36880
+      ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       "testProject" : True,
@@ -531,7 +641,7 @@ suite = {
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
     },
     "com.oracle.truffle.tck.common" : {
@@ -541,7 +651,7 @@ suite = {
         "sdk:POLYGLOT_TCK"
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
     },
     "com.oracle.truffle.tck.tests" : {
@@ -553,7 +663,7 @@ suite = {
         "com.oracle.truffle.tck.common",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
       "testProject" : False,
       "jacoco" : "exclude",
@@ -568,7 +678,7 @@ suite = {
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
     },
 
@@ -580,7 +690,8 @@ suite = {
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "spotbugsIgnoresGenerated" : True,
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
@@ -592,7 +703,7 @@ suite = {
         "com.oracle.truffle.api.interop",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
@@ -604,8 +715,11 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.spi",
       ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       "os_arch" : {
@@ -629,7 +743,7 @@ suite = {
         "TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
@@ -688,8 +802,11 @@ suite = {
         "TRUFFLE_TCK",
         "TRUFFLE_TEST_NATIVE",
       ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
@@ -715,14 +832,14 @@ suite = {
         },
         "solaris" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
             "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-pthread"],
             "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
           },
@@ -764,7 +881,11 @@ suite = {
         "TRUFFLE_API",
         "truffle:ANTLR4"
       ],
-      "javaCompliance" : "8+",
+      "requires" : [
+        "java.logging",
+        "jdk.unsupported", # GR-36880
+      ],
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
@@ -777,7 +898,7 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,SimpleLanguage",
     },
 
@@ -789,8 +910,11 @@ suite = {
         "com.oracle.truffle.sl",
         "mx:JMH_1_21",
       ],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
       "testProject" : True,
@@ -803,7 +927,7 @@ suite = {
       "dependencies" : [
         "TRUFFLE_API",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
@@ -816,7 +940,7 @@ suite = {
         "mx:JUNIT",
         "com.oracle.truffle.st"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
@@ -831,18 +955,9 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8+",
+      "javaCompliance" : "11+",
       "license": "GPLv2-CPE",
       "jacoco" : "exclude",
-    },
-
-    "com.oracle.graalvm.locator.jdk8" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "overlayTarget" : "com.oracle.graalvm.locator",
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8",
-      "checkPackagePrefix" : "false",
     },
 
     "com.oracle.graalvm.locator.jdk11" : {
@@ -909,7 +1024,6 @@ suite = {
         # It exports all the Truffle API packages.
         "exports" : [
           # Unqualified exports
-          "com.oracle.truffle.api.object.dsl",
           "com.oracle.truffle.api.debug",
           "com.oracle.truffle.api.nodes",
           "com.oracle.truffle.api.source",
@@ -923,6 +1037,7 @@ suite = {
           "com.oracle.truffle.api.interop",
           "com.oracle.truffle.api.exception",
           "com.oracle.truffle.api.object",
+          "com.oracle.truffle.api.strings",
           "com.oracle.truffle.api.utilities",
           "com.oracle.truffle.api.library",
           "com.oracle.truffle.api.staticobject",
@@ -933,7 +1048,7 @@ suite = {
         ],
       },
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.api",
         "com.oracle.truffle.api.exception",
@@ -942,7 +1057,7 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.object",
-        "com.oracle.truffle.api.object.dsl",
+        "com.oracle.truffle.api.strings",
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
         "com.oracle.truffle.api.staticobject",
@@ -967,7 +1082,7 @@ suite = {
         ]
       },
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.nfi",
       ],
@@ -991,7 +1106,7 @@ suite = {
         }
       },
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.libffi",
       ],
@@ -1025,7 +1140,7 @@ suite = {
 
     "TRUFFLE_TCK" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.tck"
       ],
@@ -1040,7 +1155,7 @@ suite = {
 
     "TRUFFLE_TCK_COMMON" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.tck.common"
       ],
@@ -1053,7 +1168,7 @@ suite = {
 
     "TRUFFLE_TCK_TESTS" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.tck.tests"
       ],
@@ -1070,7 +1185,7 @@ suite = {
 
     "TRUFFLE_TCK_INSTRUMENTATION" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.tck.instrumentation"
       ],
@@ -1086,8 +1201,7 @@ suite = {
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["truffle:ANTLR4",
-                        "com.oracle.truffle.dsl.processor",
-                        "com.oracle.truffle.object.dsl.processor"],
+                        "com.oracle.truffle.dsl.processor"],
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
@@ -1095,7 +1209,7 @@ suite = {
 
     "TRUFFLE_SL" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.sl",
       ],
@@ -1113,7 +1227,7 @@ suite = {
 
     "TRUFFLE_SL_LAUNCHER" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.sl.launcher",
       ],
@@ -1126,7 +1240,7 @@ suite = {
 
     "TRUFFLE_SL_TEST" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.sl.test"
       ],
@@ -1144,7 +1258,7 @@ suite = {
 
     "TRUFFLE_SL_TCK" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.sl.tck"
       ],
@@ -1152,14 +1266,15 @@ suite = {
         "mx:JUNIT",
       ],
       "distDependencies" : [
-        "sdk:POLYGLOT_TCK"
+        "sdk:POLYGLOT_TCK",
+        "TRUFFLE_SL"
       ],
       "maven" : False
     },
 
     "TRUFFLE_ST" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.st",
       ],
@@ -1176,7 +1291,7 @@ suite = {
 
     "TRUFFLE_ST_TEST" : {
       "subDir" : "src",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "dependencies" : [
         "com.oracle.truffle.st.test"
       ],
@@ -1192,7 +1307,7 @@ suite = {
 
      "TRUFFLE_TEST" : {
        "subDir" : "src",
-       "javaCompliance" : "8+",
+       "javaCompliance" : "11+",
        "dependencies" : [
          "com.oracle.truffle.api.test",
          "com.oracle.truffle.api.benchmark",
@@ -1200,7 +1315,7 @@ suite = {
          "com.oracle.truffle.api.library.test",
          "com.oracle.truffle.api.instrumentation.test",
          "com.oracle.truffle.api.debug.test",
-         "com.oracle.truffle.api.object.dsl.test",
+         "com.oracle.truffle.api.strings.test",
          "com.oracle.truffle.object.basic.test",
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
@@ -1219,6 +1334,20 @@ suite = {
       ],
       "maven" : False,
      },
+
+    "TRUFFLE_TEST_17" : {
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject.test.jdk17",
+      ],
+      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
+      "distDependencies" : [
+        "TRUFFLE_TEST",
+      ],
+      "testDistribution" : True,
+      "maven" : False,
+    },
 
      "TRUFFLE_TEST_NATIVE" : {
        "native" : True,

@@ -29,7 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.frame.FrameSlot;
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -221,24 +224,29 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessElemPtrSymbolNodeG
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMFloatReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI16ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVM80BitFloatReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMDebugReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMDoubleReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMFloatReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMI16ReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMI1ReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMI32ReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMI8ReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMIReadVarBitNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI8ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMIReadVarBitNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMDoubleVectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMFloatVectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI16VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI1VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI32VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI64VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI8VectorReadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWrite80BitFloatingNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteDoubleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteIVarBitNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -255,10 +263,6 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
-
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Collection;
 
 public class CommonNodeFactory {
 
@@ -638,60 +642,54 @@ public class CommonNodeFactory {
         }
     }
 
-    public static LLVMExpressionNode createFrameRead(Type llvmType, FrameSlot frameSlot) {
+    public static LLVMExpressionNode createFrameRead(Type llvmType, int frameSlot) {
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case I1:
-                    return LLVMI1ReadNodeGen.create(frameSlot);
+                    return LLVMI1ReadNode.create(frameSlot);
                 case I8:
-                    return LLVMI8ReadNodeGen.create(frameSlot);
+                    return LLVMI8ReadNode.create(frameSlot);
                 case I16:
-                    return LLVMI16ReadNodeGen.create(frameSlot);
+                    return LLVMI16ReadNode.create(frameSlot);
                 case I32:
-                    return LLVMI32ReadNodeGen.create(frameSlot);
+                    return LLVMI32ReadNode.create(frameSlot);
                 case I64:
                     return LLVMI64ReadNodeGen.create(frameSlot);
                 case FLOAT:
-                    return LLVMFloatReadNodeGen.create(frameSlot);
+                    return LLVMFloatReadNode.create(frameSlot);
                 case DOUBLE:
-                    return LLVMDoubleReadNodeGen.create(frameSlot);
+                    return LLVMDoubleReadNode.create(frameSlot);
                 case X86_FP80:
-                    return LLVM80BitFloatReadNodeGen.create(frameSlot);
+                    return LLVM80BitFloatReadNode.create(frameSlot);
             }
         } else if (llvmType instanceof VectorType) {
             Type elemType = ((VectorType) llvmType).getElementType();
             if (elemType instanceof PrimitiveType) {
                 switch (((PrimitiveType) elemType).getPrimitiveKind()) {
                     case I1:
-                        return LLVMI1VectorReadNodeGen.create(frameSlot);
                     case I8:
-                        return LLVMI8VectorReadNodeGen.create(frameSlot);
                     case I16:
-                        return LLVMI16VectorReadNodeGen.create(frameSlot);
                     case I32:
-                        return LLVMI32VectorReadNodeGen.create(frameSlot);
                     case I64:
-                        return LLVMI64VectorReadNodeGen.create(frameSlot);
                     case FLOAT:
-                        return LLVMFloatVectorReadNodeGen.create(frameSlot);
                     case DOUBLE:
-                        return LLVMDoubleVectorReadNodeGen.create(frameSlot);
+                        return LLVMObjectReadNode.create(frameSlot);
                 }
             } else if (elemType instanceof PointerType || elemType instanceof FunctionType) {
-                return LLVMI64VectorReadNodeGen.create(frameSlot);
+                return LLVMObjectReadNode.create(frameSlot);
             }
         } else if (llvmType instanceof VariableBitWidthType) {
-            return LLVMIReadVarBitNodeGen.create(frameSlot);
+            return LLVMIReadVarBitNode.create(frameSlot);
         } else if (llvmType instanceof PointerType || llvmType instanceof FunctionType) {
-            return LLVMAddressReadNodeGen.create(frameSlot);
+            return LLVMObjectReadNode.create(frameSlot);
         } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
-            return LLVMAddressReadNodeGen.create(frameSlot);
+            return LLVMObjectReadNode.create(frameSlot);
         } else if (llvmType instanceof VoidType) {
             return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.PARSER_ERROR_VOID_SLOT);
         } else if (llvmType == MetaType.DEBUG) {
-            return LLVMReadNodeFactory.LLVMDebugReadNodeGen.create(frameSlot);
+            return LLVMDebugReadNode.create(frameSlot);
         }
-        throw new AssertionError(llvmType + " for " + frameSlot.getIdentifier());
+        throw new AssertionError(llvmType + " for " + frameSlot);
     }
 
     public static LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
@@ -701,6 +699,40 @@ public class CommonNodeFactory {
             int bits = resolvedResultType instanceof VariableBitWidthType ? ((VariableBitWidthType) resolvedResultType).getBitSizeInt() : 0;
             return createLoad(resolvedResultType, loadTarget, bits);
         }
+    }
+
+    public static LLVMWriteNode createFrameWrite(Type llvmType, LLVMExpressionNode result, int slot) {
+        if (llvmType instanceof VectorType) {
+            return LLVMWriteVectorNodeGen.create(slot, result);
+        } else if (llvmType instanceof PrimitiveType) {
+            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
+                case I1:
+                    return LLVMWriteI1NodeGen.create(slot, result);
+                case I8:
+                    return LLVMWriteI8NodeGen.create(slot, result);
+                case I16:
+                    return LLVMWriteI16NodeGen.create(slot, result);
+                case I32:
+                    return LLVMWriteI32NodeGen.create(slot, result);
+                case I64:
+                    return LLVMWriteI64NodeGen.create(slot, result);
+                case FLOAT:
+                    return LLVMWriteFloatNodeGen.create(slot, result);
+                case DOUBLE:
+                    return LLVMWriteDoubleNodeGen.create(slot, result);
+                case X86_FP80:
+                    return LLVMWrite80BitFloatingNodeGen.create(slot, result);
+                default:
+                    throw new AssertionError(llvmType);
+            }
+        } else if (llvmType instanceof VariableBitWidthType) {
+            return LLVMWriteIVarBitNodeGen.create(slot, result);
+        } else if (llvmType instanceof PointerType || llvmType instanceof FunctionType) {
+            return LLVMWritePointerNodeGen.create(slot, result);
+        } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
+            return LLVMWritePointerNodeGen.create(slot, result);
+        }
+        throw new AssertionError(llvmType);
     }
 
     public static LLVMExpressionNode createVaArg(Type type, LLVMExpressionNode source) {

@@ -373,7 +373,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.6"
+        return "1.0.7"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -402,7 +402,7 @@ mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.1"
+        return "1.0.2"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
@@ -591,7 +591,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
 
@@ -606,10 +606,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         otherArgs = ["-s", self.workloadSize()] + remaining
 
-        if args.n:
-            if args.n.isdigit():
-                return ["-n", args.n] + otherArgs
-            if args.n == "-1":
+        if args.iterations:
+            if args.iterations.isdigit():
+                return ["-n", args.iterations] + otherArgs
+            if args.iterations == "-1":
                 return None
         else:
             iterations = self.daCapoIterations()[benchname]
@@ -635,10 +635,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.n and args.n.isdigit():
-            iterations = int(args.n)
+        if args.iterations and args.iterations.isdigit():
+            iterations = int(args.iterations)
         else:
             iterations = self.daCapoIterations()[benchmarks[0]]
             iterations = iterations + self.getExtraIterationCount(iterations)
@@ -1203,6 +1203,14 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
 
     def workloadSize(self):
         return "large"
+
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
+            ]
+        return skip_patterns
 
 
 class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
@@ -1871,7 +1879,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
-        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
             # GR-33879
             # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
@@ -1892,7 +1900,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1915,6 +1923,16 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 return remaining
             else:
                 return ["-r", str(iterations)] + remaining
+
+    def vmArgs(self, bmSuiteArgs):
+        vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        # Those --add-opens flags are specified in the manifest as of renaissance 0.14.0
+        if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
+                                                                        "0.13.0"]:
+            vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter.perf=ALL-UNNAMED"]
+        return vm_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""

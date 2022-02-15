@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -176,22 +176,18 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         nodeStates.put(end, state);
         visitedEnds.mark(end);
         LoopBeginNode begin = end.loopBegin();
-        boolean endsVisited = true;
         for (LoopEndNode le : begin.loopEnds()) {
             if (!visitedEnds.isMarked(le)) {
-                endsVisited = false;
-                break;
+                return;
             }
         }
-        if (endsVisited) {
-            ArrayList<T> states = new ArrayList<>(begin.loopEnds().count());
-            for (LoopEndNode le : begin.orderedLoopEnds()) {
-                states.add(nodeStates.get(le));
-            }
-            T loopBeginState = nodeStates.get(begin);
-            if (loopBeginState != null) {
-                loopBeginState.loopEnds(begin, states);
-            }
+        ArrayList<T> states = new ArrayList<>(begin.loopEnds().count());
+        for (LoopEndNode le : begin.orderedLoopEnds()) {
+            states.add(nodeStates.get(le));
+        }
+        T loopBeginState = nodeStates.get(begin);
+        if (loopBeginState != null) {
+            loopBeginState.loopEnds(begin, states);
         }
     }
 

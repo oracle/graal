@@ -179,11 +179,9 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     private Annotation[] getAnnotationsImpl(Function<ResolvedJavaMethod, Annotation[]> src) {
         // Collect all but @AnnotateOriginal from annotated
-        // Checkstyle: stop
         Map<Object, Annotation> result = Arrays.stream(src.apply(annotated))//
                         .filter(annotation -> !annotation.getClass().equals(AnnotateOriginal.class))//
                         .collect(Collectors.toMap(annotation -> annotation.getClass(), Function.identity()));
-        // Checkstyle: resume
         // Add remaining missing ones from original
         for (Annotation annotation : src.apply(original)) {
             result.putIfAbsent(annotation.getClass(), annotation);
@@ -283,10 +281,5 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     @Override
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
-    }
-
-    @Override
-    public boolean hasJavaMethod() {
-        return OriginalMethodProvider.hasJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

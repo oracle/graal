@@ -45,38 +45,38 @@ jobs:
       matrix:
         include:
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,test"
               PRIMARY: "compiler"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,test,helloworld"
               PRIMARY: "substratevm"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,test,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,bootstraplite"
               PRIMARY: "compiler"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,sulong"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
@@ -106,6 +106,10 @@ jobs:
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
+          - env:
+              JDK: "labsjdk-ce-17"
+              GATE: "style,fullbuild"
+              PRIMARY: "espresso"
     steps:
     - uses: actions/checkout@v2
       with:
@@ -160,4 +164,16 @@ jobs:
           rm -rf .git
         fi
 
-        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+        exit_code=0
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE} || exit_code=$?
+
+        if [[ -n "${GHA_EXPECTED_FAILURE}" ]]
+        then
+          if [[ ${exit_code} -eq 0 ]]
+          then
+            echo "Gate passed but was marked as expected failure."
+            exit 25
+          fi
+        else
+          exit ${exit_code}
+        fi

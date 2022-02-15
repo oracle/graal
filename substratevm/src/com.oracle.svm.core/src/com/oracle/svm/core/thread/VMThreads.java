@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
-
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
@@ -47,6 +42,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -56,6 +52,8 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -85,9 +83,12 @@ public abstract class VMThreads {
      * the mutexes are acquired (VMOperation queue mutex first, {@link #THREAD_MUTEX} second). If
      * the VM operation causes a safepoint, then it is possible that the {@link #THREAD_MUTEX} was
      * already acquired for safepoint reasons.</li>
-     * <li>Acquire the mutex from a thread that is either not yet attached
-     * {@link StatusSupport#STATUS_CREATED} or currently in native code
-     * ({@link StatusSupport#STATUS_IN_NATIVE}).</li>
+     * <li>Acquire the mutex from a thread that is not yet attached
+     * ({@link StatusSupport#STATUS_CREATED}).</li>
+     * <li>Acquire the mutex from a thread that is in native code
+     * ({@link StatusSupport#STATUS_IN_NATIVE}). This is also possible from a thread that is in Java
+     * state by doing an explicit transition to native, see
+     * {@link #lockThreadMutexInNativeCode}.</li>
      * </ol>
      *
      * Deadlock example 1:
@@ -298,7 +299,7 @@ public abstract class VMThreads {
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.THREAD_REQUEST_RESET);
 
-        VMThreads.THREAD_MUTEX.lockNoTransition();
+        THREAD_MUTEX.lockNoTransition();
         try {
             nextTL.set(thread, head);
             head = thread;
@@ -306,9 +307,9 @@ public abstract class VMThreads {
             /* On the initial transition to java code this thread should be synchronized. */
             ActionOnTransitionToJavaSupport.setSynchronizeCode(thread);
             StatusSupport.setStatusNative(thread);
-            VMThreads.THREAD_LIST_CONDITION.broadcast();
+            THREAD_LIST_CONDITION.broadcast();
         } finally {
-            VMThreads.THREAD_MUTEX.unlock();
+            THREAD_MUTEX.unlock();
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -323,7 +324,7 @@ public abstract class VMThreads {
 
         // read thread local data (can't be accessed further below as the IsolateThread is freed)
         OSThreadHandle nextOsThreadToCleanup = WordFactory.nullPointer();
-        if (JavaThreads.wasStartedByCurrentIsolate(thread)) {
+        if (PlatformThreads.wasStartedByCurrentIsolate(thread)) {
             nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
         }
 
@@ -332,7 +333,7 @@ public abstract class VMThreads {
         // From this point on, all code must be fully uninterruptible because this thread either
         // holds the THREAD_MUTEX (see the JavaDoc on THREAD_MUTEX) or because the IsolateThread was
         // already freed.
-        lockVMMutexInNativeCode();
+        lockThreadMutexInNativeCode();
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -360,16 +361,16 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    private static void lockVMMutexInNativeCode() {
+    static void lockThreadMutexInNativeCode() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
-        lockVMMutexInNativeCode0();
+        lockThreadMutexInNativeCode0();
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
     }
 
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void lockVMMutexInNativeCode0() {
-        VMThreads.THREAD_MUTEX.lockNoTransition();
+    private static void lockThreadMutexInNativeCode0() {
+        THREAD_MUTEX.lockNoTransition();
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
@@ -400,7 +401,7 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void detachThreadInSafeContext(IsolateThread thread) {
-        JavaThreads.detachThread(thread);
+        PlatformThreads.detachThread(thread);
         removeFromThreadList(thread);
         // Signal that the VMThreads list has changed.
         THREAD_LIST_CONDITION.broadcast();
@@ -430,8 +431,8 @@ public abstract class VMThreads {
     }
 
     public void tearDown() {
-        ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited while/after shutting down the VM operation thread.");
-        if (UseDedicatedVMOperationThread.getValue()) {
+        ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+        if (VMOperationControl.useDedicatedVMOperationThread()) {
             VMOperationControl.shutdownAndDetachVMOperationThread();
         }
         // At this point, it is guaranteed that all other threads were detached.
@@ -450,7 +451,7 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
     private static void cleanupBeforeDetach(IsolateThread thread) {
-        JavaThreads.cleanupBeforeDetach(thread);
+        PlatformThreads.cleanupBeforeDetach(thread);
     }
 
     /**
@@ -468,8 +469,8 @@ public abstract class VMThreads {
             while (thread.isNonNull()) {
                 IsolateThread next = nextThread(thread);
                 if (thread.notEqual(currentThread)) {
-                    Thread javaThread = JavaThreads.fromVMThread(thread);
-                    if (!JavaThreads.wasStartedByCurrentIsolate(javaThread)) {
+                    Thread javaThread = PlatformThreads.fromVMThread(thread);
+                    if (!PlatformThreads.wasStartedByCurrentIsolate(javaThread)) {
                         detachThreadInSafeContext(thread);
                         releaseThread(thread);
                     }
@@ -523,7 +524,8 @@ public abstract class VMThreads {
     }
 
     // Should not be implemented and will be removed with GR-34388.
-    public boolean supportsPatientSafepoints() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean supportsNativeYieldAndSleep() {
         return false;
     }
 
@@ -552,7 +554,7 @@ public abstract class VMThreads {
              * Accessing the VMThread list requires the lock, but locking must be without
              * transitions because the IsolateThread is not set up yet.
              */
-            VMThreads.THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
+            THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         }
         try {
             IsolateThread thread;
@@ -561,7 +563,7 @@ public abstract class VMThreads {
             return thread;
         } finally {
             if (needsLock) {
-                VMThreads.THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
+                THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
             }
         }
     }
@@ -690,6 +692,7 @@ public abstract class VMThreads {
             statusTL.setVolatile(STATUS_IN_JAVA);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusVM() {
             statusTL.setVolatile(STATUS_IN_VM);
         }
@@ -732,7 +735,7 @@ public abstract class VMThreads {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusJava() {
-            return (statusTL.getVolatile() == STATUS_IN_JAVA);
+            return statusTL.getVolatile() == STATUS_IN_JAVA;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -769,12 +772,6 @@ public abstract class VMThreads {
             } else {
                 assert isStatusVM() : msg;
             }
-        }
-
-        // This method will be removed in GR-34435.
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setStatusIgnoreSafepoints() {
-            SafepointBehavior.markThreadAsCrashed();
         }
 
         public static boolean isValidStatus(int status) {

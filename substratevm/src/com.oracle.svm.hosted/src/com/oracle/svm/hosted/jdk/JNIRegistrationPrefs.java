@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.jdk;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -75,21 +74,14 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Feature
         throw VMError.shouldNotReachHere("Unexpected platform");
     }
 
-    private static void handlePreferencesClassReachable(DuringAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("prefs");
-        } else {
-            /* On JDK versions below 8, prefs is part of libjava */
-            if (isDarwin()) {
-                NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) access).getNativeLibraries();
-                nativeLibraries.addStaticJniLibrary("osx");
-            }
-        }
+    private static void handlePreferencesClassReachable(@SuppressWarnings("unused") DuringAnalysisAccess access) {
+        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) access).getNativeLibraries();
 
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("prefs");
+        nativeLibraries.addStaticJniLibrary("prefs");
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             JNIRuntimeAccess.register(String[].class);
         }
     }
-
 }

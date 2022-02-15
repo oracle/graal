@@ -27,6 +27,7 @@ package com.oracle.svm.test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -48,11 +49,15 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -60,9 +65,9 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 
+@AddExports("java.base/java.lang")
 public class NativeImageResourceFileSystemProviderTest {
 
     private static final String RESOURCE_DIR = "/resources";
@@ -73,15 +78,18 @@ public class NativeImageResourceFileSystemProviderTest {
     private static final int TIME_SPAN = 1_000_000;
 
     // Register resources.
-    @SuppressWarnings("unused")
-    @AutomaticFeature
-    private static final class RegisterResourceFeature implements Feature {
+    public static final class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
             // Remove leading / for the resource patterns
             registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_1.substring(1));
             registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_2.substring(1));
+
+            /** Needed for {@link #testURLExternalFormEquivalence()} */
+            for (Module module : ModuleLayer.boot().modules()) {
+                registry.addResources(ConfigurationCondition.alwaysTrue(), module.getName() + ":" + "module-info.class");
+            }
         }
     }
 
@@ -574,5 +582,53 @@ public class NativeImageResourceFileSystemProviderTest {
 
         // 3. Closing file system.
         closeFileSystem(fileSystem);
+    }
+
+    @Test
+    public void moduleResourceURLAccess() {
+        URL url = Class.class.getResource("uniName.dat");
+        Assert.assertNotNull("URL for resource java.base/java/lang/uniName.dat must not be null", url);
+        try (InputStream in = url.openStream()) {
+            try {
+                Assert.assertNotEquals("uniName.dat does not seem to contain valid data", in.read(), 0);
+            } catch (IOException e) {
+                Assert.fail("IOException in in.read(): " + e.getMessage());
+            }
+        } catch (IOException e) {
+            Assert.fail("IOException in url.openStream(): " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testURLExternalFormEquivalence() {
+        Enumeration<URL> urlEnumeration = null;
+        try {
+            urlEnumeration = ClassLoader.getSystemResources("module-info.class");
+        } catch (IOException e) {
+            Assert.fail("IOException in ClassLoader.getSystemResources(\"module-info.class\"): " + e.getMessage());
+        }
+
+        Assert.assertNotNull(urlEnumeration);
+        Enumeration<URL> finalVar = urlEnumeration;
+        Iterable<URL> urlIterable = () -> finalVar.asIterator();
+        List<URL> urlList = StreamSupport.stream(urlIterable.spliterator(), false).collect(Collectors.toList());
+        Assert.assertTrue("ClassLoader.getSystemResources(\"module-info.class\") must return many module-info.class URLs",
+                        urlList.size() > 3);
+
+        URL thirdEntry = urlList.get(2);
+        String thirdEntryExternalForm = thirdEntry.toExternalForm();
+        URL thirdEntryFromExternalForm = null;
+        try {
+            thirdEntryFromExternalForm = new URL(thirdEntryExternalForm);
+        } catch (MalformedURLException e) {
+            Assert.fail("Creating a new URL from the ExternalForm of another has to work: " + e.getMessage());
+        }
+
+        try {
+            boolean compareResult = compareTwoURLs(thirdEntry, thirdEntryFromExternalForm);
+            Assert.assertTrue("Contents of original URL and one created from originals ExternalForm must be the same", compareResult);
+        } catch (IOException e) {
+            Assert.fail("Contents of original URL and one created from originals ExternalForm must be the same: " + e);
+        }
     }
 }

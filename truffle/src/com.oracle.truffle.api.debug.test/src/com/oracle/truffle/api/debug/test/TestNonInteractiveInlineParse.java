@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,6 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -98,7 +96,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
             String characters = request.getSource().getCharacters().toString();
             if (characters.startsWith("var+")) {
                 int i = Integer.parseInt(characters.substring(4));
-                i += request.getFrame().getInt(request.getFrame().getFrameDescriptor().findFrameSlot("var"));
+                i += (int) request.getFrame().getAuxiliarySlot(request.getFrame().getFrameDescriptor().findOrAddAuxiliarySlot("var"));
                 return new TestExecutableNode(this, i);
             } else {
                 return null;
@@ -127,14 +125,14 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
             @Node.Child private TestNIRootNode main;
             private final Source source;
             private final SourceSection rootSection;
-            private final FrameSlot var;
+            private final int var;
 
             TestRootNode(TruffleLanguage<?> language, Source source) {
                 super(language);
                 this.source = source;
                 this.main = new TestNIRootNode(source.createSection(1));
                 this.rootSection = source.createSection(0, source.getLength());
-                this.var = getFrameDescriptor().addFrameSlot("var", FrameSlotKind.Int);
+                this.var = getFrameDescriptor().findOrAddAuxiliarySlot("var");
             }
 
             @Override
@@ -149,7 +147,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                frame.setInt(var, 42);
+                frame.setAuxiliarySlot(var, 42);
                 return main.execute(frame);
             }
         }

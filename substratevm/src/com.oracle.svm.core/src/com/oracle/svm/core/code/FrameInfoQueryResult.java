@@ -325,7 +325,7 @@ public class FrameInfoQueryResult {
     }
 
     /**
-     * Returns the name and source code location of the method, for debugging purposes only.
+     * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
         /*

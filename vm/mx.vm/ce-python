@@ -1,5 +1,5 @@
 # Do not modify this env file without updating the Graal.Python benchmark builders
 DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,graalpython
-COMPONENTS=cmp,cov,dap,dis,gu,gvm,ins,insight,insightheap,js,lg,llp,llrc,llrl,llrn,lsp,nfi,ni,nic,nil,nju,njucp,pbm,pmh,poly,polynative,pro,pyn,pynl,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+COMPONENTS=cmp,cov,dap,dis,gu,gvm,icu4j,ins,insight,insightheap,js,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,nil,nju,njucp,pbm,pmh,poly,polynative,pro,pyn,pynl,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
 NATIVE_IMAGES=graalpython,lib:jvmcicompiler
 DISABLE_INSTALLABLES=False

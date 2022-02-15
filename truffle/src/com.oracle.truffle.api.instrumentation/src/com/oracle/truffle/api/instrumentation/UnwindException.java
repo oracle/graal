@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * acts in connection with <code>onUnwind</code> execution handlers. An instance of this exception
  * is created by {@link EventBinding#createUnwind(java.lang.Object)}.
  */
+@SuppressWarnings("serial")
 final class UnwindException extends ThreadDeath {
 
     private static final long serialVersionUID = -8034021436021506591L;

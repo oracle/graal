@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import jdk.vm.ci.code.MemoryBarriers;
-
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
@@ -65,7 +63,7 @@ public abstract class AllocationSnippets implements Snippets {
             result = formatObject(hub, prototypeMarkWord, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewInstanceStub(hub, size);
+            result = callNewInstanceStub(hub);
         }
         profileAllocation(profilingData, size);
         return verifyOop(result);
@@ -278,9 +276,7 @@ public abstract class AllocationSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
-        if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
-        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
         return memory.toObjectNonNull();
     }
 
@@ -308,10 +304,14 @@ public abstract class AllocationSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
-        if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
-        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
         return memory.toObjectNonNull();
+    }
+
+    protected void emitMemoryBarrierIf(boolean emitMemoryBarrier) {
+        if (emitMemoryBarrier) {
+            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
+        }
     }
 
     public void emitPrefetchAllocate(Word address, boolean isArray) {
@@ -352,11 +352,6 @@ public abstract class AllocationSnippets implements Snippets {
     protected abstract int instanceHeaderSize();
 
     public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
-
-    @SuppressWarnings("unused")
-    protected Object callNewInstanceStub(Word hub, UnsignedWord size) {
-        return callNewInstanceStub(hub);
-    }
 
     protected abstract Object callNewInstanceStub(Word hub);
 

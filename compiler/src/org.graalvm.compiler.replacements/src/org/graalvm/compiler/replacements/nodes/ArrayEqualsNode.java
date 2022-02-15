@@ -234,7 +234,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
         int array1BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
         int array2BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
         Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2),
-                        gen.operand(length), false);
+                        gen.operand(length));
         gen.setResult(this, result);
     }
 

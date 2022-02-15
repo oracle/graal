@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -212,8 +212,19 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Buffer extends LLVMInteropType {
 
-        private Buffer() {
-            super(0);
+        private final boolean isWritable;
+
+        public Buffer() {
+            this(true, 0L);
+        }
+
+        public Buffer(boolean isWritable, long length) {
+            super(length);
+            this.isWritable = isWritable;
+        }
+
+        public boolean isWritable() {
+            return isWritable;
         }
 
         @Override

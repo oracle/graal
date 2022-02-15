@@ -40,13 +40,7 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory", "java.nio.file.TempFileHelper", "java.lang.Terminator");
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            if (isPosix()) {
-                rerunClassInit(a, "java.lang.UNIXProcess");
-            }
-        } else {
-            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
-        }
+        rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
 
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             /*
@@ -69,5 +63,8 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
          * members and do not allow instantiation.
          */
         rerunClassInit(a, "java.lang.ApplicationShutdownHooks", "java.io.DeleteOnExitHook");
+
+        /* Trigger initialization of java.net.URLConnection.fileNameMap. */
+        java.net.URLConnection.getFileNameMap();
     }
 }

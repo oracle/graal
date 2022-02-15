@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Type;
@@ -37,7 +35,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_ConstantPool;
 
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeAnnotationParser;

@@ -2,9 +2,25 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 22.1.0
+* Changed the default [`Object` target type mapping (`Value.as(Object.class)`)](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-) for values that have both array elements and members from `Map` to `List`.
+  Note: This is an incompatible change. Embedders relying on the dynamic type `Map` after a `Object` target type coercion will have to migrate their code.
+  The previous behavior can be restored using a custom [target type mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-), e.g.:
+  ```java
+  HostAccess access = HostAccess.newBuilder(HostAccess.EXPLICIT)
+          .targetTypeMapping(Value.class, Object.class, v -> v.hasMembers() && v.hasArrayElements(), v -> v.as(Map.class))
+          .build();
+  try (Context c = Context.newBuilder().hostAccess(access).build()) {
+      // run application
+  }
+  ```
+* (GR-35010) Added API for Truffle Languages (`Language#getWebsite()`) and Instruments (`Instrument#getWebsite()`) to provide website information.
+* (GR-33851) Dropped Java 8 support.
+
 ## Version 22.0.0
+* (GR-31170) Native Image API: Added `WINDOWS_AARCH64` Platform.
 * (GR-33657) Native Image API: Added `CEntryPoint#include` attribute which can be used to controll if the entry point should be automatically added to the shared library.
-* (GR-33207) Native image language libraries: languages can now be deployed as native image libraries, facilitating native embedding scenarios. In this case, a native launcher loads the library dynamically.
+* (GR-22699)(EE-only) Added the ability to spawn a native-image isolate for a each `Engine` or `Context` by calling `Context.Builder.option("engine.SpawnIsolate", "true")`.  This enables heap isolation between the host and guest applications. Using isolates improves security, startup and warmup time of polyglot languages. In this mode, calls between host and guest are more costly as they need to cross a native boundary. It is recommended to use the `HostAccess.SCOPED` policy with this mode to avoid strong cyclic references between host and guest. This mode is experimental in this release and only supported for a limited set of languages. 
 
 ## Version 21.3.0
 * Added the ability to share values between contexts. Please see  `Context.Builder.allowValueSharing(boolean)` for further details. 

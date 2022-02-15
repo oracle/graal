@@ -66,6 +66,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
@@ -105,6 +106,11 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 public class TruffleContextTest extends AbstractPolyglotTest {
 
     @Rule public TestName testNameRule = new TestName();
+
+    public TruffleContextTest() {
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
+    }
 
     @After
     public void checkInterrupted() {
@@ -739,16 +745,15 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             }
         });
         TruffleContext internalContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
-        assertFalse(multiContextInitialized.get());
         internalContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build());
-        assertTrue(multiContextInitialized.get());
+        assertFalse(multiContextInitialized.get());
         internalContext.close();
     }
 
     @Test
     public void testInitializeMultiContextForInnerContext() {
         AtomicBoolean multiContextInitialized = new AtomicBoolean(false);
-        setupEnv(Context.create(), new ProxyLanguage() {
+        setupEnv(Context.newBuilder().engine(Engine.create()).build(), new ProxyLanguage() {
 
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {

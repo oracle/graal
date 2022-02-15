@@ -50,9 +50,9 @@ import com.oracle.graal.pointsto.flow.ArrayCopyTypeFlow;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.BoxTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.DynamicNewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -77,6 +77,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -416,13 +417,10 @@ class PointsToJsonObject extends JsonObject {
             names.put(StoreFieldTypeFlow.StoreInstanceFieldTypeFlow.class, "instanceFieldStore");
             names.put(StoreFieldTypeFlow.StoreStaticFieldTypeFlow.class, "staticFieldStore");
             names.put(FieldTypeFlow.class, "field");
-            names.put(OffsetLoadTypeFlow.AtomicReadTypeFlow.class, "atomicRead");
-            names.put(OffsetStoreTypeFlow.AtomicWriteTypeFlow.class, "atomicWrite");
             names.put(NullCheckTypeFlow.class, "nullCheck");
             names.put(ArrayCopyTypeFlow.class, "arrayCopy");
             names.put(BoxTypeFlow.class, "box");
             names.put(CloneTypeFlow.class, "clone");
-            names.put(OffsetStoreTypeFlow.CompareAndSwapTypeFlow.class, "compareAndSwap");
             names.put(FilterTypeFlow.class, "filter");
             names.put(FormalReceiverTypeFlow.class, "formalReceiver");
             names.put(InstanceOfTypeFlow.class, "instanceOf");
@@ -440,7 +438,7 @@ class PointsToJsonObject extends JsonObject {
             names.put(AllSynchronizedTypeFlow.class, "allSynchronized");
             names.put(ArrayElementsTypeFlow.class, "arrayElements");
             names.put(FieldFilterTypeFlow.class, "fieldFilter");
-            names.put(FieldSinkTypeFlow.class, "fieldSink");
+            names.put(ContextInsensitiveFieldTypeFlow.class, "fieldSink");
             names.put(InitialParamTypeFlow.class, "initialParam");
             names.put(InitialReceiverTypeFlow.class, "initialReceiver");
         }
@@ -519,7 +517,7 @@ class PointsToJsonObject extends JsonObject {
 
         private static final String METHOD_FLOW = "method";
 
-        AnalysisWrapper(Class<?> clazz, AnalysisMethod method) {
+        AnalysisWrapper(Class<?> clazz, PointsToAnalysisMethod method) {
             this(clazz, method.getTypeFlow().id());
             this.flowType = METHOD_FLOW;
             this.qualifiedName = method.format("%H.%n(%P)");
@@ -596,7 +594,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void serializeMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            serializeMethod(bb, new AnalysisWrapper(method.getClass(), method));
+            serializeMethod(bb, new AnalysisWrapper(method.getClass(), PointsToAnalysis.assertPointsToAnalysisMethod(method)));
         }
     }
 
@@ -656,7 +654,7 @@ class PointsToJsonObject extends JsonObject {
             Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getCallees();
             flowWrapper.calleeNames = new ArrayList<>();
             for (AnalysisMethod callee : callees) {
-                int calleeId = callee.getTypeFlow().id();
+                int calleeId = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().id();
                 addUnique(flowWrapper.uses, calleeId);
                 flowWrapper.calleeNames.add(callee.getQualifiedName());
             }
@@ -702,7 +700,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void connectFlowsToEnclosingMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), method);
+            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), PointsToAnalysis.assertPointsToAnalysisMethod(method));
             if (methodWrapper.flowsGraph == null) {
                 // Some methods (such as interface methods) don't have any flows. This
                 // field is null in that case. Can skip them.

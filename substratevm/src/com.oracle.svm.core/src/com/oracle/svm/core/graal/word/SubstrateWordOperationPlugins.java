@@ -85,7 +85,7 @@ public class SubstrateWordOperationPlugins extends WordOperationPlugin {
                 b.push(returnKind, read);
                 break;
             default:
-                throw GraalError.shouldNotReachHere("Unkown operation " + operation);
+                throw GraalError.shouldNotReachHere("Unknown operation " + operation);
         }
     }
 }

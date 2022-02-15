@@ -103,6 +103,14 @@ public class Graph {
     int nodesSize;
 
     /**
+     * The modification count driven by the {@link NodeEventListener} machinery. Only changes to
+     * edges are tracked since that captures meaningful changes to the graph. Adding or deleting
+     * nodes without changes edges can't have a material effect on the graph. Changes to other
+     * internal state of the nodes isn't captured by this count.
+     */
+    int edgeModificationCount;
+
+    /**
      * Records the modification count for nodes. This is only used in assertions.
      */
     private int[] nodeModCounts;
@@ -267,7 +275,7 @@ public class Graph {
      * {@link Graph} class.
      */
     @SuppressWarnings("all")
-    public static boolean isModificationCountsEnabled() {
+    public static boolean isNodeModificationCountsEnabled() {
         boolean enabled = false;
         assert enabled = true;
         return enabled;
@@ -290,7 +298,7 @@ public class Graph {
         assert debug != null;
         this.debug = debug;
 
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
@@ -307,7 +315,7 @@ public class Graph {
         return id;
     }
 
-    int modCount(Node node) {
+    int getNodeModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeModCounts.length) {
             return nodeModCounts[id];
@@ -315,7 +323,7 @@ public class Graph {
         return 0;
     }
 
-    void incModCount(Node node) {
+    void incNodeModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeModCounts.length) {
@@ -327,7 +335,7 @@ public class Graph {
         }
     }
 
-    int usageModCount(Node node) {
+    int nodeUsageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeUsageModCounts.length) {
             return nodeUsageModCounts[id];
@@ -335,7 +343,7 @@ public class Graph {
         return 0;
     }
 
-    void incUsageModCount(Node node) {
+    void incNodeUsageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeUsageModCounts.length) {
@@ -345,6 +353,10 @@ public class Graph {
         } else {
             assert false;
         }
+    }
+
+    public int getEdgeModificationCount() {
+        return edgeModificationCount;
     }
 
     /**
@@ -883,7 +895,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark == null ? 0 : mark.getValue();
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -898,7 +910,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -967,7 +979,7 @@ public class Graph {
                 nextId++;
             }
         }
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             // This will cause any current iteration to fail with an assertion
             Arrays.fill(nodeModCounts, 0);
             Arrays.fill(nodeUsageModCounts, 0);
@@ -987,7 +999,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the matching nodes
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final NodeClass<T> nodeClass) {
-        return new NodeIterable<T>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<T> iterator() {
@@ -1175,7 +1187,6 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.event(NodeEvent.NODE_REMOVED, node);
         }
-
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
 

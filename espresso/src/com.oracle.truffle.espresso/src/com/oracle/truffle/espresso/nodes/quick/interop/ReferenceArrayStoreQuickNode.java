@@ -46,10 +46,10 @@ public final class ReferenceArrayStoreQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        StaticObject value = BytecodeNode.popObject(refs, top - 1);
-        int index = BytecodeNode.popInt(primitives, top - 2);
-        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 3));
+    public int execute(VirtualFrame frame) {
+        StaticObject value = BytecodeNode.popObject(frame, top - 1);
+        int index = BytecodeNode.popInt(frame, top - 2);
+        StaticObject array = nullCheck(BytecodeNode.popObject(frame, top - 3));
         objectArrayStore.execute(array, index, value);
         return stackEffectOf_AASTORE;
     }

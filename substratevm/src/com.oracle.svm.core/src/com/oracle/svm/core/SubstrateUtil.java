@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-// Checkstyle: allow reflection
-
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
@@ -38,14 +36,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.util.StringUtil;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -58,9 +54,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
@@ -252,11 +248,6 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    /** Prints extensive diagnostic information for a fatal error to the given log. */
-    public static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip) {
-        return SubstrateDiagnostics.printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
-    }
-
     /**
      * Similar to {@link String#split(String)} but with a fixed separator string instead of a
      * regular expression. This avoids making regular expression code reachable.
@@ -359,15 +350,12 @@ public class SubstrateUtil {
                 out.append("__");
             } else {
                 out.append('_');
-                // Checkstyle: stop
                 out.append(String.format("%04x", (int) c));
-                // Checkstyle: resume
             }
         }
         String mangled = out.toString();
         assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
-        //@formatter:off
-        /*
+        /*-
          * To demangle, the following pipeline works for me (assuming no multi-byte characters):
          *
          * sed -r 's/\_([0-9a-f]{4})/\n\1\n/g' | sed -r 's#^[0-9a-f]{2}([0-9a-f]{2})#/usr/bin/printf "\\x\1"#e' | tr -d '\n'
@@ -375,7 +363,6 @@ public class SubstrateUtil {
          * It's not strictly correct if the first characters after an escape sequence
          * happen to match ^[0-9a-f]{2}, but hey....
          */
-        //@formatter:on
         return mangled;
     }
 

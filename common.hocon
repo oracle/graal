@@ -1,9 +1,5 @@
 specVersion = "2"
 
-# oraclejdk* are released OracleJDK binaries
-# oraclejdk* are JDKs based on OracleJDK binaries
-# openjdk8 JDKs on Linux are built by Oracle Labs
-# openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
 include "graal-common.json"
 
@@ -43,7 +39,10 @@ labsjdk-ce-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17Debug} }}
 labsjdk-ee-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17Debug} }}
 
 common : ${mx} ${deps.common} {
-  catch_files : ${catch_files}
+  catch_files : ${catch_files},
+  logs : [
+    "*/es-*.json"
+  ]
 }
 
 linux : ${common} ${deps.linux}
@@ -98,38 +97,13 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-svm-common: ${mx} {
-  environment: {
-    DEFAULT_VM: "server"
-    LANG: "en_US.UTF-8"
-  }
-  logs: [
-    "../.native-image/*/*/*/*.log"
-    "../*/*/*.log"
-    "*/*.log"
-    "*/svmbuild/*.log"
-    "*/svmbuild/images/*.log"
-    "*/*/stripped/*.map"
-    "*/callgrind.*"
-    "*.bgv"
-    "*.log"
-  ]
-}
+svm-common: ${mx} ${svm.deps.common}
 
-svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
-  packages: {
-    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-    binutils: ">=2.34"
-    ruby: ">=2.1.0"
-  }
+svm-common-linux-amd64: ${svm-common} ${svm.deps.linux_amd64} ${linux-amd64} {
   timelimit: "55:00"
 }
 
-svm-common-linux-aarch64: ${svm-common} ${linux-aarch64} {
-  packages: {
-    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-    ruby: ">=2.1.0"
-  }
+svm-common-linux-aarch64: ${svm-common} ${svm.deps.linux_aarch64} ${linux-aarch64} {
   timelimit: "55:00"
 }
 
@@ -147,27 +121,27 @@ svm-capabilities-manycores : {
   capabilities : ${svm-capabilities} [manycores]
 }
 
-svm-common-darwin: ${svm-common} ${darwin-amd64} {
+svm-common-darwin: ${svm-common} ${svm.deps.darwin} ${darwin-amd64} {
   timelimit: "45:00"
 }
 
-svm-common-windows-openjdk8: ${svm-common} ${windows-amd64} ${devkits.windows-openjdk8} {
+svm-common-windows-openjdk8: ${svm-common} ${svm.deps.windows} ${windows-amd64} ${devkits.windows-openjdk8} {
   packages : {
   }
   timelimit: "45:00"
 }
 
-svm-common-windows-oraclejdk8: ${svm-common} ${windows-amd64} ${devkits.windows-oraclejdk8} {
+svm-common-windows-oraclejdk8: ${svm-common} ${svm.deps.windows} ${windows-amd64} ${devkits.windows-oraclejdk8} {
   packages : {
   }
   timelimit: "45:00"
 }
 
-svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11} {
+svm-common-windows-jdk11: ${svm-common} ${svm.deps.windows} ${windows-amd64} ${devkits.windows-jdk11} {
   timelimit: "45:00"
 }
 
-svm-common-windows-jdk17: ${svm-common} ${windows-amd64} ${devkits.windows-jdk17} {
+svm-common-windows-jdk17: ${svm-common} ${svm.deps.windows} ${windows-amd64} ${devkits.windows-jdk17} {
   timelimit: "45:00"
 }
 

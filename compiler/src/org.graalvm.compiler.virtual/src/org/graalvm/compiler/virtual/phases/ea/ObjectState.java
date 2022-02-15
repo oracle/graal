@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.LockState;
+import org.graalvm.compiler.nodes.virtual.MaterializedObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
-import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 
 import jdk.vm.ci.meta.JavaConstant;
 

@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -37,18 +35,18 @@ import jdk.vm.ci.code.BytecodePosition;
 
 public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
 
-    protected final BytecodeLocation allocationSite;
+    private final BytecodeLocation allocationSite;
 
     /** The new type provider. */
-    protected TypeFlow<?> newTypeFlow;
+    private TypeFlow<?> newTypeFlow;
 
     /**
      * The allocation context for the generated dynamic object. Null if this is not a clone.
      */
-    protected final AnalysisContext allocationContext;
+    private final AnalysisContext allocationContext;
 
-    public DynamicNewInstanceTypeFlow(TypeFlow<?> newTypeFlow, AnalysisType type, ValueNode node, BytecodeLocation allocationLabel) {
-        super(node.getNodeSourcePosition(), type);
+    public DynamicNewInstanceTypeFlow(BytecodePosition location, TypeFlow<?> newTypeFlow, AnalysisType type, BytecodeLocation allocationLabel) {
+        super(location, type);
         this.allocationSite = allocationLabel;
         this.allocationContext = null;
         this.newTypeFlow = newTypeFlow;
@@ -89,21 +87,8 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
         /* The state of the new type provider has changed. */
         TypeState newTypeState = newTypeFlow.getState();
-        TypeState currentTypeState = getState();
-
-        /* Generate a heap object for every new incoming type. */
-        TypeState resultState = newTypeState.typesStream(bb)
-                        .filter(t -> !currentTypeState.containsType(t))
-                        .map(type -> TypeState.forAllocation(bb, allocationSite, type, allocationContext))
-                        .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));
-
-        assert !resultState.canBeNull();
-
-        addState(bb, resultState);
-    }
-
-    public TypeFlow<?> newTypeFlow() {
-        return newTypeFlow;
+        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, state, newTypeState, allocationSite, allocationContext);
+        addState(bb, updateState);
     }
 
     public BytecodeLocation allocationSite() {
@@ -134,8 +119,6 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("DynamicNewInstanceFlow<").append(getState()).append(">");
-        return str.toString();
+        return "DynamicNewInstanceFlow<" + getState() + ">";
     }
 }

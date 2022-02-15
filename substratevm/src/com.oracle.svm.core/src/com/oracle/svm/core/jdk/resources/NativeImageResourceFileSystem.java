@@ -85,6 +85,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
+
+import com.oracle.svm.core.jdk.Resources;
 
 /**
  * <p>
@@ -647,9 +650,9 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<String, ResourceStorageEntry> entries = NativeImageResourceFileSystemUtil.iterator();
+        MapCursor<Pair<String, String>, ResourceStorageEntry> entries = Resources.singleton().resources().getEntries();
         while (entries.advance()) {
-            byte[] name = getBytes(entries.getKey());
+            byte[] name = getBytes(entries.getKey().getRight());
             if (!entries.getValue().isDirectory()) {
                 IndexNode newIndexNode = new IndexNode(name, false);
                 inodes.put(newIndexNode, newIndexNode);
@@ -1189,7 +1192,6 @@ public class NativeImageResourceFileSystem extends FileSystem {
             this.e = Objects.requireNonNull(e, "Entry is null!");
         }
 
-        // Checkstyle: stop
         @Override
         public synchronized void write(int b) throws IOException {
             out.write(b);
@@ -1215,6 +1217,5 @@ public class NativeImageResourceFileSystem extends FileSystem {
             super.close();
             update(e);
         }
-        // Checkstyle: resume
     }
 }

@@ -72,12 +72,12 @@ import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
 import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
@@ -255,7 +255,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         args.add("--trap-unreachable");
         args.add("-march=" + LLVMTargetSpecific.get().getLLVMArchName());
         args.addAll(LLVMTargetSpecific.get().getLLCAdditionalOptions());
-        args.add("-O" + SubstrateOptions.Optimize.getValue());
+        args.add("-O" + SubstrateOptions.optimizationLevel());
         args.add("-filetype=obj");
         args.add("-o");
         args.add(outputPath);

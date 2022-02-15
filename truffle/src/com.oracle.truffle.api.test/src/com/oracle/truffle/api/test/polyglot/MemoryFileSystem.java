@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+
 import org.graalvm.polyglot.io.FileSystem;
+import org.junit.BeforeClass;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public final class MemoryFileSystem implements FileSystem {
     private static final byte[] EMPTY = new byte[0];
@@ -117,6 +121,11 @@ public final class MemoryFileSystem implements FileSystem {
             return 0;
         }
     };
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
@@ -269,7 +278,7 @@ public final class MemoryFileSystem implements FileSystem {
         final byte[] origData = blocks.get(inode);
         final byte[] data = write && options.contains(StandardOpenOption.TRUNCATE_EXISTING) ? EMPTY : Arrays.copyOf(origData, origData.length);
         final long inodeFin = inode;
-        final BiConsumer<byte[], Long> syncAction = new BiConsumer<byte[], Long>() {
+        final BiConsumer<byte[], Long> syncAction = new BiConsumer<>() {
             @Override
             public void accept(byte[] t, Long u) {
                 blocks.put(inodeFin, Arrays.copyOf(t, (int) u.longValue()));
@@ -277,7 +286,7 @@ public final class MemoryFileSystem implements FileSystem {
         };
         final boolean readFin = read;
         final boolean writeFin = write;
-        final BiConsumer<byte[], Long> metaSyncAction = new BiConsumer<byte[], Long>() {
+        final BiConsumer<byte[], Long> metaSyncAction = new BiConsumer<>() {
             @Override
             public void accept(byte[] t, Long u) {
                 final long time = System.currentTimeMillis();
@@ -290,7 +299,7 @@ public final class MemoryFileSystem implements FileSystem {
                 }
             }
         };
-        final BiConsumer<byte[], Long> closeAction = new BiConsumer<byte[], Long>() {
+        final BiConsumer<byte[], Long> closeAction = new BiConsumer<>() {
             @Override
             public void accept(byte[] t, Long u) {
                 if (deleteOnClose) {
@@ -526,7 +535,7 @@ public final class MemoryFileSystem implements FileSystem {
 
         @Override
         public Iterator<Path> iterator() {
-            return new Iterator<Path>() {
+            return new Iterator<>() {
                 private final Iterator<? extends String> delegate = names.iterator();
 
                 @Override
@@ -1085,7 +1094,7 @@ public final class MemoryFileSystem implements FileSystem {
 
         @Override
         public Iterator<Path> iterator() {
-            return new Iterator<Path>() {
+            return new Iterator<>() {
 
                 private final Iterator<Path> delegateIt = delegate.iterator();
 

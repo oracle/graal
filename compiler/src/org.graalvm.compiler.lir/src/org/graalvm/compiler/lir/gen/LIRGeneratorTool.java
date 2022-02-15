@@ -57,44 +57,6 @@ import jdk.vm.ci.meta.ValueKind;
 
 public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
 
-    /**
-     * Factory for creating moves.
-     */
-    interface MoveFactory {
-
-        /**
-         * Checks whether the loading of the supplied constant can be deferred until usage.
-         */
-        @SuppressWarnings("unused")
-        default boolean mayEmbedConstantLoad(Constant constant) {
-            return false;
-        }
-
-        /**
-         * Checks whether the supplied constant can be used without loading it into a register for
-         * most operations, i.e., for commonly used arithmetic, logical, and comparison operations.
-         *
-         * @param constant The constant to check.
-         * @return True if the constant can be used directly, false if the constant needs to be in a
-         *         register.
-         */
-        boolean canInlineConstant(Constant constant);
-
-        /**
-         * @param constant The constant that might be moved to a stack slot.
-         * @return {@code true} if constant to stack moves are supported for this constant.
-         */
-        boolean allowConstantToStackMove(Constant constant);
-
-        LIRInstruction createMove(AllocatableValue result, Value input);
-
-        LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input);
-
-        LIRInstruction createLoad(AllocatableValue result, Constant input);
-
-        LIRInstruction createStackLoad(AllocatableValue result, Constant input);
-    }
-
     abstract class BlockScope implements AutoCloseable {
 
         public abstract AbstractBlockBase<?> getCurrentBlock();
@@ -214,9 +176,19 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     void emitReturn(JavaKind javaKind, Value input);
 
+    /**
+     * Returns an {@link AllocatableValue} holding the {@code value} by moving it if necessary. If
+     * {@code value} is already an {@link AllocatableValue}, returns it unchanged.
+     */
     AllocatableValue asAllocatable(Value value);
 
-    Variable load(Value value);
+    /**
+     * Returns an {@link AllocatableValue} of the address {@code value} with an integer
+     * representation.
+     */
+    default AllocatableValue addressAsAllocatableInteger(Value value) {
+        return asAllocatable(value);
+    }
 
     <I extends LIRInstruction> I append(I op);
 
@@ -234,17 +206,44 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    default Variable emitArrayRegionCompareTo(JavaKind strideA, JavaKind strideB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
-        throw GraalError.unimplemented("Array.equals with different types substitution is not implemented on this architecture");
+    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        throw GraalError.unimplemented("Array.equals with offset substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value fromIndex, Value... searchValues) {
+    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
+                    Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length) {
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitArrayCopyWithConversion(JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitCalcStringAttributes(Object op, Value array, Value offset, Value length, boolean isValid) {
+        throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value array, Value offset, Value length, Value fromIndex,
+                    Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 

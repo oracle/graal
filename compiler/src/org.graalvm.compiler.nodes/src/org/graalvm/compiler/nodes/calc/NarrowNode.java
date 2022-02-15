@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,13 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -48,7 +49,7 @@ import jdk.vm.ci.code.CodeUtil;
  * The {@code NarrowNode} converts an integer to a narrower integer.
  */
 @NodeInfo(cycles = CYCLES_1)
-public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertOp.ZeroExtend> {
+public final class NarrowNode extends IntegerConvertNode<Narrow> {
 
     public static final NodeClass<NarrowNode> TYPE = NodeClass.create(NarrowNode.class);
 
@@ -81,17 +82,20 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
     }
 
     @Override
-    protected IntegerConvertOp<IntegerConvertOp.ZeroExtend> getReverseOp(ArithmeticOpTable table) {
-        return table.getZeroExtend();
+    protected IntegerConvertOp<?> getReverseOp(ArithmeticOpTable table) {
+        assert isSignedLossless() || isUnsignedLossless();
+        return isSignedLossless() ? table.getSignExtend() : table.getZeroExtend();
     }
 
     @Override
     public boolean isLossless() {
-        return checkLossless(this.getResultBits(), this.getValue());
+        // This is conservative as we don't know which compare operator is being used.
+        return isSignedLossless() && isUnsignedLossless();
     }
 
-    public static boolean checkLossless(int bits, ValueNode value) {
+    private boolean isSignedLossless() {
         Stamp valueStamp = value.stamp(NodeView.DEFAULT);
+        int bits = getResultBits();
         if (bits > 0 && valueStamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) valueStamp;
             long bitsRangeMin = CodeUtil.minValue(bits);
@@ -99,7 +103,17 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
             if (bitsRangeMin <= integerStamp.lowerBound() && integerStamp.upperBound() <= bitsRangeMax) {
                 // all signed values fit
                 return true;
-            } else if (integerStamp.isPositive()) {
+            }
+        }
+        return false;
+    }
+
+    private boolean isUnsignedLossless() {
+        Stamp valueStamp = value.stamp(NodeView.DEFAULT);
+        int bits = getResultBits();
+        if (bits > 0 && valueStamp instanceof IntegerStamp) {
+            IntegerStamp integerStamp = (IntegerStamp) valueStamp;
+            if (integerStamp.isPositive()) {
                 long valueUpMask = integerStamp.upMask();
                 if ((valueUpMask & CodeUtil.mask(bits)) == valueUpMask) {
                     // value is unsigned and fits
@@ -114,10 +128,13 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
     public boolean preservesOrder(CanonicalCondition cond) {
         switch (cond) {
             case LT:
-                // Must guarantee that also sign bit does not flip.
-                return checkLossless(this.getResultBits() - 1, this.getValue());
+                return isSignedLossless();
+            case EQ:
+            case BT:
+                // We may use signed stamps to represent unsigned integers.
+                return isSignedLossless() || isUnsignedLossless();
             default:
-                return checkLossless(this.getResultBits(), this.getValue());
+                throw GraalError.shouldNotReachHere("Unsupported canonical condition.");
         }
     }
 
@@ -136,7 +153,7 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
             return new NarrowNode(other.getValue(), other.getInputBits(), getResultBits());
         } else if (forValue instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
-            IntegerConvertNode<?, ?> other = (IntegerConvertNode<?, ?>) forValue;
+            IntegerConvertNode<?> other = (IntegerConvertNode<?>) forValue;
             if (other.getValue().hasExactlyOneUsage() && other.hasMoreThanOneUsage()) {
                 // Do not perform if this will introduce a new live value.
                 // If the original value's usage count is > 1, there is already another user.

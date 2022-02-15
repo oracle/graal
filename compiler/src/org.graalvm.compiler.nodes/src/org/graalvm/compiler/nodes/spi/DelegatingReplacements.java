@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
+import java.util.BitSet;
+
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -36,9 +38,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -80,9 +80,14 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options) {
-        return delegate.getSnippet(method, recursiveEntry, args, trackNodeSourcePosition, replaceePosition, options);
+    public DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options) {
+        return delegate.openSnippetDebugContext(description, outer, options);
+    }
+
+    @Override
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options) {
+        return delegate.getSnippet(method, recursiveEntry, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, options);
     }
 
     @Override
@@ -106,17 +111,6 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
-                    AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
-        return delegate.getMethodSubstitution(plugin, original, context, allowAssumptions, cancellable, options);
-    }
-
-    @Override
-    public void registerMethodSubstitution(MethodSubstitutionPlugin plugin) {
-        delegate.registerMethodSubstitution(plugin);
-    }
-
-    @Override
     public void registerConditionalPlugin(InvocationPlugin plugin) {
         delegate.registerConditionalPlugin(plugin);
     }
@@ -134,8 +128,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method) {
-        return delegate.hasSubstitution(method);
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
+        return delegate.hasSubstitution(method, options);
     }
 
     @Override

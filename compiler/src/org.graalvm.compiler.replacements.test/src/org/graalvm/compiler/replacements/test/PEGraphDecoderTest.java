@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,7 +114,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
 
     private static void registerPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, PEGraphDecoderTest.class);
-        r.register2("readInt", Object.class, long.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("readInt", Object.class, long.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode obj, ValueNode offset) {
                 AddressNode address = b.add(new OffsetAddressNode(obj, offset));

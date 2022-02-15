@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,8 +56,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -74,18 +74,25 @@ import java.util.zip.ZipFile;
 
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LanguageCacheTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testDuplicateLanguageIds() throws Throwable {
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         Path location = Paths.get(codeSource.getLocation().toURI());
-        Function<String, List<URL>> loader = new Function<String, List<URL>>() {
+        Function<String, List<URL>> loader = new Function<>() {
             @Override
             public List<URL> apply(String binaryName) {
                 try {

@@ -57,7 +57,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64StringUTF16CompressOp> TYPE = LIRInstructionClass.create(AMD64StringUTF16CompressOp.class);
 
     private final int useAVX3Threshold;
-    private final int maxVectorSize;
+    private final boolean useAVX512ForStringInflateCompress;
 
     @Def({REG}) private Value rres;
     @Use({REG}) private Value rsrc;
@@ -79,7 +79,6 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
-        this.maxVectorSize = maxVectorSize;
 
         assert asRegister(src).equals(rsi);
         assert asRegister(dst).equals(rdi);
@@ -91,7 +90,9 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         rdstTemp = rdst = dst;
         rlenTemp = rlen = len;
 
-        LIRKind vkind = useAVX512ForStringInflateCompress(tool.target(), maxVectorSize)
+        this.useAVX512ForStringInflateCompress = useAVX512ForStringInflateCompress(tool.target(), maxVectorSize);
+
+        LIRKind vkind = useAVX512ForStringInflateCompress
                         ? LIRKind.value(AMD64Kind.V512_BYTE)
                         : LIRKind.value(AMD64Kind.V128_BYTE);
 
@@ -151,7 +152,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         // Save length for return.
         masm.push(len);
 
-        if (useAVX3Threshold == 0 && useAVX512ForStringInflateCompress(masm.target, maxVectorSize)) {
+        if (useAVX3Threshold == 0 && useAVX512ForStringInflateCompress) {
             Label labelCopy32Loop = new Label();
             Label labelCopyLoopTail = new Label();
             Label labelBelowThreshold = new Label();

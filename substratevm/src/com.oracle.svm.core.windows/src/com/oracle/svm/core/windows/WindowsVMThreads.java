@@ -34,9 +34,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -86,8 +86,9 @@ public final class WindowsVMThreads extends VMThreads {
         Process.NoTransitions.SwitchToThread();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean supportsPatientSafepoints() {
+    public boolean supportsNativeYieldAndSleep() {
         return true;
     }
 

@@ -44,17 +44,18 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
-import com.oracle.svm.core.windows.headers.LibC;
-import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.VerRsrc;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinVer;
+import com.oracle.svm.core.windows.headers.WindowsLibC;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
@@ -70,9 +71,9 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     @Override
     protected String userNameValue() {
-        WCharPointer userName = LibC._wgetenv(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(USERNAME), 0));
+        WCharPointer userName = WindowsLibC._wgetenv(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(USERNAME), 0));
         if (userName.isNonNull()) {
-            UnsignedWord length = LibC.wcslen(userName);
+            UnsignedWord length = WindowsLibC.wcslen(userName);
             if (length.aboveThan(0)) {
                 return toJavaString(userName, Math.toIntExact(length.rawValue()));
             }
@@ -144,8 +145,8 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         int tmpLength;
         WCharPointer tmp = StackValue.get(WinBase.MAX_PATH, WCharPointer.class);
 
-        WCharPointer path = LibC._wgetenv(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(PATH), 0));
-        int pathLength = path.isNonNull() ? Math.toIntExact(LibC.wcslen(path).rawValue()) : 0;
+        WCharPointer path = WindowsLibC._wgetenv(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(PATH), 0));
+        int pathLength = path.isNonNull() ? Math.toIntExact(WindowsLibC.wcslen(path).rawValue()) : 0;
 
         StringBuilder libraryPath = new StringBuilder(3 * WinBase.MAX_PATH + pathLength + 5);
 
@@ -228,14 +229,14 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         int buildNumber = ver.dwBuildNumber();
         do {
             /* Get the full path to \Windows\System32\kernel32.dll ... */
-            LibC.WCharPointer kernel32Path = StackValue.get(WinBase.MAX_PATH, LibC.WCharPointer.class);
-            LibC.WCharPointer kernel32Dll = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(KERNEL32_DLL), 0);
-            int len = WinBase.MAX_PATH - (int) LibC.wcslen(kernel32Dll).rawValue() - 1;
+            WindowsLibC.WCharPointer kernel32Path = StackValue.get(WinBase.MAX_PATH, WindowsLibC.WCharPointer.class);
+            WindowsLibC.WCharPointer kernel32Dll = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(KERNEL32_DLL), 0);
+            int len = WinBase.MAX_PATH - (int) WindowsLibC.wcslen(kernel32Dll).rawValue() - 1;
             int ret = SysinfoAPI.GetSystemDirectoryW(kernel32Path, len);
             if (ret == 0 || ret > len) {
                 break;
             }
-            LibC.wcsncat(kernel32Path, kernel32Dll, WordFactory.unsigned(WinBase.MAX_PATH - ret));
+            WindowsLibC.wcsncat(kernel32Path, kernel32Dll, WordFactory.unsigned(WinBase.MAX_PATH - ret));
 
             /* ... and use that for determining what version of Windows we're running on. */
             int versionSize = WinVer.GetFileVersionInfoSizeW(kernel32Path, WordFactory.nullPointer());
@@ -253,7 +254,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 break;
             }
 
-            LibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
+            WindowsLibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
             WordPointer fileInfoPointer = StackValue.get(WordPointer.class);
             CIntPointer lengthPointer = StackValue.get(CIntPointer.class);
             if (WinVer.VerQueryValueW(versionInfo, rootPath, fileInfoPointer, lengthPointer) == 0) {

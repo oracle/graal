@@ -82,7 +82,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -233,6 +232,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
      */
     public static Map<String, Object> envConfig = new HashMap<>();
 
+    public final Map<Object, CallTarget> codeCache = new ConcurrentHashMap<>();
+
     @Override
     protected InstrumentContext createContext(TruffleLanguage.Env env) {
         Source initSource = null;
@@ -340,21 +341,19 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     public BaseNode parse(Source code) {
-        return new Parser(this, code).parse();
+        return new Parser(code).parse();
     }
 
     private static final class Parser {
 
         private static final char EOF = (char) -1;
 
-        private final InstrumentationTestLanguage lang;
         private final Source source;
         private final String code;
         private int current;
         private int argumentIndex = 0;
 
-        Parser(InstrumentationTestLanguage lang, Source source) {
-            this.lang = lang;
+        Parser(Source source) {
             this.source = source;
             this.code = source.getCharacters().toString();
         }
@@ -483,10 +482,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return false;
         }
 
-        private BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray, List<String> multipleTags) throws AssertionError {
+        private static BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray, List<String> multipleTags) throws AssertionError {
             switch (tag) {
                 case "DEFINE":
-                    return new DefineNode(lang, idents[0], sourceSection, childArray);
+                    return new DefineNode(idents[0], sourceSection, childArray);
                 case "CONTEXT":
                     return new ContextNode(childArray);
                 case "ARGUMENT":
@@ -746,11 +745,28 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
-    @GenerateWrapper
+    public static class InstrumentedBaseNode extends BaseNode implements InstrumentableNode {
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     @ExportLibrary(NodeLibrary.class)
+    @GenerateWrapper
     @SuppressWarnings("static-method")
-    public abstract static class InstrumentedNode extends BaseNode implements InstrumentableNode, TruffleObject {
+    public abstract static class InstrumentedNode extends InstrumentedBaseNode implements InstrumentableNode, TruffleObject {
 
         private static final String THIS = "THIS";
 
@@ -767,6 +783,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public boolean isInstrumentable() {
             return getSourceSection() != null;
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new InstrumentedNodeWrapper(this, probe);
         }
 
         @Override
@@ -817,11 +838,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             }
             throw UnknownIdentifierException.create(key);
-        }
-
-        @Override
-        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
-            return new InstrumentedNodeWrapper(this, probe);
         }
 
         @Override
@@ -882,14 +898,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 } else {
                     arguments = new Object[0];
                 }
-                return AbstractInstrumentationTest.TestAccessor.ACCESSOR.engineAccess().getDefaultArguments(arguments, InstrumentationTestLanguage.class);
+                return new ArgumentsArrayObject(arguments);
             } else {
-                Object variables = AbstractInstrumentationTest.TestAccessor.ACCESSOR.engineAccess().getDefaultVariables(getRootNode(), frame, InstrumentationTestLanguage.class);
+                Object variables = getDefaultScope(frame, nodeEnter);
                 Object[] arguments;
                 if (frame != null && (arguments = frame.getArguments()) != null && arguments.length > 0 && arguments[0] instanceof ThisArg) {
                     variables = new VariablesWithThis(variables, ((ThisArg) arguments[0]).thisElement);
                 }
                 return variables;
+            }
+        }
+
+        private Object getDefaultScope(Frame frame, boolean nodeEnter) {
+            try {
+                // the dummy trigger creating the default scope implementation
+                InstrumentedBaseNode dummy = insert(new InstrumentedBaseNode());
+                return NodeLibrary.getUncached().getScope(dummy, frame, nodeEnter);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
 
@@ -927,6 +953,123 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 return function;
             }
             throw UnsupportedMessageException.create();
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        static final class ArgumentsArrayObject implements TruffleObject {
+
+            final Object[] args;
+
+            ArgumentsArrayObject(Object[] args) {
+                this.args = args;
+            }
+
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return InstrumentationTestLanguage.class;
+            }
+
+            @ExportMessage
+            boolean isScope() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean hasMembers() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+                return new ArgumentNamesObject(args.length);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            boolean isMemberReadable(String member) {
+                try {
+                    int index = Integer.parseInt(member);
+                    if (0 <= index && index < args.length) {
+                        return InteropLibrary.isValidValue(args[index]);
+                    } else {
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    return false;
+                }
+            }
+
+            @ExportMessage(name = "isMemberModifiable")
+            @ExportMessage(name = "isMemberInsertable")
+            boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
+                return false;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object readMember(String member) throws UnsupportedMessageException {
+                try {
+                    int index = Integer.parseInt(member);
+                    if (0 <= index && index < args.length) {
+                        return args[index];
+                    }
+                } catch (NumberFormatException e) {
+                }
+                throw UnsupportedMessageException.create();
+            }
+
+            @ExportMessage
+            void writeMember(@SuppressWarnings("unused") String member, @SuppressWarnings("unused") Object value) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            @ExportMessage
+            Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+                return "local";
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class ArgumentNamesObject implements TruffleObject {
+
+            private final int n;
+
+            ArgumentNamesObject(int n) {
+                this.n = n;
+            }
+
+            @SuppressWarnings("static-method")
+            @ExportMessage
+            boolean hasArrayElements() {
+                return true;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            long getArraySize() {
+                return n;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
+                if (!isArrayElementReadable(index)) {
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return Long.toString(index);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            boolean isArrayElementReadable(long index) {
+                return index >= 0 && index < n;
+            }
         }
 
         @ExportLibrary(InteropLibrary.class)
@@ -1450,18 +1593,23 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     static class DefineNode extends InstrumentedNode {
-        private final InstrumentationTestLanguage language;
-        private final String identifier;
-        private final RootCallTarget target;
 
-        DefineNode(InstrumentationTestLanguage lang, String identifier, SourceSection source, BaseNode[] children) {
-            this.language = lang;
+        private final String identifier;
+        private final BaseNode[] children;
+        private final SourceSection source;
+
+        private RootCallTarget target;
+
+        DefineNode(String identifier, SourceSection source, BaseNode[] children) {
+            this.source = source;
             this.identifier = identifier;
+            this.children = children;
+
             String code = source.getCharacters().toString();
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
-            this.target = new InstrumentationTestRootNode(lang, identifier, functionSection, children).getCallTarget();
+            this.target = new InstrumentationTestRootNode(InstrumentationTestLanguage.get(this), identifier, functionSection, children).getCallTarget();
         }
 
         @Override
@@ -1477,7 +1625,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void defineFunction() {
-            InstrumentContext context = InstrumentContext.get(null);
+            InstrumentContext context = InstrumentContext.get(this);
             synchronized (context.callFunctions.callTargets) {
                 if (context.callFunctions.callTargets.containsKey(identifier)) {
                     if (context.callFunctions.callTargets.get(identifier) != target) {
@@ -1490,8 +1638,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            InstrumentationTestRootNode rootNode = (InstrumentationTestRootNode) target.getRootNode();
-            return new DefineNode(language, identifier, rootNode.getSourceSection(), new BaseNode[]{cloneUninitialized(rootNode.functionRoot, materializedTags)});
+            return new DefineNode(identifier, source, cloneUninitialized(children, materializedTags));
         }
     }
 
@@ -1507,28 +1654,71 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @Override
-        @ExplodeLoop
         public Object execute(VirtualFrame frame) {
-            Object returnValue = Null.INSTANCE;
+            InstrumentationTestLanguage outerLanguage = InstrumentationTestLanguage.get(this);
             TruffleContext inner = createInnerContext();
             Object prev = inner.enter(this);
             try {
-                for (BaseNode child : children) {
-                    if (child != null) {
-                        returnValue = child.execute(frame);
-                    }
+                if (InstrumentationTestLanguage.get(null) == outerLanguage) {
+                    return executeImpl(frame, children);
+                } else {
+                    /*
+                     * If there is no code sharing we need to make sure we do not perform invalid
+                     * sharing between contexts. We recreate a call target for each inner language
+                     * to avoid this.
+                     */
+                    return lookupAsCallTarget().call();
+                }
+            } finally {
+                inner.leave(this, prev);
+                inner.close();
+            }
+        }
+
+        @ExplodeLoop
+        private static Object executeImpl(VirtualFrame f, BaseNode[] c) {
+            Object v = Null.INSTANCE;
+            for (BaseNode child : c) {
+                if (child != null) {
+                    v = child.execute(f);
                 }
                 /*
                  * Normally we would go through call target here which guarantees poll at the end.
                  * This language doesn't use call target here, for simplicity, so we need to poll
                  * manually.
                  */
-                TruffleSafepoint.pollHere(this);
-            } finally {
-                inner.leave(this, prev);
-                inner.close();
+                TruffleSafepoint.pollHere(child);
             }
-            return returnValue;
+            return v;
+        }
+
+        @TruffleBoundary
+        private CallTarget lookupAsCallTarget() {
+            Map<Object, CallTarget> codeCache = InstrumentationTestLanguage.get(null).codeCache;
+            CallTarget target = codeCache.get(children);
+            if (target == null) {
+                target = new RootNode(InstrumentationTestLanguage.get(null)) {
+                    @Children private final BaseNode[] innerChildren = BaseNode.cloneUninitialized(children, null);
+
+                    @Override
+                    public Object execute(VirtualFrame f) {
+                        return executeImpl(f, innerChildren);
+                    }
+
+                    @Override
+                    public boolean isInternal() {
+                        return false;
+                    }
+
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return ContextNode.this.getSourceSection();
+                    }
+
+                }.getCallTarget();
+                codeCache.put(children, target);
+            }
+            return target;
         }
 
         @Override
@@ -1599,7 +1789,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     private static class SpawnNode extends InstrumentedNode {
 
-        @Child private DirectCallNode callNode;
         private final String identifier;
 
         SpawnNode(String identifier, BaseNode[] children) {
@@ -1609,11 +1798,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                CallTarget target = InstrumentContext.get(this).callFunctions.callTargets.get(identifier);
-                callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
-            }
             spawnCall();
             return Null.INSTANCE;
         }
@@ -1647,14 +1831,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else {
                 asyncInfo = null;
             }
-            InstrumentContext context = InstrumentContext.get(null);
-            Thread t = InstrumentContext.get(null).env.createThread(new Runnable() {
+            final InstrumentContext context = InstrumentContext.get(this);
+            Thread t = context.env.createThread(new Runnable() {
                 @Override
                 public void run() {
+                    RootCallTarget target = InstrumentContext.get(null).callFunctions.callTargets.get(identifier);
                     if (asyncInfo != null) {
-                        callNode.call(new Object[]{asyncInfo});
+                        target.call(new Object[]{asyncInfo});
                     } else {
-                        callNode.call(new Object[0]);
+                        target.call(new Object[0]);
                     }
                 }
             });
@@ -1942,7 +2127,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 Thread.sleep(timeToSleep);
             } catch (InterruptedException e) {
-                throw new AssertionError(e);
+                throw new Interrupted();
             }
         }
 
@@ -1950,6 +2135,17 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new SleepNode(timeToSleep, cloneUninitialized(children, materializedTags));
         }
+    }
+
+    @SuppressWarnings("serial")
+    @ExportLibrary(InteropLibrary.class)
+    static class Interrupted extends AbstractTruffleException {
+
+        @ExportMessage
+        public ExceptionType getExceptionType() {
+            return ExceptionType.INTERRUPT;
+        }
+
     }
 
     private static class ConstantNode extends InstrumentedNode {
@@ -2446,7 +2642,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         private final String name;
         private final Object value;
 
-        @CompilationFinal private FrameSlot slot;
+        @CompilationFinal private Integer slot;
         final AllocationReporter allocationReporter;
 
         private VariableNode(String name, String identifier, BaseNode[] children, AllocationReporter allocationReporter) {
@@ -2471,9 +2667,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             if (slot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                slot = frame.getFrameDescriptor().findOrAddFrameSlot(name);
+                slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(name);
             }
-            frame.setObject(slot, value);
+            frame.setAuxiliarySlot(slot, value);
             if (allocationReporter.isActive()) {
                 allocationReporter.onReturnValue(value, 0, getValueSize());
             }
@@ -2509,7 +2705,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     private static final class ReadVariableNode extends InstrumentedNode {
 
         private final String name;
-        @CompilationFinal private FrameSlot slot;
+        @CompilationFinal private Integer slot;
 
         private ReadVariableNode(String name, BaseNode[] children) {
             super(children);
@@ -2520,13 +2716,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (slot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                slot = frame.getFrameDescriptor().findFrameSlot(name);
+                slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(name);
                 if (slot == null) {
                     throw new IllegalStateException("Unknown variable " + name);
                 }
             }
             super.execute(frame);
-            return frame.getValue(slot);
+            return frame.getAuxiliarySlot(slot);
         }
     }
 
@@ -2534,7 +2730,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         private final String name;
 
-        @CompilationFinal private FrameSlot slot;
+        @CompilationFinal private Integer slot;
         @CompilationFinal private int index;
 
         ArgumentNode(String name, BaseNode[] children) {
@@ -2550,7 +2746,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (slot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                slot = frame.getFrameDescriptor().findOrAddFrameSlot(name);
+                slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(name);
             }
             Object[] args = frame.getArguments();
             Object value;
@@ -2563,7 +2759,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     value = args[index];
                 }
             }
-            frame.setObject(slot, value);
+            frame.setAuxiliarySlot(slot, value);
             super.execute(frame);
             return value;
         }
@@ -2578,8 +2774,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Child private LoopNode loop;
 
-        @CompilationFinal FrameSlot loopIndexSlot;
-        @CompilationFinal FrameSlot loopResultSlot;
+        @CompilationFinal Integer loopIndexSlot;
+        @CompilationFinal Integer loopResultSlot;
 
         WhileLoopNode(Object loopCount, BaseNode[] children) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, children));
@@ -2589,18 +2785,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, infinite, children));
         }
 
-        FrameSlot getLoopIndex() {
+        Integer getLoopIndex() {
             if (loopIndexSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
+                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddAuxiliarySlot("loopIndex" + getLoopDepth());
             }
             return loopIndexSlot;
         }
 
-        FrameSlot getResult() {
+        Integer getResult() {
             if (loopResultSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());
+                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddAuxiliarySlot("loopResult" + getLoopDepth());
             }
             return loopResultSlot;
         }
@@ -2619,11 +2815,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getResult(), Null.INSTANCE);
-            frame.setInt(getLoopIndex(), 0);
+            frame.setAuxiliarySlot(getResult(), Null.INSTANCE);
+            frame.setAuxiliarySlot(getLoopIndex(), 0);
             loop.execute(frame);
             try {
-                return frame.getObject(loopResultSlot);
+                return frame.getAuxiliarySlot(loopResultSlot);
             } catch (FrameSlotTypeException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
@@ -2676,15 +2872,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             public boolean executeRepeating(VirtualFrame frame) {
                 int i;
                 try {
-                    i = frame.getInt(loopIndexSlot);
-                } catch (FrameSlotTypeException e) {
+                    i = (int) frame.getAuxiliarySlot(loopIndexSlot);
+                } catch (ClassCastException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(e);
                 }
                 if (infinite || i < loopCount) {
                     Object resultValue = super.execute(frame);
-                    frame.setInt(loopIndexSlot, i + 1);
-                    frame.setObject(loopResultSlot, resultValue);
+                    frame.setAuxiliarySlot(loopIndexSlot, i + 1);
+                    frame.setAuxiliarySlot(loopResultSlot, resultValue);
                     return true;
                 } else {
                     return false;
@@ -2964,7 +3160,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @ExportLibrary(InteropLibrary.class)
     static class FunctionsObject implements TruffleObject {
 
-        final Map<String, CallTarget> callTargets = Collections.synchronizedMap(new LinkedHashMap<>());
+        final Map<String, RootCallTarget> callTargets = Collections.synchronizedMap(new LinkedHashMap<>());
         final Map<String, TruffleObject> functions = new ConcurrentHashMap<>();
 
         FunctionsObject() {

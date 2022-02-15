@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -37,7 +38,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
@@ -78,7 +78,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected int tenuringThreshold;
 
     protected volatile SizeParameters sizes;
-    private final ReentrantLock sizesUpdateLock = new ReentrantLock();
+    private final AtomicBoolean sizesUpdateSpinLock = new AtomicBoolean();
 
     protected AbstractCollectionPolicy(int initialNewRatio, int initialTenuringThreshold) {
         this.initialNewRatio = initialNewRatio;
@@ -145,11 +145,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         if (previous != null && params.equal(previous)) {
             return; // nothing to do
         }
-        sizesUpdateLock.lock();
+        while (!sizesUpdateSpinLock.compareAndSet(false, true)) {
+            /*
+             * We use a primitive spin lock because at this point, the current thread might be
+             * unable to use a Java lock (e.g. no Thread object yet), and the critical section is
+             * short, so we do not want to suspend and wake up threads for it.
+             */
+            PauseNode.pause();
+        }
         try {
             updateSizeParametersLocked(params, previous);
         } finally {
-            sizesUpdateLock.unlock();
+            sizesUpdateSpinLock.set(false);
         }
         guaranteeSizeParametersInitialized(); // sanity
     }
@@ -269,7 +276,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         long optionMaxYoung = SubstrateGCOptions.MaxNewSize.getValue();
         if (optionMaxYoung > 0L) {
             maxYoung = WordFactory.unsigned(optionMaxYoung);
-        } else if (HeapParameters.Options.MaximumYoungGenerationSizePercent.hasBeenSet(RuntimeOptionValues.singleton())) {
+        } else if (HeapParameters.Options.MaximumYoungGenerationSizePercent.hasBeenSet()) {
             maxYoung = maxHeap.unsignedDivide(100).multiply(HeapParameters.getMaximumYoungGenerationSizePercent());
         } else {
             maxYoung = maxHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);
@@ -303,10 +310,9 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
             /*
              * In HotSpot, this is the reserved capacity of each of the survivor From and To spaces,
              * i.e., together they occupy 2x this size. Our chunked heap doesn't reserve memory, so
-             * we use never occupy more than 1x this size for survivors except during collections.
+             * we never occupy more than 1x this size for survivors except during collections.
              * However, this is inconsistent with how we interpret the maximum size of the old
-             * generation, which we can exceed the (current) old gen size while copying during
-             * collections.
+             * generation, which we can exceed while copying during collections.
              */
             initialSurvivor = initialYoung.unsignedDivide(AbstractCollectionPolicy.INITIAL_SURVIVOR_RATIO);
             initialSurvivor = minSpaceSize(alignDown(initialSurvivor));

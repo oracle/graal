@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import os
 import shutil
 import tempfile
 import textwrap
+import types
 
 from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -95,14 +96,18 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
         :type build_args: list[str]
-        :type links: list[str]
-        :param str use_modules: Run (with 'laucher') or run and build image with module support (with 'image').
+        :param str | None use_modules: Run (with 'launcher') or run and build image with module support (with 'image').
+        :type links: list[str] | None
+        :type is_polyglot: bool
         :param bool dir_jars: If true, all jars in the component directory are added to the classpath.
+        :type home_finder: bool
+        :type build_time: int
+        :type build_args_enterprise: list[str] | None
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions
@@ -113,9 +118,12 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
+        self.build_args_enterprise = build_args_enterprise or []
+        self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
-        assert isinstance(self.build_args, list)
+        assert isinstance(self.build_args, (list, types.GeneratorType))
+        assert isinstance(self.build_args_enterprise, list)
 
     def __str__(self):
         return self.destination
@@ -142,6 +150,11 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
         return AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
+    def add_relative_home_path(self, language, path):
+        if language in self.relative_home_paths and self.relative_home_paths[language] != path:
+            raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
+                language, self.relative_home_paths[language], path, self.destination))
+        self.relative_home_paths[language] = path
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -152,11 +165,12 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
-        :param str use_modules: Run (with 'laucher') or run and build image with module support (with 'image').
-        :param str main_module: Specifies the main module. Mandatory if use_modules is not None
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
+        :param list[str] | None extra_jvm_args
+        :param str main_module: Specifies the main module. Mandatory if use_modules is not None
+        :param list[str] | None option_vars
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.main_module = main_module
         assert self.use_modules is None or self.main_module
         self.main_class = main_class
@@ -166,14 +180,6 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
         self.option_vars = [] if option_vars is None else option_vars
-
-        self.relative_home_paths = {}
-
-    def add_relative_home_path(self, language, path):
-        if language in self.relative_home_paths and self.relative_home_paths[language] != path:
-            raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
-                language, self.relative_home_paths[language], path, self.destination))
-        self.relative_home_paths[language] = path
 
 
 class LanguageLauncherConfig(LauncherConfig):
@@ -195,23 +201,28 @@ class LibraryConfig(AbstractNativeImageConfig):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, **kwargs):
+    def __init__(self, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
         """
         :param str language
         :param str main_class
         """
-        super(LanguageLibraryConfig, self).__init__(destination, jar_distributions, build_args, home_finder=True, **kwargs)
+        kwargs.pop('destination', None)
+        super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, **kwargs)
         self.is_sdk_launcher = is_sdk_launcher
         self.main_class = main_class
         self.language = language
         self.default_symlinks = None
         self.relative_home_paths = {}
         self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
+        self.option_vars = [] if option_vars is None else option_vars
+
+        # Ensure the language launcher can always find the language home
+        self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -243,7 +254,8 @@ class GraalVmComponent(object):
                  dependencies=None,
                  supported=None,
                  early_adopter=False,
-                 stability=None):
+                 stability=None,
+                 extra_installable_qualifiers=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -275,6 +287,7 @@ class GraalVmComponent(object):
         :type installable_id: str
         :type post_install_msg: str
         :type stability: str | None
+        :type extra_installable_qualifiers: list[str] | None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -306,6 +319,7 @@ class GraalVmComponent(object):
         self.installable = installable
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
+        self.extra_installable_qualifiers = extra_installable_qualifiers or []
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -342,6 +356,7 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
+        assert isinstance(self.extra_installable_qualifiers, list)
 
         assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
@@ -467,6 +482,11 @@ def graalvm_components(opt_limit_to_suite=False):
         return [c for c in _graalvm_components.values() if c.suite.name in mx.get_opts().specific_suites]
     else:
         return list(_graalvm_components.values())
+
+
+def graalvm_home(fatalIfMissing=False):
+    import mx_sdk_vm_impl
+    return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=fatalIfMissing)
 
 
 def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
@@ -910,9 +930,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
-        # These options are derived from how OpenJDK runs jlink to produce the final runtime image.
-        jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
-        jlink.append('-J-Dlink.debug=true')
         if dedup_legal_notices:
             jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
@@ -1011,6 +1028,29 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         # -Xshare is incompatible with --upgrade-module-path
         pass
     return True
+
+
+def parse_release_file(release_file_path):
+    if not isfile(release_file_path):
+        raise mx.abort("Missing expected release file: " + release_file_path)
+    release_dict = OrderedDict()
+    with open(release_file_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            assert line.count('=') > 0, "The release file of '{}' contains a line without the '=' sign: '{}'".format(release_file_path, line)
+            k, v = line.strip().split('=', 1)
+            if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
+                v = v[1:-1]
+            release_dict[k] = v
+    return release_dict
+
+
+def format_release_file(release_dict, skip_quoting=None):
+    skip_quoting = skip_quoting or set()
+    return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
+
 
 def verify_graalvm_configs(suites=None):
     """

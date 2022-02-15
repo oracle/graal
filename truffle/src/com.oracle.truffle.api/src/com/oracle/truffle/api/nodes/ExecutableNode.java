@@ -62,9 +62,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public abstract class ExecutableNode extends Node {
 
     /*
-     * Either instance of TruffleLanguage, PolyglotEngineImpl or null.
+     * Instance of PolyglotSharingLayer.
      */
-    @CompilationFinal private Object engineRef;
+    @CompilationFinal private Object polyglotRef;
 
     /**
      * Creates new executable node with a given language instance. The language instance is
@@ -76,9 +76,10 @@ public abstract class ExecutableNode extends Node {
     protected ExecutableNode(TruffleLanguage<?> language) {
         CompilerAsserts.neverPartOfCompilation();
         if (language != null) {
-            this.engineRef = language;
+            assert !NodeAccessor.HOST.isHostLanguage(language.getClass()) : "do not create create executable nodes with host language";
+            this.polyglotRef = language;
         } else {
-            this.engineRef = ENGINE.getCurrentPolyglotEngine();
+            this.polyglotRef = ENGINE.getCurrentSharingLayer();
         }
         /*
          * This can no longer happen for normal languages. It could only happen for language
@@ -89,7 +90,7 @@ public abstract class ExecutableNode extends Node {
     }
 
     final TruffleLanguage<?> getLanguage() {
-        Object ref = engineRef;
+        Object ref = polyglotRef;
         if (ref instanceof TruffleLanguage<?>) {
             return (TruffleLanguage<?>) ref;
         } else {
@@ -98,21 +99,21 @@ public abstract class ExecutableNode extends Node {
     }
 
     final void applyEngineRef(ExecutableNode node) {
-        this.engineRef = node.engineRef;
+        this.polyglotRef = node.polyglotRef;
     }
 
-    final Object getEngine() {
-        Object ref = engineRef;
+    final Object getSharingLayer() {
+        Object ref = polyglotRef;
         if (ref instanceof TruffleLanguage<?>) {
-            return ENGINE.getPolyglotEngine(LANGUAGE.getPolyglotLanguageInstance((TruffleLanguage<?>) ref));
+            return ENGINE.getPolyglotSharingLayer(LANGUAGE.getPolyglotLanguageInstance((TruffleLanguage<?>) ref));
         } else {
             return ref;
         }
     }
 
-    final void setEngine(Object engine) {
-        assert !(engineRef instanceof TruffleLanguage<?>) : "not allowed overwrite language";
-        this.engineRef = engine;
+    final void setSharingLayer(Object engine) {
+        assert !(polyglotRef instanceof TruffleLanguage<?>) : "not allowed overwrite language";
+        this.polyglotRef = engine;
     }
 
     /**

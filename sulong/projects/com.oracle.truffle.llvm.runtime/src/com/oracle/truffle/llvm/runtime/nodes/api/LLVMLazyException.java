@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,18 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.Message;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.except.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLazyExceptionFactory.LazyExceptionExpressionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLazyExceptionFactory.LazyExceptionStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 /**
  * Factories for helper nodes that lazily throw exceptions at runtime. These nodes can be used by
@@ -76,6 +83,20 @@ public abstract class LLVMLazyException {
         }
     }
 
+    @ExportLibrary(ReflectionLibrary.class)
+    static final class Undef implements TruffleObject {
+        private final ExceptionThrower<?> thrower;
+
+        Undef(ExceptionThrower<?> thrower) {
+            this.thrower = thrower;
+        }
+
+        @ExportMessage
+        Object send(@SuppressWarnings("unused") Message message, @SuppressWarnings("unused") Object[] args, @CachedLibrary("this") ReflectionLibrary selfNode) throws Exception {
+            throw thrower.doThrow(selfNode);
+        }
+    }
+
     abstract static class LazyExceptionExpressionNode extends LLVMExpressionNode implements LLVMAllocateNode {
 
         private final ExceptionThrower<?> thrower;
@@ -86,7 +107,7 @@ public abstract class LLVMLazyException {
 
         @Specialization
         Object doThrow() {
-            throw thrower.doThrow(this);
+            return LLVMManagedPointer.create(new Undef(thrower));
         }
     }
 

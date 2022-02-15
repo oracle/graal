@@ -293,6 +293,15 @@ public class InsightContextTest {
 
     @Test
     public void closeHooksSoonerThanContext() throws Exception {
+        closeHooksCheck(1);
+    }
+
+    @Test
+    public void reuseTheInsightScriptMultipleTimes() throws Exception {
+        closeHooksCheck(2);
+    }
+
+    private static void closeHooksCheck(int count) throws Exception {
         InsightTestLanguage itl = new InsightTestLanguage();
 
         ProxyLanguage.setDelegate(itl);
@@ -301,38 +310,41 @@ public class InsightContextTest {
         Source insightScript = Source.newBuilder(ProxyLanguage.ID, "\n" + "\n" + "\n",
                         "insight.script").build();
 
-        AutoCloseable insightHandle = registerInsight(sharedEngine, insightScript);
+        for (int i = 0; i < count; i++) {
+            AutoCloseable insightHandle = registerInsight(sharedEngine, insightScript);
 
-        try (Context c = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
-            // @formatter:off
-            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
-                "ROOT(\n" +
-                "  DEFINE(foo,\n" +
-                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
-                "  ),\n" +
-                "  CALL(foo)\n" +
-                ")",
-                "sample.px"
-            ).build();
-            // @formatter:on
-            c.eval(sampleScript);
+            try (Context c = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
+                // @formatter:off
+                Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                    "ROOT(\n" +
+                    "  DEFINE(foo,\n" +
+                    "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                    "  ),\n" +
+                    "  CALL(foo)\n" +
+                    ")",
+                    "sample.px"
+                ).build();
+                // @formatter:on
+                c.eval(sampleScript);
 
-            assertEquals("Parsed once", 1, itl.parsingCounter);
-            assertEquals("Executed once", 1, itl.executingCounter);
-            assertEquals("Function foo has been called", "foo", itl.lastFunctionName);
+                assertEquals("Parsed once", 1, itl.parsingCounter);
+                assertEquals("Executed i-th time", i + 1, itl.executingCounter);
+                assertEquals("Function foo has been called", "foo", itl.lastFunctionName);
 
-            Node sampleNode = itl.lastNode;
-            assertAgentNodes(sampleNode, 1);
+                Node sampleNode = itl.lastNode;
+                assertAgentNodes(sampleNode, 1);
 
-            insightHandle.close();
+                insightHandle.close();
+            }
         }
 
-        assertEquals("One on enter callbacks: " + itl.onEventCallbacks, 1, itl.onEventCallbacks.size());
-        assertEquals("One source callbacks: " + itl.onSourceCallbacks, 1, itl.onSourceCallbacks.size());
+        assertEquals("One on enter callbacks: " + itl.onEventCallbacks, count, itl.onEventCallbacks.size());
+        assertEquals("One source callbacks: " + itl.onSourceCallbacks, count, itl.onSourceCallbacks.size());
         for (InsightTestLanguage.ParsingNode.OnSourceCallback callback : itl.onSourceCallbacks) {
             assertEquals("One loaded source", 1, callback.sourceLoadedCounter);
+            break;
         }
-        assertEquals("One close callbacks: " + itl.onCloseCallbacks, 1, itl.onCloseCallbacks.size());
+        assertEquals("One close callbacks: " + itl.onCloseCallbacks, count, itl.onCloseCallbacks.size());
         for (InsightTestLanguage.ParsingNode.OnCloseCallback callback : itl.onCloseCallbacks) {
             assertEquals("No close callback is made", 0, callback.closeCounter);
         }

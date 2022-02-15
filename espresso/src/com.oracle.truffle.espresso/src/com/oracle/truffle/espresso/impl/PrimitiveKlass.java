@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public final class PrimitiveKlass extends Klass {
      * @param primitiveKind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
-        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(),
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
@@ -112,6 +112,11 @@ public final class PrimitiveKlass extends Klass {
 
     @Override
     public MethodRef[] getDeclaredMethodRefs() {
+        return Method.EMPTY_VERSION_ARRAY;
+    }
+
+    @Override
+    public Method.MethodVersion[] getDeclaredMethodVersions() {
         return Method.EMPTY_VERSION_ARRAY;
     }
 

@@ -47,6 +47,7 @@ public abstract class AbstractImage {
     protected final NativeImageCodeCache codeCache;
     protected final List<HostedMethod> entryPoints;
     protected int resultingImageSize; // for statistical output
+    protected int debugInfoSize; // for statistical output
 
     public enum NativeImageKind {
         SHARED_LIBRARY(false) {
@@ -115,6 +116,10 @@ public abstract class AbstractImage {
         return resultingImageSize;
     }
 
+    public int getDebugInfoSize() {
+        return debugInfoSize;
+    }
+
     public NativeLibraries getNativeLibs() {
         return nativeLibs;
     }
@@ -158,6 +163,8 @@ public abstract class AbstractImage {
     public NativeImageHeap getHeap() {
         return heap;
     }
+
+    public abstract long getImageHeapSize();
 
     public abstract ObjectFile getOrCreateDebugObjectFile();
 

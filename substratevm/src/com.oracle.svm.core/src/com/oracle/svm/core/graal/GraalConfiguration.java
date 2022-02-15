@@ -61,17 +61,46 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+class HostedWrapper {
+    GraalConfiguration config;
+
+    HostedWrapper(GraalConfiguration config) {
+        this.config = config;
+    }
+}
+
 public class GraalConfiguration {
 
     private static final String COMPILER_CONFIGURATION_NAME = CommunityCompilerConfigurationFactory.NAME;
 
-    public static GraalConfiguration instance() {
+    public static GraalConfiguration hostedInstance() {
+        return ImageSingletons.lookup(HostedWrapper.class).config;
+    }
+
+    public static void setHostedInstanceIfEmpty(GraalConfiguration config) {
+        if (!ImageSingletons.contains(HostedWrapper.class)) {
+            ImageSingletons.add(HostedWrapper.class, new HostedWrapper(config));
+        }
+    }
+
+    public static GraalConfiguration runtimeInstance() {
         return ImageSingletons.lookup(GraalConfiguration.class);
     }
 
+    public static void setRuntimeInstance(GraalConfiguration config) {
+        ImageSingletons.add(GraalConfiguration.class, config);
+    }
+
     public static void setDefaultIfEmpty() {
-        if (!ImageSingletons.contains(GraalConfiguration.class)) {
-            ImageSingletons.add(GraalConfiguration.class, new GraalConfiguration());
+        // Avoid constructing a new instance if not necessary
+        if (!ImageSingletons.contains(GraalConfiguration.class) || !ImageSingletons.contains(HostedWrapper.class)) {
+            GraalConfiguration instance = new GraalConfiguration();
+            if (!ImageSingletons.contains(GraalConfiguration.class)) {
+                ImageSingletons.add(GraalConfiguration.class, instance);
+            }
+            if (!ImageSingletons.contains(HostedWrapper.class)) {
+                ImageSingletons.add(HostedWrapper.class, new HostedWrapper(instance));
+            }
         }
     }
 

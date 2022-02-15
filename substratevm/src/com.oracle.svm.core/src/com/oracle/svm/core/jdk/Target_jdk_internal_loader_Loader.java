@@ -32,7 +32,7 @@ import java.util.List;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "jdk.internal.loader.Loader", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.loader.Loader")
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_Loader {
 
@@ -54,7 +54,7 @@ final class Target_jdk_internal_loader_Loader {
 
     @Substitute
     protected URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
+        return ResourcesHelper.nameToResourceURL(mn, name);
     }
 
     @Substitute
@@ -83,6 +83,6 @@ final class Target_jdk_internal_loader_Loader {
     }
 }
 
-@TargetClass(className = "jdk.internal.loader.Loader", innerClass = "LoadedModule", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.loader.Loader", innerClass = "LoadedModule")
 final class Target_jdk_internal_loader_Loader_LoadedModule {
 }

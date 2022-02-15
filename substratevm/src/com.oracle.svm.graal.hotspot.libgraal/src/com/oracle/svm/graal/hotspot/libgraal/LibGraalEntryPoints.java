@@ -32,6 +32,7 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
 
+import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.hotspot.CompilationContext;
@@ -248,6 +249,12 @@ public final class LibGraalEntryPoints {
             UNSAFE.putInt(stackTraceAddress, length);
             UNSAFE.copyMemory(stackTrace, ARRAY_BYTE_BASE_OFFSET, null, stackTraceAddress + Integer.BYTES, length);
             return 0L;
+        } finally {
+            /*
+             * libgraal doesn't use a dedicated reference handler thread, so we trigger the
+             * reference handling manually when a compilation finishes.
+             */
+            Heap.getHeap().doReferenceHandling();
         }
     }
 }

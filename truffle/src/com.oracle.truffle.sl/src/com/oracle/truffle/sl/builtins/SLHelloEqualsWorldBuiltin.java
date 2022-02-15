@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
  * This builtin sets the variable named "hello" in the caller frame to the string "world".
@@ -57,11 +59,16 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
 
     @Specialization
     @TruffleBoundary
-    public String change() {
+    public TruffleString change() {
         FrameInstance frameInstance = Truffle.getRuntime().getCallerFrame();
         Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE);
-        FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("hello");
-        frame.setObject(slot, "world");
-        return "world";
+        int count = frame.getFrameDescriptor().getNumberOfSlots();
+        for (int i = 0; i < count; i++) {
+            if (SLStrings.HELLO.equalsUncached((TruffleString) frame.getFrameDescriptor().getSlotName(i), SLLanguage.STRING_ENCODING)) {
+                frame.setObject(i, SLStrings.WORLD);
+                break;
+            }
+        }
+        return SLStrings.WORLD;
     }
 }

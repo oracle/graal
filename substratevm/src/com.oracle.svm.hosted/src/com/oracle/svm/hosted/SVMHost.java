@@ -29,7 +29,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,6 +44,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -60,7 +60,10 @@ import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -79,6 +82,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -98,6 +102,7 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -109,7 +114,6 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -125,6 +129,7 @@ public class SVMHost extends SharedHostVM {
     private final ClassInitializationSupport classInitializationSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
+    private final SnippetReflectionProvider originalSnippetReflection;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -141,12 +146,11 @@ public class SVMHost extends SharedHostVM {
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
-    private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
-
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
         super(options, classLoader);
         this.classInitializationSupport = classInitializationSupport;
+        this.originalSnippetReflection = originalSnippetReflection;
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
@@ -176,6 +180,10 @@ public class SVMHost extends SharedHostVM {
 
     @Override
     public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
+        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+            NativeImageGenerator.checkName(type.getWrapped().toJavaName(), null, null);
+        }
+
         if (forbiddenTypes == null) {
             return;
         }
@@ -240,6 +248,9 @@ public class SVMHost extends SharedHostVM {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
         }
+        if (BuildPhaseProvider.isAnalysisFinished()) {
+            throw VMError.shouldNotReachHere("Initializing type after analysis: " + analysisType);
+        }
 
         /* Decide when the type should be initialized. */
         classInitializationSupport.maybeInitializeHosted(analysisType);
@@ -293,11 +304,11 @@ public class SVMHost extends SharedHostVM {
              * reused by javac, local variables can still get illegal values. Since we cannot
              * "restore" such illegal values during deoptimization, we cannot disable liveness
              * analysis for deoptimization target methods.
-             * 
+             *
              * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
              * later.
              */
-            return SubstrateOptions.Optimize.getValue() <= 0;
+            return SubstrateOptions.optimizationLevel() <= 0;
 
         } else {
             /*
@@ -366,22 +377,16 @@ public class SVMHost extends SharedHostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        Class<?> nestHost = null;
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            try {
-                nestHost = (Class<?>) getNestHostMethod.invoke(javaClass);
-            } catch (ReflectiveOperationException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        }
-
+        Class<?> nestHost = javaClass.getNestHost();
         boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
+        boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
 
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
+                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
+                        type.declaresDefaultMethods(), isSealed);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -484,7 +489,7 @@ public class SVMHost extends SharedHostVM {
 
     @Override
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
-        Class<?> originalClass = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), type);
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(originalSnippetReflection, type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
         if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
@@ -502,13 +507,24 @@ public class SVMHost extends SharedHostVM {
             graph.setGuardsStage(StructuredGraph.GuardsStage.FIXED_DEOPTS);
 
             if (parseOnce) {
-                new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
+                optimizeAfterParsing(bb, graph);
+                /*
+                 * Do a complete Canonicalizer run once before graph encoding, to clean up any
+                 * leftover uncanonicalized nodes.
+                 */
+                CanonicalizerPhase.create().apply(graph, bb.getProviders());
             }
 
             for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
                 methodAfterParsingHook.accept(method, graph);
             }
         }
+    }
+
+    protected void optimizeAfterParsing(BigBang bb, StructuredGraph graph) {
+        new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
+        new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+        new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
     }
 
     @Override
@@ -593,7 +609,7 @@ public class SVMHost extends SharedHostVM {
             /*
              * Unsafe memory access nodes are rare, so it does not pay off to check what kind of
              * field they are accessing.
-             * 
+             *
              * Methods that access a thread-local value cannot be initialized at image build time
              * because such values are not available yet.
              */
@@ -668,7 +684,7 @@ public class SVMHost extends SharedHostVM {
 
     @Override
     public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
-        if (!platformSupported(universe, interfaceType)) {
+        if (!platformSupported(interfaceType)) {
             String message = "The interface " + interfaceType.toJavaName(true) + " is not available in the current platform, but used by " + implementingType.toJavaName(true) + ". " +
                             "GraalVM before version 21.2 ignored such interfaces, but this was an oversight.";
 
@@ -686,16 +702,16 @@ public class SVMHost extends SharedHostVM {
     }
 
     @Override
-    public boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+    public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
-            if (p != null && !platformSupported(universe, p)) {
+            Package p = OriginalClassProvider.getJavaClass(originalSnippetReflection, (ResolvedJavaType) element).getPackage();
+            if (p != null && !platformSupported(p)) {
                 return false;
             }
         }
         if (element instanceof Class) {
             Package p = ((Class<?>) element).getPackage();
-            if (p != null && !platformSupported(universe, p)) {
+            if (p != null && !platformSupported(p)) {
                 return false;
             }
         }

@@ -72,7 +72,9 @@ import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
+import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -175,7 +177,6 @@ import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -278,33 +279,34 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) {
         initialize(options, factories, providers, config,
-                        new HotSpotAllocationSnippets.Templates(new HotSpotAllocationSnippets(config, providers.getRegisters()), options, factories, runtime, providers, target, config));
+                        new HotSpotAllocationSnippets.Templates(new HotSpotAllocationSnippets(config, providers.getRegisters()), options, runtime, providers, config));
     }
 
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
-        super.initialize(options, factories, runtime, providers, providers.getSnippetReflection());
+        super.initialize(options, runtime, providers);
 
         assert target == providers.getCodeCache().getTarget();
-        instanceofSnippets = new InstanceOfSnippets.Templates(options, factories, runtime, providers, target);
+        instanceofSnippets = new InstanceOfSnippets.Templates(options, runtime, providers);
         allocationSnippets = allocationSnippetTemplates;
-        monitorSnippets = new MonitorSnippets.Templates(options, factories, runtime, providers, target, config.useFastLocking);
-        g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
-        serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, factories, runtime, providers, target);
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, factories, providers, target);
-        assertionSnippets = new AssertionSnippets.Templates(options, factories, providers, target);
-        logSnippets = new LogSnippets.Templates(options, factories, providers, target);
-        arraycopySnippets = new ArrayCopySnippets.Templates(new HotSpotArraycopySnippets(), options, factories, runtime, providers, providers.getSnippetReflection(), target);
-        stringToBytesSnippets = new StringToBytesSnippets.Templates(options, factories, providers, target);
-        identityHashCodeSnippets = new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, factories, providers, target, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
-        isArraySnippets = new IsArraySnippets.Templates(new HotSpotIsArraySnippets(), options, factories, providers, target);
-        objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
-        foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
-        registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, factories, providers, target);
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
-        }
-        unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
+        monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config.useFastLocking);
+        g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, runtime, providers, config);
+        serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, runtime, providers);
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, providers);
+        assertionSnippets = new AssertionSnippets.Templates(options, providers);
+        logSnippets = new LogSnippets.Templates(options, providers);
+        arraycopySnippets = new ArrayCopySnippets.Templates(new HotSpotArraycopySnippets(), runtime, options, providers);
+        stringToBytesSnippets = new StringToBytesSnippets.Templates(options, providers);
+        identityHashCodeSnippets = new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
+        isArraySnippets = new IsArraySnippets.Templates(new HotSpotIsArraySnippets(), options, providers);
+        objectCloneSnippets = new ObjectCloneSnippets.Templates(options, providers);
+        foreignCallSnippets = new ForeignCallSnippets.Templates(options, providers);
+        registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, providers);
+        objectSnippets = new ObjectSnippets.Templates(options, providers);
+        unsafeSnippets = new UnsafeSnippets.Templates(options, providers);
+
+        replacements.registerSnippetTemplateCache(new BigIntegerSnippets.Templates(options, providers));
+        replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
 
         initializeExtensions(options, factories, providers, config);
     }
@@ -479,9 +481,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof KlassBeingInitializedCheckNode) {
             getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
         } else if (n instanceof FastNotifyNode) {
-            if (JavaVersionUtil.JAVA_SPEC < 11) {
-                throw GraalError.shouldNotReachHere("FastNotify is not support prior to 11");
-            }
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 objectSnippets.lower(n, tool);
             }

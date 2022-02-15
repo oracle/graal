@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -108,10 +109,9 @@ public abstract class Launcher {
     private PrintStream out = System.out;
     private PrintStream err = System.err;
 
-    private boolean help;
-    private boolean helpInternal;
-    private boolean helpExpert;
-    private boolean helpVM;
+    String helpArg = null;
+    boolean helpInternal;
+    boolean helpPrinted;
 
     /**
      * Path to the desired log file, or {@code null} if no log redirection is required.
@@ -553,16 +553,6 @@ public abstract class Launcher {
 
     private Path home;
 
-    private OptionCategory getHelpCategory() {
-        if (helpInternal) {
-            return OptionCategory.INTERNAL;
-        } else if (helpExpert) {
-            return OptionCategory.EXPERT;
-        } else {
-            return OptionCategory.USER;
-        }
-    }
-
     protected Path getGraalVMHome() {
         if (home == null) {
             home = HomeFinder.getInstance().getHomeFolder();
@@ -606,22 +596,29 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean runLauncherAction() {
-        boolean printDefaultHelp = help || ((helpExpert || helpInternal) && kindAndCategory.isEmpty() && !helpVM);
-        OptionCategory hc = getHelpCategory();
-        if (printDefaultHelp) {
-            printDefaultHelp(hc);
+        if (helpArg == null) {
+            return false;
         }
-        maybePrintAdditionalHelp(hc);
-
-        if (helpVM) {
+        if ("".equals(helpArg)) {
+            helpPrinted = true;
+            printDefaultHelp(OptionCategory.EXPERT);
+        }
+        maybePrintAdditionalHelp(OptionCategory.EXPERT);
+        if ("all".equals(helpArg) || "vm".equals(helpArg)) {
+            helpPrinted = true;
+            out.println("");
             if (nativeAccess == null) {
                 printJvmHelp();
             } else {
                 nativeAccess.printNativeHelp();
             }
         }
-
-        return printAllOtherHelpCategories(printDefaultHelp);
+        if (!helpPrinted) {
+            printDefaultHelp(OptionCategory.USER);
+        }
+        out.println("");
+        out.println("See http://www.graalvm.org for more information.");
+        return true;
     }
 
     /**
@@ -669,34 +666,10 @@ public abstract class Launcher {
         kindAndCategory.add(option);
     }
 
-    private boolean printAllOtherHelpCategories(boolean printHelp) {
-        boolean print = printHelp || helpVM || !kindAndCategory.isEmpty();
-        if (!print) {
-            return false;
-        }
-        out.println();
-        for (Iterator<String> it = kindAndCategory.iterator(); it.hasNext();) {
-            String kind = it.next();
-            String opt = it.next();
-            printOtherHelpCategories0(kind, opt);
-        }
-        out.println("See http://www.graalvm.org for more information.");
-        return true;
-    }
-
-    private void printOtherHelpCategories0(String kind, String option) {
-        if (helpExpert || helpInternal) {
-            out.println("Use '" + option + "' to list user " + kind + " options.");
-        }
-        if (!helpExpert) {
-            out.println("Use '" + option + " --help:expert' to list expert " + kind + " options.");
-        }
-        if (!helpInternal) {
-            out.println("Use '" + option + " --help:internal' to list internal " + kind + " options.");
-        }
-    }
-
     static String optionsTitle(String kind, OptionCategory optionCategory) {
+        if (optionCategory == null) {
+            return kind + " options:";
+        }
         String category;
         switch (optionCategory) {
             case USER:
@@ -762,30 +735,39 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
-        switch (arg) {
-            case "--help":
-                help = true;
-                break;
-            case "--help:debug":
-                warn("--help:debug is deprecated, use --help:internal instead.");
-                helpInternal = true;
-                break;
-            case "--help:internal":
-                helpInternal = true;
-                break;
-            case "--help:expert":
-                helpExpert = true;
-                break;
-            case "--help:vm":
-                helpVM = true;
-                break;
-            case "--experimental-options":
-            case "--experimental-options=true":
-            case "--experimental-options=false":
-                // Ignore, these were already parsed before
-                break;
-            default:
-                return false;
+        // Ignore, these were already parsed before
+        if ("--experimental-options".equals(arg) || "--experimental-options=false".equals(arg) || "--experimental-options=true".equals(arg)) {
+            return true;
+        }
+        if (arg.startsWith("--help")) {
+            return parseHelpArg(arg);
+        }
+        return false;
+    }
+
+    private boolean parseHelpArg(String arg) {
+        // legacy behaviour support
+        if ("--help:expert".equals(arg)) {
+            return true;
+        }
+        if ("--help:internal".equals(arg)) {
+            helpInternal = true;
+            return true;
+        }
+        int index = arg.indexOf(':');
+        if (index < 0) {
+            helpArg = "";
+            return true;
+        }
+        String helpArgCandidate = arg.substring(index + 1);
+        index = helpArgCandidate.indexOf(':');
+        if (index < 0) {
+            helpArg = helpArgCandidate;
+            return true;
+        }
+        helpArg = helpArgCandidate.substring(0, index);
+        if (helpArgCandidate.endsWith(":internal")) {
+            helpInternal = true;
         }
         return true;
     }
@@ -952,7 +934,7 @@ public abstract class Launcher {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s) {
+    private static String wrap(String s, String indent) {
         final int width = 120;
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
@@ -962,8 +944,8 @@ public abstract class Launcher {
                 i = sb.indexOf(" ", cursor + width);
             }
             if (i != -1) {
-                sb.replace(i, i + 1, System.lineSeparator());
-                cursor = i;
+                sb.replace(i, i + 1, System.lineSeparator() + indent);
+                cursor = i + indent.length();
             } else {
                 break;
             }
@@ -977,7 +959,7 @@ public abstract class Launcher {
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
         for (int i = 0; i < descLines.length; i++) {
-            descLines[i] = wrap(descLines[i]);
+            descLines[i] = wrap(descLines[i], indent + spaces(optionWidth));
         }
         if (option.length() >= optionWidth && description != null) {
             out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
@@ -989,26 +971,24 @@ public abstract class Launcher {
         }
     }
 
-    void printOption(PrintableOption option) {
-        printOption(option, 2);
-    }
-
     void printOption(PrintableOption option, int indentation) {
         printOption(option.option, option.description, indentation, optionIndent);
     }
 
     static final class PrintableOption implements Comparable<PrintableOption> {
+        final String name;
         final String option;
         final String description;
 
-        protected PrintableOption(String option, String description) {
+        protected PrintableOption(String name, String option, String description) {
+            this.name = name;
             this.option = option;
             this.description = description;
         }
 
         @Override
         public int compareTo(PrintableOption o) {
-            return this.option.compareTo(o.option);
+            return this.name.compareTo(o.name);
         }
     }
 
@@ -1118,7 +1098,8 @@ public abstract class Launcher {
      *
      * @param originalArgs the original arguments from main(), unmodified.
      * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
-     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}.
+     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}. All arguments
+     *            recognized by maybeExec are removed from the list.
      * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
      * @since 20.0
      */
@@ -1126,10 +1107,10 @@ public abstract class Launcher {
         if (!IS_AOT) {
             return;
         }
-        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType());
+        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType(), false);
     }
 
-    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean thinLauncher) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
@@ -1190,12 +1171,24 @@ public abstract class Launcher {
                 applicationArgs.add(0, "--polyglot");
             }
             assert !isStandalone();
-            executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
+            if (thinLauncher) {
+                Map<String, String> env = new HashMap<>();
+                env.put("GRAALVM_LAUNCHER_FORCE_JVM", "true");
+                nativeAccess.reExec(originalArgs, env);
+            } else {
+                executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
+            }
         } else {
             assert vmType == VMType.Native;
 
-            for (String vmOption : vmOptions) {
-                nativeAccess.setNativeOption(vmOption);
+            /*
+             * If the VM args have already been applied (e.g. by the thin launcher), there is no
+             * need to set them again at runtime
+             */
+            if (!thinLauncher) {
+                for (String vmOption : vmOptions) {
+                    nativeAccess.setNativeOption(vmOption);
+                }
             }
             /*
              * All options are processed, now we can run the startup hooks that can depend on the
@@ -1550,6 +1543,30 @@ public abstract class Launcher {
                 return null;
             }
             return sb.substring(0, sb.length() - 1);
+        }
+
+        /**
+         * Re-rexecutes the launcher executable with the given arguments and additional environment.
+         *
+         * @param args launcher arguments
+         * @param env additional environment - the entries will be added to the existing environment
+         */
+        private void reExec(List<String> args, Map<String, String> env) {
+            assert isAOT();
+            String path = ProcessProperties.getExecutableName();
+            Path executable = Paths.get(path);
+            if (isVerbose()) {
+                StringBuilder sb = formatExec(executable, args);
+                err.print(sb.toString());
+            }
+            Map<String, String> newEnv = new HashMap<>();
+            newEnv.putAll(System.getenv());
+            newEnv.putAll(env);
+            // for exec, arg 0 needs to be the name of the executable
+            List<String> execArgs = new ArrayList<>();
+            execArgs.add(path);
+            execArgs.addAll(args);
+            ProcessProperties.exec(executable, execArgs.toArray(new String[0]), newEnv);
         }
 
         private void exec(Path executable, List<String> command) {

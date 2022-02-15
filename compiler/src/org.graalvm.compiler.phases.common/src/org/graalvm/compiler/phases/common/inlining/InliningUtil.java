@@ -26,7 +26,6 @@ package org.graalvm.compiler.phases.common.inlining;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.util.ArrayDeque;
@@ -40,7 +39,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -292,7 +290,7 @@ public class InliningUtil extends ValueMergeUtil {
     public static void replaceInvokeCallTarget(Invoke invoke, StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
         MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
         MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnStamp(),
-                        oldCallTarget.getProfile()));
+                        oldCallTarget.getTypeProfile()));
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
@@ -583,9 +581,6 @@ public class InliningUtil extends ValueMergeUtil {
             } else {
                 invokeWithException.killExceptionEdge();
             }
-
-            // get rid of memory kill
-            invokeWithException.killKillingBegin();
         } else {
             if (unwindNode != null && unwindNode.isAlive()) {
                 try (DebugCloseable position = unwindNode.withNodeSourcePosition()) {
@@ -789,7 +784,7 @@ public class InliningUtil extends ValueMergeUtil {
             // exception object (top of stack)
             FrameState stateAfterException = stateAtExceptionEdge;
             if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
-                stateAfterException = stateAtExceptionEdge.duplicateModified(JavaKind.Object, JavaKind.Object, frameState.stackAt(0));
+                stateAfterException = stateAtExceptionEdge.duplicateModified(JavaKind.Object, JavaKind.Object, frameState.stackAt(0), frameState.virtualObjectMappings());
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
@@ -810,7 +805,7 @@ public class InliningUtil extends ValueMergeUtil {
             assert frameState.outerFrameState() == null;
             ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
             FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeTargetMethod.getSignature().toParameterKinds(!invokeTargetMethod.isStatic()),
-                            invokeArgs);
+                            invokeArgs, frameState.virtualObjectMappings());
             frameState.replaceAndDelete(stateBeforeCall);
             return stateBeforeCall;
         } else {
@@ -855,7 +850,7 @@ public class InliningUtil extends ValueMergeUtil {
             assert !frameState.rethrowException() : frameState;
             if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                 // A non-void return value.
-                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
+                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0), frameState.virtualObjectMappings());
             } else {
                 // A void return value.
                 stateAfterReturn = stateAtReturn.duplicate();
@@ -881,16 +876,9 @@ public class InliningUtil extends ValueMergeUtil {
                 // Normal inlining expects all outermost inlinee frame states to
                 // denote the inlinee method
             } else if (method.equals(invoke.callTarget().targetMethod())) {
-                // This occurs when an intrinsic calls back to the original
-                // method to handle a slow path. During parsing of such a
-                // partial intrinsic, these calls are given frame states
-                // that exclude the outer frame state denoting a position
-                // in the intrinsic code.
-                assert IS_IN_NATIVE_IMAGE || inlinedMethod.getAnnotation(
-                                MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
-                                                frameState;
+                GraalError.shouldNotReachHere("method subsitutions are gone");
             } else if (method.getName().equals(inlinedMethod.getName())) {
-                // This can happen for method substitutions.
+                GraalError.shouldNotReachHere("method subsitutions are gone");
             } else {
                 throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, method, frameState,
                                 invoke.callTarget().targetMethod()));

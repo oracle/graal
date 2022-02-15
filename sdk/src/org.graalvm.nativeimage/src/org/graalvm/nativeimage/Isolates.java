@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package org.graalvm.nativeimage;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.impl.IsolateSupport;
@@ -90,6 +93,7 @@ public final class Isolates {
             private UnsignedWord reservedAddressSpaceSize;
             private String auxiliaryImagePath;
             private UnsignedWord auxiliaryImageReservedSpaceSize;
+            private final List<String> arguments;
 
             /**
              * Creates a new builder with default values.
@@ -97,6 +101,7 @@ public final class Isolates {
              * @since 19.0
              */
             public Builder() {
+                arguments = new ArrayList<>();
             }
 
             /**
@@ -132,13 +137,26 @@ public final class Isolates {
             }
 
             /**
+             * Appends an isolate argument. The syntax for arguments is the same as the one that is
+             * used on the command-line when starting Native Image (e.g., {@code
+             * -XX:+UseReferenceHandlerThread}). If the same argument is added multiple times, the
+             * last specified value will be used.
+             *
+             * @since 22.1
+             */
+            public Builder appendArgument(String argument) {
+                this.arguments.add(argument);
+                return this;
+            }
+
+            /**
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, arguments);
             }
         }
 
@@ -156,11 +174,13 @@ public final class Isolates {
         private final UnsignedWord reservedAddressSpaceSize;
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
+        private final List<String> arguments;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
             this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
+            this.arguments = arguments;
         }
 
         /**
@@ -190,6 +210,15 @@ public final class Isolates {
          */
         public UnsignedWord getAuxiliaryImageReservedSpaceSize() {
             return auxiliaryImageReservedSpaceSize;
+        }
+
+        /**
+         * Returns the list of additional isolate arguments.
+         *
+         * @since 22.1
+         */
+        public List<String> getArguments() {
+            return Collections.unmodifiableList(arguments);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.word.WordTypes;
 
@@ -44,7 +45,7 @@ final class HotSpotTruffleGraphBuilderPlugins {
 
     static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, HotSpotKnownTruffleTypes types) {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, Reference.class);
-        r.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", InvocationPlugin.Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (!canDelayIntrinsification && receiver.isConstant()) {
@@ -69,14 +70,14 @@ final class HotSpotTruffleGraphBuilderPlugins {
         GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
 
         InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
-        tl.register0("getJVMCIReservedReference", new InvocationPlugin() {
+        tl.register(new RequiredInvocationPlugin("getJVMCIReservedReference") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
                 return true;
             }
         });
-        tl.register1("setJVMCIReservedReference", Object[].class, new InvocationPlugin() {
+        tl.register(new RequiredInvocationPlugin("setJVMCIReservedReference", Object[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode value) {

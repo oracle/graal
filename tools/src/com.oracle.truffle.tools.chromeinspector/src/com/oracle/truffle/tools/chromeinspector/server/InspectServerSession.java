@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,6 +114,12 @@ public final class InspectServerSession implements MessageEndpoint {
     // For tests only
     public DebuggerDomain getDebugger() {
         return debugger;
+    }
+
+    public void notifyClosing() {
+        runtime.notifyClosing();
+        debugger.notifyClosing();
+        profiler.notifyClosing();
     }
 
     public void dispose() {

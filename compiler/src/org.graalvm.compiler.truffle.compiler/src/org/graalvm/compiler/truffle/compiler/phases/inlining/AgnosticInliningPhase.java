@@ -51,6 +51,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     private final PartialEvaluator partialEvaluator;
     private final PartialEvaluator.Request request;
+    private int inlined;
 
     public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
         this.partialEvaluator = partialEvaluator;
@@ -88,9 +89,20 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         }
         tree.finalizeGraph();
         tree.trace();
+        inlined = tree.getInlinedCount();
     }
 
     private boolean optionsAllowInlining() {
         return request.options.get(PolyglotCompilerOptions.Inlining);
+    }
+
+    @Override
+    public boolean checkContract() {
+        // inlining per definition increases graph size a lot
+        return false;
+    }
+
+    public boolean hasInlined() {
+        return inlined > 1;
     }
 }

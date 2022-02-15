@@ -89,14 +89,14 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC <= 11 || JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
         AbstractTestNode result = new BufferGetPutTestNode(newBuffer().getClass());
         testCommon(result, "byteBufferAccess");
     }
 
     @Test
     public void byteBufferAccessIndex() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC <= 11 || JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
         AbstractTestNode result = new BufferGetPutIndexTestNode(newBuffer().getClass());
         testCommon(result, "byteBufferAccessIndex");
     }

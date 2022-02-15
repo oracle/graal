@@ -24,11 +24,18 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.util.Arrays;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.nodes.PauseNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -63,6 +70,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -70,7 +78,7 @@ import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -82,6 +90,7 @@ import com.oracle.svm.core.util.Counter;
 
 public class SubstrateDiagnostics {
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1, "SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
+    private static volatile boolean loopOnFatalError;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
@@ -177,12 +186,23 @@ public class SubstrateDiagnostics {
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         log.newline();
-        // Save the state of the initial error so that this state is consistently used, even if
-        // further errors occur while printing diagnostics.
+        /*
+         * Save the state of the initial error so that this state is consistently used, even if
+         * further errors occur while printing diagnostics.
+         */
         if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
-            log.string("Error: printDiagnostics already in progress by another thread.").newline();
+            log.string("Error: printFatalError already in progress by another thread.").newline();
             log.newline();
             return false;
+        }
+
+        /*
+         * Execute an endless loop if requested. This makes it easier to attach a debugger lazily.
+         * In the debugger, it is possible to change the value of loopOnFatalError to false if
+         * necessary.
+         */
+        while (loopOnFatalError) {
+            PauseNode.pause();
         }
 
         printFatalErrorForCurrentState();
@@ -227,7 +247,9 @@ public class SubstrateDiagnostics {
             fatalErrorState.invocationCount = 0;
         }
 
-        // Reset the state so that another thread can print diagnostics for a fatal error.
+        // Flush the output and reset the state so that another thread can print diagnostics for a
+        // fatal error.
+        log.flush();
         fatalErrorState.clear();
     }
 
@@ -448,6 +470,19 @@ public class SubstrateDiagnostics {
         }
     }
 
+    private static class DumpCurrentTimestamp extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline().newline();
+        }
+    }
+
     private static class DumpRegisters extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
@@ -623,9 +658,9 @@ public class SubstrateDiagnostics {
                     log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
 
                     if (allowJavaHeapAccess) {
-                        Thread threadObj = JavaThreads.fromVMThread(thread);
+                        Thread threadObj = PlatformThreads.fromVMThread(thread);
                         log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
-                        if (threadObj.isDaemon()) {
+                        if (threadObj != null && threadObj.isDaemon()) {
                             log.string(", daemon");
                         }
                     }
@@ -909,19 +944,17 @@ public class SubstrateDiagnostics {
         private int[] initialInvocationCount;
 
         @Fold
-        /* Checkstyle: allow synchronization. */
         public static synchronized DiagnosticThunkRegistry singleton() {
             if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
         }
-        /* Checkstyle: disallow synchronization. */
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DiagnosticThunkRegistry() {
-            this.diagnosticThunks = new DiagnosticThunk[]{new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(), new DumpTopFrame(),
-                            new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
+            this.diagnosticThunks = new DiagnosticThunk[]{new DumpCurrentTimestamp(), new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(),
+                            new DumpTopFrame(), new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
                             new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
                             new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
 
@@ -933,7 +966,6 @@ public class SubstrateDiagnostics {
          * Register a diagnostic thunk to be called after a segfault.
          */
         @Platforms(Platform.HOSTED_ONLY.class)
-        /* Checkstyle: allow synchronization. */
         public synchronized void register(DiagnosticThunk diagnosticThunk) {
             diagnosticThunks = Arrays.copyOf(diagnosticThunks, diagnosticThunks.length + 1);
             diagnosticThunks[diagnosticThunks.length - 1] = diagnosticThunk;
@@ -941,7 +973,6 @@ public class SubstrateDiagnostics {
             initialInvocationCount = Arrays.copyOf(initialInvocationCount, initialInvocationCount.length + 1);
             initialInvocationCount[initialInvocationCount.length - 1] = 1;
         }
-        /* Checkstyle: disallow synchronization. */
 
         @Fold
         int size() {
@@ -959,5 +990,16 @@ public class SubstrateDiagnostics {
         void setInitialInvocationCount(int index, int value) {
             initialInvocationCount[index] = value;
         }
+    }
+
+    public static class Options {
+        @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+                SubstrateDiagnostics.loopOnFatalError = newValue;
+            }
+        };
     }
 }
