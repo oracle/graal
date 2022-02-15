@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen;
-import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalGlobalNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -69,12 +67,11 @@ import java.util.ArrayList;
  */
 public final class InitializeOverwriteNode extends LLVMNode {
 
-    @Children private final AllocExternalSymbolNode[] allocExternalSymbols;
+    @Child private AllocAnExternalSymbolNode allocExternalSymbol;
     @CompilationFinal(dimensions = 1) private final LLVMSymbol[] symbols;
 
     public InitializeOverwriteNode(LLVMParserResult result) {
         ArrayList<LLVMSymbol> symbolsList = new ArrayList<>();
-        ArrayList<AllocExternalSymbolNode> allocExternaSymbolsList = new ArrayList<>();
         LLVMScope fileScope = result.getRuntime().getFileScope();
 
         // Rewrite all overridable functions and globals in the filescope from their respective
@@ -84,7 +81,6 @@ public final class InitializeOverwriteNode extends LLVMNode {
                 LLVMFunction function = fileScope.getFunction(symbol.getName());
                 // Functions are overwritten by functions from the localScope
                 symbolsList.add(function);
-                allocExternaSymbolsList.add(AllocExistingLocalSymbolsNodeGen.create(function));
             }
         }
         for (GlobalSymbol symbol : result.getDefinedGlobals()) {
@@ -95,24 +91,23 @@ public final class InitializeOverwriteNode extends LLVMNode {
                 // Globals are overwritten by (non-hidden) global symbol of the same name in the
                 // globalscope
                 symbolsList.add(global);
-                allocExternaSymbolsList.add(AllocExternalGlobalNodeGen.create(global));
             }
         }
         this.symbols = symbolsList.toArray(LLVMSymbol.EMPTY);
-        this.allocExternalSymbols = allocExternaSymbolsList.toArray(AllocExternalSymbolNode.EMPTY);
+        this.allocExternalSymbol = new AllocAnExternalSymbolNode(result);
     }
 
     @ExplodeLoop
     public void execute(LLVMContext context, LLVMScopeChain localScope, RTLDFlags rtldFlags) {
         LLVMScopeChain globalScope = context.getGlobalScopeChain();
-        for (int i = 0; i < allocExternalSymbols.length; i++) {
-            AllocExternalSymbolNode allocSymbol = allocExternalSymbols[i];
-            LLVMPointer pointer = allocSymbol.execute(localScope, globalScope, null, null, context, rtldFlags);
+        for (int i = 0; i < symbols.length; i++) {
+            LLVMSymbol allocSymbol = symbols[i];
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, null, null, context, rtldFlags, allocSymbol);
             // skip allocating fallbacks
             if (pointer == null) {
                 continue;
             }
-            context.initializeSymbol(symbols[i], pointer);
+            context.initializeSymbol(allocSymbol, pointer);
         }
     }
 }

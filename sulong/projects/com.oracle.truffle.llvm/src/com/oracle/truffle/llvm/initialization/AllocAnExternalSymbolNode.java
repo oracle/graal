@@ -60,12 +60,12 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
     public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
                     LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
 
-        LLVMPointer pointerFromLocal = lookupFromLocalScope(localScope, symbol, context, BranchProfile.create());
+        LLVMPointer pointerFromLocal = lookupFromScope(localScope, symbol, context, BranchProfile.create());
         if (pointerFromLocal != null && isDefaultFlagActive(rtldFlags)) {
             return pointerFromLocal;
         }
 
-        LLVMPointer pointerFromGlobal = lookupFromLocalScope(globalScope, symbol, context, BranchProfile.create());
+        LLVMPointer pointerFromGlobal = lookupFromScope(globalScope, symbol, context, BranchProfile.create());
         if (pointerFromGlobal != null && !(isDefaultFlagActive(rtldFlags))) {
             return pointerFromGlobal;
         }
@@ -104,6 +104,46 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
         return null;
     }
 
+    public LLVMPointer allocExternalFunction(LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
+                                                 LLVMSymbol symbol) {
+        if (symbol.isGlobalVariable()) {
+            if (symbol.isExternalWeak()) {
+                return LLVMNativePointer.createNull();
+            } else if (!intrinsicProvider.isIntrinsified(symbol.getName()) && nativeContextExtension != null) {
+                NativeContextExtension.NativePointerIntoLibrary pointer = getNativePointer(nativeContextExtension, symbol);
+                if (pointer != null) {
+                    return LLVMNativePointer.create(pointer.getAddress());
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public LLVMPointer allocExternalGlobal(LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
+                                               LLVMContext context, LLVMSymbol symbol) {
+        if (symbol.isFunction()) {
+            if (symbol.isExternalWeak()) {
+                return LLVMNativePointer.createNull();
+            } else if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(symbol.getName())) {
+                LLVMFunctionCode functionCode = new LLVMFunctionCode(symbol.asFunction());
+                LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
+                functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
+                return LLVMManagedPointer.create(functionDescriptor);
+            } else if (intrinsicProvider != null && !intrinsicProvider.isIntrinsified(symbol.getName()) && nativeContextExtension != null) {
+                NativeLookupResult nativeFunction = getNativeFunction(nativeContextExtension, symbol);
+                if (nativeFunction != null) {
+                    LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), new LLVMFunctionCode(symbol.asFunction()));
+                    functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
+                    symbol.asFunction().setNFISymbol(nativeFunction.getObject());
+                    return LLVMManagedPointer.create(functionDescriptor);
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
     @TruffleBoundary
     private static NativeLookupResult getNativeFunction(NativeContextExtension nativeContextExtension, LLVMSymbol symbol) {
         return nativeContextExtension.getNativeFunctionOrNull(symbol.getName());
@@ -115,7 +155,8 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
         return nativeContextExtension.getNativeHandle(symbol.getName());
     }
 
-    private static LLVMPointer lookupFromLocalScope(LLVMScopeChain scope, LLVMSymbol symbol, LLVMContext context, BranchProfile exception) {
+    @TruffleBoundary
+    private static LLVMPointer lookupFromScope(LLVMScopeChain scope, LLVMSymbol symbol, LLVMContext context, BranchProfile exception) {
         LLVMSymbol resultSymbol = scope.get(symbol.getName());
         if (resultSymbol == null) {
             return null;

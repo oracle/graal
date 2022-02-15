@@ -26,7 +26,8 @@
  * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+ *//*
+
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -56,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+*/
 /**
  * The pattern of resolving external symbols are as follow: {@link AllocExternalSymbolNode} is the
  * top level node, with the execute method. {@link AllocExistingLocalSymbolsNode} implements the
@@ -80,7 +82,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * {@link AllocExistingGlobalSymbolsNode} is created for overwriting global symbols as they can be
  * taken from the global and local scope, meanwhile {@link AllocExistingLocalSymbolsNode} is created
  * for overwriting functions, as they can only be taken from the local scopes.
- */
+ *//*
+
 public abstract class AllocExternalSymbolNode extends LLVMNode {
 
     @SuppressWarnings("unused") public static final AllocExternalSymbolNode[] EMPTY = {};
@@ -94,9 +97,11 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                     LLVMContext context,
                     RTLDFlags rtldFlags);
 
-    /**
+    */
+/**
      * Allocating symbols to the symbol table as provided by the local scope.
-     */
+     *//*
+
     @ImportStatic({LLVMAlias.class, LLVMDLOpen.class})
     abstract static class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
 
@@ -139,11 +144,13 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             return RTLDFlags.RTLD_OPEN_DEFAULT.isActive(rtldFlags);
         }
 
-        /**
+        */
+/**
          * Fallback for when the same symbol is being overwritten.
          * <p>
          * There exists code where the symbol is not there.
-         */
+         *//*
+
         @Fallback
         LLVMPointer allocateFromLocalScopeFallback(@SuppressWarnings("unused") LLVMScopeChain localScope,
                         @SuppressWarnings("unused") LLVMScopeChain globalScope,
@@ -181,9 +188,11 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
         }
 
-        /**
+        */
+/**
          * Allocating symbols to the symbol table as provided by the global scope.
-         */
+         *//*
+
         @ImportStatic({LLVMAlias.class, LLVMDLOpen.class})
         abstract static class AllocExistingGlobalSymbolsNode extends AllocExistingLocalSymbolsNode {
 
@@ -231,9 +240,11 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             public abstract LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
                             LLVMContext context, RTLDFlags rtldFlags);
 
-            /**
+            */
+/**
              * Allocating a native global symbol to the symbol table as provided by the nfi context.
-             */
+             *//*
+
             abstract static class AllocExternalGlobalNode extends AllocExistingGlobalSymbolsNode {
 
                 AllocExternalGlobalNode(LLVMSymbol symbol) {
@@ -269,10 +280,12 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                 }
             }
 
-            /*
+            */
+/*
              * Allocates a managed pointer for the newly constructed function descriptors of a
              * native function and intrinsic function.
-             */
+             *//*
+
             abstract static class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode {
 
                 private final NodeFactory nodeFactory;
@@ -309,14 +322,16 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                     return LLVMManagedPointer.create(functionDescriptor);
                 }
 
-                /*
+                */
+/*
                  * Currently native functions/globals that are not in the nfi context are not
                  * written into the symbol table. For function, another lookup will happen when
                  * something tries to call the function. (see {@link
                  * LLVMDispatchNode#doCachedNative}) The function will be taken from the filescope
                  * directly. Ideally the filescope and symbol table is in sync, and any lazy look up
                  * will resolve from the function code in the symbol table.
-                 */
+                 *//*
+
                 @TruffleBoundary
                 @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
                                 "!intrinsicProvider.isIntrinsified(symbol.getName())", "nativeContextExtension != null",
@@ -339,4 +354,4 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
         }
     }
-}
+}*/
