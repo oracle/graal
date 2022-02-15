@@ -1784,6 +1784,30 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
+        preconditions.register(new InlineOnlyInvocationPlugin("checkIndex", long.class, long.class, BiFunction.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode index, ValueNode length, ValueNode oobef) {
+                if (b.needsExplicitException()) {
+                    return false;
+                } else {
+                    ValueNode checkedIndex = index;
+                    ValueNode checkedLength = length;
+                    LogicNode lengthNegative = IntegerLessThanNode.create(length, ConstantNode.forLong(0L), NodeView.DEFAULT);
+                    if (!lengthNegative.isContradiction()) {
+                        FixedGuardNode guard = b.append(new FixedGuardNode(lengthNegative, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile, true));
+                        checkedLength = PiNode.create(length, length.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(JavaKind.Long, 0, Long.MAX_VALUE, 0, Long.MAX_VALUE)), guard);
+                    }
+                    LogicNode rangeCheck = IntegerBelowNode.create(index, checkedLength, NodeView.DEFAULT);
+                    if (!rangeCheck.isTautology()) {
+                        FixedGuardNode guard = b.append(new FixedGuardNode(rangeCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile));
+                        long upperBound = Math.max(0, ((IntegerStamp) checkedLength.stamp(NodeView.DEFAULT)).upperBound() - 1);
+                        checkedIndex = PiNode.create(index, index.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(JavaKind.Long, 0, upperBound)), guard);
+                    }
+                    b.addPush(JavaKind.Long, checkedIndex);
+                    return true;
+                }
+            }
+        });
     }
 
     /**

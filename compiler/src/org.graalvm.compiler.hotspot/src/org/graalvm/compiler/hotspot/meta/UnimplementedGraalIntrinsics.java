@@ -312,9 +312,6 @@ public final class UnimplementedGraalIntrinsics {
                             // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
 
-                            // JDK-8255150: Add utility methods to check long indexes and ranges
-                            "jdk/internal/util/Preconditions.checkIndex(JJLjava/util/function/BiFunction;)J",
-
                             // JDK-8223347: Integration of Vector API (Incubator)
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Ljava/lang/Object;",
