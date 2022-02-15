@@ -542,7 +542,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             }
         });
-        r = new Registration(plugins, "java.lang.StringCoding", replacements);
         r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,

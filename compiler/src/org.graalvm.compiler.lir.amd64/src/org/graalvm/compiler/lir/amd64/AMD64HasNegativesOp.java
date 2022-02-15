@@ -56,12 +56,12 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-        lineStart = 3356,
-        lineEnd   = 3572,
-        commit    = "7719a74cec8c47fd036226b520a5fce7887386da",
-        sha1      = "bb0a5ceba73bfeeec91bd96f738a48b5275ac51e")
+          lineStart = 3376,
+          lineEnd   = 3592,
+          commit    = "fb17a8ece0a3593c51a8be60533916bf70778a93",
+          sha1      = "bb0a5ceba73bfeeec91bd96f738a48b5275ac51e")
 // @formatter:on
-@Opcode("HAS_NEGATIVES")
+@Opcode("AMD64_HAS_NEGATIVES")
 public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HasNegativesOp> TYPE = LIRInstructionClass.create(AMD64HasNegativesOp.class);
 

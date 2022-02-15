@@ -40,7 +40,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.replacements.SnippetSubstitutionNode;

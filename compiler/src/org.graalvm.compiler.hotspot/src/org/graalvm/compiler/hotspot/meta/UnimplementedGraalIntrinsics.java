@@ -356,10 +356,10 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         if (arch instanceof AArch64) {
-            // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
+                            "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
                             "java/lang/StringLatin1.inflate([BI[CII)V",
@@ -369,18 +369,10 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/StringUTF16.indexOf([B[B)I",
                             "java/lang/StringUTF16.indexOfChar([BIII)I",
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([B[B)I");
-
-            add(toBeInvestigated,
+                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
                             "java/lang/Thread.onSpinWait()V",
-                            "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
-            add(toBeInvestigated,
+                            "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                             "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
-
-            add(toBeInvestigated,
-                            "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
-                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
         }
 
         // These are known to be implemented down stream

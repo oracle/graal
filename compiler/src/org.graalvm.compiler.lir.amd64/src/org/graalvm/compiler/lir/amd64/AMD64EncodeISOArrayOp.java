@@ -54,12 +54,12 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-        lineStart = 5498,
-        lineEnd   = 5656,
-        commit    = "7719a74cec8c47fd036226b520a5fce7887386da",
-        sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
+          lineStart = 5498,
+          lineEnd   = 5656,
+          commit    = "2920ce54874c404126d9fd6bfbebee5f3da27dae",
+          sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on
-@Opcode("ISO_ARRAY_ENCODE")
+@Opcode("AMD64_ENCODE_ISO_ARRAY")
 public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64EncodeISOArrayOp> TYPE = LIRInstructionClass.create(AMD64EncodeISOArrayOp.class);
 
