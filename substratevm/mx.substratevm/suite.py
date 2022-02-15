@@ -490,6 +490,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.graal.pointsto",
+                "sdk:GRAAL_SDK",
             ],
             "requires" : [
                 "jdk.unsupported" # sun.misc.Unsafe
@@ -1680,6 +1681,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:GRAAL_SDK",
                 "STANDALONE_POINTSTO",
+                "SVM"
             ],
             "testDistribution" : True,
         },

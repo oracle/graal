@@ -26,14 +26,17 @@
 
 package com.oracle.graal.pointsto.standalone.features;
 
+import com.oracle.graal.pointsto.standalone.StandaloneSingletonsSupportImpl;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -97,12 +100,47 @@ public class StandaloneAnalysisFeatureManager {
     }
 
     private void initAllFeatures() {
+        // Set options required by original SVM features if there is any
+        reflectiveUpdateHostedOptions();
+
+        // Now can initialize all features
         for (Class<? extends Feature> featureClass : featureClasses) {
             Feature feature;
             try {
-                feature = ReflectionUtil.lookupConstructor(featureClass).newInstance();
+                Constructor<? extends Feature> constructor;
+                if (DelegateFeature.class.isAssignableFrom(featureClass)) {
+                    constructor = ReflectionUtil.lookupConstructor(featureClass, OptionValues.class);
+                    feature = constructor.newInstance(options);
+                } else {
+                    constructor = ReflectionUtil.lookupConstructor(featureClass);
+                    feature = constructor.newInstance();
+                }
                 features.add(feature);
             } catch (ReflectiveOperationException e) {
+                if (e.getCause() instanceof FeatureNotEnabledException) {
+                    // Feature is not enabled, ignore it and continue for the next one.
+                } else {
+                    AnalysisError.shouldNotReachHere(e);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void reflectiveUpdateHostedOptions() {
+        List<HostedOptionValueUpdater.HostedOptionValue> hostedOptionUpdates = HostedOptionValueUpdater.getHostedOptionUpdates();
+        if (!hostedOptionUpdates.isEmpty()) {
+            EconomicMap<OptionKey<?>, Object> hostedValues = EconomicMap.create(hostedOptionUpdates.size());
+            for (HostedOptionValueUpdater.HostedOptionValue hostedOption : hostedOptionUpdates) {
+                hostedOption.update(hostedValues);
+            }
+            try {
+                Class<OptionValues> hostedOptionClass = (Class<OptionValues>) Class.forName(HostedOptionValueUpdater.HOSTED_OPTION_VALUES_CLASS);
+                OptionValues hostedOptionInstance = hostedOptionClass.getDeclaredConstructor(EconomicMap.class).newInstance(hostedValues);
+                StandaloneSingletonsSupportImpl.get().add(hostedOptionClass, hostedOptionInstance);
+            } catch (ClassNotFoundException | NoSuchMethodException e) {
+                AnalysisError.dependencyNotExist("class HostedOptionValues ", "svm.jar", e);
+            } catch (Exception e) {
                 AnalysisError.shouldNotReachHere(e);
             }
         }
