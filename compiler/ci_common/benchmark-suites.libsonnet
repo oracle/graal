@@ -243,11 +243,6 @@
     local hwlocBind_16C_16T = ["--hwloc-bind=--cpubind node:0.core:0-15.pu:0 --membind node:0"],
     local hwlocBind_16C_32T = ["--hwloc-bind=--cpubind node:0.core:0-15.pu:0-1 --membind node:0"],
     run+: [
-      # JMeter
-      self.benchmark_cmd + ["shopcart-jmeter:large"]                                         + ["--"] + self.extra_vm_args + ["-Xmx8g"],
-      bench_upload,
-      self.benchmark_cmd + ["petclinic-jmeter:tiny"]                                         + ["--"] + self.extra_vm_args + ["-Xmx8g"],
-      bench_upload,
       # shopcart-wrk
       self.benchmark_cmd + ["shopcart-wrk:mixed-tiny"]                   + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=256m"],
       bench_upload,
@@ -259,6 +254,7 @@
       bench_upload,
       self.benchmark_cmd + ["shopcart-wrk:mixed-huge"]                   + hwlocBind_16C_32T + ["--"] + self.extra_vm_args + ["-Xms1024m", "-Xmx8192m", "-XX:ActiveProcessorCount=32", "-XX:MaxDirectMemorySize=8192m"],
       bench_upload,
+
       # tika-wrk odt
       self.benchmark_cmd + ["tika-wrk:odt-tiny"]                         + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms32m",   "-Xmx150m",  "-XX:ActiveProcessorCount=1"],
       bench_upload,
@@ -266,6 +262,7 @@
       bench_upload,
       self.benchmark_cmd + ["tika-wrk:odt-medium"]                       + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms128m",  "-Xmx600m",  "-XX:ActiveProcessorCount=4"],
       bench_upload,
+
       # tika-wrk pdf
       self.benchmark_cmd + ["tika-wrk:pdf-tiny"]                         + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms20m",   "-Xmx80m",   "-XX:ActiveProcessorCount=1"],
       bench_upload,
@@ -273,6 +270,7 @@
       bench_upload,
       self.benchmark_cmd + ["tika-wrk:pdf-medium"]                       + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms80m",   "-Xmx500m",  "-XX:ActiveProcessorCount=4"],
       bench_upload,
+
       # petclinic-wrk
       self.benchmark_cmd + ["petclinic-wrk:mixed-tiny"]                  + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms32m",   "-Xmx100m",  "-XX:ActiveProcessorCount=1"],
       bench_upload,
@@ -284,6 +282,7 @@
       bench_upload,
       self.benchmark_cmd + ["petclinic-wrk:mixed-huge"]                  + hwlocBind_16C_32T + ["--"] + self.extra_vm_args + ["-Xms640m",  "-Xmx3072m", "-XX:ActiveProcessorCount=32"],
       bench_upload,
+
       # helloworld-wrk
       self.benchmark_cmd + ["micronaut-helloworld-wrk:helloworld"]       + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
       bench_upload,
