@@ -150,6 +150,9 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (Boolean.TRUE.equals(defaultValue)) {
             return "true|false";
         }
+        if (descriptor.isOptionMap()) {
+            return "<value>";
+        }
         Class<?> aClass = defaultValue.getClass();
         if (Enum.class.isAssignableFrom(aClass)) {
             StringBuilder sb = new StringBuilder();
