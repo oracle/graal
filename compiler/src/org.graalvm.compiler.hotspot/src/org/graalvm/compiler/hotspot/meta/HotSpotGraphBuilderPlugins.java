@@ -81,11 +81,17 @@ import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -99,6 +105,8 @@ import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -215,6 +223,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
+                registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
             }
 
         });
@@ -1130,6 +1139,44 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean isOptional() {
                 return JavaVersionUtil.JAVA_SPEC < 16;
+            }
+        });
+    }
+
+    private static void registerInstrumentationImplPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "sun.instrument.InstrumentationImpl", replacements);
+        r.register(new InlineOnlyInvocationPlugin("getObjectSize0", Receiver.class, long.class, Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nativeAgent, ValueNode objectToSize) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    ValueNode objectNonNull = b.nullCheckedValue(objectToSize);
+                    StructuredGraph graph = b.getGraph();
+                    LoadHubNode hub = b.add(new LoadHubNode(b.getStampProvider(), objectNonNull));
+                    ValueNode layoutHelper = helper.klassLayoutHelper(hub);
+
+                    LogicNode isArray = b.add(ObjectIsArrayNode.create(objectNonNull));
+
+                    ArrayLengthNode arrayLengthNode = graph.add(new ArrayLengthNode(objectNonNull));
+                    EndNode arrayBranch = graph.add(new EndNode());
+                    arrayLengthNode.setNext(arrayBranch);
+
+                    int objectAlignmentMask = config.objectAlignment - 1;
+                    ValueNode arrayHeaderSize = b.add(AndNode.create(new UnsignedRightShiftNode(layoutHelper, ConstantNode.forInt(config.layoutHelperHeaderSizeShift)),
+                                    ConstantNode.forInt(config.layoutHelperHeaderSizeMask), NodeView.DEFAULT));
+                    ValueNode arraySize = b.add(AddNode.create(arrayHeaderSize, LeftShiftNode.create(arrayLengthNode, layoutHelper, NodeView.DEFAULT), NodeView.DEFAULT));
+                    ValueNode arraySizeMasked = b.add(AndNode.create(AddNode.create(arraySize, ConstantNode.forInt(objectAlignmentMask), NodeView.DEFAULT),
+                                    ConstantNode.forInt(~objectAlignmentMask), NodeView.DEFAULT));
+
+                    EndNode instanceBranch = graph.add(new EndNode());
+                    ValueNode instanceSize = b.add(AndNode.create(layoutHelper, ConstantNode.forInt(~(Long.BYTES - 1)), NodeView.DEFAULT));
+
+                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, BranchProbabilityData.unknown()));
+                    MergeNode merge = b.add(new MergeNode());
+                    merge.addForwardEnd(arrayBranch);
+                    merge.addForwardEnd(instanceBranch);
+                    b.addPush(JavaKind.Long, SignExtendNode.create(new ValuePhiNode(StampFactory.positiveInt(), merge, new ValueNode[]{arraySizeMasked, instanceSize}), 64, NodeView.DEFAULT));
+                }
+                return true;
             }
         });
     }

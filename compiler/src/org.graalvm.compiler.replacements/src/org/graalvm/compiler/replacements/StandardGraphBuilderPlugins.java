@@ -1807,6 +1807,11 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
             }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 16;
+            }
         });
     }
 

@@ -336,13 +336,8 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.test(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Z",
                             "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;",
                             // @formatter:on
-
-                            // JDK-8253525: Implement getInstanceSize/sizeOf intrinsics
-                            "sun/instrument/InstrumentationImpl.getObjectSize0(JLjava/lang/Object;)J",
-
                             // 8252204: AArch64: Implement SHA3 accelerator/intrinsic
                             "sun/security/provider/MD5.implCompress0([BI)V",
-
                             "sun/security/provider/SHA3.implCompress0([BI)V");
         }
 
