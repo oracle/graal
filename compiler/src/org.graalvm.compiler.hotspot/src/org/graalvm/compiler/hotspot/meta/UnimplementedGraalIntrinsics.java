@@ -285,15 +285,8 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "java/lang/Object.<blackhole>*");
         }
 
-        // to be investigated intrinsics
-        add(toBeInvestigated,
-                        // Can share most implementation parts with
-                        // Unsafe.allocateUninitializedArray0
-                        "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
-                        // Only used as a marker for vectorization?
-                        "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
-                        // Emits a slow and a fast path and some dispatching logic
-                        "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;");
+        // Only used as a marker for vectorization?
+        add(toBeInvestigated, "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V");
 
         if (hasAESElectronicCodebookStubRoutineFields(config)) {
             add(toBeInvestigated,

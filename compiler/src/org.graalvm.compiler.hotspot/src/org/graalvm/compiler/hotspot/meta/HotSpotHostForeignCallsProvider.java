@@ -539,7 +539,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.useCRC32CIntrinsics) {
             registerForeignCall(UPDATE_BYTES_CRC32C, c.updateBytesCRC32C, NativeCall);
         }
-        registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
+        if (c.updateBytesAdler32 != 0L) {
+            registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
+        }
 
         if (c.useAESIntrinsics) {
             /*

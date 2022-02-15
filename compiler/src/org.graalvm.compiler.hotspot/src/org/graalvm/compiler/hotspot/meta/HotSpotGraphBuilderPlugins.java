@@ -446,7 +446,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-
         r.register(new InvocationPlugin("allocateInstance", Receiver.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
@@ -459,6 +458,24 @@ public class HotSpotGraphBuilderPlugins {
                  * NewInstanceNode.
                  */
                 DynamicNewInstanceNode.createAndPush(b, clazz);
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("allocateUninitializedArray0", Receiver.class, Class.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentType, ValueNode length) {
+                /* Emits a null-check for the otherwise unused receiver. */
+                unsafe.get();
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    // If (componentType == null) then deopt
+                    ValueNode nonNullComponentType = b.nullCheckedValue(componentType);
+                    // Read Class.array_klass
+                    ValueNode arrayClass = helper.loadArrayKlass(nonNullComponentType);
+                    // Take the fallback path is the array klass is null
+                    helper.doFallbackIf(IsNullNode.create(arrayClass), GraalDirectives.UNLIKELY_PROBABILITY);
+                    // Otherwise perform the array allocation
+                    helper.emitFinalReturn(JavaKind.Object, new DynamicNewArrayNode(nonNullComponentType, length, false));
+                }
                 return true;
             }
         });
@@ -481,7 +498,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, Array.class, replacements);
         r.setAllowOverwrite(true);
-        r.register(new InvocationPlugin("newInstance", Class.class, int.class) {
+        r.register(new InvocationPlugin("newArray", Class.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode componentType, ValueNode length) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
