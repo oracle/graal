@@ -139,6 +139,10 @@ public class AnalysisError extends Error {
         InterruptAnalysis(String msg) {
             super(msg);
         }
+
+        InterruptAnalysis(Exception e, String msg) {
+            super(msg, e);
+        }
     }
 
     public static TypeNotFoundError typeNotFound(ResolvedJavaType type) {
@@ -187,5 +191,14 @@ public class AnalysisError extends Error {
 
     public static RuntimeException interruptAnalysis(String msg) {
         throw new InterruptAnalysis(msg);
+    }
+
+    public static RuntimeException interruptAnalysis(String msg, Exception e) {
+        throw new InterruptAnalysis(e, msg);
+    }
+
+    public static void dependencyNotExist(String dependency, String jarName, Exception e) {
+        String errMsg = "Can't find the " + dependency + ", please make sure the " + jarName + " is on the classpath.";
+        AnalysisError.interruptAnalysis(errMsg, e);
     }
 }

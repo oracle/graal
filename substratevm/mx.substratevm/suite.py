@@ -529,6 +529,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.graal.pointsto",
+                "sdk:GRAAL_SDK",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1959,6 +1960,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "STANDALONE_POINTSTO",
+                "SVM"
             ],
             "testDistribution" : True,
         },

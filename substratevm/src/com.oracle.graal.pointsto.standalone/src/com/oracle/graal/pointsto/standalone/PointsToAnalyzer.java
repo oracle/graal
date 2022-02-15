@@ -322,6 +322,9 @@ public final class PointsToAnalyzer {
 
     private void registerFeatures() {
         standaloneAnalysisFeatureManager.registerFeaturesFromOptions();
+        // Register DashboardDump feature by default, user can enable the feature by setting
+        // -H:+DumpAnalysisReports
+        standaloneAnalysisFeatureManager.registerFeature("com.oracle.graal.pointsto.standalone.features.DashboardDumpDelegate$Feature");
     }
 
     /**
