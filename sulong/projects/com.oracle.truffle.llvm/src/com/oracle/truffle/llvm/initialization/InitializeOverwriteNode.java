@@ -101,13 +101,18 @@ public final class InitializeOverwriteNode extends LLVMNode {
     public void execute(LLVMContext context, LLVMScopeChain localScope, RTLDFlags rtldFlags) {
         LLVMScopeChain globalScope = context.getGlobalScopeChain();
         for (int i = 0; i < symbols.length; i++) {
-            LLVMSymbol allocSymbol = symbols[i];
-            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, null, null, context, rtldFlags, allocSymbol);
+            LLVMSymbol symbol = symbols[i];
+            LLVMPointer pointer = null;
+            if (symbol.isGlobalVariable()) {
+                pointer = allocExternalSymbol.allocExternalGlobal(null, null, context, symbol);
+            } else if (symbol.isFunction()) {
+                pointer = allocExternalSymbol.execute(localScope, globalScope, null, null, context, rtldFlags, symbol);
+            }
             // skip allocating fallbacks
             if (pointer == null) {
                 continue;
             }
-            context.initializeSymbol(allocSymbol, pointer);
+            context.initializeSymbol(symbol, pointer);
         }
     }
 }

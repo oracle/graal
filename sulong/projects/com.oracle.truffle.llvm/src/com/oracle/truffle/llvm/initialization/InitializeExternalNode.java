@@ -75,10 +75,10 @@ import java.util.ArrayList;
  */
 public final class InitializeExternalNode extends LLVMNode {
     @CompilationFinal(dimensions = 1) private final LLVMSymbol[] symbols;
-    @Child private AllocAnExternalSymbolNode allocAnExternalSymbol;
+    @Child private AllocAnExternalSymbolNode allocExternalSymbol;
 
     public InitializeExternalNode(LLVMParserResult result) {
-        allocAnExternalSymbol = new AllocAnExternalSymbolNode(result);
+        allocExternalSymbol = new AllocAnExternalSymbolNode(result);
         LLVMScope fileScope = result.getRuntime().getFileScope();
         ArrayList<LLVMSymbol> symbolsList = new ArrayList<>();
 
@@ -112,7 +112,7 @@ public final class InitializeExternalNode extends LLVMNode {
         NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
         for (int i = 0; i < symbols.length; i++) {
             LLVMSymbol symbol = symbols[i];
-            LLVMPointer pointer = allocAnExternalSymbol.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags, symbol);
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags, symbol);
             if (pointer == null) {
                 continue;
             }
