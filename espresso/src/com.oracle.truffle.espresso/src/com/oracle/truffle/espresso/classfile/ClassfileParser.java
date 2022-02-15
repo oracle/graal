@@ -348,9 +348,9 @@ public final class ClassfileParser {
         final boolean majorGte15 = majorVersion >= JAVA_1_5_VERSION;
 
         if ((isAbstract && isFinal) ||
-                (isInterface && !isAbstract) ||
-                (isInterface && majorGte15 && (isSuper || isEnum)) ||
-                (!isInterface && majorGte15 && isAnnotation)) {
+                        (isInterface && !isAbstract) ||
+                        (isInterface && majorGte15 && (isSuper || isEnum)) ||
+                        (!isInterface && majorGte15 && isAnnotation)) {
             throw ConstantPool.classFormatError("Invalid class flags 0x" + Integer.toHexString(flags));
         }
     }
@@ -603,11 +603,11 @@ public final class ClassfileParser {
 
     private static final int classAnnotations = RUNTIME_VISIBLE_ANNOTATIONS | RUNTIME_INVISIBLE_ANNOTATIONS | RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
     private static final int methodAnnotations = RUNTIME_VISIBLE_ANNOTATIONS | RUNTIME_INVISIBLE_ANNOTATIONS | RUNTIME_VISIBLE_PARAMETER_ANNOTATIONS | RUNTIME_INVISIBLE_PARAMETER_ANNOTATIONS |
-            RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | ANNOTATION_DEFAULT | SIGNATURE;
+                    RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | ANNOTATION_DEFAULT | SIGNATURE;
     private static final int fieldAnnotations = RUNTIME_VISIBLE_ANNOTATIONS | RUNTIME_INVISIBLE_ANNOTATIONS | RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
     private static final int codeAnnotations = RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
     private static final int recordAnnotations = RUNTIME_VISIBLE_ANNOTATIONS | RUNTIME_INVISIBLE_ANNOTATIONS |
-            RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
+                    RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
 
     public enum InfoType {
         Class(classAnnotations),
@@ -825,10 +825,10 @@ public final class ClassfileParser {
                         if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
                         } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
-                                Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
+                                        Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
                             methodFlags |= ACC_HIDDEN;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
-                                Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
+                                        Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
                         } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
                                         Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
@@ -1240,11 +1240,11 @@ public final class ClassfileParser {
                         throw ConstantPool.classFormatError("Duplicate entry in InnerClasses attribute");
                     }
                     if (innerClassIndex == otherInnerClassInfo.innerClassIndex ||
-                            // The same class can be referenced by two different CP indices,
-                            // compare by name instead.
-                            (innerClassIndex != 0 &&
-                                    otherInnerClassInfo.innerClassIndex != 0 &&
-                                    innerClassName.equals(pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool)))) {
+                                    // The same class can be referenced by two different CP indices,
+                                    // compare by name instead.
+                                    (innerClassIndex != 0 &&
+                                                    otherInnerClassInfo.innerClassIndex != 0 &&
+                                                    innerClassName.equals(pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool)))) {
                         duplicateInnerClass = true;
                     }
                 }
@@ -1254,8 +1254,8 @@ public final class ClassfileParser {
         if (duplicateInnerClass || hasCycles(innerClassInfos)) {
             // Mimic HotSpot: Ignore the whole InnerClasses attribute and return an empty one.
             final String cause = duplicateInnerClass
-                    ? "Duplicate inner_class_info_index (class names)"
-                    : "Cycle detected";
+                            ? "Duplicate inner_class_info_index (class names)"
+                            : "Cycle detected";
             env.getLogger().warning(cause + " in InnerClassesAttribute, in class " + classType);
             return new InnerClassesAttribute(name, new InnerClassesAttribute.Entry[0]);
         }

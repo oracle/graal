@@ -217,7 +217,8 @@ public final class ClassRegistries {
      * .
      */
     @TruffleBoundary
-    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) throws EspressoClassLoadingException {
+    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain)
+                    throws EspressoClassLoadingException {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
@@ -237,7 +238,8 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info)
+                    throws EspressoClassLoadingException {
         assert classLoader != null;
         ClassRegistry registry = getClassRegistry(classLoader);
         return registry.defineKlass(env, type, bytes, info);

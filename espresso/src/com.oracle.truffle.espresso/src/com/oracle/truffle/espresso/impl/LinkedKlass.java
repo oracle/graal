@@ -102,14 +102,14 @@ public final class LinkedKlass {
     public static LinkedKlass create(ClassLoadingEnv env, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
         LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(env, parserKlass, superKlass);
         return new LinkedKlass(
-                parserKlass,
-                superKlass,
-                interfaces,
-                fieldLayout.instanceShape,
-                fieldLayout.staticShape,
-                fieldLayout.instanceFields,
-                fieldLayout.staticFields,
-                fieldLayout.fieldTableLength);
+                        parserKlass,
+                        superKlass,
+                        interfaces,
+                        fieldLayout.instanceShape,
+                        fieldLayout.staticShape,
+                        fieldLayout.instanceFields,
+                        fieldLayout.staticFields,
+                        fieldLayout.fieldTableLength);
     }
 
     public static LinkedKlass redefine(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, LinkedKlass redefinedKlass) {

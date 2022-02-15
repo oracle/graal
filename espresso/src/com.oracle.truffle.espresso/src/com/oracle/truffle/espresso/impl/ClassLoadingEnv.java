@@ -43,18 +43,31 @@ import com.oracle.truffle.espresso.verifier.MethodVerifier;
 public interface ClassLoadingEnv {
 
     EspressoLanguage getLanguage();
+
     Names getNames();
+
     Types getTypes();
+
     TimerCollection getTimers();
+
     TruffleLogger getLogger();
+
     JavaVersion getJavaVersion();
+
     EspressoOptions.SpecComplianceMode getSpecComplianceMode();
+
     Classpath getClasspath();
+
     boolean needsVerify(StaticObject loader);
+
     boolean isLoaderBootOrPlatform(StaticObject loader);
+
     int unboxInteger(StaticObject obj);
+
     float unboxFloat(StaticObject obj);
+
     long unboxLong(StaticObject obj);
+
     double unboxDouble(StaticObject obj);
 
     abstract class CommonEnv implements ClassLoadingEnv {
@@ -134,7 +147,7 @@ public interface ClassLoadingEnv {
         public boolean isLoaderBootOrPlatform(StaticObject loader) {
             Meta meta = context.getMeta();
             return StaticObject.isNull(loader) ||
-                    (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
+                            (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
         }
 
         @Override

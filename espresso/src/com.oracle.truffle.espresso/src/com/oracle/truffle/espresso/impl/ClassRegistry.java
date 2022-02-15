@@ -84,12 +84,12 @@ public abstract class ClassRegistry {
         }
 
         private ClassDefinitionInfo(StaticObject protectionDomain,
-                                    ObjectKlass hostKlass,
-                                    StaticObject[] patches,
-                                    ObjectKlass dynamicNest,
-                                    StaticObject classData,
-                                    boolean isHidden,
-                                    boolean isStrongHidden) {
+                        ObjectKlass hostKlass,
+                        StaticObject[] patches,
+                        ObjectKlass dynamicNest,
+                        StaticObject classData,
+                        boolean isHidden,
+                        boolean isStrongHidden) {
             this.protectionDomain = protectionDomain;
             this.hostKlass = hostKlass;
             this.patches = patches;
@@ -305,12 +305,12 @@ public abstract class ClassRegistry {
             final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
             linkedInterfaces = superInterfacesTypes.length == 0
-                    ? LinkedKlass.EMPTY_ARRAY
-                    : new LinkedKlass[superInterfacesTypes.length];
+                            ? LinkedKlass.EMPTY_ARRAY
+                            : new LinkedKlass[superInterfacesTypes.length];
 
             superInterfaces = superInterfacesTypes.length == 0
-                    ? LinkedKlass.EMPTY_ARRAY
-                    : new LinkedKlass[superInterfacesTypes.length];
+                            ? LinkedKlass.EMPTY_ARRAY
+                            : new LinkedKlass[superInterfacesTypes.length];
 
             for (int i = 0; i < superInterfacesTypes.length; ++i) {
                 if (chain.contains(superInterfacesTypes[i])) {
@@ -435,8 +435,8 @@ public abstract class ClassRegistry {
 
         LinkedKlass[] linkedInterfaces = linkedKlass.getInterfaces();
         ObjectKlass[] superInterfaces = linkedInterfaces.length == 0
-                ? ObjectKlass.EMPTY_ARRAY
-                : new ObjectKlass[linkedInterfaces.length];
+                        ? ObjectKlass.EMPTY_ARRAY
+                        : new ObjectKlass[linkedInterfaces.length];
 
         for (int i = 0; i < linkedInterfaces.length; ++i) {
             ObjectKlass interf = loadKlassRecursively(env, linkedInterfaces[i].getType(), false, info);
