@@ -30,25 +30,26 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Configures an array parameter as an in-parameter. For an in-parameter the array value is copied
- * over the boundary into a called method. The {@link In} is a default behavior. It's needed only in
- * combination with {@link Out} for in-out-parameters.
+ * Configures an array parameter as an in-parameter. For an in-parameter, the array value is copied
+ * over the boundary into a called method. The {@link In} is the default behavior. It's needed only
+ * in combination with {@link Out} for in-out parameters.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.PARAMETER)
 public @interface In {
 
     /**
-     * Copy only part of the array starting at offset given by {@code arrayOffsetParameter} method
-     * parameter. By default, the whole array is copied. The {@code arrayOffsetParameter} can be
-     * used to improve the performance and copy only a part of the array over the boundary.
+     * Copy only a part of the array starting at the offset given by the
+     * {@code arrayOffsetParameter} method parameter. By default, the whole array is copied. The
+     * {@code arrayOffsetParameter} can be used to improve the performance and copy only a part of
+     * the array over the boundary.
      */
     String arrayOffsetParameter() default "";
 
     /**
-     * Limits copying only to number of elements given by {@code arrayLengthParameter} parameters.
-     * By default, the whole array is copied. The {@code arrayLengthParameter} can be used to
-     * improve the performance and copy only a part of the array over the boundary.
+     * Limits copying only to many of the elements given by the {@code arrayLengthParameter}
+     * parameter. By default, the whole array is copied. The {@code arrayLengthParameter} can be
+     * used to improve the performance and copy only a part of the array over the boundary.
      */
     String arrayLengthParameter() default "";
 }

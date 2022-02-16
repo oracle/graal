@@ -34,7 +34,7 @@ import java.io.UTFDataFormatException;
 import java.util.Arrays;
 
 /**
- * Buffer used by {@link BinaryMarshaller} to marshall parameters and return values passed by value.
+ * A buffer used by the {@link BinaryMarshaller} to marshall parameters and results passed by value.
  *
  * @see BinaryInput
  * @see BinaryMarshaller
@@ -161,10 +161,10 @@ public abstract class BinaryOutput implements Closeable {
     public abstract void write(int b);
 
     /**
-     * Writes {@code len} bytes from the given byte array starting at offset {@code off}. The buffer
-     * position is incremented by {@code len}.
+     * Writes {@code len} bytes from the byte {@code array} starting at offset {@code off}. The
+     * buffer position is incremented by {@code len}.
      */
-    public abstract void write(byte[] b, int off, int len);
+    public abstract void write(byte[] array, int off, int len);
 
     /**
      * Writes a string using a modified UTF-8 encoding in a machine-independent manner.
@@ -244,7 +244,7 @@ public abstract class BinaryOutput implements Closeable {
     /**
      * Writes the value that is represented by the given object, together with information on the
      * value's data type. Supported types are boxed Java primitive types, {@link String},
-     * {@code null} and arrays of these types.
+     * {@code null}, and arrays of these types.
      *
      * @throws IllegalArgumentException when the {@code value} type is not supported.
      */
@@ -304,19 +304,19 @@ public abstract class BinaryOutput implements Closeable {
     }
 
     /**
-     * Creates a new buffer wrapping the given byte array. If the capacity of a given array is not
-     * sufficient for writing data, a new array is allocated, always use
-     * {@link ByteArrayBinaryOutput#getArray()} to obtain the marshalled data.
+     * Creates a new buffer wrapping the {@code initialBuffer}. If the {@code initialBuffer}
+     * capacity is not sufficient for writing the data, a new array is allocated. Always use
+     * {@link ByteArrayBinaryOutput#getArray()} to obtain the marshaled data.
      */
     public static ByteArrayBinaryOutput create(byte[] initialBuffer) {
         return initialBuffer == null ? new ByteArrayBinaryOutput() : new ByteArrayBinaryOutput(initialBuffer);
     }
 
     /**
-     * Creates a new buffer wrapping an off-heap memory segment starting at {@code adddress} having
-     * {@code length} bytes. If the capacity of a given segment is not sufficient for writing data,
-     * a new off-heap memory is allocated, always use {@link CCharPointerBinaryOutput#getAddress()}
-     * to obtain the marshalled data.
+     * Creates a new buffer wrapping an off-heap memory segment starting at {@code address} having
+     * {@code length} bytes. If the capacity of an off-heap memory segment is not sufficient for
+     * writing the data, a new off-heap memory is allocated. Always use
+     * {@link CCharPointerBinaryOutput#getAddress()} to obtain the marshaled data.
      *
      * @param address the off-heap memory address
      * @param length the off-heap memory size

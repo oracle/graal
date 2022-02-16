@@ -27,20 +27,21 @@ package org.graalvm.nativebridge;
 import java.io.IOException;
 
 /**
- * Marshaller used by the native bridge processor to write or read a custom type. Marshallers are
- * used to support custom types unknown to native bridge processor.
+ * A marshaller used by the native bridge processor to read or write method parameters and results
+ * of a custom type. Marshallers are used to support types that are not directly implemented by the
+ * native bridge processor.
  *
  * @see JNIConfig.Builder
  */
 public interface BinaryMarshaller<T> {
 
     /**
-     * Reads the object value from the given buffer and returns the recreated object.
+     * Reads the object value from the {@code input} and returns the recreated object.
      */
     T read(BinaryInput input) throws IOException;
 
     /**
-     * Writes the object value into the given buffer.
+     * Writes the {@code object}'s value into the {@code output}.
      */
     void write(BinaryOutput output, T object) throws IOException;
 }

@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
  * needed before or after over the boundary call. The annotated method must have the same parameter
  * types as the receiver method.
  *
- * Example showing a bridged method {@code execute} with custom pre-code and post-code.
+ * Example showing a method {@code execute} with custom pre-code and post-code.
  *
  * <pre>
  * &#64;Override

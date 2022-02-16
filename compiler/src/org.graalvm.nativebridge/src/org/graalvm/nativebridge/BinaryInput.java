@@ -45,7 +45,7 @@ import static org.graalvm.nativebridge.BinaryOutput.ARRAY;
 import static org.graalvm.nativebridge.BinaryOutput.bufferSize;
 
 /**
- * Buffer used by {@link BinaryMarshaller} to unmarshall parameters and return values passed by
+ * A buffer used by the {@link BinaryMarshaller} to unmarshal parameters and results passed by
  * value.
  *
  * @see BinaryOutput
@@ -89,7 +89,7 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Reads two bytes and returns {@code short} value.
+     * Reads two bytes and returns a {@code short} value.
      */
     public final short readShort() throws EOFException {
         int b1 = read();
@@ -101,7 +101,7 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Reads two bytes and returns {@code char} value.
+     * Reads two bytes and returns a {@code char} value.
      */
     public final char readChar() throws EOFException {
         int b1 = read();
@@ -113,7 +113,7 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Reads four bytes and returns {@code int} value.
+     * Reads four bytes and returns an {@code int} value.
      */
     public final int readInt() throws EOFException {
         int b1 = read();
@@ -127,7 +127,7 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Reads eight bytes and returns {@code long} value.
+     * Reads eight bytes and returns a {@code long} value.
      */
     public final long readLong() throws EOFException {
         int b1 = read();
@@ -155,7 +155,7 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Reads eight bytes and returns a {@code double} value. It does this by reading an {@code lang}
+     * Reads eight bytes and returns a {@code double} value. It does this by reading a {@code long}
      * value and converting the {@code long} value to a {@code double} using
      * {@link Double#longBitsToDouble(long)}.
      */
@@ -164,9 +164,9 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Reads a single byte. The value byte is returned as an {@code int} in the range {@code 0} to
+     * Reads a single byte. The byte value is returned as an {@code int} in the range {@code 0} to
      * {@code 255}. If no byte is available because the end of the stream has been reached, the
-     * value {@code -1}is returned.
+     * value {@code -1} is returned.
      */
     public abstract int read();
 
@@ -195,7 +195,7 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Read a string using a modified UTF-8 encoding in a machine-independent manner.
+     * Reads a string using a modified UTF-8 encoding in a machine-independent manner.
      */
     public final String readUTF() throws EOFException, UTFDataFormatException {
         int len;
@@ -297,9 +297,9 @@ public abstract class BinaryInput implements Closeable {
     /**
      * Reads a single value, using the data type encoded in the marshalled data.
      *
-     * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null} or
+     * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null}, or
      *         an array of these types.
-     * @throws IllegalArgumentException when the marshalled type is not supported.
+     * @throws IllegalArgumentException when the marshaled type is not supported.
      */
     public final Object readTypedValue() throws EOFException, UTFDataFormatException {
         byte tag = readByte();
@@ -344,8 +344,8 @@ public abstract class BinaryInput implements Closeable {
     }
 
     /**
-     * Creates a new buffer wrapping an off-heap memory segment starting at {@code adddress} having
-     * {@code length} bytes.
+     * Creates a new buffer wrapping an off-heap memory segment starting at an {@code address}
+     * having {@code length} bytes.
      */
     public static BinaryInput create(CCharPointer address, int length) {
         return new CCharPointerInput(address, length);

@@ -71,9 +71,10 @@ public final class NativeIsolate {
 
     /**
      * Binds a native image thread to this isolate. When a thread created in the native image enters
-     * for the first time to host it must be registered to {@link NativeIsolate} as a native thread.
+     * for the first time to the host, it must be registered to the {@link NativeIsolate} as a
+     * native thread.
      *
-     * @param isolateThreadId to bind.
+     * @param isolateThreadId the isolate thread to bind.
      */
     public void registerNativeThread(long isolateThreadId) {
         NativeIsolateThread nativeIsolateThread = attachedIsolateThread.get();
@@ -111,7 +112,7 @@ public final class NativeIsolate {
     }
 
     /**
-     * Request for isolate shutdown. If there is no host thread entered into this
+     * Requests an isolate shutdown. If there is no host thread entered into this
      * {@link NativeIsolate} the isolate is closed and the isolate heap is freed. If this
      * {@link NativeIsolate} has active threads the isolate is freed by the last leaving thread.
      */
@@ -141,7 +142,7 @@ public final class NativeIsolate {
     }
 
     /**
-     * Rerurns the {@link JNIConfig} used by this {@link NativeObject}.
+     * Returns the {@link JNIConfig} used by this {@link NativeIsolate}.
      */
     public JNIConfig getConfig() {
         return config;
@@ -153,12 +154,12 @@ public final class NativeIsolate {
     }
 
     /**
-     * Gets the NativeIsolate object for the entered isolate with the specified isolateId.
+     * Gets the NativeIsolate object for the entered isolate with the specified isolate address.
      * IMPORTANT: Must be used only when the isolate with the specified isolateId is entered.
      *
      * @param isolateId id of an entered isolate
-     * @return NativeIsolate object for the entered isolate with the specified isolateId
-     * @throws IllegalStateException when {@link NativeIsolate} does not exist for given
+     * @return NativeIsolate object for the entered isolate with the specified isolate address
+     * @throws IllegalStateException when {@link NativeIsolate} does not exist for the
      *             {@code isolateId}
      */
     public static NativeIsolate get(long isolateId) {
@@ -170,12 +171,12 @@ public final class NativeIsolate {
     }
 
     /**
-     * Creates a {@link NativeIsolate} for given {@code isolateId} using given {@link JNIConfig}.
-     * This method can be called at most once, preferably right after creating the isolate. Use the
+     * Creates a {@link NativeIsolate} for the {@code isolateId} and {@link JNIConfig}. This method
+     * can be called at most once, preferably right after creating the isolate. Use the
      * {@link #get(long)} method to get an existing {@link NativeIsolate} instance.
      *
-     * @return the newly created {@link NativeIsolate} for given {@code isolateId}.
-     * @throws IllegalStateException when {@link NativeIsolate} for given {@code isolateId} already
+     * @return the newly created {@link NativeIsolate} for the {@code isolateId}.
+     * @throws IllegalStateException when {@link NativeIsolate} for the {@code isolateId} already
      *             exists.
      */
     public static NativeIsolate forIsolateId(long isolateId, JNIConfig config) {
@@ -190,11 +191,9 @@ public final class NativeIsolate {
     /**
      * Registers an object for cleanup. At some point after a {@code cleanableObject} is garbage
      * collected the {@link NativeIsolate} is entered and the {@code cleanupAction} is executed with
-     * {@code isolateThreadId} parameter. The {@code cleanupAction} should perform cleanup in the
+     * the isolate thread address parameter. The {@code cleanupAction} should perform cleanup in the
      * isolate heap. The {@code cleanupAction} returns {@code true} on success and {@code false} on
      * failure.
-     *
-     * @param cleanupAction
      */
     public void registerForCleanup(Object cleanableObject, LongPredicate cleanupAction) {
         if (state != State.DISPOSED) {

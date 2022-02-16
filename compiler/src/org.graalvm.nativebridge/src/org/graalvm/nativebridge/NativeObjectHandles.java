@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.word.WordFactory;
 
 /**
- * Support class for mapping objects in the isolate to long handles.
+ * A support class for mapping objects in the native image isolate to long handles.
  */
 public final class NativeObjectHandles {
 
@@ -36,15 +36,15 @@ public final class NativeObjectHandles {
     }
 
     /**
-     * Creates a handle for given object. Unless the handle is {@link #remove(long) removed} the
-     * given object stays strongly reachable.
+     * Creates a handle for the {@code object}. Unless the handle is {@link #remove(long) removed}
+     * the {@code object} stays strongly reachable.
      */
     public static long create(Object object) {
         return ObjectHandles.getGlobal().create(object).rawValue();
     }
 
     /**
-     * Resolves handle into object.
+     * Resolves a handle into an object.
      *
      * @throws InvalidHandleException if the handle is either already removed or invalid.
      */
@@ -57,7 +57,7 @@ public final class NativeObjectHandles {
     }
 
     /**
-     * Removes a handle. Allows an object identified by the given handle to be garbage collected.
+     * Removes a handle. Allows an object identified by the {@code handle} to be garbage collected.
      */
     public static void remove(long handle) {
         try {
@@ -68,7 +68,7 @@ public final class NativeObjectHandles {
     }
 
     /**
-     * Exception thrown when an invalid handle is being resolved.
+     * An exception thrown when an invalid handle is resolved.
      *
      * @see #resolve(long, Class)
      */

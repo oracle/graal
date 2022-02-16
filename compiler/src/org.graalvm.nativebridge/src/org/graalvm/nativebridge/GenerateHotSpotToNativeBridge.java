@@ -31,28 +31,36 @@ import java.lang.annotation.Target;
 import java.util.function.BooleanSupplier;
 
 /**
- * Generate HotSpot to native bridge for an annotated class.
+ * Generates a HotSpot to native bridge. For the annotated class, the processor generates a bridge
+ * delegating calls to the object in a native image heap. Further information can be found in the
+ * <a href=
+ * "http://github.com/oracle/graal/blob/master/compiler/docs/NativeBridgeProcessor.md">native bridge
+ * tutorial</a>.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface GenerateHotSpotToNativeBridge {
 
     /**
-     * If the supplier returns {@code true}, this entry point is added automatically when building a
-     * shared library. This means the method is a root method for compilation, and everything
-     * reachable from it is compiled too. * The provided class must have a nullary constructor,
-     * which is used to instantiate the class. The supplier function is called on the newly
-     * instantiated instance.
+     * If the supplier returns {@code true}, the bridge entry points are added automatically when
+     * building a shared library. This means the bridge entry points are root methods for
+     * compilation, and everything reachable from them is compiled too. The provided class must have
+     * a nullary constructor, which is used to instantiate the class. The
+     * {@link BooleanSupplier#getAsBoolean()}} function is called on the newly instantiated
+     * instance.
      */
     Class<? extends BooleanSupplier> include() default AlwaysIncluded.class;
 
     /**
      * The native bridge configuration. The returned class must have an accessible static
      * {@code getInstance()} method returning a {@link JNIConfig} instance. The returned
-     * {@link JNIConfig} instance is used for marshallers lookup.
+     * {@link JNIConfig} instance is used for marshallers' lookup.
      */
     Class<?> jniConfig();
 
+    /**
+     * A {@link BooleanSupplier} that always returns {@code true}.
+     */
     class AlwaysIncluded implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {

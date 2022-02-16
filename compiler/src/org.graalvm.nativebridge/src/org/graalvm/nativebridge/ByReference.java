@@ -33,22 +33,40 @@ import java.lang.annotation.Target;
 
 /**
  * Instruments the native bridge processor to marshall annotated method return type or method
- * parameter as a reference to foreign object.
+ * parameter as a reference to a foreign object.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.PARAMETER})
 public @interface ByReference {
 
     /**
-     * The class to instantiate for a foreign handle. For the HotSpot to native calls it must be
-     * assignable into {@link NativeObject}. For the native to HotSpot calls it must be assignable
-     * into {@link HSObject}.
+     * The class to instantiate for a foreign handle.
+     * <p>
+     * For HotSpot to native calls.
+     * <ul>
+     * <li>If the bridged type is an interface, the class must be assignable to the
+     * {@link NativeObject}.</li>
+     * <li>If the bridged type is a class, the class must have a field of the {@link NativeObject}
+     * type annotated with the {@link EndPointHandle}.</li>
+     * <li>If the bridged has a custom dispatch, the class must be the dispatch class with a
+     * {@link CustomDispatchFactory factory}.</li>
+     * </ul>
+     * </p>
+     * <p>
+     * For native to HotSpot calls.
+     * <li>If the bridged type is an interface, the class must be assignable to the
+     * {@link HSObject}.</li>
+     * <li>If the bridged type is a class, the class must have a field of the {@link HSObject} type
+     * annotated with the {@link EndPointHandle}.</li>
+     * <li>If the bridged has a custom dispatch, the class must be a dispatch class with a
+     * {@link CustomDispatchFactory factory}.</li>
+     * </p>
      */
     Class<?> value();
 
     /**
-     * For classes with explicit receiver, when set to {@code true} the foreign object is translated
-     * by receiver resolver before it's passed to target method.
+     * For classes with a custom dispatch, when set to {@code true} the foreign object is translated
+     * by a custom receiver accessor before it's passed to the target method.
      *
      * @see CustomReceiverAccessor
      * @see CustomDispatchAccessor

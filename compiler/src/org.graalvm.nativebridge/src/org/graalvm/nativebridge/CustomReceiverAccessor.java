@@ -30,10 +30,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as a receiver resolver. The receiver resolver is used in the classes with explicit
- * receiver to translate the receiver to the actual receiver. The method annotated by
- * {@link CustomReceiverAccessor} must be non-private static method with a single parameter
- * returning the actual receiver.
+ * Marks a method as a custom receiver accessor. In the class with a custom dispatch, the method is
+ * used to translate the API object to the receiver. The method annotated by
+ * {@link CustomReceiverAccessor} must be a non-private static method with a single parameter
+ * returning the receiver.
  *
  * @see CustomDispatchAccessor
  */

@@ -58,12 +58,20 @@ final class PolyglotExecutionEventDispatch extends AbstractExecutionEventDispatc
 
     @Override
     public SourceSection getExecutionEventLocation(Object impl) {
-        return ((Event) impl).getLocation();
+        try {
+            return ((Event) impl).getLocation();
+        } catch (Throwable t) {
+            throw wrapException(impl, t);
+        }
     }
 
     @Override
     public PolyglotException getExecutionEventException(Object impl) {
-        return ((Event) impl).getException();
+        try {
+            return ((Event) impl).getException();
+        } catch (Throwable t) {
+            throw wrapException(impl, t);
+        }
     }
 
     @Override

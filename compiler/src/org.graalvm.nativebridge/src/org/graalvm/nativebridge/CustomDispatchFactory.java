@@ -30,10 +30,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as a double dispatch receiver factory. The factory method is used by the
- * annotation processor to create a double dispatch receiver from an actual receiver transferred by
- * a reference. The method annotated by {@link CustomDispatchFactory} must be non-private static
- * method taking an actual receiver parameter and returning the double dispatch receiver.
+ * Marks a method as a factory for custom dispatch API objects. In the class with a custom dispatch,
+ * the method is used to create a custom dispatch API object from a receiver transferred by a
+ * reference. The method annotated by {@link CustomDispatchFactory} must be a non-private static
+ * method taking a receiver parameter and returning the custom dispatch API object.
  *
  * @see CustomDispatchAccessor
  * @see CustomReceiverAccessor

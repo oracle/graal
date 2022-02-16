@@ -54,7 +54,9 @@ public final class NativeIsolateThread {
     }
 
     /**
-     * Returns an isolate thread address.
+     * Returns the isolate thread address.
+     *
+     * @throws IllegalStateException when the {@link NativeIsolateThread} is no more entered.
      */
     public long getIsolateThreadId() {
         assert verifyThread();

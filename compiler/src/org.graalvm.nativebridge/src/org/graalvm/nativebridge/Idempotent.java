@@ -30,7 +30,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Enables the return value caching.
+ * Enables the return value caching. The annotated method is called only once, the returned value is
+ * cached and the successive calls return the cached value. The annotated method must have a
+ * non-void return type.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.TYPE})

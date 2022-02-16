@@ -28,10 +28,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongPredicate;
 
 /**
- * Encapsulates a handle to an object in a native isolate where the object's lifetime is bound to
- * the lifetime of the {@link NativeObject} instance. At some point after a {@link NativeObject} is
+ * Encapsulates a handle to an object in a native image heap where the object's lifetime is bound to
+ * the lifetime of the {@link NativeObject} instance. At some point, after a {@link NativeObject} is
  * garbage collected, a call is made to release the handle, allowing the corresponding object in the
- * native isolate to be collected.
+ * native image heap to be collected.
  */
 public class NativeObject {
 
@@ -43,7 +43,7 @@ public class NativeObject {
      * Creates a new {@link NativeObject}.
      *
      * @param isolate an isolate in which an object referenced by the handle exists.
-     * @param objectHandle handle to an object
+     * @param objectHandle a handle to an object in a native image heap
      */
     public NativeObject(NativeIsolate isolate, long objectHandle) {
         this.isolate = isolate;
@@ -60,16 +60,16 @@ public class NativeObject {
     }
 
     /**
-     * Returns a handle to object in the isolate.
+     * Returns a handle to an object in the native image heap.
      */
     public final long getHandle() {
         return objectHandle;
     }
 
     /**
-     * Explicitly releases object in the isolate referenced by this handle. The use of this method
-     * should be exceptional, the lifetime of the object in the isolate is bound to the lifetime of
-     * the {@link NativeObject} instance.
+     * Explicitly releases object in the native image heap referenced by this handle. The use of
+     * this method should be exceptional. By default, the lifetime of the object in the native image
+     * heap is bound to the lifetime of the {@link NativeObject} instance.
      */
     public final void release() {
         if (!cleanupAction.released.get()) {

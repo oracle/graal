@@ -30,12 +30,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as a dispatch resolver. The dispatch resolver is used in the classes with explicit
- * receiver to translate the receiver to the actual dispatch class handling the operation. The
- * method annotated by {@link CustomDispatchAccessor} must be non-private static method with single
+ * Marks a method as a custom dispatch accessor. In the class with a custom dispatch, the method is
+ * used to translate the API object to the dispatch class handling the operation. The method
+ * annotated by {@link CustomDispatchAccessor} must be a non-private static method with a single
  * parameter returning the bridged type.
  *
  * @see CustomReceiverAccessor
+ * @see CustomDispatchFactory
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)

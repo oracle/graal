@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 
 /**
  * Instruments the native bridge processor to marshall annotated method return type or method
- * parameter as a pointer value stored in Java {@code long} type. The annotated parameter must have
+ * parameter as a pointer value stored as Java {@code long} type. The annotated parameter must have
  * {@link Object} type.
  */
 @Retention(RetentionPolicy.SOURCE)
