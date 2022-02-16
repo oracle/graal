@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-// Checkstyle: stop
-
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import java.util.Locale;
@@ -37,7 +35,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -49,10 +46,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
-// Checkstyle: resume
-
-// Checkstyle: allow synchronization
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implementation of {@link Thread} that does not correspond to an {@linkplain IsolateThread OS
@@ -62,7 +56,6 @@ import sun.misc.Unsafe;
  * This class is based on Project Loom's {@code java.lang.VirtualThread}.
  */
 final class SubstrateVirtualThread extends Thread {
-    private static final Unsafe U = GraalUnsafeAccess.getUnsafe();
     private static final ScheduledExecutorService UNPARKER = createDelayedTaskScheduler();
 
     private static final long STATE;
@@ -70,9 +63,9 @@ final class SubstrateVirtualThread extends Thread {
     private static final long TERMINATION;
     static {
         try {
-            STATE = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("state"));
-            PARK_PERMIT = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("parkPermit"));
-            TERMINATION = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("termination"));
+            STATE = Unsafe.getUnsafe().objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("state"));
+            PARK_PERMIT = Unsafe.getUnsafe().objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("parkPermit"));
+            TERMINATION = Unsafe.getUnsafe().objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("termination"));
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -260,9 +253,9 @@ final class SubstrateVirtualThread extends Thread {
         try {
             if (!parkPermit()) {
                 if (!timed) {
-                    U.park(false, 0);
+                    Unsafe.getUnsafe().park(false, 0);
                 } else if (nanos > 0) {
-                    U.park(false, nanos);
+                    Unsafe.getUnsafe().park(false, nanos);
                 }
             }
         } finally {
@@ -395,7 +388,7 @@ final class SubstrateVirtualThread extends Thread {
                 try {
                     Thread carrier = carrierThread;
                     if (carrier != null && state() == PINNED) {
-                        U.unpark(carrier);
+                        Unsafe.getUnsafe().unpark(carrier);
                     }
                 } finally {
                     releaseInterruptLockAndSwitchBack(token);
@@ -630,7 +623,7 @@ final class SubstrateVirtualThread extends Thread {
         CountDownLatch termination = this.termination;
         if (termination == null) {
             termination = new CountDownLatch(1);
-            if (!U.compareAndSwapObject(this, TERMINATION, null, termination)) {
+            if (!Unsafe.getUnsafe().compareAndSetObject(this, TERMINATION, null, termination)) {
                 termination = this.termination;
             }
         }
@@ -646,7 +639,7 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private boolean compareAndSetState(int expectedValue, int newValue) {
-        return U.compareAndSwapInt(this, STATE, expectedValue, newValue);
+        return Unsafe.getUnsafe().compareAndSetInt(this, STATE, expectedValue, newValue);
     }
 
     private boolean parkPermit() {
@@ -663,7 +656,7 @@ final class SubstrateVirtualThread extends Thread {
     private boolean getAndSetParkPermit(boolean newValue) {
         int v = newValue ? 1 : 0;
         if (parkPermit != v) {
-            return U.getAndSetInt(this, PARK_PERMIT, v) != 0;
+            return Unsafe.getUnsafe().getAndSetInt(this, PARK_PERMIT, v) != 0;
         } else {
             return newValue;
         }

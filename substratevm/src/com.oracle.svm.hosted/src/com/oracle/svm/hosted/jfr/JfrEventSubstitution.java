@@ -29,16 +29,16 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.jfr.JfrJavaEvents;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
@@ -48,7 +48,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import sun.misc.Unsafe;
 
 /**
  * This class triggers the class redefinition (see {@link JVM#retransformClasses}) for all
@@ -186,10 +185,9 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             methodAccessFlagsOffsetF.setAccessible(true);
             Object hotSpotVMConfig = configM.invoke(null);
             int methodAccessFlagsOffset = methodAccessFlagsOffsetF.getInt(hotSpotVMConfig);
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            int modifiers = unsafe.getInt(metaspaceMethod + methodAccessFlagsOffset);
+            int modifiers = Unsafe.getUnsafe().getInt(metaspaceMethod + methodAccessFlagsOffset);
             int newModifiers = modifiers & ~Modifier.PRIVATE | Modifier.PUBLIC;
-            unsafe.putInt(metaspaceMethod + methodAccessFlagsOffset, newModifiers);
+            Unsafe.getUnsafe().putInt(metaspaceMethod + methodAccessFlagsOffset, newModifiers);
         } catch (Exception ex) {
             throw VMError.shouldNotReachHere(ex);
         }

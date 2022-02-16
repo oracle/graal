@@ -40,7 +40,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -79,7 +78,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implements operations on platform threads, which are typical {@link Thread Java threads} which
@@ -92,8 +91,6 @@ public abstract class PlatformThreads {
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
     }
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -816,7 +813,7 @@ public abstract class PlatformThreads {
          * *before* the interrupted check because if not, the interrupt code will not assign one and
          * the wakeup will be lost.
          */
-        UNSAFE.fullFence();
+        Unsafe.getUnsafe().fullFence();
 
         if (JavaThreads.isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()

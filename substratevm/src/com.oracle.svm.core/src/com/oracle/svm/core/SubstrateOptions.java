@@ -45,7 +45,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -60,6 +59,8 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {
 
@@ -694,19 +695,18 @@ public class SubstrateOptions {
     public static int getPageSize() {
         int value = PageSize.getValue();
         if (value == 0) {
-            return hostPageSize;
+            try {
+                /*
+                 * On JDK 17 and later, this is just a final field access that can never fail. But
+                 * on JDK 11, it is a native method call with some corner cases that can throw an
+                 * exception.
+                 */
+                return Unsafe.getUnsafe().pageSize();
+            } catch (IllegalArgumentException e) {
+                return 4096;
+            }
         }
         return value;
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    private static int getHostPageSize() {
-        try {
-            return GraalUnsafeAccess.getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
     }
 
     @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +

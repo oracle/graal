@@ -50,7 +50,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -104,7 +103,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and
@@ -255,14 +254,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         boolean firstIsolate = false;
 
         final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
-        final Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-        int state = unsafe.getInt(initStateAddr);
+        int state = Unsafe.getUnsafe().getInt(initStateAddr);
         if (state != FirstIsolateInitStates.SUCCESSFUL) {
-            firstIsolate = unsafe.compareAndSwapInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
+            firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
             if (!firstIsolate) {
                 while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
                     PauseNode.pause();
-                    state = unsafe.getIntVolatile(null, initStateAddr);
+                    state = Unsafe.getUnsafe().getIntVolatile(null, initStateAddr);
                 }
                 if (state == FirstIsolateInitStates.FAILED) {
                     return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
@@ -304,7 +302,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now
             state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
-            unsafe.putIntVolatile(null, initStateAddr, state);
+            Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
         }
 
         if (!success) {
