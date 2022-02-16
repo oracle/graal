@@ -97,8 +97,8 @@ public final class EngineData {
 
     private static final AtomicLong engineCounter = new AtomicLong();
 
-    int splitLimit;
-    int splitCount;
+    public int splitLimit;
+    public int splitCount;
     public final long id;
     private Function<String, TruffleLogger> loggerFactory;
     @CompilationFinal OptionValues engineOptions;

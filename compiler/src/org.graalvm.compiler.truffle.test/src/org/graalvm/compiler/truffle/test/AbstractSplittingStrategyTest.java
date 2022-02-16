@@ -26,6 +26,8 @@ package org.graalvm.compiler.truffle.test;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.impl.DefaultCallTarget;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -50,6 +52,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
     protected SplitCountingListener listener;
 
     protected static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        int splitLimit = callTarget.engine.splitLimit;
         // two callers for a target are needed
         runtime.createDirectCallNode(callTarget);
         final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
@@ -66,9 +69,11 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
         newCallNode.call(firstArgs);
         Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+        Assert.assertEquals(splitLimit, callTarget.engine.splitLimit);
     }
 
     protected static void testDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        int splitLimit = callTarget.engine.splitLimit;
         // two callers for a target are needed
         runtime.createDirectCallNode(callTarget);
         final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
@@ -84,6 +89,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         // Test new dirrectCallNode will split
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
         newCallNode.call(firstArgs);
+        Assert.assertEquals(splitLimit, callTarget.engine.splitLimit);
         Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
     }
 
@@ -133,8 +139,11 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
     }
 
     protected static void createDummyTargetsToBoostGrowingSplitLimit() {
+        int budget = 0;
         for (int i = 0; i < 10; i++) {
-            new DummyRootNode().getCallTarget();
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) new DummyRootNode().getCallTarget();
+            Assert.assertTrue(budget < callTarget.engine.splitLimit);
+            budget = callTarget.engine.splitLimit;
         }
     }
 
