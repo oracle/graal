@@ -375,4 +375,112 @@ class ReadOnlyFrame implements Frame {
     public void setAuxiliarySlot(int slot, Object value) {
         throw newReadonlyAssertionError();
     }
+
+    @Override
+    @TruffleBoundary
+    public Object getObjectStatic(int slot) {
+        return delegate.getObjectStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setObjectStatic(int slot, Object value) {
+        delegate.setObjectStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public byte getByteStatic(int slot) {
+        return delegate.getByteStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setByteStatic(int slot, byte value) {
+        delegate.setByteStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean getBooleanStatic(int slot) {
+        return delegate.getBooleanStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setBooleanStatic(int slot, boolean value) {
+        delegate.setBooleanStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int getIntStatic(int slot) {
+        return delegate.getIntStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setIntStatic(int slot, int value) {
+        delegate.setIntStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public long getLongStatic(int slot) {
+        return delegate.getLongStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setLongStatic(int slot, long value) {
+        delegate.setLongStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public float getFloatStatic(int slot) {
+        return delegate.getFloatStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setFloatStatic(int slot, float value) {
+        delegate.setFloatStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public double getDoubleStatic(int slot) {
+        return delegate.getDoubleStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setDoubleStatic(int slot, double value) {
+        delegate.setDoubleStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyPrimitiveStatic(int srcSlot, int destSlot) {
+        delegate.copyPrimitiveStatic(srcSlot, destSlot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyObjectStatic(int srcSlot, int destSlot) {
+        delegate.copyObjectStatic(srcSlot, destSlot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clearPrimitiveStatic(int slot) {
+        delegate.clearPrimitiveStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clearObjectStatic(int slot) {
+        delegate.clearObjectStatic(slot);
+    }
 }

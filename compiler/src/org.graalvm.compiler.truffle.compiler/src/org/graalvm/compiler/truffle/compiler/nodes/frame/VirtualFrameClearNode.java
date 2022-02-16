@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,8 +45,17 @@ import jdk.vm.ci.meta.JavaKind;
 public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
     public static final NodeClass<VirtualFrameClearNode> TYPE = NodeClass.create(VirtualFrameClearNode.class);
 
-    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type) {
+    private final boolean useStatic;
+    private final boolean usePrimitive;
+
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type, boolean useStatic, boolean usePrimitive) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag, type);
+        this.useStatic = useStatic;
+        this.usePrimitive = usePrimitive;
+    }
+
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type) {
+        this(frame, frameSlotIndex, illegalTag, type, false, false);
     }
 
     @Override
@@ -59,11 +68,22 @@ public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements V
             VirtualObjectNode localsVirtual = (VirtualObjectNode) localsAlias;
             VirtualObjectNode primitiveVirtual = (VirtualObjectNode) primitiveAlias;
             if (frameSlotIndex < tagVirtual.entryCount()) {
-                // Simply set kind to illegal. A later phase will clear the slots.
-                JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
-                if (tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1) &&
-                                tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1) &&
-                                tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1)) {
+                boolean success;
+                if (useStatic) {
+                    // Clear the slot without updating the slot kind.
+                    if (usePrimitive) {
+                        success = tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                    } else {
+                        success = tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
+                    }
+                } else {
+                    // Simply set kind to illegal. A later phase will clear the slots.
+                    JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
+                    success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1) &&
+                                    tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1) &&
+                                    tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                }
+                if (success) {
                     tool.delete();
                     return;
                 }

@@ -669,4 +669,346 @@ public interface Frame {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static read access to a local variable of type {@link Object}. Since this method does not
+     * perform any type checks, language implementations have to guarantee that the variable in the
+     * given slot is of type {@link Object}.
+     *
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default Object getObjectStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     *
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static write access to a local variable of type {@link Object}. Since this method does not
+     * update the internal type information for this slot, language implementations have to track
+     * this information.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setObjectStatic(int slot, Object value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     *
+     * Do not mix static and dynamic methods in the same language implementation.
+     *
+     * Static read access to a local variable of type byte. Since this method does not perform any
+     * type checks, language implementations have to guarantee that the variable in the given slot
+     * can be interpreted as type byte.
+     * 
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default byte getByteStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     *
+     * Static write access to a local variable of type byte. Since this method does not update the
+     * internal type information for this slot, language implementations have to track this
+     * information.
+     *
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setByteStatic(int slot, byte value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static read access to a local variable of type boolean. Since this method does not perform
+     * any type checks, language implementations have to guarantee that the variable in the given
+     * slot can be interpreted as type boolean.
+     * 
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default boolean getBooleanStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static write access to a local variable of type boolean. Since this method does not update
+     * the internal type information for this slot, language implementations have to track this
+     * information.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setBooleanStatic(int slot, boolean value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static read access to a local variable of type int. Since this method does not perform any
+     * type checks, language implementations have to guarantee that the variable in the given slot
+     * can be interpreted as type int.
+     * 
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default int getIntStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static write access to a local variable of type int. Since this method does not update the
+     * internal type information for this slot, language implementations have to track this
+     * information.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setIntStatic(int slot, int value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static read access to a local variable of type long. Since this method does not perform any
+     * type checks, language implementations have to guarantee that the variable in the given slot
+     * can be interpreted as type long.
+     * 
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default long getLongStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static write access to a local variable of type long. Since this method does not update the
+     * internal type information for this slot, language implementations have to track this
+     * information.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setLongStatic(int slot, long value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static read access to a local variable of type float. Since this method does not perform any
+     * type checks, language implementations have to guarantee that the variable in the given slot
+     * can be interpreted as type float.
+     * 
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default float getFloatStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static write access to a local variable of type float. Since this method does not update the
+     * internal type information for this slot, language implementations have to track this
+     * information.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setFloatStatic(int slot, float value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static read access to a local variable of type double. Since this method does not perform any
+     * type checks, language implementations have to guarantee that the variable in the given slot
+     * can be interpreted as type double.
+     *
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     * @since 22.2
+     */
+    default double getDoubleStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Static write access to a local variable of type double. Since this method does not update the
+     * internal type information for this slot, language implementations have to track this
+     * information.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     * @since 22.2
+     */
+    default void setDoubleStatic(int slot, double value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     *
+     * Do not mix static and dynamic methods in the same language implementation.
+     *
+     * Copies a primitive value from one slot to another. Since this method does not perform any
+     * type checks, language implementations have to guarantee that the variable at the source slot
+     * is a primitive value.
+     * 
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since 22.2
+     */
+    default void copyPrimitiveStatic(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Copies an object from one slot to another. Since this method does not perform any type
+     * checks, language implementations have to guarantee that the variable at the source slot is an
+     * {@link Object}.
+     * 
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since 22.2
+     */
+    default void copyObjectStatic(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Clears the primitive value at the given slot in the frame. Writing over a previously cleared
+     * slot is still allowed. Subsequent reads to the slot, unless re-written to, will not give any
+     * guarantees about the returned value.
+     * <p>
+     * This method is intended to be used for implementations of liveness analysis. As such, the
+     * compiler will find and report any inconsistency with respect to liveness analysis when using
+     * this method, such as clearing a slot in a branch, but not on another one, and their execution
+     * merge.
+     * </p>
+     * Liveness analysis implementations are expected to clear unused slots on method entry.
+     * 
+     * Since this method does not perform any type checks, language implementations have to
+     * guarantee that the variable at the given slot is a primitive value.
+     * 
+     * @param slot the slot of the local variable
+     * @since 22.2
+     */
+    default void clearPrimitiveStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
+     * 
+     * Do not mix static and dynamic methods in the same language implementation.
+     * 
+     * Clears the {@link Object} at the given slot in the frame. Writing over a previously cleared
+     * slot is still allowed. Subsequent reads to the slot, unless re-written to, will not give any
+     * guarantees about the returned value.
+     * <p>
+     * This method is intended to be used for implementations of liveness analysis. As such, the
+     * compiler will find and report any inconsistency with respect to liveness analysis when using
+     * this method, such as clearing a slot in a branch, but not on another one, and their execution
+     * merge.
+     * </p>
+     * Liveness analysis implementations are expected to clear unused slots on method entry.
+     *
+     * Since this method does not perform any type checks, language implementations have to
+     * guarantee that the variable at the given slot is an {@link Object}.
+     *
+     * @param slot the slot of the local variable
+     * @since 22.2
+     */
+    default void clearObjectStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
 }

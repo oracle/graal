@@ -80,6 +80,7 @@ public final class FrameDescriptor implements Cloneable {
     @CompilationFinal private volatile Assumption version;
     private EconomicMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
     @CompilationFinal private volatile int size;
+    private final boolean useStatic;
 
     @CompilationFinal(dimensions = 1) private final byte[] indexedSlotTags;
     @CompilationFinal(dimensions = 1) private final Object[] indexedSlotNames;
@@ -135,17 +136,19 @@ public final class FrameDescriptor implements Cloneable {
         this.indexedSlotNames = null;
         this.indexedSlotInfos = null;
         this.descriptorInfo = null;
+        this.useStatic = false;
 
         this.defaultValue = defaultValue;
         newVersion(this);
     }
 
-    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info) {
+    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info, boolean useStatic) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.indexedSlotTags = indexedSlotTags;
         this.indexedSlotNames = indexedSlotNames;
         this.indexedSlotInfos = indexedSlotInfos;
         this.descriptorInfo = info;
+        this.useStatic = useStatic;
 
         this.defaultValue = defaultValue;
         newVersion(this);
@@ -532,7 +535,7 @@ public final class FrameDescriptor implements Cloneable {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
             FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, indexedSlotTags == null ? null : indexedSlotTags.clone(),
-                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo);
+                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo, useStatic);
             for (int i = 0; i < slots.size(); i++) {
                 FrameSlot slot = slots.get(i);
                 clonedFrameDescriptor.addFrameSlot(slot.getIdentifier(), slot.getInfo(), FrameSlotKind.Illegal);
@@ -850,6 +853,15 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
+     * @return true, if the language implementation exclusively uses the static frame methods.
+     *
+     * @since 22.2
+     */
+    public boolean useStatic() {
+        return useStatic;
+    }
+
+    /**
      * Builds a new frame descriptor with index-based frame slots.
      *
      * @since 22.0
@@ -884,6 +896,7 @@ public final class FrameDescriptor implements Cloneable {
         private Object[] infos;
         private int size;
         private Object descriptorInfo;
+        private boolean useStatic;
 
         private Builder(int capacity) {
             this.tags = new byte[capacity];
@@ -981,13 +994,26 @@ public final class FrameDescriptor implements Cloneable {
         }
 
         /**
+         * Defines that a language implementation using this frame descriptor exclusively accesses
+         * the frame via the static frame methods. Using this option with the dynamic frame methods
+         * can lead to unexpected results.
+         * 
+         * @since 22.2
+         */
+        public Builder useStatic() {
+            this.useStatic = true;
+            return this;
+        }
+
+        /**
          * Uses the data provided to this builder to create a new {@link FrameDescriptor}.
          *
          * @return the newly created {@link FrameDescriptor}
          * @since 22.0
          */
         public FrameDescriptor build() {
-            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo);
+            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo,
+                            useStatic);
         }
     }
 }

@@ -747,6 +747,7 @@ meth public abstract void setLong(com.oracle.truffle.api.frame.FrameSlot,long)
 meth public abstract void setObject(com.oracle.truffle.api.frame.FrameSlot,java.lang.Object)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.0")
 meth public boolean getBoolean(int)
+meth public boolean getBooleanStatic(int)
 meth public boolean isBoolean(int)
 meth public boolean isByte(int)
 meth public boolean isDouble(int)
@@ -755,26 +756,43 @@ meth public boolean isInt(int)
 meth public boolean isLong(int)
 meth public boolean isObject(int)
 meth public byte getByte(int)
+meth public byte getByteStatic(int)
 meth public byte getTag(int)
 meth public double getDouble(int)
+meth public double getDoubleStatic(int)
 meth public float getFloat(int)
+meth public float getFloatStatic(int)
 meth public int getInt(int)
+meth public int getIntStatic(int)
 meth public java.lang.Object getAuxiliarySlot(int)
 meth public java.lang.Object getObject(int)
+meth public java.lang.Object getObjectStatic(int)
 meth public java.lang.Object getValue(int)
 meth public long getLong(int)
+meth public long getLongStatic(int)
 meth public void clear(com.oracle.truffle.api.frame.FrameSlot)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.0")
 meth public void clear(int)
+meth public void clearObjectStatic(int)
+meth public void clearPrimitiveStatic(int)
 meth public void copy(int,int)
+meth public void copyObjectStatic(int,int)
+meth public void copyPrimitiveStatic(int,int)
 meth public void setAuxiliarySlot(int,java.lang.Object)
 meth public void setBoolean(int,boolean)
+meth public void setBooleanStatic(int,boolean)
 meth public void setByte(int,byte)
+meth public void setByteStatic(int,byte)
 meth public void setDouble(int,double)
+meth public void setDoubleStatic(int,double)
 meth public void setFloat(int,float)
+meth public void setFloatStatic(int,float)
 meth public void setInt(int,int)
+meth public void setIntStatic(int,int)
 meth public void setLong(int,long)
+meth public void setLongStatic(int,long)
 meth public void setObject(int,java.lang.Object)
+meth public void setObjectStatic(int,java.lang.Object)
 meth public void swap(int,int)
 
 CLSS public final com.oracle.truffle.api.frame.FrameDescriptor
@@ -782,6 +800,7 @@ cons public init()
 cons public init(java.lang.Object)
 innr public final static Builder
 intf java.lang.Cloneable
+meth public boolean useStatic()
 meth public com.oracle.truffle.api.Assumption getNotInFrameAssumption(java.lang.Object)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.0")
 meth public com.oracle.truffle.api.Assumption getVersion()
@@ -828,17 +847,18 @@ meth public void setFrameSlotKind(com.oracle.truffle.api.frame.FrameSlot,com.ora
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.0")
 meth public void setSlotKind(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds EMPTY_BYTE_ARRAY,NEVER_PART_OF_COMPILATION_MESSAGE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,descriptorInfo,disabledAuxiliarySlots,identifierToNotInFrameAssumptionMap,identifierToSlotMap,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,size,slots,version
+hfds EMPTY_BYTE_ARRAY,NEVER_PART_OF_COMPILATION_MESSAGE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,descriptorInfo,disabledAuxiliarySlots,identifierToNotInFrameAssumptionMap,identifierToSlotMap,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,size,slots,useStatic,version
 
 CLSS public final static com.oracle.truffle.api.frame.FrameDescriptor$Builder
  outer com.oracle.truffle.api.frame.FrameDescriptor
 meth public com.oracle.truffle.api.frame.FrameDescriptor build()
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValue(java.lang.Object)
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder useStatic()
 meth public int addSlot(com.oracle.truffle.api.frame.FrameSlotKind,java.lang.Object,java.lang.Object)
 meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags
+hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags,useStatic
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
@@ -886,6 +906,7 @@ fld public final static com.oracle.truffle.api.frame.FrameSlotKind Illegal
 fld public final static com.oracle.truffle.api.frame.FrameSlotKind Int
 fld public final static com.oracle.truffle.api.frame.FrameSlotKind Long
 fld public final static com.oracle.truffle.api.frame.FrameSlotKind Object
+fld public final static com.oracle.truffle.api.frame.FrameSlotKind Static
 meth public static com.oracle.truffle.api.frame.FrameSlotKind fromTag(byte)
 meth public static com.oracle.truffle.api.frame.FrameSlotKind valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.frame.FrameSlotKind[] values()

@@ -131,10 +131,8 @@ public class WasmInstantiator {
 
     private static FrameDescriptor createFrameDescriptor(byte[] localTypes, int maxStackSize) {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(localTypes.length);
-        for (byte type : localTypes) {
-            builder.addSlot(WasmType.asFrameSlotKind(type), null, null);
-        }
-        builder.addSlots(maxStackSize, FrameSlotKind.Illegal);
+        builder.useStatic();
+        builder.addSlots(localTypes.length + maxStackSize, FrameSlotKind.Static);
         return builder.build();
     }
 

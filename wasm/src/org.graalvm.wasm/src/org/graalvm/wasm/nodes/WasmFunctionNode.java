@@ -1424,16 +1424,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     f64_promote_f32(frame, stackPointer);
                     break;
                 case I32_REINTERPRET_F32:
-                    i32_reinterpret_f32(frame, stackPointer);
+                    // i32_reinterpret_f32(frame, stackPointer);
                     break;
                 case I64_REINTERPRET_F64:
-                    i64_reinterpret_f64(frame, stackPointer);
+                    // i64_reinterpret_f64(frame, stackPointer);
                     break;
                 case F32_REINTERPRET_I32:
-                    f32_reinterpret_i32(frame, stackPointer);
+                    // f32_reinterpret_i32(frame, stackPointer);
                     break;
                 case F64_REINTERPRET_I64:
-                    f64_reinterpret_i64(frame, stackPointer);
+                    // f64_reinterpret_i64(frame, stackPointer);
                     break;
                 case MISC:
                     byte miscByteOpcode = BinaryStreamParser.rawPeek1(data, offset);
@@ -1697,16 +1697,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         // This is taken care of by validation during wat to wasm compilation.
         switch (type) {
             case WasmType.I32_TYPE:
-                context.globals().storeInt(instance.globalAddress(index), popInt(frame, stackPointer));
-                break;
             case WasmType.F32_TYPE:
-                context.globals().storeInt(instance.globalAddress(index), Float.floatToRawIntBits(popFloat(frame, stackPointer)));
-                break;
             case WasmType.I64_TYPE:
-                context.globals().storeLong(instance.globalAddress(index), popLong(frame, stackPointer));
-                break;
             case WasmType.F64_TYPE:
-                context.globals().storeLong(instance.globalAddress(index), Double.doubleToRawLongBits(popDouble(frame, stackPointer)));
+                context.globals().storeLong(instance.globalAddress(index), popLong(frame, stackPointer));
                 break;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
@@ -1718,16 +1712,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         CompilerAsserts.partialEvaluationConstant(type);
         switch (type) {
             case WasmType.I32_TYPE:
-                pushInt(frame, stackPointer, context.globals().loadAsInt(instance.globalAddress(index)));
-                break;
             case WasmType.F32_TYPE:
-                pushFloat(frame, stackPointer, Float.intBitsToFloat(context.globals().loadAsInt(instance.globalAddress(index))));
-                break;
             case WasmType.I64_TYPE:
-                pushLong(frame, stackPointer, context.globals().loadAsLong(instance.globalAddress(index)));
-                break;
             case WasmType.F64_TYPE:
-                pushDouble(frame, stackPointer, Double.longBitsToDouble(context.globals().loadAsLong(instance.globalAddress(index))));
+                pushLong(frame, stackPointer, context.globals().loadAsLong(instance.globalAddress(index)));
                 break;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
@@ -1735,18 +1723,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private static void local_tee(VirtualFrame frame, int stackPointer, int index) {
-        frame.copy(stackPointer, index);
+        WasmFrame.copy(frame, stackPointer, index);
     }
 
     private static void local_set(VirtualFrame frame, int stackPointer, int index) {
-        frame.copy(stackPointer, index);
+        WasmFrame.copy(frame, stackPointer, index);
         if (CompilerDirectives.inCompiledCode()) {
-            frame.clear(stackPointer);
+            drop(frame, stackPointer);
         }
     }
 
     private static void local_get(VirtualFrame frame, int stackPointer, int index) {
-        frame.copy(index, stackPointer);
+        WasmFrame.copy(frame, index, stackPointer);
     }
 
     @SuppressWarnings("unused")
@@ -1852,34 +1840,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 i64_trunc_f64_u(frame, stackPointer);
                 break;
             case F32_CONVERT_I32_S:
-                f32_convert_i32_s(frame, stackPointer);
+                // f32_convert_i32_s(frame, stackPointer);
                 break;
             case F32_CONVERT_I32_U:
                 f32_convert_i32_u(frame, stackPointer);
                 break;
             case F32_CONVERT_I64_S:
-                f32_convert_i64_s(frame, stackPointer);
+                // f32_convert_i64_s(frame, stackPointer);
                 break;
             case F32_CONVERT_I64_U:
                 f32_convert_i64_u(frame, stackPointer);
                 break;
             case F32_DEMOTE_F64:
-                f32_demote_f64(frame, stackPointer);
+                // f32_demote_f64(frame, stackPointer);
                 break;
             case F64_CONVERT_I32_S:
-                f64_convert_i32_s(frame, stackPointer);
+                // f64_convert_i32_s(frame, stackPointer);
                 break;
             case F64_CONVERT_I32_U:
                 f64_convert_i32_u(frame, stackPointer);
                 break;
             case F64_CONVERT_I64_S:
-                f64_convert_i64_s(frame, stackPointer);
+                // f64_convert_i64_s(frame, stackPointer);
                 break;
             case F64_CONVERT_I64_U:
                 f64_convert_i64_u(frame, stackPointer);
                 break;
             case F64_PROMOTE_F32:
-                f64_promote_f32(frame, stackPointer);
+                // f64_promote_f32(frame, stackPointer);
                 break;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
@@ -3055,25 +3043,29 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushDouble(frame, stackPointer - 1, x);
     }
 
-    private static void i32_reinterpret_f32(VirtualFrame frame, int stackPointer) {
-        float x = popFloat(frame, stackPointer - 1);
-        pushInt(frame, stackPointer - 1, Float.floatToRawIntBits(x));
-    }
+    /*
+     * private static void i32_reinterpret_f32(VirtualFrame frame, int stackPointer) { float x =
+     * popFloat(frame, stackPointer - 1); pushInt(frame, stackPointer - 1,
+     * Float.floatToRawIntBits(x)); }
+     */
 
-    private static void i64_reinterpret_f64(VirtualFrame frame, int stackPointer) {
-        double x = popDouble(frame, stackPointer - 1);
-        pushLong(frame, stackPointer - 1, Double.doubleToRawLongBits(x));
-    }
+    /*
+     * private static void i64_reinterpret_f64(VirtualFrame frame, int stackPointer) { double x =
+     * popDouble(frame, stackPointer - 1); pushLong(frame, stackPointer - 1,
+     * Double.doubleToRawLongBits(x)); }
+     */
 
-    private static void f32_reinterpret_i32(VirtualFrame frame, int stackPointer) {
-        int x = popInt(frame, stackPointer - 1);
-        pushFloat(frame, stackPointer - 1, Float.intBitsToFloat(x));
-    }
+    /*
+     * private static void f32_reinterpret_i32(VirtualFrame frame, int stackPointer) { int x =
+     * popInt(frame, stackPointer - 1); pushFloat(frame, stackPointer - 1, Float.intBitsToFloat(x));
+     * }
+     */
 
-    private static void f64_reinterpret_i64(VirtualFrame frame, int stackPointer) {
-        long x = popLong(frame, stackPointer - 1);
-        pushDouble(frame, stackPointer - 1, Double.longBitsToDouble(x));
-    }
+    /*
+     * private static void f64_reinterpret_i64(VirtualFrame frame, int stackPointer) { long x =
+     * popLong(frame, stackPointer - 1); pushDouble(frame, stackPointer - 1,
+     * Double.longBitsToDouble(x)); }
+     */
 
     private static void i32_extend8_s(VirtualFrame frame, int stackPointer) {
         int x = popInt(frame, stackPointer - 1);
@@ -3152,7 +3144,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     /**
      * Populates the stack with the return values of the current block (the one we are escaping
      * from). Reset the stack pointer to the target block stack pointer.
-     * 
+     *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.
      * @param targetStackPointer The stack pointer of the target block.

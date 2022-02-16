@@ -88,6 +88,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public static final byte BOOLEAN_TAG = 5;
     public static final byte BYTE_TAG = 6;
     public static final byte ILLEGAL_TAG = 7;
+    public static final byte STATIC_TAG = 8;
 
     private static final Object[] EMPTY_OBJECT_ARRAY = {};
     private static final long[] EMPTY_LONG_ARRAY = {};
@@ -104,6 +105,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         assert FLOAT_TAG == FrameSlotKind.Float.tag;
         assert BOOLEAN_TAG == FrameSlotKind.Boolean.tag;
         assert BYTE_TAG == FrameSlotKind.Byte.tag;
+        assert STATIC_TAG == FrameSlotKind.Static.tag;
     }
 
     private static Unsafe initUnsafe() {
@@ -127,6 +129,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         final int indexedSize = descriptor.getNumberOfSlots();
         final int auxiliarySize = descriptor.getNumberOfAuxiliarySlots();
         Object defaultValue = descriptor.getDefaultValue();
+        final boolean useStatic = descriptor.useStatic();
         final Object[] localsArray;
         final long[] primitiveLocalsArray;
         final byte[] tagsArray;
@@ -157,6 +160,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             }
             indexedPrimitiveLocalsArray = new long[indexedSize];
             indexedTagsArray = new byte[indexedSize];
+            if (useStatic) {
+                Arrays.fill(indexedTagsArray, STATIC_TAG);
+            }
         }
         if (auxiliarySize == 0) {
             auxiliarySlotsArray = EMPTY_OBJECT_ARRAY;
@@ -782,5 +788,99 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public Object getAuxiliarySlot(int slot) {
         return slot < auxiliarySlots.length ? auxiliarySlots[slot] : null;
+    }
+
+    @Override
+    public Object getObjectStatic(int slot) {
+        return unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+    }
+
+    @Override
+    public void setObjectStatic(int slot, Object value) {
+        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, OBJECT_LOCATION);
+    }
+
+    @Override
+    public byte getByteStatic(int slot) {
+        return (byte) (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public void setByteStatic(int slot, byte value) {
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & INT_MASK, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public boolean getBooleanStatic(int slot) {
+        return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION) != 0;
+    }
+
+    @Override
+    public void setBooleanStatic(int slot, boolean value) {
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value ? 1 : 0, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public int getIntStatic(int slot) {
+        return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public void setIntStatic(int slot, int value) {
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & INT_MASK, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public long getLongStatic(int slot) {
+        return unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public void setLongStatic(int slot, long value) {
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public float getFloatStatic(int slot) {
+        return Float.intBitsToFloat((int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION));
+    }
+
+    @Override
+    public void setFloatStatic(int slot, float value) {
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Float.floatToRawIntBits(value) & INT_MASK, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public double getDoubleStatic(int slot) {
+        return Double.longBitsToDouble(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION));
+    }
+
+    @Override
+    public void setDoubleStatic(int slot, double value) {
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Double.doubleToRawLongBits(value), PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public void copyPrimitiveStatic(int srcSlot, int destSlot) {
+        long primitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(srcSlot), true, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
+    }
+
+    @Override
+    public void copyObjectStatic(int srcSlot, int destSlot) {
+        Object value = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + srcSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + destSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, OBJECT_LOCATION);
+    }
+
+    @Override
+    public void clearPrimitiveStatic(int slot) {
+        if (CompilerDirectives.inCompiledCode()) {
+            unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), 0L, PRIMITIVE_LOCATION);
+        }
+    }
+
+    @Override
+    public void clearObjectStatic(int slot) {
+        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, null, OBJECT_LOCATION);
     }
 }

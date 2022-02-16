@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,9 +42,18 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
     private final int targetSlotIndex;
 
-    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
+    private final boolean useStatic;
+    private final boolean usePrimitive;
+
+    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, boolean useStatic, boolean usePrimitive) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type);
         this.targetSlotIndex = targetSlotIndex;
+        this.useStatic = useStatic;
+        this.usePrimitive = usePrimitive;
+    }
+
+    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
+        this(frame, frameSlotIndex, targetSlotIndex, type, false, false);
     }
 
     @Override
@@ -60,9 +69,18 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectVirtual.entryCount() && frameSlotIndex < primitiveVirtual.entryCount()) {
                 if (targetSlotIndex < tagVirtual.entryCount() && targetSlotIndex < objectVirtual.entryCount() && targetSlotIndex < primitiveVirtual.entryCount()) {
-                    tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
-                    tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
-                    tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
+                    if (useStatic) {
+                        // Copy the value without updating the slot kind.
+                        if (usePrimitive) {
+                            tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
+                        } else {
+                            tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
+                        }
+                    } else {
+                        tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
+                        tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
+                        tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
+                    }
                     tool.delete();
                     return;
                 }
