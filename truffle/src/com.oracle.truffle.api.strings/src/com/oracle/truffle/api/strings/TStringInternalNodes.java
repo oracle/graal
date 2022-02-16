@@ -1480,53 +1480,28 @@ final class TStringInternalNodes {
 
         abstract String execute(AbstractTruffleString a, Object arrayA);
 
-        @Specialization(guards = "isStride0(a)")
-        String latin1s0(AbstractTruffleString a, Object arrayA) {
+        @Specialization
+        String createJavaString(AbstractTruffleString a, Object arrayA,
+                        @Cached ConditionProfile reuseProfile,
+                        @Cached GetCodeRangeNode getCodeRangeNode,
+                        @Cached RawArrayCopyBytesNode arrayCopyBytesNode) {
             assert isUTF16Compatible(a);
-            char[] chars = new char[a.length()];
-            for (int i = 0; i < a.length(); i++) {
-                chars[i] = (char) TStringOps.readS0(a, arrayA, i);
-                TStringConstants.truffleSafePointPoll(this, i + 1);
+            final int codeRange = getCodeRangeNode.execute(a);
+            final int stride = Stride.fromCodeRangeUTF16(codeRange);
+            final byte[] bytes;
+            if (reuseProfile.profile(a instanceof TruffleString && arrayA instanceof byte[] && a.length() << a.stride() == ((byte[]) arrayA).length && a.stride() == stride)) {
+                assert a.offset() == 0;
+                bytes = (byte[]) arrayA;
+            } else {
+                bytes = new byte[a.length() << stride];
+                arrayCopyBytesNode.execute(arrayA, a.offset(), a.stride(), bytes, 0, stride, a.length());
             }
-            return createString(chars);
-        }
-
-        @Specialization(guards = "isStride1(a)")
-        String utf16S1(AbstractTruffleString a, Object arrayA) {
-            assert isUTF16Compatible(a);
-            // using the string constructor with byte array + charset would alter broken UTF-16
-            // strings (containing broken surrogate pairs or 0xFFFE), work around by converting the
-            // byte array to a char array
-            char[] chars = new char[a.length()];
-            for (int i = 0; i < a.length(); i++) {
-                chars[i] = TStringOps.readS1(a, arrayA, i);
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            return createString(chars);
-        }
-
-        @Specialization(guards = "isStride2(a)")
-        String utf16S2(AbstractTruffleString a, Object arrayA) {
-            assert isUTF16Compatible(a);
-            // using the string constructor with byte array + charset would alter broken UTF-16
-            // strings (containing broken surrogate pairs or 0xFFFE), work around by converting the
-            // byte array to a char array
-            char[] chars = new char[a.length()];
-            for (int i = 0; i < a.length(); i++) {
-                chars[i] = (char) TStringOps.readS2(a, arrayA, i);
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            return createString(chars);
+            return TStringUnsafe.createJavaString(bytes, stride);
         }
 
         private static boolean isUTF16Compatible(AbstractTruffleString a) {
             return a.isCompatibleTo(TruffleString.Encoding.UTF_16) ||
                             a instanceof MutableTruffleString && ((MutableTruffleString) a).codeRange() < TruffleString.Encoding.UTF_16.maxCompatibleCodeRange;
-        }
-
-        @TruffleBoundary
-        private static String createString(char[] chars) {
-            return new String(chars);
         }
     }
 

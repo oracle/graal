@@ -5091,11 +5091,15 @@ public final class TruffleString extends AbstractTruffleString {
             }
             cur = a.next;
             if (cur != null) {
-                while (cur != a && cur.encoding() != Encoding.UTF_16.id) {
+                while (cur != a && !cur.isCompatibleTo(Encoding.UTF_16)) {
                     cur = cur.next;
                 }
             } else {
                 cur = a;
+            }
+            if (cur.isJavaString()) {
+                // java string was inserted in parallel
+                return (String) cur.data();
             }
             TruffleString s = toJavaStringNode.execute(cur, toIndexableNode.execute(cur, cur.data()));
             a.cacheInsert(s);
