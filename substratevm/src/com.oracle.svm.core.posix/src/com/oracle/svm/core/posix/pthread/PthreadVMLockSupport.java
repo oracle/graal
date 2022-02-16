@@ -92,17 +92,21 @@ final class PthreadVMLockFeature implements Feature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int nextIndex = 0;
+        int alignment = layout.getAlignment();
+
+        int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+        /* padding if first element is not object aligned */
+        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), 8);
+        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), alignment);
         for (PthreadVMMutex mutex : mutexes) {
             mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += mutexSize;
         }
 
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), 8);
+        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), alignment);
         for (PthreadVMCondition condition : conditions) {
             condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += conditionSize;
