@@ -5,9 +5,9 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "TIKA_1.0.7": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.7.zip"],
-      "sha1": "d2e438807a475005b3a60be2b02e261a5327dba1",
+    "TIKA_1.0.8": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.8.zip"],
+      "sha1": "d58de29912461193e158e4bbe9dc369f335f05eb",
       "packedResource": True,
     },
 
@@ -17,9 +17,9 @@ suite = {
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.5": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.5.zip"],
-      "sha1": "da961b7b81c161fda51ac1939a983cbfc95a5b28",
+    "SHOPCART_0.3.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.6.zip"],
+      "sha1": "b06f90af9e10e7484f024995127cde0e44d4f32e",
       "packedResource": True,
     },
 
@@ -29,15 +29,15 @@ suite = {
       "packedResource": True,
     },
 
-    "QUARKUS_HW_1.0.2": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.2.zip"],
-      "sha1": "25428e2a45c1ebed7bf8befc04760646dea98204",
+    "QUARKUS_HW_1.0.3": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.3.zip"],
+      "sha1": "49492f4b5041b16858e2117a8002d1210559d353",
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.2": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.2.zip"],
-      "sha1": "daba8f34099dfd884b59fe73855e74d139efe18d",
+    "MICRONAUT_HW_1.0.3": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.3.zip"],
+      "sha1": "171ad0f847dea91505f3db77fe5c0291ffbc3785",
       "packedResource": True,
     },
 
@@ -86,7 +86,7 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.13.0.jar"],
       "sha1" : "65eaca6ec6ba4c7293b82644bbdefd5cb2178825",
     },
-    
+
     "RENAISSANCE_0.14.0" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.0.jar"],
       "sha1" : "d83a508c593a2389880936cbf9aa034bc86e7ef2",

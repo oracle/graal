@@ -12,7 +12,7 @@ meth public static int indexOfWithOrMask(byte[],int,int,byte[],byte[])
 meth public static int indexOfWithOrMask(char[],int,int,char[],char[])
 meth public static int indexOfWithOrMask(java.lang.String,int,int,java.lang.String,java.lang.String)
 supr java.lang.Object
-hfds JAVA_SPEC,UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
+hfds UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
 
 CLSS public abstract interface com.oracle.truffle.api.Assumption
 meth public abstract boolean isValid()
@@ -959,6 +959,7 @@ meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.memory.MemoryFence
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="22.1.0")
 meth public static void acquire()
 meth public static void full()
 meth public static void loadLoad()

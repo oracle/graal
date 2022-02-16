@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.debug;
+package org.graalvm.compiler.truffle.runtime;
 
-import com.oracle.truffle.api.impl.Accessor;
+import java.util.Set;
 
-final class CompilerDebugAccessor extends Accessor {
+public final class ModuleUtil {
 
-    private static final CompilerDebugAccessor ACCESSOR = new CompilerDebugAccessor();
-
-    private CompilerDebugAccessor() {
+    public static void exportTo(Class<?> client) {
+        Module truffleModule = ModuleUtil.class.getModule();
+        exportFromTo(truffleModule, client.getModule());
     }
 
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
+    private static void exportFromTo(Module truffleModule, Module clientModule) {
+        if (truffleModule != clientModule) {
+            Set<String> packages = truffleModule.getPackages();
+            for (String pkg : packages) {
+                boolean exported = truffleModule.isExported(pkg, clientModule);
+                if (!exported) {
+                    truffleModule.addExports(pkg, clientModule);
+                }
+            }
+        }
     }
 
 }

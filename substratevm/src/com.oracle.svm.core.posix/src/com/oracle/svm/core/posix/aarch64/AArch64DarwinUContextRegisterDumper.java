@@ -91,8 +91,8 @@ public class AArch64DarwinUContextRegisterDumper implements UContextRegisterDump
         dumpReg(log, "R28 ", regs.read(28), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
         dumpReg(log, "R29 ", sigcontext.fp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
         dumpReg(log, "R30 ", sigcontext.lr(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
-        dumpReg(log, "SP ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
-        dumpReg(log, "PC ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "SP  ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "PC  ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
     }
 
     @Override

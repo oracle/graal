@@ -780,6 +780,9 @@ class NativeImageVM(GraalVm):
         if stages.change_stage('run'):
             self.run_stage_run(config, stages, out)
 
+        if stages.failed:
+            mx.abort('Exiting the benchmark due to the failure.')
+
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
             os.path.join(config.log_dir, executable_name + '-' + stage.current_stage + '-stdout.log'))
