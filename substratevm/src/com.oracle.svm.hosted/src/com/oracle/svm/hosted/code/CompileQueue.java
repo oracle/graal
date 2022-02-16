@@ -1401,7 +1401,10 @@ public class CompileQueue {
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
         ListIterator<BasePhase<? super LowTierContext>> it = lowTier.findPhase(FixReadsPhase.class);
         if (it != null) {
-            ((FixReadsPhase) it.previous()).setReplaceInputsWithConstants(false);
+            FixReadsPhase fixReads = (FixReadsPhase) it.previous();
+            it.remove();
+            boolean replaceInputsWithConstants = false;
+            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase(), fixReads.getCanonicalizerPhase()));
         }
     }
 
