@@ -24,7 +24,7 @@ Debugger attachment is enabled by adding a separate configuration, **Native Imag
 1. Linux OS with GDB 10.1
 2. [VS Code](https://code.visualstudio.com/)
 3. [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack) installed in VS Code
-4. [GraalVM Enterprise](https://www.graalvm.org/downloads) [set as a default Java runtime environment in VS Code](index.md#graalvm-installation-wizard)
+4. [GraalVM Enterprise](https://www.graalvm.org/downloads), [set as a default Java runtime environment in VS Code](README.md#graalvm-installation-wizard)
 5. [Native Image plugin](../../../reference-manual/native-image/README.md) added to GraalVM's installation
 
 ### Create and Build the Demo
