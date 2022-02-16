@@ -23,24 +23,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.heap.GCName;
-import com.oracle.svm.core.SubstrateOptions;
+import java.util.Arrays;
 
-final class GenScavengeGCName extends GCName {
-    public static final GCName GenScavenge;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    static {
-        if (SubstrateOptions.UseEpsilonGC.getValue()) {
-            GenScavenge = new GenScavengeGCName("epsilon");
-        } else {
-            assert SubstrateOptions.UseSerialGC.getValue();
-            GenScavenge = new GenScavengeGCName("serial");
-        }
+public class JfrGCNames {
+    private JfrGCName[] names;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrGCNames() {
+        names = new JfrGCName[0];
     }
 
-    private GenScavengeGCName(String name) {
-        super(name);
+    @Fold
+    public static JfrGCNames singleton() {
+        return ImageSingletons.lookup(JfrGCNames.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized JfrGCName addGCName(String name) {
+        int id = names.length;
+        JfrGCName result = new JfrGCName(id, name);
+
+        // We only expect a very small number of GC names (usually just 1).
+        JfrGCName[] newArr = Arrays.copyOf(names, id + 1);
+        newArr[id] = result;
+        names = newArr;
+        return result;
+    }
+
+    public JfrGCName[] getNames() {
+        return names;
     }
 }

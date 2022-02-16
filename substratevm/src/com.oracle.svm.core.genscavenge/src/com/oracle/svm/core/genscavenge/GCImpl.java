@@ -218,7 +218,7 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            long startTicks = JfrGCEventSupport.getTicks();
+            long startTicks = JfrGCEvents.getTicks();
             try {
                 outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
                 if (outOfMemory) {
@@ -232,7 +232,7 @@ public final class GCImpl implements GC {
                     }
                 }
             } finally {
-                JfrGCEventSupport.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
+                JfrGCEvents.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
             }
         } finally {
             nav.close();
@@ -249,22 +249,22 @@ public final class GCImpl implements GC {
         boolean outOfMemory = false;
 
         if (incremental) {
-            long startTicks = JfrGCEventSupport.startGCPhasePause();
+            long startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 outOfMemory = doCollectOnce(cause, requestingNanoTime, false, false);
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
             }
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
                 CommittedMemoryProvider.get().afterGarbageCollection();
             }
-            long startTicks = JfrGCEventSupport.startGCPhasePause();
+            long startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 outOfMemory = doCollectOnce(cause, requestingNanoTime, true, incremental);
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Full GC", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Full GC", startTicks);
             }
         }
 
@@ -526,7 +526,7 @@ public final class GCImpl implements GC {
         try {
             Timer rootScanTimer = timers.rootScan.open();
             try {
-                startTicks = JfrGCEventSupport.startGCPhasePause();
+                startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     if (incremental) {
                         cheneyScanFromDirtyRoots();
@@ -534,7 +534,7 @@ public final class GCImpl implements GC {
                         cheneyScanFromRoots();
                     }
                 } finally {
-                    JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan Roots" : "Scan Roots", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan Roots" : "Scan Roots", startTicks);
                 }
             } finally {
                 rootScanTimer.close();
@@ -548,11 +548,11 @@ public final class GCImpl implements GC {
                      * operation. To avoid side-effects between the code cache cleaning and the GC
                      * core, it is crucial that all the GC core work finished before.
                      */
-                    startTicks = JfrGCEventSupport.startGCPhasePause();
+                    startTicks = JfrGCEvents.startGCPhasePause();
                     try {
                         cleanRuntimeCodeCache();
                     } finally {
-                        JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Clean Runtime CodeCache", startTicks);
+                        JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Clean Runtime CodeCache", startTicks);
                     }
                 } finally {
                     cleanCodeCacheTimer.close();
@@ -561,12 +561,12 @@ public final class GCImpl implements GC {
 
             Timer referenceObjectsTimer = timers.referenceObjects.open();
             try {
-                startTicks = JfrGCEventSupport.startGCPhasePause();
+                startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
                     HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
                 } finally {
-                    JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
                 }
             } finally {
                 referenceObjectsTimer.close();
@@ -575,7 +575,7 @@ public final class GCImpl implements GC {
             Timer releaseSpacesTimer = timers.releaseSpaces.open();
             try {
                 assert chunkReleaser.isEmpty();
-                startTicks = JfrGCEventSupport.startGCPhasePause();
+                startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     releaseSpaces();
 
@@ -588,17 +588,17 @@ public final class GCImpl implements GC {
                     boolean keepAllAlignedChunks = incremental;
                     chunkReleaser.release(keepAllAlignedChunks);
                 } finally {
-                    JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
                 }
             } finally {
                 releaseSpacesTimer.close();
             }
 
-            startTicks = JfrGCEventSupport.startGCPhasePause();
+            startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 swapSpaces();
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Swap Spaces", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Swap Spaces", startTicks);
             }
         } finally {
             counters.close();

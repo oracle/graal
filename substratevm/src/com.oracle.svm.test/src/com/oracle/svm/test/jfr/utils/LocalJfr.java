@@ -34,7 +34,7 @@ import java.nio.file.Path;
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 
-public class LocalJFR implements JFR {
+public class LocalJfr implements Jfr {
 
     @Override
     public Recording createRecording(String recordingName) throws Exception {

@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.GCName;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
@@ -214,12 +213,12 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     private static int writeGCNames(JfrChunkWriter writer) {
-        GCName[] gcNames = GCName.getGCNames();
+        JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
         assert gcNames != null && gcNames.length > 0;
 
         writer.writeCompressedLong(JfrType.GCName.getId());
         writer.writeCompressedLong(gcNames.length);
-        for (GCName name : gcNames) {
+        for (JfrGCName name : gcNames) {
             writer.writeCompressedLong(name.getId());
             writer.writeString(name.getName());
         }

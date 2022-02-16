@@ -53,7 +53,7 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import jdk.jfr.Recording;
 import org.junit.Assert;
 
-public class JFRFileParser {
+public class JfrFileParser {
 
     private static final HashMap<Long, ConstantPoolParser> supportedConstantPools;
 

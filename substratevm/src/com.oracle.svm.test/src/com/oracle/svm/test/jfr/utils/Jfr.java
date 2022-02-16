@@ -33,7 +33,7 @@ import jdk.jfr.Recording;
 /**
  * Utility class to handle recording.
  */
-public interface JFR {
+public interface Jfr {
 
     Recording createRecording(String recordingName) throws Exception;
 

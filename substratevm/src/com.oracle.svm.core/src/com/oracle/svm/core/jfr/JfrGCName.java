@@ -23,41 +23,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.jfr;
 
-import java.util.ArrayList;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
 
-/**
- * This class holds supported garbage collector names.
- */
-public class GCName {
-    @Platforms(Platform.HOSTED_ONLY.class) private static final ArrayList<GCName> HostedGCNameList = new ArrayList<>();
-
-    @UnknownObjectField(types = {GCName[].class}) protected static GCName[] GCNames;
-
+public class JfrGCName {
     private final int id;
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected GCName(String name) {
+    protected JfrGCName(int id, String name) {
+        this.id = id;
         this.name = name;
-        this.id = addGCNameMapping();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private int addGCNameMapping() {
-        synchronized (HostedGCNameList) {
-            int newId = HostedGCNameList.size();
-            HostedGCNameList.add(newId, this);
-            return newId;
-        }
     }
 
     public String getName() {
@@ -67,23 +47,5 @@ public class GCName {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getId() {
         return id;
-    }
-
-    public static GCName[] getGCNames() {
-        return GCNames;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void cacheReverseMapping() {
-        GCNames = HostedGCNameList.toArray(new GCName[HostedGCNameList.size()]);
-    }
-}
-
-@AutomaticFeature
-class GCNameFeature implements Feature {
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        GCName.cacheReverseMapping();
-        access.registerAsImmutable(GCName.GCNames);
     }
 }

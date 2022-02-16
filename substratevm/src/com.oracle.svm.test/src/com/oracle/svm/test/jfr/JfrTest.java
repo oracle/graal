@@ -35,9 +35,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.oracle.svm.test.jfr.utils.JFR;
-import com.oracle.svm.test.jfr.utils.JFRFileParser;
-import com.oracle.svm.test.jfr.utils.LocalJFR;
+import com.oracle.svm.test.jfr.utils.Jfr;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.jfr.utils.LocalJfr;
 
 import java.util.HashSet;
 import jdk.jfr.Recording;
@@ -45,8 +45,8 @@ import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
 
 /** Base class for JFR unit tests. */
-public abstract class JFRTest {
-    protected JFR jfr;
+public abstract class JfrTest {
+    protected Jfr jfr;
     protected Recording recording;
 
     @BeforeClass
@@ -57,11 +57,11 @@ public abstract class JFRTest {
     @Before
     public void startRecording() {
         try {
-            jfr = new LocalJFR();
+            jfr = new LocalJfr();
             recording = jfr.createRecording(getClass().getName());
 
-            String[] events = getTestEvents();
-            setupEvents(events);
+            String[] events = getTestedEvents();
+            enableEvents(events);
 
             jfr.startRecording(recording);
         } catch (Exception e) {
@@ -88,7 +88,7 @@ public abstract class JFRTest {
         }
     }
 
-    protected void setupEvents(String[] events) {
+    protected void enableEvents(String[] events) {
         if (events != null) {
             for (String event : events) {
                 recording.enable(event);
@@ -96,12 +96,10 @@ public abstract class JFRTest {
         }
     }
 
-    // List events that expects to be recorded
-    public abstract String[] getTestEvents();
+    public abstract String[] getTestedEvents();
 
     protected void checkEvents() {
         HashSet<String> seenEvents = new HashSet<>();
-
         try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
             while (recordingFile.hasMoreEvents()) {
                 RecordedEvent event = recordingFile.readEvent();
@@ -112,7 +110,7 @@ public abstract class JFRTest {
             Assert.fail("Failed to read events: " + e.getMessage());
         }
 
-        for (String name : getTestEvents()) {
+        for (String name : getTestedEvents()) {
             if (!seenEvents.contains(name)) {
                 Assert.fail("Event: " + name + " not found in recording");
             }
@@ -121,7 +119,7 @@ public abstract class JFRTest {
 
     protected void checkRecording() throws AssertionError {
         try {
-            JFRFileParser.parse(recording);
+            JfrFileParser.parse(recording);
         } catch (Exception e) {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }

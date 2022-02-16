@@ -29,11 +29,11 @@ package com.oracle.svm.test.jfr;
 import com.oracle.svm.test.jfr.events.StringEvent;
 import org.junit.Test;
 
-public class TestStringEvent extends JFRTest {
+public class TestStringEvent extends JfrTest {
     @Override
-    public String[] getTestEvents() {
+    public String[] getTestedEvents() {
         return new String[]{
-                        StringEvent.class.toString()
+                        StringEvent.class.getName()
         };
     }
 
