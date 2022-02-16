@@ -1,5 +1,11 @@
+---
+layout: docs-experimental
+toc_group: insight
+link_title: Insight Manual
+permalink: /tools/graalvm-insight/manual/
+---
+
 # Insight Manual
-<!-- Hacker's Handle to the Ultimate Insights Gathering Framework -->
 
 GraalVM Insight is multipurpose, flexible tool to write reliable applications.
 The dynamic nature of the tool allows to selectively apply tracing pointcuts on already deployed applications with no loss of performance.

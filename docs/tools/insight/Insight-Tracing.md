@@ -1,3 +1,10 @@
+---
+layout: docs-experimental
+toc_group: insight
+link_title: Tracing with Insight
+permalink: /tools/graalvm-insight/tracing/
+---
+
 # Tracing with Insight
 
 It is possible to use the GraalVM Insight to implement smooth, declarative, ad hoc tracing via standard [`OpenTracing API`](https://github.com/opentracing/opentracing-javascript).
