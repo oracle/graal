@@ -77,6 +77,14 @@ public final class LinkAtBuildTimeFeature implements Feature {
                         .filter(mRef -> mRef.location().isPresent())
                         .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> loader.findModule(mRef.descriptor().name()).get()));
 
+        /*
+         * SerializationBuilder.newConstructorForSerialization() creates synthetic
+         * jdk/internal/reflect/GeneratedSerializationConstructorAccessor* classes that do not have
+         * the synthetic modifier set (clazz.isSynthetic() returns false for such classes). Any
+         * class with package-name jdk.internal.reflect should be treated as link-at-build-time.
+         */
+        requireCompletePackageOrClass.add("jdk.internal.reflect");
+
         Options.LinkAtBuildTime.getValue().getValuesWithOrigins().forEach(this::extractOptionValue);
     }
 
