@@ -48,7 +48,7 @@ public abstract class OptionOrigin {
         return null;
     }
 
-    public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+    public List<String> getRedirectionValues(@SuppressWarnings("unused") Path valuesFile) throws IOException {
         throw new UnsupportedOperationException();
     }
 
