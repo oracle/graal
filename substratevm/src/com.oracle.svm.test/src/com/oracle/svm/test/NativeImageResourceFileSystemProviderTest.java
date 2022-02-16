@@ -85,6 +85,7 @@ public class NativeImageResourceFileSystemProviderTest {
             // Remove leading / for the resource patterns
             registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_1.substring(1));
             registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_2.substring(1));
+            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_DIR.substring(1));
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {
@@ -631,4 +632,22 @@ public class NativeImageResourceFileSystemProviderTest {
             Assert.fail("Contents of original URL and one created from originals ExternalForm must be the same: " + e);
         }
     }
+
+    @Test
+    public void noCanonicalizationInGetResource() {
+        Class<?> klass = NativeImageResourceFileSystemProviderTest.class;
+        URL url = klass.getResource(RESOURCE_DIR + "/");
+        Assert.assertNotNull(url);
+        Assert.assertTrue(url.toString().endsWith("/"));
+        url = klass.getResource(RESOURCE_DIR);
+        Assert.assertNotNull(url);
+        Assert.assertFalse(url.toString().endsWith("/"));
+        url = klass.getResource(RESOURCE_DIR + "/./");
+        Assert.assertNull(url);
+        url = klass.getResource(RESOURCE_FILE_1);
+        Assert.assertNotNull(url);
+        url = klass.getResource(RESOURCE_FILE_1 + "/");
+        Assert.assertNull(url);
+    }
+
 }
