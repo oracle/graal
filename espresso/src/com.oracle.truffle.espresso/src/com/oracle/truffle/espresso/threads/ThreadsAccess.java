@@ -76,7 +76,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
 
     @Override
     protected StaticObject getCurrentGuestThread() {
-        return context.getLanguage().getThreadLocalState().getCurrentThread();
+        return context.getCurrentThread();
     }
 
     private StaticObject getThreadFromHost(Thread t) {

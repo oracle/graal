@@ -58,7 +58,7 @@ final class GuestRunnable implements Runnable {
     @Override
     public void run() {
         try {
-            context.registerCurrentThread();
+            context.registerCurrentThread(thread);
             context.getVM().attachThread(Thread.currentThread());
             try {
                 // Execute the payload
