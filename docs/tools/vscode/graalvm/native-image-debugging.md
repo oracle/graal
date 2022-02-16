@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: native-image
+toc_group: graalvm-extension
 link_title: Debug Native Images in VS Code
 permalink: /tools/vscode/graalvm-extension/debugging-native-image/
 ---
