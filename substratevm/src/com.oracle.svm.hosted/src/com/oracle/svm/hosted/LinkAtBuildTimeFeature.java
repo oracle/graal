@@ -145,6 +145,10 @@ public final class LinkAtBuildTimeFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess a) {
+        if (a != null) {
+            return;
+        }
+
         // Test results of requiresCompleteDefinition(Class<?> clazz) on whole AnalysisUniverse
         FeatureImpl.AfterAnalysisAccessImpl access = (FeatureImpl.AfterAnalysisAccessImpl) a;
         for (AnalysisType analysisType : access.getUniverse().getTypes()) {
