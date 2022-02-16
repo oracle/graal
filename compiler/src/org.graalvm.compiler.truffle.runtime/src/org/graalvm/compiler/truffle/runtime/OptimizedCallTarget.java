@@ -291,12 +291,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final EngineData engine;
 
     /**
-     * Only set for a source CallTarget, when {@code rootNode.isCloningAllowed() && !rootNode.isCloneUninitializedSupported()}.
+     * Only set for a source CallTarget, when
+     * {@code rootNode.isCloningAllowed() && !rootNode.isCloneUninitializedSupported()}.
      */
     private volatile RootNode uninitializedRootNode;
 
     /**
-     * Source CallTarget if this target is a split CallTarget, null if this target is a source CallTarget.
+     * Source CallTarget if this target is a split CallTarget, null if this target is a source
+     * CallTarget.
      */
     private final OptimizedCallTarget sourceCallTarget;
 
