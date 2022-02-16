@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
@@ -94,7 +95,7 @@ public final class LivenessAnalysis {
     public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
 
         EspressoContext context = methodVersion.getMethod().getContext();
-        if (!context.livenessAnalysis || methodVersion.getMaxLocals() < context.LivenessAnalysisMinimumLocals) {
+        if (!enableLivenessAnalysis(context, methodVersion)) {
             return NO_ANALYSIS;
         }
 
@@ -150,6 +151,25 @@ public final class LivenessAnalysis {
                 builder.build();
                 return new LivenessAnalysis(builder.actions, builder.edge, builder.onStart);
             }
+        }
+    }
+
+    private static boolean enableLivenessAnalysis(EspressoContext context, Method.MethodVersion methodVersion) {
+        switch (context.LivenessAnalysisMode) {
+            case NONE:
+                return false;
+            case ALL:
+                return true;
+            case AUTO: {
+                /*
+                 * Heuristic: Only enable liveness analysis when the number of locals exceeds a
+                 * threshold. In practice, liveness analysis is only enabled for < 5% of methods.
+                 */
+                return methodVersion.getMaxLocals() >= context.LivenessAnalysisMinimumLocals;
+            }
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
     }
 
