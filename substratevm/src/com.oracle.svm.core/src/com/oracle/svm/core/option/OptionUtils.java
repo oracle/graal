@@ -24,12 +24,7 @@
  */
 package com.oracle.svm.core.option;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -84,7 +79,7 @@ public class OptionUtils {
                         .flatMap(entry -> {
                             try {
                                 return resolveOptionValueRedirectionFlatMap(entry, origin);
-                            } catch (IOException e) {
+                            } catch (Exception e) {
                                 throw UserError.abort(e, "Option '%s' from %s contains invalid option value redirection.",
                                                 SubstrateOptionsParser.commandArgument(option, optionValue), origin);
                             }
@@ -92,26 +87,13 @@ public class OptionUtils {
                         .collect(Collectors.toList());
     }
 
-    private static Stream<? extends String> resolveOptionValueRedirectionFlatMap(String entry, OptionOrigin origin) throws IOException {
+    private static Stream<? extends String> resolveOptionValueRedirectionFlatMap(String entry, OptionOrigin origin) throws Exception {
         if (entry.trim().startsWith("@")) {
-            URI jarFileURI = URI.create("jar:" + origin.container());
-            FileSystem probeJarFS;
-            try {
-                probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
-            } catch (UnsupportedOperationException e) {
-                throw new FileNotFoundException();
+            Path valuesFile = Path.of(entry.substring(1));
+            if (valuesFile.isAbsolute()) {
+                throw new IllegalArgumentException("Option option value redirection file '" + valuesFile + "' is absolute path");
             }
-            if (probeJarFS != null) {
-                try (FileSystem jarFS = probeJarFS) {
-                    var normalizedRedirPath = origin.location().getParent().resolve(entry.substring(1)).normalize();
-                    var pathInJarFS = jarFS.getPath(normalizedRedirPath.toString());
-                    if (Files.exists(pathInJarFS)) {
-                        return Files.readAllLines(pathInJarFS).stream();
-                    }
-                    throw new FileNotFoundException(pathInJarFS.toString());
-                }
-            }
-            throw new FileNotFoundException(jarFileURI.toString());
+            return origin.getRedirectionValues(valuesFile).stream();
         } else {
             return Stream.of(entry);
         }

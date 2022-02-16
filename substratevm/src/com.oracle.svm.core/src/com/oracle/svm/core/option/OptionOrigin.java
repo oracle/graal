@@ -25,10 +25,18 @@
 
 package com.oracle.svm.core.option;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+
+import com.oracle.svm.core.util.VMError;
 
 public abstract class OptionOrigin {
 
@@ -38,6 +46,10 @@ public abstract class OptionOrigin {
 
     public Path location() {
         return null;
+    }
+
+    public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+        throw new UnsupportedOperationException();
     }
 
     public static OptionOrigin of(String origin) {
@@ -55,9 +67,9 @@ public abstract class OptionOrigin {
             case "jar":
                 return new JarOptionOrigin(originURI);
             case "file":
-                String rawPath = originURI.getPath();
-                if (Files.isDirectory(Path.of(rawPath))) {
-                    return new DirectoryOptionOrigin(rawPath);
+                Path originPath = Path.of(originURI);
+                if (Files.isReadable(originPath)) {
+                    return new DirectoryOptionOrigin(originPath);
                 }
                 return new UnsupportedOptionOrigin(origin);
             default:
@@ -125,16 +137,55 @@ public abstract class OptionOrigin {
             int sep = specific.lastIndexOf('!');
             var origin = specific.substring(0, sep);
             container = URIOptionOrigin.originURI(origin);
-            location = Path.of(specific.substring(sep + 1));
+            location = Path.of(specific.substring(sep + 2));
+        }
+
+        @Override
+        public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+            URI jarFileURI = URI.create("jar:" + container());
+            FileSystem probeJarFS;
+            try {
+                probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
+            } catch (UnsupportedOperationException e) {
+                throw new FileNotFoundException();
+            }
+            if (probeJarFS != null) {
+                try (FileSystem jarFS = probeJarFS) {
+                    var normalizedRedirPath = location().getParent().resolve(valuesFile).normalize();
+                    var pathInJarFS = jarFS.getPath(normalizedRedirPath.toString());
+                    if (Files.exists(pathInJarFS)) {
+                        return Files.readAllLines(pathInJarFS);
+                    }
+                    throw new FileNotFoundException(pathInJarFS.toString());
+                }
+            }
+            throw new FileNotFoundException(jarFileURI.toString());
         }
     }
 
     public static final class DirectoryOptionOrigin extends URIOptionOrigin {
-        protected DirectoryOptionOrigin(String rawPath) {
-            String metaInf = "/META-INF/";
-            int index = rawPath.indexOf(metaInf);
-            container = Path.of(rawPath.substring(0, index)).toUri();
-            location = Path.of(rawPath.substring(index));
+        protected DirectoryOptionOrigin(Path originPath) {
+            int pathPos = 0;
+            int metaInfPos = -1;
+            for (Path entry : originPath) {
+                if ("META-INF".equals(entry.toString())) {
+                    metaInfPos = pathPos;
+                    break;
+                }
+                ++pathPos;
+            }
+            VMError.guarantee(metaInfPos > 0, "invalid directory origin");
+            container = originPath.getRoot().resolve(originPath.subpath(0, metaInfPos)).toUri();
+            location = originPath.subpath(metaInfPos, originPath.getNameCount());
+        }
+
+        @Override
+        public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+            var normalizedRedirPath = Path.of(container()).resolve(location()).getParent().resolve(valuesFile).normalize();
+            if (Files.exists(normalizedRedirPath)) {
+                return Files.readAllLines(normalizedRedirPath);
+            }
+            throw new FileNotFoundException(normalizedRedirPath.toString());
         }
     }
 }
