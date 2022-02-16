@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -105,7 +105,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showMessage(helpExtraText);
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
                 nativeImage.showNewline();
-                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
+                nativeImage.optionRegistry.showOptions(OptionUtils.MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
                 System.exit(0);
                 return true;

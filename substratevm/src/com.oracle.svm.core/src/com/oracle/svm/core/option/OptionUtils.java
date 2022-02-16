@@ -98,4 +98,60 @@ public class OptionUtils {
             return Stream.of(entry);
         }
     }
+
+    public enum MacroOptionKind {
+
+        Language("languages", true),
+        Tool("tools", true),
+        Macro("macros", false);
+
+        public static final String macroOptionPrefix = "--";
+
+        public final String subdir;
+        public final boolean allowAll;
+
+        MacroOptionKind(String subdir, boolean allowAll) {
+            this.subdir = subdir;
+            this.allowAll = allowAll;
+        }
+
+        public static MacroOptionKind fromSubdir(String subdir) {
+            for (MacroOptionKind kind : MacroOptionKind.values()) {
+                if (kind.subdir.equals(subdir)) {
+                    return kind;
+                }
+            }
+            throw new InvalidMacroException("No MacroOptionKind for subDir: " + subdir);
+        }
+
+        public static MacroOptionKind fromString(String kindName) {
+            for (MacroOptionKind kind : MacroOptionKind.values()) {
+                if (kind.toString().equals(kindName)) {
+                    return kind;
+                }
+            }
+            throw new InvalidMacroException("No MacroOptionKind for kindName: " + kindName);
+        }
+
+        public String getDescriptionPrefix(boolean commandLineStyle) {
+            StringBuilder sb = new StringBuilder();
+            if (commandLineStyle) {
+                sb.append(macroOptionPrefix);
+            }
+            sb.append(this).append(":");
+            return sb.toString();
+        }
+
+        @Override
+        public String toString() {
+            return name().toLowerCase();
+        }
+    }
+
+    @SuppressWarnings("serial")
+    public static final class InvalidMacroException extends RuntimeException {
+        public InvalidMacroException(String arg0) {
+            super(arg0);
+        }
+    }
 }

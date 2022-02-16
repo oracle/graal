@@ -60,6 +60,10 @@ public abstract class OptionOrigin {
 
         URI originURI = originURI(origin);
         if (originURI == null) {
+            String macroName = MacroOptionOrigin.macroName(origin);
+            if (macroName != null) {
+                return new MacroOptionOrigin(macroName);
+            }
             return new UnsupportedOptionOrigin(origin);
         }
 
@@ -85,13 +89,33 @@ public abstract class OptionOrigin {
         }
     }
 
-    public static final class CommandLineOptionOrigin extends OptionOrigin {
+    public static class CommandLineOptionOrigin extends OptionOrigin {
 
         private static CommandLineOptionOrigin singleton = new CommandLineOptionOrigin();
 
         @Override
         public String toString() {
             return "command line";
+        }
+    }
+
+    public static final class MacroOptionOrigin extends CommandLineOptionOrigin {
+
+        private static final String PREFIX = OptionUtils.MacroOptionKind.Macro.getDescriptionPrefix(true);
+
+        private final String name;
+
+        MacroOptionOrigin(String name) {
+            this.name = name;
+        }
+
+        public static String macroName(String rawOrigin) {
+            return rawOrigin.startsWith(PREFIX) ? rawOrigin.substring(PREFIX.length()) : null;
+        }
+
+        @Override
+        public String toString() {
+            return "macro option '" + name + "'";
         }
     }
 
