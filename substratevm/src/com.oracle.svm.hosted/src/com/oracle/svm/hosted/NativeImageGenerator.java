@@ -1203,7 +1203,7 @@ public class NativeImageGenerator {
         }
 
         final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
-        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
+        registerInvocationPlugins(providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
                         reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
