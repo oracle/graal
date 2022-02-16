@@ -6,16 +6,22 @@ permalink: /reference-manual/native-image/Reports/
 ---
 # Points-to Analysis Reports
 
-The points-to analysis produces two kinds of reports: analysis call tree and image object tree.
-This information is produced by an intermediate step in the image building process and represents the static analysis view of the call graph and heap object graph.
-These graphs are further transformed in the image building process before they are AOT compiled into the image and written into the image heap, respectively.
+The points-to analysis produces two kinds of reports: analysis call tree and
+image object tree. This information is produced by an intermediate step in the
+image building process and represents the static analysis view of the call graph
+and heap object graph. These graphs are further transformed in the image
+building process before they are AOT compiled into the image and written into
+the image heap, respectively.
 
 #### Call tree
 The call tree is a a breadth-first tree reduction of the call graph as seen by the points-to analysis.
 The points-to analysis eliminates calls to methods that it determines cannot be reachable at runtime, based on the analysed receiver types.
 It also completely eliminates invocations in unreachable code blocks, e.g., blocks guarded by a type check that always fails.
-The call tree report is enabled using the `-H:+PrintAnalysisCallTree` option.
-It produces a file with the structure:
+The call tree report is enabled using the `-H:+PrintAnalysisCallTree` option and can be formatted either as a `TXT` file (default) or as a set of `CSV` files using the `-H:PrintAnalysisCallTreeType=CSV` option.
+
+##### TXT Format
+
+When using the `TXT` format a file with the following structure is generated:
 
 ```
 VM Entry Points
@@ -48,6 +54,18 @@ Each `id=<method-id>` and `id-ref=<method-id>` are followed by a blank space to 
 
 Each invoke is tagged with the invocation bci: `@bci=<invoke-bci>`.
 For invokes of inline methods the `<invoke-bci>` is a list of bci values, separated with `->`, enumerating the inline locations, backwards to the original invocation location.
+
+##### CSV Format
+When using the `CSV` format a set of files containing raw data for methods and their relationships is generated.
+The aim of these files is to enable this raw data to be easily imported into graph databases.
+Graph databases can provide the following functionality:
+
+* Sophisticated graphical visualization of the call tree graph that provide a different perspective compared to text-based formats.
+* Ability to execute complex queries that can for example show a subset of the tree that causes certain code path to be included in the call tree analysis.
+  This querying functionality is crucial in making big analysis call trees manageable.
+
+The process to import the files into graph databases is specific to each database.
+Please follow the instructions provided by the graph database providers to find out how to import them.
 
 #### Image object tree
 The image object tree is an exhaustive expansion of the objects included in the native image heap.
@@ -144,20 +162,8 @@ Roots suppression/expansion:
 The reports are generated in the `reports` subdirectory, relative to the image building directory.
 When executing the `native-image` executable the image build directory defaults to the working directory and can be modified using the `-H:Path=<dir>` option.
 
-The call tree report name has the structure `call_tree_<image_name>_<date_time>.txt`.
+The call tree report name has the structure `call_tree_<image_name>_<date_time>.txt` when using the `TXT` format or, when using the `CSV` format, the call tree reports' names have the structure `call_tree_*_<image_name>_<date_time>.csv`.
+When producing `CSV` formatted call tree reports, symbolic links following the structure `call_tree_*.csv` pointing to the latest call tree CSV reports are also generated.
 The object tree report name has the structure: `object_tree_<image_name>_<date_time>.txt`.
 The image name is the name of the generated image, which can be set with the `-H:Name=<name>` option.
 The `<date_time>` is in the `yyyyMMdd_HHmmss` format.
-
-#### CSV files
-
-The reports include a number of CSV files containing raw data for methods and their relationships.
-The aim of these files is to make it enable this raw data to be easily imported into graph databases.
-Graph databases can provide the following functionality:
-
-* Sophisticated graphical visualization of the call tree graph that provide a different perspective compared to text-based formats.
-* Ability to execute complex queries that can for example show a subset of the tree that causes certain code path to be included in the call tree analysis.
-This querying functionality is crucial in making big analysis call trees manageable.
-
-The process to import the files into graph databases is specific to each database.
-Please follow the instructions provided by the graph database providers to find out how to import them.

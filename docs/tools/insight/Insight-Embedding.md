@@ -1,3 +1,10 @@
+---
+layout: docs-experimental
+toc_group: insight
+link_title: Embedding Insight into Applications
+permalink: /tools/graalvm-insight/embedding/
+---
+
 # Embedding Insight into Applications
 
 ## Embedding Insight into Java

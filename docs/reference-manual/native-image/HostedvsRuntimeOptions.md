@@ -19,9 +19,10 @@ For developer documentation on how to define and use options, read the documenta
 
 ### Graph Dumping
 Native Image re-used the GraalVM options for graph dumping, logging, counters, and everything else in the GraalVM debug environment.
-These GraalVM options can be used both as hosted options (if you want to dump graphs of the native image builder), and as runtime options (if you want to dump graphs during dynamic compilation at runtime).
+These GraalVM options can be used both as hosted options (if you want to dump graphs of the native image builder), and as runtime options (if you want to dump graphs during dynamic
+compilation at runtime).
 
-The GraalVM compiler options that work as expected include `Dump`, `DumpOnError`, `Log`, `MethodFilter`, and the options to specify file names and ports for the dump handlers.
+The Graal compiler options that work as expected include `Dump`, `DumpOnError`, `Log`, `MethodFilter`, and the options to specify file names and ports for the dump handlers.
 
 For example:
 * To dump the compiler graphs of the native image builder: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.

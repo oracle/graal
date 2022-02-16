@@ -39,11 +39,10 @@ Consider the following example.
           var filter = args.length > 0 ? args[0] : "";
           Map<String, String> env = System.getenv();
           for (String envName : env.keySet()) {
-              if(envName.contains(filter)) {
-                  System.out.format("%s=%s%n",
-                                    envName,
-                                    env.get(envName));
-              }
+              if(envName.contains(filter)) continue;
+              System.out.format("%s=%s%n",
+                                envName,
+                                env.get(envName));
           }
       }
   }

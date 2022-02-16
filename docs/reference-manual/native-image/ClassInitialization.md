@@ -21,6 +21,7 @@ Specifying class initialization policies can be complicated due to the following
 * When a class is initialized, all super classes and super interfaces with default methods must also be initialized.
 Interfaces without default methods, however, are not initialized.
 To describe this, a short-term "relevant supertype" is used furhter, and a relevant subtype for subtypes of classes and interfaces with default methods.
+
 * Relevant supertypes of types initialized at build time must also be initialized at build time.
 * Relevant subtypes of types initialized at run time must also be initialized at run time.
 * No instances classes that are initialized at run time must be present in the image.
@@ -56,9 +57,8 @@ This restriction is there to avoid the explosion of search space for the safety 
 * If it is substituted by Native Image. Running initializers of substituted methods would yield different results in the hosting VM than in the produced image.
 As a result, the safety analysis would consider some methods safe but their execution would lead to illegal states.
 
-A test that shows examples of classes that are proven safe can be found [here](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/TestClassInitializationMustBeSafe.java).
+A test that shows examples of classes that are proven safe can be found [here](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/clinit/TestClassInitializationMustBeSafeEarly.java).
 The list of all classes that are proven safe is displayed in a file when `-H:+PrintClassInitialization` is set on the command line.
-
 
 ## Explicitly Specifying Class Initialization
 
