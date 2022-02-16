@@ -32,6 +32,8 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
 
+import com.oracle.svm.core.option.OptionOrigin;
+
 /**
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
  * on it.
@@ -62,7 +64,7 @@ public enum InitKind {
         return SEPARATOR + name().toLowerCase();
     }
 
-    Consumer<String> stringConsumer(ClassInitializationSupport support, String origin) {
+    Consumer<String> stringConsumer(ClassInitializationSupport support, OptionOrigin origin) {
         if (this == RUN_TIME) {
             return name -> support.initializeAtRunTime(name, reason(origin, name));
         } else if (this == RERUN) {
@@ -81,9 +83,8 @@ public enum InitKind {
         }
     }
 
-    private static String reason(String origin, String name) {
-        String prefix = "from ";
-        return (origin == null ? prefix + "the command line" : prefix + origin) + " with '" + name + "'";
+    private static String reason(OptionOrigin origin, String name) {
+        return "from " + origin + " with '" + name + "'";
     }
 
     static Pair<String, InitKind> strip(String input) {

@@ -61,6 +61,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
@@ -81,7 +82,7 @@ public class ClassInitializationFeature implements GraalFeature {
         ClassInitializationOptions.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
             for (String info : entry.getLeft().split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
-                String origin = entry.getRight();
+                OptionOrigin origin = entry.getRight();
                 if (noMatches) {
                     throw UserError.abort("Element in class initialization configuration must end in %s, %s, or %s. Found: %s (from %s)",
                                     RUN_TIME.suffix(), RERUN.suffix(), BUILD_TIME.suffix(), info, origin);

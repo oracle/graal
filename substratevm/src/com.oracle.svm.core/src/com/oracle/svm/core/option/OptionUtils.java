@@ -24,12 +24,23 @@
  */
 package com.oracle.svm.core.option;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.graalvm.compiler.options.OptionKey;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.UserError;
 
 /**
  * This class contains static helper methods related to options.
@@ -66,5 +77,43 @@ public class OptionUtils {
             }
         }
         return result;
+    }
+
+    public static List<String> resolveOptionValueRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin) {
+        return Arrays.asList(SubstrateUtil.split(optionValue, ",")).stream()
+                        .flatMap(entry -> {
+                            try {
+                                return resolveOptionValueRedirectionFlatMap(entry, origin);
+                            } catch (IOException e) {
+                                throw UserError.abort(e, "Option '%s' from %s contains invalid option value redirection.",
+                                                SubstrateOptionsParser.commandArgument(option, optionValue), origin);
+                            }
+                        })
+                        .collect(Collectors.toList());
+    }
+
+    private static Stream<? extends String> resolveOptionValueRedirectionFlatMap(String entry, OptionOrigin origin) throws IOException {
+        if (entry.trim().startsWith("@")) {
+            URI jarFileURI = URI.create("jar:" + origin.container());
+            FileSystem probeJarFS;
+            try {
+                probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
+            } catch (UnsupportedOperationException e) {
+                throw new FileNotFoundException();
+            }
+            if (probeJarFS != null) {
+                try (FileSystem jarFS = probeJarFS) {
+                    var normalizedRedirPath = origin.location().getParent().resolve(entry.substring(1)).normalize();
+                    var pathInJarFS = jarFS.getPath(normalizedRedirPath.toString());
+                    if (Files.exists(pathInJarFS)) {
+                        return Files.readAllLines(pathInJarFS).stream();
+                    }
+                    throw new FileNotFoundException(pathInJarFS.toString());
+                }
+            }
+            throw new FileNotFoundException(jarFileURI.toString());
+        } else {
+            return Stream.of(entry);
+        }
     }
 }

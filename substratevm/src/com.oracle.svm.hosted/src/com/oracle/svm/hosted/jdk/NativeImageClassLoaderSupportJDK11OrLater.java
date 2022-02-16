@@ -54,6 +54,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -285,7 +286,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
     }
 
     private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionValues parsedHostedOptions, OptionKey<LocatableMultiOptionValue.Strings> specificOption) {
-        Stream<Pair<String, String>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
+        Stream<Pair<String, OptionOrigin>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
         Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
@@ -318,8 +319,8 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         }
     }
 
-    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, Pair<String, String> valueOrigin) {
-        String optionOrigin = valueOrigin.getRight();
+    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, Pair<String, OptionOrigin> valueOrigin) {
+        OptionOrigin optionOrigin = valueOrigin.getRight();
         String optionValue = valueOrigin.getLeft();
 
         boolean reads = option.equals(NativeImageClassLoaderOptions.AddReads);
@@ -361,7 +362,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
     }
 
-    private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, String origin, String value, String detailMessage) {
+    private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, OptionOrigin origin, String value, String detailMessage) {
         Objects.requireNonNull(detailMessage, "missing detailMessage");
         return UserError.abort("Invalid option %s provided by %s.%s", SubstrateOptionsParser.commandArgument(option, value), origin, detailMessage);
     }

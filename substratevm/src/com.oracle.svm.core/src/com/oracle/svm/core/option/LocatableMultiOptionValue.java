@@ -29,10 +29,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.common.option.LocatableOption;
-import com.oracle.svm.common.option.MultiOptionValue;
 import org.graalvm.collections.Pair;
 
+import com.oracle.svm.common.option.LocatableOption;
+import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
@@ -76,8 +76,8 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return values.stream().map(Pair::getLeft).collect(Collectors.toList());
     }
 
-    public Stream<Pair<T, String>> getValuesWithOrigins() {
-        return values.stream();
+    public Stream<Pair<T, OptionOrigin>> getValuesWithOrigins() {
+        return values.stream().map(pair -> Pair.create(pair.getLeft(), OptionOrigin.of(pair.getRight())));
     }
 
     @Override
