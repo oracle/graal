@@ -1320,7 +1320,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
                 if (target instanceof OptimizedCallTarget) {
                     OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
-                    if (callTarget.getSourceCallTarget() != null) {
+                    if (callTarget.isSplit()) {
                         builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
                     }
                 }
