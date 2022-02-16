@@ -239,7 +239,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * language since the Truffle API module descriptor only exports the packages to
                  * modules known at build time (such as the Graal module).
                  */
-                EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                ModuleUtils.exportTo(loader, null);
             }
             for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class, loader)) {
                 loadLanguageImpl(provider, caches);

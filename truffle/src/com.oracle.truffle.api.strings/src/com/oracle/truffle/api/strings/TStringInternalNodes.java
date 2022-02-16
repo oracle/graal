@@ -1406,59 +1406,37 @@ final class TStringInternalNodes {
             final int stride;
             final int codeRange;
             final int codePointLength;
-            if (TStringUnsafe.JAVA_SPEC <= 8) {
-                if (length > TStringConstants.MAX_ARRAY_SIZE_S1) {
-                    throw InternalErrors.outOfMemory();
+            int strideJS = TStringUnsafe.getJavaStringStride(javaString);
+            int offsetJS = charOffset << 1;
+            byte[] arrayJS = TStringUnsafe.getJavaStringArray(javaString);
+            if (utf16CompactProfile.profile(strideJS == 0)) {
+                if (length == 1) {
+                    return TStringConstants.getSingleByte(Encodings.getUTF16(), Byte.toUnsignedInt(arrayJS[charOffset]));
                 }
-                final char[] value = TStringUnsafe.getJavaStringArrayJDK8(javaString);
-                if (length == 1 && value[charOffset] <= 0xff) {
-                    return TStringConstants.getSingleByte(Encodings.getUTF16(), value[charOffset]);
+                codeRange = TStringOps.calcStringAttributesLatin1(this, arrayJS, offsetJS, length);
+                codePointLength = length;
+            } else {
+                assert strideJS == 1;
+                if (length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff) {
+                    return TStringConstants.getSingleByte(Encodings.getUTF16(), TStringOps.readFromByteArray(arrayJS, 1, charOffset));
                 }
-                final int offsetJS = charOffset << 1;
-                final long attrs = TStringOps.calcStringAttributesUTF16C(this, value, offsetJS, length);
+                final long attrs = TStringOps.calcStringAttributesUTF16(this, arrayJS, offsetJS, length, false);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
+            }
+            if (!copy || length == javaString.length()) {
+                stride = strideJS;
+                offset = offsetJS;
+                array = arrayJS;
+            } else {
                 stride = Stride.fromCodeRangeUTF16(codeRange);
                 array = new byte[length << stride];
                 offset = 0;
-                if (utf16CompactProfile.profile(stride == 0)) {
-                    TStringOps.arraycopyWithStrideCB(this, value, offsetJS, array, offset, 0, length);
+                if (strideJS == 1 && stride == 0) {
+                    TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 1, 0, array, offset, 0, 0, length);
                 } else {
-                    TStringOps.arraycopyWithStrideCB(this, value, offsetJS, array, offset, 1, length);
-                }
-            } else {
-                int strideJS = TStringUnsafe.getJavaStringStride(javaString);
-                int offsetJS = charOffset << 1;
-                byte[] arrayJS = TStringUnsafe.getJavaStringArrayJDK9(javaString);
-                if (utf16CompactProfile.profile(strideJS == 0)) {
-                    if (length == 1) {
-                        return TStringConstants.getSingleByte(Encodings.getUTF16(), Byte.toUnsignedInt(arrayJS[charOffset]));
-                    }
-                    codeRange = TStringOps.calcStringAttributesLatin1(this, arrayJS, offsetJS, length);
-                    codePointLength = length;
-                } else {
-                    assert strideJS == 1;
-                    if (length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff) {
-                        return TStringConstants.getSingleByte(Encodings.getUTF16(), TStringOps.readFromByteArray(arrayJS, 1, charOffset));
-                    }
-                    final long attrs = TStringOps.calcStringAttributesUTF16(this, arrayJS, offsetJS, length, false);
-                    codePointLength = StringAttributes.getCodePointLength(attrs);
-                    codeRange = StringAttributes.getCodeRange(attrs);
-                }
-                if (!copy || length == javaString.length()) {
-                    stride = strideJS;
-                    offset = offsetJS;
-                    array = arrayJS;
-                } else {
-                    stride = Stride.fromCodeRangeUTF16(codeRange);
-                    array = new byte[length << stride];
-                    offset = 0;
-                    if (strideJS == 1 && stride == 0) {
-                        TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 1, 0, array, offset, 0, 0, length);
-                    } else {
-                        assert strideJS == stride;
-                        TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 0, 0, array, offset, 0, 0, length << stride);
-                    }
+                    assert strideJS == stride;
+                    TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 0, 0, array, offset, 0, 0, length << stride);
                 }
             }
             TruffleString ret = TruffleString.createFromArray(array, offset, length, stride, Encodings.getUTF16(), codePointLength, codeRange);

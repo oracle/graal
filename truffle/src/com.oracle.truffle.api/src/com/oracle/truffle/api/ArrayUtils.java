@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,20 +58,6 @@ public final class ArrayUtils {
     private ArrayUtils() {
     }
 
-    private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
-    }
-
-    /**
-     * The integer value corresponding to the value of the {@code java.specification.version} system
-     * property after any leading {@code "1."} has been stripped.
-     */
-    private static final int JAVA_SPEC = getJavaSpecificationVersion();
-
     private static final sun.misc.Unsafe UNSAFE = getUnsafe();
     private static final long javaStringValueFieldOffset;
     private static final long javaStringCoderFieldOffset;
@@ -79,16 +65,8 @@ public final class ArrayUtils {
     static {
         Field valueField = getStringDeclaredField("value");
         javaStringValueFieldOffset = UNSAFE.objectFieldOffset(valueField);
-        if (JAVA_SPEC <= 8) {
-            javaStringCoderFieldOffset = 0;
-        } else {
-            Field coderField = getStringDeclaredField("coder");
-            javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
-        }
-    }
-
-    private static boolean isJDK8() {
-        return JAVA_SPEC <= 8;
+        Field coderField = getStringDeclaredField("coder");
+        javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
     }
 
     private static Field getStringDeclaredField(String name) {
@@ -113,22 +91,14 @@ public final class ArrayUtils {
         }
     }
 
-    private static char[] getJavaStringArrayJDK8(String str) {
-        assert isJDK8();
-        Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
-        assert value instanceof char[];
-        return (char[]) value;
-    }
-
-    private static byte[] getJavaStringArrayJDK9(String str) {
-        assert !isJDK8();
+    private static byte[] getJavaStringArray(String str) {
         Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
         assert value instanceof byte[];
         return (byte[]) value;
     }
 
     private static boolean isCompactString(String s) {
-        return JAVA_SPEC > 8 && UNSAFE.getByte(s, javaStringCoderFieldOffset) == 0;
+        return UNSAFE.getByte(s, javaStringCoderFieldOffset) == 0;
     }
 
     /**
@@ -146,22 +116,18 @@ public final class ArrayUtils {
             return -1;
         }
         if (values.length <= 4) {
-            if (isJDK8()) {
-                return indexOfCS2(getJavaStringArrayJDK8(string), fromIndex, maxIndex, values, values.length);
-            } else {
-                if (isCompactString(string)) {
-                    int valuesInt = 0;
-                    int nValues = 0;
-                    for (int i = 0; i < values.length; i++) {
-                        if (values[i] <= 0xff) {
-                            valuesInt = (valuesInt << 8) | values[i];
-                            nValues++;
-                        }
+            if (isCompactString(string)) {
+                int valuesInt = 0;
+                int nValues = 0;
+                for (int i = 0; i < values.length; i++) {
+                    if (values[i] <= 0xff) {
+                        valuesInt = (valuesInt << 8) | values[i];
+                        nValues++;
                     }
-                    return nValues == 0 ? -1 : indexOfBS1(getJavaStringArrayJDK9(string), fromIndex, maxIndex, valuesInt, nValues);
-                } else {
-                    return indexOfBS2(getJavaStringArrayJDK9(string), fromIndex, maxIndex, values, values.length);
                 }
+                return nValues == 0 ? -1 : indexOfBS1(getJavaStringArray(string), fromIndex, maxIndex, valuesInt, nValues);
+            } else {
+                return indexOfBS2(getJavaStringArray(string), fromIndex, maxIndex, values, values.length);
             }
         }
         return runIndexOfS2(string, fromIndex, maxIndex, values);
@@ -366,27 +332,19 @@ public final class ArrayUtils {
     private static int indexOfWithOrMaskJLString(String haystack, int fromIndex, int length, String needle, String mask) {
         int maxIndex = fromIndex + length;
         int v0 = needle.charAt(0);
-        if (isJDK8()) {
-            if (mask == null) {
-                return stubIndexOfC1S2(getJavaStringArrayJDK8(haystack), fromIndex, maxIndex, v0);
+        byte[] array = getJavaStringArray(haystack);
+        if (mask == null) {
+            if (isCompactString(haystack)) {
+                return v0 <= 0xff ? stubIndexOfB1S1(array, fromIndex, maxIndex, v0) : -1;
             } else {
-                return stubIndexOfWithOrMaskS2(getJavaStringArrayJDK8(haystack), fromIndex, maxIndex, v0, mask.charAt(0));
+                return stubIndexOfB1S2(array, fromIndex, maxIndex, v0);
             }
         } else {
-            byte[] array = getJavaStringArrayJDK9(haystack);
-            if (mask == null) {
-                if (isCompactString(haystack)) {
-                    return v0 <= 0xff ? stubIndexOfB1S1(array, fromIndex, maxIndex, v0) : -1;
-                } else {
-                    return stubIndexOfB1S2(array, fromIndex, maxIndex, v0);
-                }
+            int mask0 = mask.charAt(0);
+            if (isCompactString(haystack)) {
+                return (v0 ^ mask0) <= 0xff ? stubIndexOfWithOrMaskS1(array, fromIndex, maxIndex, v0, mask0) : -1;
             } else {
-                int mask0 = mask.charAt(0);
-                if (isCompactString(haystack)) {
-                    return (v0 ^ mask0) <= 0xff ? stubIndexOfWithOrMaskS1(array, fromIndex, maxIndex, v0, mask0) : -1;
-                } else {
-                    return stubIndexOfWithOrMaskS2(array, fromIndex, maxIndex, v0, mask0);
-                }
+                return stubIndexOfWithOrMaskS2(array, fromIndex, maxIndex, v0, mask0);
             }
         }
     }
@@ -394,29 +352,20 @@ public final class ArrayUtils {
     private static int indexOf2ConsecutiveWithOrMaskJLString(String haystack, int fromIndex, String needle, String mask, int max) {
         char v0 = needle.charAt(0);
         char v1 = needle.charAt(1);
-        if (isJDK8()) {
-            char[] arrayJDK8 = getJavaStringArrayJDK8(haystack);
-            if (mask == null) {
-                return stubIndexOf2ConsecutiveS2(arrayJDK8, fromIndex, max, v0, v1);
+        byte[] array = getJavaStringArray(haystack);
+        if (mask == null) {
+            if (isCompactString(haystack)) {
+                return v0 <= 0xff && v1 <= 0xff ? stubIndexOf2ConsecutiveS1(array, fromIndex, max, v0, v1) : -1;
             } else {
-                return stubIndexOf2ConsecutiveWithOrMaskS2(arrayJDK8, fromIndex, max, v0, v1, mask.charAt(0), mask.charAt(1));
+                return stubIndexOf2ConsecutiveS2(array, fromIndex, max, v0, v1);
             }
         } else {
-            byte[] array = getJavaStringArrayJDK9(haystack);
-            if (mask == null) {
-                if (isCompactString(haystack)) {
-                    return v0 <= 0xff && v1 <= 0xff ? stubIndexOf2ConsecutiveS1(array, fromIndex, max, v0, v1) : -1;
-                } else {
-                    return stubIndexOf2ConsecutiveS2(array, fromIndex, max, v0, v1);
-                }
+            char mask0 = mask.charAt(0);
+            char mask1 = mask.charAt(1);
+            if (isCompactString(haystack)) {
+                return (v0 ^ mask0) <= 0xff && (v1 ^ mask1) <= 0xff ? stubIndexOf2ConsecutiveWithOrMaskS1(array, fromIndex, max, v0, v1, mask0, mask1) : -1;
             } else {
-                char mask0 = mask.charAt(0);
-                char mask1 = mask.charAt(1);
-                if (isCompactString(haystack)) {
-                    return (v0 ^ mask0) <= 0xff && (v1 ^ mask1) <= 0xff ? stubIndexOf2ConsecutiveWithOrMaskS1(array, fromIndex, max, v0, v1, mask0, mask1) : -1;
-                } else {
-                    return stubIndexOf2ConsecutiveWithOrMaskS2(array, fromIndex, max, v0, v1, mask0, mask1);
-                }
+                return stubIndexOf2ConsecutiveWithOrMaskS2(array, fromIndex, max, v0, v1, mask0, mask1);
             }
         }
     }
@@ -485,66 +434,58 @@ public final class ArrayUtils {
             return false;
         }
         if (mask == null) {
-            if (isJDK8()) {
-                return stubRegionEqualsS2(getJavaStringArrayJDK8(a), offsetA, getJavaStringArrayJDK8(b), offsetB, length);
+            byte[] arrayA = getJavaStringArray(a);
+            byte[] arrayB = getJavaStringArray(b);
+            boolean compactA = isCompactString(a);
+            if (compactA != isCompactString(b)) {
+                return stubRegionEqualsS2S1(
+                                compactA ? arrayB : arrayA, compactA ? offsetB : offsetA,
+                                compactA ? arrayA : arrayB, compactA ? offsetA : offsetB, length);
             } else {
-                byte[] arrayA = getJavaStringArrayJDK9(a);
-                byte[] arrayB = getJavaStringArrayJDK9(b);
-                boolean compactA = isCompactString(a);
-                if (compactA != isCompactString(b)) {
-                    return stubRegionEqualsS2S1(
-                                    compactA ? arrayB : arrayA, compactA ? offsetB : offsetA,
-                                    compactA ? arrayA : arrayB, compactA ? offsetA : offsetB, length);
+                final int byteOffsetA;
+                final int byteOffsetB;
+                final int byteLength;
+                if (compactA) {
+                    byteOffsetA = offsetA;
+                    byteOffsetB = offsetB;
+                    byteLength = length;
                 } else {
-                    final int byteOffsetA;
-                    final int byteOffsetB;
-                    final int byteLength;
-                    if (compactA) {
-                        byteOffsetA = offsetA;
-                        byteOffsetB = offsetB;
-                        byteLength = length;
-                    } else {
-                        byteOffsetA = offsetA << 1;
-                        byteOffsetB = offsetB << 1;
-                        byteLength = length << 1;
-                    }
-                    return stubRegionEqualsS1(arrayA, byteOffsetA, arrayB, byteOffsetB, byteLength);
+                    byteOffsetA = offsetA << 1;
+                    byteOffsetB = offsetB << 1;
+                    byteLength = length << 1;
                 }
+                return stubRegionEqualsS1(arrayA, byteOffsetA, arrayB, byteOffsetB, byteLength);
             }
         } else {
             checkMaskLengthRegionEquals(length, mask.length());
-            if (isJDK8()) {
-                return stubRegionEqualsWithOrMaskS2(getJavaStringArrayJDK8(a), offsetA, getJavaStringArrayJDK8(b), offsetB, getJavaStringArrayJDK8(mask), mask.length());
-            } else {
-                byte[] arrayA = getJavaStringArrayJDK9(a);
-                byte[] arrayB = getJavaStringArrayJDK9(b);
-                byte[] arrayM = getJavaStringArrayJDK9(mask);
-                boolean compact1 = isCompactString(a);
-                boolean compact2 = isCompactString(b);
-                boolean compactMask = isCompactString(mask);
-                if (compact2) {
-                    if (compactMask) {
-                        if (compact1) {
-                            return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), true, true, true);
-                        } else {
-                            return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), false, true, true);
-                        }
+            byte[] arrayA = getJavaStringArray(a);
+            byte[] arrayB = getJavaStringArray(b);
+            byte[] arrayM = getJavaStringArray(mask);
+            boolean compact1 = isCompactString(a);
+            boolean compact2 = isCompactString(b);
+            boolean compactMask = isCompactString(mask);
+            if (compact2) {
+                if (compactMask) {
+                    if (compact1) {
+                        return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), true, true, true);
                     } else {
-                        return false;
+                        return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), false, true, true);
                     }
                 } else {
-                    if (compactMask) {
-                        if (compact1) {
-                            return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), true, false, true);
-                        } else {
-                            return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), false, false, true);
-                        }
+                    return false;
+                }
+            } else {
+                if (compactMask) {
+                    if (compact1) {
+                        return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), true, false, true);
                     } else {
-                        if (compact1) {
-                            return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), true, false, false);
-                        } else {
-                            return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), false, false, false);
-                        }
+                        return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), false, false, true);
+                    }
+                } else {
+                    if (compact1) {
+                        return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), true, false, false);
+                    } else {
+                        return stubRegionEqualsWithOrMaskCompactStrings(arrayA, offsetA, arrayB, offsetB, arrayM, mask.length(), false, false, false);
                     }
                 }
             }

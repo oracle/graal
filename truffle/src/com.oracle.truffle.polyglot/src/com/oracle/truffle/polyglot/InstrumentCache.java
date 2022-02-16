@@ -145,7 +145,7 @@ final class InstrumentCache {
                 // a Truffle instrument since the Truffle API module descriptor only
                 // exports the packages to modules known at build time (such as the
                 // Graal module).
-                EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                ModuleUtils.exportTo(loader, null);
             }
             for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
                 loadInstrumentImpl(provider, list, classNamesUsed);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,12 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.graalvm.locator;
+package com.oracle.truffle.polyglot;
 
-class JDKServices {
+import java.util.Set;
 
-    static ClassLoader getLocatorBaseClassLoader(@SuppressWarnings("unused") Class<?> c) {
-        return ClassLoader.getPlatformClassLoader();
+import com.oracle.truffle.api.Truffle;
+
+final class ModuleUtils {
+
+    static void exportTo(ClassLoader loader, String moduleName) {
+        assert (loader == null) != (moduleName == null) : "exactly one of a class loader or module name is required when exporting Truffle";
+        Module truffleModule = Truffle.class.getModule();
+        Module clientModule;
+        if (moduleName != null) {
+            clientModule = truffleModule.getLayer().findModule(moduleName).orElseThrow();
+        } else {
+            clientModule = loader.getUnnamedModule();
+        }
+        exportFromTo(truffleModule, clientModule);
+    }
+
+    private static void exportFromTo(Module truffleModule, Module clientModule) {
+        if (truffleModule != clientModule) {
+            Set<String> packages = truffleModule.getPackages();
+            for (String pkg : packages) {
+                boolean exported = truffleModule.isExported(pkg, clientModule);
+                if (!exported) {
+                    truffleModule.addExports(pkg, clientModule);
+                }
+            }
+        }
     }
 
 }
