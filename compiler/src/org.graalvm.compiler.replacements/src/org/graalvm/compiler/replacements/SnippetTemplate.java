@@ -1924,6 +1924,13 @@ public class SnippetTemplate {
         }
     }
 
+    public Node getReturnValue(UnmodifiableEconomicMap<Node, Node> duplicates) {
+        if (returnNode.result() != null) {
+            return duplicates.get(returnNode.result());
+        }
+        return null;
+    }
+
     /**
      * Replaces a given fixed node with this specialized snippet.
      *
