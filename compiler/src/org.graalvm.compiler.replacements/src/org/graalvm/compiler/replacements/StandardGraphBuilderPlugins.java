@@ -1758,56 +1758,45 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
+    private static class CheckIndexPlugin extends InlineOnlyInvocationPlugin {
+
+        private JavaKind kind;
+
+        CheckIndexPlugin(Type type) {
+            super("checkIndex", type, type, BiFunction.class);
+            assert type == int.class || type == long.class;
+            this.kind = type == int.class ? JavaKind.Int : JavaKind.Long;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode index, ValueNode length, ValueNode oobef) {
+            if (b.needsExplicitException()) {
+                return false;
+            } else {
+                ValueNode checkedIndex = index;
+                ValueNode checkedLength = length;
+                LogicNode lengthNegative = IntegerLessThanNode.create(length, ConstantNode.defaultForKind(kind), NodeView.DEFAULT);
+                if (!lengthNegative.isContradiction()) {
+                    FixedGuardNode guard = b.append(new FixedGuardNode(lengthNegative, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile, true));
+                    Stamp positiveInt = StampFactory.forInteger(kind, 0, kind.getMaxValue(), 0, kind.getMaxValue());
+                    checkedLength = PiNode.create(length, length.stamp(NodeView.DEFAULT).improveWith(positiveInt), guard);
+                }
+                LogicNode rangeCheck = IntegerBelowNode.create(index, checkedLength, NodeView.DEFAULT);
+                if (!rangeCheck.isTautology()) {
+                    FixedGuardNode guard = b.append(new FixedGuardNode(rangeCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile));
+                    long upperBound = Math.max(0, ((IntegerStamp) checkedLength.stamp(NodeView.DEFAULT)).upperBound() - 1);
+                    checkedIndex = PiNode.create(index, index.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(kind, 0, upperBound)), guard);
+                }
+                b.addPush(kind, checkedIndex);
+                return true;
+            }
+        }
+    }
+
     private static void registerPreconditionsPlugins(InvocationPlugins plugins, Replacements replacements) {
         final Registration preconditions = new Registration(plugins, "jdk.internal.util.Preconditions", replacements);
-        preconditions.register(new InlineOnlyInvocationPlugin("checkIndex", int.class, int.class, BiFunction.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode index, ValueNode length, ValueNode oobef) {
-                if (b.needsExplicitException()) {
-                    return false;
-                } else {
-                    ValueNode checkedIndex = index;
-                    ValueNode checkedLength = length;
-                    LogicNode lengthNegative = IntegerLessThanNode.create(length, ConstantNode.forInt(0), NodeView.DEFAULT);
-                    if (!lengthNegative.isContradiction()) {
-                        FixedGuardNode guard = b.append(new FixedGuardNode(lengthNegative, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile, true));
-                        checkedLength = PiNode.create(length, length.stamp(NodeView.DEFAULT).improveWith(StampFactory.positiveInt()), guard);
-                    }
-                    LogicNode rangeCheck = IntegerBelowNode.create(index, checkedLength, NodeView.DEFAULT);
-                    if (!rangeCheck.isTautology()) {
-                        FixedGuardNode guard = b.append(new FixedGuardNode(rangeCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile));
-                        long upperBound = Math.max(0, ((IntegerStamp) checkedLength.stamp(NodeView.DEFAULT)).upperBound() - 1);
-                        checkedIndex = PiNode.create(index, index.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(JavaKind.Int, 0, upperBound)), guard);
-                    }
-                    b.addPush(JavaKind.Int, checkedIndex);
-                    return true;
-                }
-            }
-        });
-        preconditions.register(new InlineOnlyInvocationPlugin("checkIndex", long.class, long.class, BiFunction.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode index, ValueNode length, ValueNode oobef) {
-                if (b.needsExplicitException()) {
-                    return false;
-                } else {
-                    ValueNode checkedIndex = index;
-                    ValueNode checkedLength = length;
-                    LogicNode lengthNegative = IntegerLessThanNode.create(length, ConstantNode.forLong(0L), NodeView.DEFAULT);
-                    if (!lengthNegative.isContradiction()) {
-                        FixedGuardNode guard = b.append(new FixedGuardNode(lengthNegative, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile, true));
-                        checkedLength = PiNode.create(length, length.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(JavaKind.Long, 0, Long.MAX_VALUE, 0, Long.MAX_VALUE)), guard);
-                    }
-                    LogicNode rangeCheck = IntegerBelowNode.create(index, checkedLength, NodeView.DEFAULT);
-                    if (!rangeCheck.isTautology()) {
-                        FixedGuardNode guard = b.append(new FixedGuardNode(rangeCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile));
-                        long upperBound = Math.max(0, ((IntegerStamp) checkedLength.stamp(NodeView.DEFAULT)).upperBound() - 1);
-                        checkedIndex = PiNode.create(index, index.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(JavaKind.Long, 0, upperBound)), guard);
-                    }
-                    b.addPush(JavaKind.Long, checkedIndex);
-                    return true;
-                }
-            }
-
+        preconditions.register(new CheckIndexPlugin(int.class));
+        preconditions.register(new CheckIndexPlugin(long.class) {
             @Override
             public boolean isOptional() {
                 return JavaVersionUtil.JAVA_SPEC < 16;
