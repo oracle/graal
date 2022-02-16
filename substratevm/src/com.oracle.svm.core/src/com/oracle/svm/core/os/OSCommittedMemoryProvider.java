@@ -33,10 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -45,7 +42,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.util.UnsignedUtils;
 
 public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -74,95 +70,6 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
 
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
         return ImageHeapProvider.get().freeImageHeap(heapBase);
-    }
-
-    @Override
-    public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false);
-    }
-
-    @Override
-    public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, WordFactory.unsigned(1), false);
-    }
-
-    @Override
-    public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, true);
-    }
-
-    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
-        if (executable) {
-            access |= VirtualMemoryProvider.Access.EXECUTE;
-        }
-        Pointer reserved = WordFactory.nullPointer();
-        if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
-            reserved = VirtualMemoryProvider.get().reserve(size, alignment);
-            if (reserved.isNull()) {
-                return nullPointer();
-            }
-        }
-        Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access);
-        if (committed.isNull()) {
-            if (reserved.isNonNull()) {
-                VirtualMemoryProvider.get().free(reserved, size);
-            }
-            return nullPointer();
-        }
-        assert reserved.isNull() || reserved.equal(committed);
-        tracker.track(size);
-        return committed;
-    }
-
-    @Override
-    public boolean areUnalignedChunksZeroed() {
-        return false;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
-        free(start, nbytes);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void free(PointerBase start, UnsignedWord nbytes) {
-        if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
-            tracker.untrack(nbytes);
-        }
-    }
-
-    private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
-
-    protected static class VirtualMemoryTracker {
-
-        private UnsignedWord totalAllocated;
-
-        protected VirtualMemoryTracker() {
-            this.totalAllocated = WordFactory.zero();
-        }
-
-        public void track(UnsignedWord size) {
-            totalAllocated = totalAllocated.add(size);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void untrack(UnsignedWord size) {
-            totalAllocated = totalAllocated.subtract(size);
-        }
     }
 }
 

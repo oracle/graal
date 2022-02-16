@@ -129,8 +129,13 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     private static void installPrepared(SharedMethod method, CodeInstallInfo installInfo, SubstrateInstalledCode installedCode) {
         IsolatedRuntimeMethodInfoAccess.startTrackingInCurrentIsolate(installInfo.getCodeInfo());
 
-        IsolatedReferenceAdjuster.adjustAndDispose(installInfo.getAdjusterData(), IsolatedCompileClient.get().getHandleSet());
-        installInfo.setAdjusterData(WordFactory.nullPointer());
+        RuntimeCodeInfoAccess.acquireThreadWriteAccess();
+        try {
+            IsolatedReferenceAdjuster.adjustAndDispose(installInfo.getAdjusterData(), IsolatedCompileClient.get().getHandleSet());
+            installInfo.setAdjusterData(WordFactory.nullPointer());
+        } finally {
+            RuntimeCodeInfoAccess.releaseThreadWriteAccess();
+        }
 
         doInstallPrepared(method, installInfo.getCodeInfo(), installedCode);
         UnmanagedMemory.free(installInfo);
