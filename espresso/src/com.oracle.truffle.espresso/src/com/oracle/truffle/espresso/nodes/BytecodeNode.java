@@ -1462,6 +1462,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
                     ExceptionHandler handler = null;
                     for (ExceptionHandler toCheck : handlers) {
+                        CompilerAsserts.partialEvaluationConstant(toCheck);
                         if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
                             Klass catchType = null;
                             if (!toCheck.isCatchAll()) {
@@ -1469,6 +1470,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 // pass instanceof
                                 catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                             }
+                            CompilerAsserts.partialEvaluationConstant(catchType);
                             if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getGuestException(), catchType)) {
                                 // the first found exception handler is our exception handler
                                 handler = toCheck;

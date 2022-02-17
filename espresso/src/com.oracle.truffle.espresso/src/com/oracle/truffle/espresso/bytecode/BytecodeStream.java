@@ -27,7 +27,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
@@ -315,9 +314,10 @@ public final class BytecodeStream {
      * size and the {@link Bytecodes#WIDE} bytecode.
      */
     private int lengthOf(int curBCI) {
-        int length = Bytecodes.lengthOf(opcode(curBCI));
+        int opcode = opcode(curBCI);
+        int length = Bytecodes.lengthOf(opcode);
         if (length == 0) {
-            switch (opcode(curBCI)) {
+            switch (opcode) {
                 case Bytecodes.TABLESWITCH: {
                     return BytecodeTableSwitch.INSTANCE.size(this, curBCI);
                 }
@@ -336,15 +336,10 @@ public final class BytecodeStream {
                     // Should rather be CompilerAsserts.neverPartOfCompilation() but this is
                     // reachable in SVM.
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw error(opcode(curBCI));
+                    throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
             }
         }
         return length;
-    }
-
-    @TruffleBoundary
-    private static EspressoError error(int opcode) {
-        throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
     }
 
     public void printBytecode(Klass klass, PrintStream out) {
