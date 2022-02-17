@@ -123,7 +123,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
                         SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, ""), origin);
     }
 
-    public boolean requiresCompleteDefinition(Class<?> clazz) {
+    boolean requiresCompleteDefinition(Class<?> clazz) {
         if (requireCompleteAll || clazz.isArray()) {
             return true;
         }
