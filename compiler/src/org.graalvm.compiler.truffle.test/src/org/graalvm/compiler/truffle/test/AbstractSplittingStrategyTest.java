@@ -26,6 +26,8 @@ package org.graalvm.compiler.truffle.test;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.impl.DefaultCallTarget;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
