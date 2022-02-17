@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: vscode
+toc_group: graalvm-extension
 link_title: VisualVM and VS Code Integration
 permalink: /tools/vscode/graalvm-extension/visualvm-integration/
 ---

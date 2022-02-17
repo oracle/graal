@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: vscode
+toc_group: graalvm-extension
 link_title: Polyglot Programming and Debugging in VS Code
 permalink: /tools/vscode/graalvm-extension/polyglot-runtime/
 ---
