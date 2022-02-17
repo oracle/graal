@@ -67,12 +67,14 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private final Set<Module> requireCompleteModules = new HashSet<>();
     private boolean requireCompleteAll;
 
-    Map<URI, Module> uriModuleMap;
+    private ClassLoaderSupport classLoaderSupport;
+    private Map<URI, Module> uriModuleMap;
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        var loader = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader();
+        classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
 
+        var loader = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader();
         uriModuleMap = ModuleFinder.of(loader.applicationModulePath().toArray(Path[]::new)).findAll().stream()
                         .filter(mRef -> mRef.location().isPresent())
                         .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> loader.findModule(mRef.descriptor().name()).get()));
@@ -126,7 +128,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
             return true;
         }
 
-        if (!ImageSingletons.lookup(ClassLoaderSupport.class).isNativeImageClassLoader(clazz.getClassLoader())) {
+        if (!classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
             return true;
         }
         assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
