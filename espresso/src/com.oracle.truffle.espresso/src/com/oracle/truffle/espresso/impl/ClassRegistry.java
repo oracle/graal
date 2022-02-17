@@ -266,8 +266,8 @@ public abstract class ClassRegistry {
     }
 
     public ParserKlass createParserKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
-        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
         // May throw guest ClassFormatError, NoClassDefFoundError.
+        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
         if (!env.isLoaderBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
             throw EspressoClassLoadingException.securityException("Define class in prohibited package name: " + parserKlass.getName());
         }

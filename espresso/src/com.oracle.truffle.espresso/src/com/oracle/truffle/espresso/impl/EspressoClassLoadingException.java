@@ -135,7 +135,7 @@ public abstract class EspressoClassLoadingException extends Exception {
 
         @Override
         public EspressoException asGuestException(Meta meta) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, getMessage());
         }
     }
 
