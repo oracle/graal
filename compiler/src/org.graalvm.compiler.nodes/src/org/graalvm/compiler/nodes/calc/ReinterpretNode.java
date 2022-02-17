@@ -61,7 +61,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticOperat
 
     public static final NodeClass<ReinterpretNode> TYPE = NodeClass.create(ReinterpretNode.class);
 
-    protected ReinterpretNode(JavaKind to, ValueNode value) {
+    public ReinterpretNode(JavaKind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 

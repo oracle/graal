@@ -31,6 +31,10 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
@@ -1239,6 +1243,43 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
             }
         };
         Consumer<StructuredGraph> graphChecker = graph -> {
+            assertNoConverts(graph);
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1f, 1), result(25f, 5));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void materializedLoopLegacy() {
+        FrameDescriptor fd = new FrameDescriptor();
+        com.oracle.truffle.api.frame.FrameSlot slot1 = fd.addFrameSlot("slot1", FrameSlotKind.Float);
+        com.oracle.truffle.api.frame.FrameSlot slot2 = fd.addFrameSlot("slot2", FrameSlotKind.Float);
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedLoopLegacy";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot1, 0);
+                frame.setFloat(slot2, 0);
+                int count = (int) frame.getArguments()[0];
+                while (frame.getInt(slot1) < count) {
+                    frame.setFloat(slot2, frame.getFloat(slot2) + count);
+                    frame.setInt(slot1, frame.getInt(slot1) + 1);
+                    boundary();
+                }
+                return frame.getFloat(slot2);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertNoConverts(graph);
             assertDeoptCount(graph, 0);
             assertReturn(graph);
             assertAllocations(graph);
@@ -1264,6 +1305,13 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
 
     private static void assertReturn(StructuredGraph graph) {
         Assert.assertTrue("return node needs to exist", graph.getNodes(ReturnNode.TYPE).isNotEmpty());
+    }
+
+    private static void assertNoConverts(StructuredGraph graph) {
+        Assert.assertEquals(0, graph.getNodes().filter(ReinterpretNode.class).count());
+        Assert.assertEquals(0, graph.getNodes().filter(NarrowNode.class).count());
+        Assert.assertEquals(0, graph.getNodes().filter(ZeroExtendNode.class).count());
+        Assert.assertEquals(0, graph.getNodes().filter(SignExtendNode.class).count());
     }
 
     private static void assertAllocations(StructuredGraph graph) {
