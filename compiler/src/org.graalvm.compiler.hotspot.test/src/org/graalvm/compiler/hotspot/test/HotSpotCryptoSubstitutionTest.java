@@ -124,6 +124,24 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "DESede", 168, "DESede/CTR/PKCS5Padding");
     }
 
+    @Test
+    public void testEletronicCodeBookEncrypt() throws Exception {
+        Assume.assumeTrue(runtime().getVMConfig().electronicCodeBookEncrypt != 0L);
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 128, "AES/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 128, "AES/ECB/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "DESede", 168, "DESede/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "DESede", 168, "DESede/ECB/PKCS5Padding");
+    }
+
+    @Test
+    public void testEletronicCodeBookDecrypt() throws Exception {
+        Assume.assumeTrue(runtime().getVMConfig().electronicCodeBookDecrypt != 0L);
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 128, "AES/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 128, "AES/ECB/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "DESede", 168, "DESede/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "DESede", 168, "DESede/ECB/PKCS5Padding");
+    }
+
     AlgorithmParameters algorithmParameters;
 
     private byte[] encrypt(byte[] indata, SecretKey key, String algorithm) throws Exception {

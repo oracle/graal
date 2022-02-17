@@ -168,6 +168,9 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
+        // Only used as a marker for vectorization
+        add(ignore, "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V");
+
         /*
          * The intrinsics down here are known to be implemented but they are not always enabled on
          * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
@@ -285,19 +288,16 @@ public final class UnimplementedGraalIntrinsics {
         if (config.bigIntegerRightShiftWorker == 0L) {
             add(ignore, "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
+        if (config.electronicCodeBookEncrypt == 0L) {
+            add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I");
+        }
+        if (config.electronicCodeBookDecrypt == 0L) {
+            add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
+        }
 
         if (isJDK16OrHigher()) {
             // JDK-8258558
             add(ignore, "java/lang/Object.<blackhole>*");
-        }
-
-        // Only used as a marker for vectorization?
-        add(toBeInvestigated, "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V");
-
-        if (hasAESElectronicCodebookStubRoutineFields(config)) {
-            add(toBeInvestigated,
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
         }
 
         if (isJDK16OrHigher()) {
