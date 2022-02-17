@@ -147,10 +147,54 @@ public final class OptionDescriptor {
     /**
      * Specifies a human-readable syntax describing the accepted values for this option.
      *
+     * @return null if no usage syntax should be used, the usage syntax otherwise
+     *
      * @since 22.1
      */
     public String getUsageSyntax() {
-        return usageSyntax;
+        if (!usageSyntax.isEmpty()) {
+            return usageSyntax;
+        }
+        if (!key.getType().isDefaultType()) {
+            return "";
+        }
+        Object defaultValue = getKey().getDefaultValue();
+        if (Boolean.FALSE.equals(defaultValue)) {
+            return null;
+        }
+        if (Boolean.TRUE.equals(defaultValue)) {
+            return "true|false";
+        }
+        if (isOptionMap()) {
+            return "<value>";
+        }
+        Class<?> aClass = defaultValue.getClass();
+        if (Enum.class.isAssignableFrom(aClass)) {
+            return enumUsageSyntax(defaultValue, aClass);
+        }
+        return "";
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private String enumUsageSyntax(Object defaultValue, Class<?> aClass) {
+        StringBuilder sb = new StringBuilder();
+        Class<? extends Enum> enumType = (Class<? extends Enum>) aClass;
+        Enum[] enumConstants = enumType.getEnumConstants();
+        // Append the default value first
+        for (Enum constant : enumConstants) {
+            if (defaultValue.equals(constant)) {
+                sb.append(constant.name());
+                break;
+            }
+        }
+        // Append the other values
+        for (Enum constant : enumConstants) {
+            if (!defaultValue.equals(constant)) {
+                sb.append("|");
+                sb.append(constant.name());
+            }
+        }
+        return sb.toString();
     }
 
     /**

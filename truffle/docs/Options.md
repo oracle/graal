@@ -70,7 +70,7 @@ They are useful to users and language and tool implementers.
 - `--engine.InvalidationReprofileCount=` : Delay compilation after an invalidation to allow for reprofiling. Deprecated: no longer has any effect.
 - `--engine.LastTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root in last tier under normal compilation load (default: 10000).
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).
-- `--engine.Mode=default|throughput|latency` : Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.
+- `--engine.Mode=latency|throughput` : Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.
 - `--engine.MultiTier=true|false` : Whether to use multiple Truffle compilation tiers by default. (default: true)
 - `--engine.OSR=true|false` : Enable automatic on-stack-replacement of loops (default: true).
 - `--engine.PartialBlockCompilation=true|false` : Enable partial compilation for BlockNode (default: true).

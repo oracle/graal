@@ -122,7 +122,7 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (descriptor.isOptionMap()) {
             key.append(".<key>");
         }
-        String usageSyntax = getUsageSyntax(descriptor);
+        String usageSyntax = descriptor.getUsageSyntax();
         if (usageSyntax != null) {
             key.append("=");
             key.append(usageSyntax);
@@ -135,46 +135,6 @@ public abstract class LanguageLauncherBase extends Launcher {
             help = help + " [Experimental]";
         }
         return new PrintableOption(name, key.toString(), help);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static String getUsageSyntax(OptionDescriptor descriptor) {
-        String usageSyntax = descriptor.getUsageSyntax();
-        if (!"".equals(usageSyntax)) {
-            return usageSyntax;
-        }
-        Object defaultValue = descriptor.getKey().getDefaultValue();
-        if (Boolean.FALSE.equals(defaultValue)) {
-            return null;
-        }
-        if (Boolean.TRUE.equals(defaultValue)) {
-            return "true|false";
-        }
-        if (descriptor.isOptionMap()) {
-            return "<value>";
-        }
-        Class<?> aClass = defaultValue.getClass();
-        if (Enum.class.isAssignableFrom(aClass)) {
-            StringBuilder sb = new StringBuilder();
-            Class<? extends Enum> enumType = (Class<? extends Enum>) aClass;
-            Enum[] enumConstants = enumType.getEnumConstants();
-            // Append the default value first
-            for (Enum constant : enumConstants) {
-                if (defaultValue.equals(constant)) {
-                    sb.append(constant.name().toLowerCase());
-                    break;
-                }
-            }
-            // Append the other values
-            for (Enum constant : enumConstants) {
-                if (!defaultValue.equals(constant)) {
-                    sb.append("|");
-                    sb.append(constant.name().toLowerCase());
-                }
-            }
-            return sb.toString();
-        }
-        return "";
     }
 
     private static void addOptions(OptionDescriptors descriptors, Set<String> target) {
