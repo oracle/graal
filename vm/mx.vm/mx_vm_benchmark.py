@@ -191,6 +191,7 @@ class NativeImageVM(GraalVm):
         self.gc = None
         self.native_architecture = False
         self.graalvm_edition = None
+        self.config = None
         self._configure_from_name(config_name)
 
     def _configure_from_name(self, config_name):
@@ -523,6 +524,43 @@ class NativeImageVM(GraalVm):
             }, [metric_objects[i]]))
         return rules
 
+    def image_build_timers_rules(self, benchmark):
+        class NativeImageTimeToInt(object):
+            def __call__(self, *args, **kwargs):
+                return int(float(args[0].replace(',', '')))
+
+        measured_phases = ['setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image', 'write']
+        rules = []
+        for i in range(0, len(measured_phases)):
+            phase = measured_phases[i]
+            value_name = phase + "_time"
+            rules.append(
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+                    "benchmark": benchmark,
+                    "metric.name": "compile-time",
+                    "metric.type": "numeric",
+                    "metric.unit": "ms",
+                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": phase,
+                }, [value_name]))
+            value_name = phase + "_memory"
+            rules.append(
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+                    "benchmark": benchmark,
+                    "metric.name": "analysis-stats",
+                    "metric.type": "numeric",
+                    "metric.unit": "B",
+                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": phase + "_memory",
+                }, [value_name]))
+        return rules
+
     def rules(self, output, benchmarks, bmSuiteArgs):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
@@ -572,17 +610,6 @@ class NativeImageVM(GraalVm):
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "total",
-            }),
-            mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+(?P<phase>\w+?):[ ]+(?P<time>[0-9,.]+?) ms', {
-                "benchmark": benchmarks[0],
-                "metric.name": "compile-time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", NativeImageTimeToInt()),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "metric.object": ("<phase>", str),
             }),
             mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
                 "benchmark": benchmarks[0],
@@ -650,7 +677,7 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": "memory"
             }, ['total_memory_bytes'])
-        ] + self.image_build_statistics_rules(benchmarks[0])
+        ] + self.image_build_statistics_rules(benchmarks[0]) + self.image_build_timers_rules(benchmarks[0])
 
     def run_stage_agent(self, config, stages):
         profile_path = config.profile_path_no_extension + '-agent' + config.profile_file_extension
@@ -743,6 +770,7 @@ class NativeImageVM(GraalVm):
 
         # never fatal, we handle it ourselves
         config = NativeImageVM.BenchmarkConfig(self, self.bmSuite, args)
+        self.config = config
         stages = NativeImageVM.Stages(config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
 

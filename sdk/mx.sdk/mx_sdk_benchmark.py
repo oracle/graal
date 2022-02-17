@@ -191,9 +191,7 @@ class NativeImageBenchmarkMixin(object):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
 
     def extra_image_build_argument(self, _, args):
-        updated_args = parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
-        updated_args.append('-H:-BuildOutputUseNewStyle')  # remove after GR-35755 is resolved properly
-        return updated_args
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.

@@ -43,6 +43,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
@@ -280,11 +281,13 @@ public class NativeImageGeneratorRunner {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
-        String imageName = null;
-        Timer totalTimer = new Timer("[total]", false);
 
         HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
         OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
+
+        String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
+        TimerCollection timerCollection = new TimerCollection(imageName);
+        Timer totalTimer = timerCollection.get(TimerCollection.Registry.TOTAL);
 
         if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
             printCPUFeatures(classLoader.platform);
@@ -297,21 +300,17 @@ public class NativeImageGeneratorRunner {
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
-            Timer classlistTimer = new Timer("classlist", false);
+            Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
             try (StopTimer ignored1 = classlistTimer.start()) {
                 classLoader.initAllClasses();
             }
 
             DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
-            imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
             if (imageName.length() == 0) {
                 throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
             try {
-
-                totalTimer.setPrefix(imageName);
-                classlistTimer.setPrefix(imageName);
 
                 // print the time here to avoid interactions with flags processing
                 classlistTimer.print();
@@ -420,12 +419,12 @@ public class NativeImageGeneratorRunner {
                 analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
                 compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
                 generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
-                generator.run(entryPoints, javaMainSupport, imageName, classlistTimer, imageKind, SubstitutionProcessor.IDENTITY,
-                                compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
+                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
+                                compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
             } finally {
                 if (!wasSuccessfulBuild) {
-                    reporter.printInitializeEnd(classlistTimer, classlistTimer);
+                    reporter.printInitializeEnd();
                 }
             }
         } catch (InterruptImageBuilding e) {
@@ -477,7 +476,7 @@ public class NativeImageGeneratorRunner {
         } finally {
             totalTimer.print();
             if (imageName != null && generator != null) {
-                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, totalTimer, parsedHostedOptions);
+                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
             }
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();

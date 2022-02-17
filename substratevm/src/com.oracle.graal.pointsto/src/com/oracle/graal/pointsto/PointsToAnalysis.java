@@ -45,6 +45,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -75,7 +77,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -134,16 +135,16 @@ public abstract class PointsToAnalysis implements BigBang {
     private final boolean strengthenGraalGraphs;
 
     public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, boolean strengthenGraalGraphs) {
+                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection, boolean strengthenGraalGraphs) {
         this.options = options;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
         this.debug = new Builder(options, debugHandlerFactories).build();
         this.hostVM = hostVM;
         String imageName = hostVM.getImageName();
-        this.typeFlowTimer = new Timer(imageName, "(typeflow)", false);
-        this.verifyHeapTimer = new Timer(imageName, "(verify)", false);
-        this.processFeaturesTimer = new Timer(imageName, "(features)", false);
-        this.analysisTimer = new Timer(imageName, "analysis", true);
+        this.typeFlowTimer = timerCollection.createTimer(imageName, "(typeflow)", false);
+        this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
+        this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
+        this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.universe = universe;
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
@@ -178,16 +179,6 @@ public abstract class PointsToAnalysis implements BigBang {
         heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
-    }
-
-    @Override
-    public Timer getAnalysisTimer() {
-        return analysisTimer;
-    }
-
-    @Override
-    public Timer getProcessFeaturesTimer() {
-        return processFeaturesTimer;
     }
 
     @Override
