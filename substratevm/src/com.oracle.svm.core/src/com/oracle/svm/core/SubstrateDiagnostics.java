@@ -712,6 +712,13 @@ public class SubstrateDiagnostics {
                         }
                     }
                     log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
+                    JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
+                    if (anchor.isNonNull()) {
+                        log.newline().spaces(21)
+                                .string("anchor=").zhex(anchor)
+                                .string(", sp=").zhex(anchor.getLastJavaSP())
+                                .string(", ip=").zhex(anchor.getLastJavaIP());
+                    }
                     log.newline();
                     printed++;
                 }

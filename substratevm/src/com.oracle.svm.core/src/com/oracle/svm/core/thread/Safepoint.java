@@ -665,7 +665,7 @@ public final class Safepoint {
         /** Send each of the threads (except myself) a request to come to a safepoint. */
         private static int requestSafepoints(String reason) {
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while requesting a safepoint.");
-            final Log trace = Log.noopLog().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
+            final Log trace = Log.log().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
             int numOfThreads = 0;
 
             // Walk the threads list and ask each thread (except myself) to come to a safepoint.
@@ -853,13 +853,42 @@ public final class Safepoint {
 
         /** Release each thread at a safepoint. */
         private static void releaseSafepoints(String reason) {
-            final Log trace = Log.noopLog().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
+            final Log trace = Log.log().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (!isMyself(vmThread) && !SafepointBehavior.ignoresSafepoints(vmThread)) {
                     if (trace.isEnabled()) {
                         trace.string("  vmThread status: ").string(StatusSupport.getStatusString(vmThread));
+                    }
+
+                    restoreSafepointRequestedValue(vmThread);
+
+                    /*
+                     * Release the thread back to native code. Most threads will transition from
+                     * safepoint to native; but some threads will already be in native code if they
+                     * returned from native code, found the safepoint in progress and blocked on the
+                     * mutex putting themselves back in native code again.
+                     */
+                    StatusSupport.setStatusNative(vmThread);
+                    Statistics.incReleased();
+                    if (trace.isEnabled()) {
+                        trace.string("  ->  ").string(StatusSupport.getStatusString(vmThread)).newline();
+                    }
+                }
+            }
+            trace.string("]").newline();
+        }
+
+        /** Release each thread at a safepoint. */
+        public static void releaseParallelGCSafepoints() {
+            final Log trace = Log.log().string("[Safepoint.Master.releasePGCSafepoints").newline();
+            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
+            // Set PGC thread statuses that are at safepoint back to being in native code.
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (VMThreads.ParallelGCSupport.isParallelGCThread(vmThread)) {
+                    if (trace.isEnabled()) {
+                        trace.string("  PGC vmThread status: ").string(StatusSupport.getStatusString(vmThread));
                     }
 
                     restoreSafepointRequestedValue(vmThread);

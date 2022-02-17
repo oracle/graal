@@ -245,6 +245,23 @@ public final class JavaStackWalker {
 
     }
 
+    @Uninterruptible(reason = "Not really uninterruptible, but we are about to fatally fail.", calleeMustBe = false)
+    public static RuntimeException reportUnknownFrameEncountered(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame,
+                 IsolateThread thread, JavaFrameAnchor anchor, UntetheredCodeInfo uCodeInfo, CodeInfo codeInfo)
+    {
+        Log log = Log.log().string("Stack walk must walk only frames of known code:");
+        log.string("  anchor=").hex(anchor).string("  sp=").hex(sp).string("  ip=").hex(ip).newline()
+                .string("  thread=").hex(thread).string("  codeInfo=").hex(codeInfo)
+                .string("  untethered=").hex(uCodeInfo);
+
+        if (DeoptimizationSupport.enabled()) {
+            log.string("  deoptFrame=").object(deoptFrame);
+        }
+        log.newline();
+        throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
+
+    }
+
     public static boolean walkCurrentThread(Pointer startSP, StackFrameVisitor visitor) {
         return walkCurrentThread(startSP, visitor, null);
     }

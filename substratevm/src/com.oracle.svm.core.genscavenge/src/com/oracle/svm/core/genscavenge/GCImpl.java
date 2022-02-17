@@ -29,8 +29,13 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.heap.ParallelGC;
+import com.oracle.svm.core.thread.Safepoint;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -677,6 +682,9 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
+                thawParallelGCThreads();
+//                ImageSingletons.lookup(ParallelGC.class).signal();
+
                 /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
 
@@ -768,6 +776,9 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
+                thawParallelGCThreads();
+                ImageSingletons.lookup(ParallelGC.class).signal();
+
                 /* Visit all the Objects promoted since the snapshot, transitively. */
                 scanGreyObjects(true);
 
@@ -848,7 +859,7 @@ public final class GCImpl implements GC {
 
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             JavaStackWalker.initWalk(walk, sp, ip);
-            walkStack(walk);
+            walkStack(walk, WordFactory.nullPointer());
 
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 /*
@@ -866,7 +877,7 @@ public final class GCImpl implements GC {
                         continue;
                     }
                     if (JavaStackWalker.initWalk(walk, vmThread)) {
-                        walkStack(walk);
+                        walkStack(walk, vmThread);
                     }
                 }
             }
@@ -882,7 +893,7 @@ public final class GCImpl implements GC {
      * calls to a stack frame visitor.
      */
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
-    private void walkStack(JavaStackWalk walk) {
+    private void walkStack(JavaStackWalk walk, IsolateThread thread) {
         assert VMOperation.isGCInProgress() : "This methods accesses a CodeInfo without a tether";
 
         while (true) {
@@ -895,7 +906,7 @@ public final class GCImpl implements GC {
             DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
             if (deoptFrame == null) {
                 if (codeInfo.isNull()) {
-                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame);
+                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame, thread, walk.getAnchor(), walk.getIPCodeInfo(), codeInfo);
                 }
 
                 CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
@@ -931,6 +942,10 @@ public final class GCImpl implements GC {
                 return;
             }
         }
+    }
+
+    private void thawParallelGCThreads() {
+        Safepoint.Master.releaseParallelGCSafepoints();
     }
 
     private void walkThreadLocals() {
