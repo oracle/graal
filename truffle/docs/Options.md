@@ -82,6 +82,7 @@ They are useful to users and language and tool implementers.
 - `--engine.TraceCompilation` : Print information for compilation results.
 - `--engine.HostCallStackHeadRoom=[1, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
 - `--engine.IsolateLibrary=<path>` : Path to the isolate library.
+- `--engine.IsolateMemoryProtection=true|false` : Enable memory protection for the isolate.
 - `--engine.IsolateOption.<key>=<value>` : Isolate VM options.
 <!-- END: expert-engine-options -->
 
