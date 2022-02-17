@@ -40,7 +40,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
@@ -137,26 +136,5 @@ public final class LinkAtBuildTimeFeature implements Feature {
 
     public static boolean isModuleSynthetic(Module m) {
         return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess a) {
-        if (a != null) {
-            return;
-        }
-
-        // Test results of requiresCompleteDefinition(Class<?> clazz) on whole AnalysisUniverse
-        FeatureImpl.AfterAnalysisAccessImpl access = (FeatureImpl.AfterAnalysisAccessImpl) a;
-        for (AnalysisType analysisType : access.getUniverse().getTypes()) {
-            System.out.print(analysisType.toJavaName());
-            Class<?> analysisClass = analysisType.getJavaClass();
-            if (analysisClass == null) {
-                System.out.print(" (no Class)");
-            } else {
-                boolean requiresCompleteDefinition = requiresCompleteDefinition(analysisClass);
-                System.out.print(" requiresCompleteDefinition: " + requiresCompleteDefinition);
-            }
-            System.out.println();
-        }
     }
 }
