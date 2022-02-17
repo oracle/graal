@@ -103,7 +103,8 @@ public final class LinkAtBuildTimeFeature implements Feature {
                 requireCompleteModules.add(originModule);
                 return;
             }
-            throw notOnModulePath(origin);
+            throw UserError.abort("Using '%s' without args only allowed on module-path. %s not part of module-path.",
+                            SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
         } else {
             for (String entry : OptionUtils.resolveOptionValueRedirection(Options.LinkAtBuildTime, value, origin)) {
                 if (validOptionValue.matcher(entry).matches()) {
@@ -114,11 +115,6 @@ public final class LinkAtBuildTimeFeature implements Feature {
                 }
             }
         }
-    }
-
-    private UserError.UserException notOnModulePath(OptionOrigin origin) {
-        return UserError.abort("Using '%s' without args only allowed on module-path. %s not part of module-path.",
-                        SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, ""), origin);
     }
 
     boolean requiresCompleteDefinition(Class<?> clazz) {
