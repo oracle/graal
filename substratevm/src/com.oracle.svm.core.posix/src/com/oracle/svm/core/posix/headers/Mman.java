@@ -70,7 +70,7 @@ public class Mman {
     public static native int MAP_NORESERVE();
 
     @CConstant
-    @Platforms(Platform.DARWIN_AARCH64.class)
+    @Platforms(Platform.MACOS_AARCH64.class)
     public static native int MAP_JIT();
 
     @CConstant

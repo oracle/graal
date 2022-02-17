@@ -253,11 +253,11 @@ public final class RuntimeCodeInfoAccess {
         CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
     }
 
-    @Platforms(Platform.DARWIN_AARCH64.class) private static final FastThreadLocalInt jitProtectDepth = FastThreadLocalFactory.createInt("jitProtectDepth");
+    @Platforms(Platform.MACOS_AARCH64.class) private static final FastThreadLocalInt jitProtectDepth = FastThreadLocalFactory.createInt("jitProtectDepth");
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void acquireThreadWriteAccess() {
-        if (Platform.includedIn(Platform.DARWIN_AARCH64.class)) {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
             // Disabling write protection can be nested, for example a GC can be triggered during
             // code installation which in turn causes walk of references in code. Both need to
             // disable write protection, but only the outer one should enable it again.
@@ -270,7 +270,7 @@ public final class RuntimeCodeInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseThreadWriteAccess() {
-        if (Platform.includedIn(Platform.DARWIN_AARCH64.class)) {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
             VMError.guarantee(jitProtectDepth.get() >= 1);
             jitProtectDepth.set(jitProtectDepth.get() - 1);
             if (jitProtectDepth.get() == 0) {
