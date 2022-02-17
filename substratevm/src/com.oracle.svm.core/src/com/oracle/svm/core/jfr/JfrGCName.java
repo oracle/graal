@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,25 +23,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr;
 
-package com.oracle.svm.test.jfr;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-public class TestClassEvent extends JfrTest {
+public class JfrGCName {
+    private final int id;
+    private final String name;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{
-                        ClassEvent.class.getName()
-        };
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected JfrGCName(int id, String name) {
+        this.id = id;
+        this.name = name;
     }
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+    public String getName() {
+        return name;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getId() {
+        return id;
     }
 }
