@@ -210,7 +210,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         }
     }
 
-    static abstract class SplittableRootNode extends RootNode {
+    abstract static class SplittableRootNode extends RootNode {
 
         protected SplittableRootNode() {
             super(null);

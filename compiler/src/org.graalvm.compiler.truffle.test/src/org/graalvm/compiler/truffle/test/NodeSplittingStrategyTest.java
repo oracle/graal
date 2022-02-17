@@ -516,13 +516,15 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     @TruffleLanguage.Registration(id = SplittingLimitTestLanguage.ID, name = SplittingLimitTestLanguage.ID)
     static class SplittingLimitTestLanguage extends ProxyLanguage {
         static final String ID = "SplittingLimitTestLanguage";
-        static final OptimizedDirectCallNode[] callNodes = new OptimizedDirectCallNode[2];
-        static final OptimizedCallTarget target = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode()))
-                        .getCallTarget();
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return new RootNode(null) {
+
+                final OptimizedCallTarget target = (OptimizedCallTarget) new SplittingTestRootNode(
+                                NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+
+                final OptimizedDirectCallNode[] callNodes = new OptimizedDirectCallNode[2];
 
                 @Override
                 public Object execute(VirtualFrame frame) {
