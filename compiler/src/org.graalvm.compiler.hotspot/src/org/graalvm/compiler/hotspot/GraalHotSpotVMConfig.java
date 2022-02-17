@@ -161,10 +161,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return useGHASHIntrinsics && ghashProcessBlocks != 0;
     }
 
-    public boolean useBase64Intrinsics() {
-        return useBase64Intrinsics && base64EncodeBlock != 0;
-    }
-
     public boolean useMontgomeryMultiplyIntrinsic() {
         return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
     }
@@ -581,6 +577,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address");
     public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address");
     public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
+    public final long base64DecodeBlock = getFieldValue("StubRoutines::_base64_decodeBlock", Long.class, "address", 0L, JDK >= 16);
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address");
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");

@@ -203,9 +203,11 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "java/lang/Object.notifyAll()V");
         }
 
-        if (!config.useBase64Intrinsics()) {
-            add(ignore,
-                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+        if (config.base64EncodeBlock == 0L) {
+            add(ignore, "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+        }
+        if (config.base64DecodeBlock == 0L) {
+            add(ignore, "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I");
         }
 
         if (!config.useAESCTRIntrinsics) {
@@ -308,9 +310,6 @@ public final class UnimplementedGraalIntrinsics {
 
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
-
-                            // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
-                            "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
 
                             // JDK-8223347: Integration of Vector API (Incubator)
                             // @formatter:off

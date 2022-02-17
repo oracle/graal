@@ -257,6 +257,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     int.class, int.class, Word.class, int.class, boolean.class);
 
     /**
+     * Descriptor for {@code StubRoutines::_base64_decodeBlock}.
+     */
+    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+                    int.class, int.class, Word.class, int.class, boolean.class);
+
+    /**
      * Descriptor for {@code StubRoutines::_counterMode_AESCrypt}.
      */
     public static final HotSpotForeignCallDescriptor COUNTERMODE_IMPL_CRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "counterModeAESCrypt", int.class,
