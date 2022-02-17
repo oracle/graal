@@ -176,7 +176,7 @@ public final class OptionDescriptor {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private String enumUsageSyntax(Object defaultValue, Class<?> aClass) {
+    private static String enumUsageSyntax(Object defaultValue, Class<?> aClass) {
         StringBuilder sb = new StringBuilder();
         Class<? extends Enum> enumType = (Class<? extends Enum>) aClass;
         Enum[] enumConstants = enumType.getEnumConstants();
