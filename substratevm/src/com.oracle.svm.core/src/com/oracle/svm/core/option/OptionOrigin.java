@@ -49,7 +49,7 @@ public abstract class OptionOrigin {
     }
 
     public List<String> getRedirectionValues(@SuppressWarnings("unused") Path valuesFile) throws IOException {
-        throw new UnsupportedOperationException();
+        throw new IOException(new UnsupportedOperationException());
     }
 
     public static OptionOrigin of(String origin) {
