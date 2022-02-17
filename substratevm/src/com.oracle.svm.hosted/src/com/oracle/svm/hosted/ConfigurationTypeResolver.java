@@ -25,19 +25,16 @@
 package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 import jdk.vm.ci.meta.MetaUtil;
 
 public final class ConfigurationTypeResolver {
     private final String configurationType;
     private final ImageClassLoader classLoader;
-    private final boolean allowIncompleteClasspath;
 
-    public ConfigurationTypeResolver(String configurationType, ImageClassLoader classLoader, boolean allowIncompleteClasspath) {
+    public ConfigurationTypeResolver(String configurationType, ImageClassLoader classLoader) {
         this.configurationType = configurationType;
         this.classLoader = classLoader;
-        this.allowIncompleteClasspath = allowIncompleteClasspath;
     }
 
     public Class<?> resolveType(String typeName) {
@@ -48,16 +45,8 @@ public final class ConfigurationTypeResolver {
         }
         TypeResult<Class<?>> typeResult = classLoader.findClass(name);
         if (!typeResult.isPresent()) {
-            handleError("Could not resolve " + name + " for " + configurationType + ".");
+            System.err.println("Warning: Could not resolve " + name + " for " + configurationType + ".");
         }
         return typeResult.get();
-    }
-
-    private void handleError(String message) {
-        if (allowIncompleteClasspath) {
-            System.err.println("Warning: " + message);
-        } else {
-            throw new JSONParserException(message + " To allow unresolvable " + configurationType + ", use option --allow-incomplete-classpath");
-        }
     }
 }

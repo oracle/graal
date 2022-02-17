@@ -51,12 +51,11 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -88,7 +87,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
-            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, NativeImageOptions.AllowIncompleteClasspath.getValue());
+            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(method.getDeclaringClass()));
         }
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
@@ -189,9 +188,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (allowIncompleteClassPath) {
                 ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
             } else {
-                String message = "Cannot instantiate " + type.toJavaName() +
-                                ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
-                                " option. The instantiation error is then reported at run time.";
+                String message = "Cannot instantiate " + type.toJavaName() + ". " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
                 throw new TypeInstantiationException(message);
             }
         }
@@ -294,15 +292,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
-        private static void reportUnresolvedElement(String elementKind, String elementAsString) {
-            String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString +
-                            ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
-                            " option. The missing " + elementKind + " is then reported at run time when it is accessed the first time.";
+        private void reportUnresolvedElement(String elementKind, String elementAsString) {
+            String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString + ". " +
+                            LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
             throw new UnresolvedElementException(message);
-        }
-
-        private static String allowIncompleteClassPathOption() {
-            return SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+");
         }
 
         @Override

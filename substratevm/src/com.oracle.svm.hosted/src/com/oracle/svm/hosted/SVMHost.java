@@ -123,6 +123,7 @@ public class SVMHost extends HostVM {
     private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
     private final Platform platform;
     private final ClassInitializationSupport classInitializationSupport;
+    private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
     private final SnippetReflectionProvider originalSnippetReflection;
@@ -151,6 +152,7 @@ public class SVMHost extends HostVM {
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
+        this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -289,7 +291,8 @@ public class SVMHost extends HostVM {
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        return config.withRetainLocalVariables(retainLocalVariables());
+        return config.withRetainLocalVariables(retainLocalVariables())
+                .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()));
     }
 
     private boolean retainLocalVariables() {
@@ -389,13 +392,13 @@ public class SVMHost extends HostVM {
         return dynamicHub;
     }
 
-    private static Object isLocalClass(Class<?> javaClass) {
+    private Object isLocalClass(Class<?> javaClass) {
         try {
             return javaClass.isLocalClass();
         } catch (InternalError e) {
             return e;
         } catch (LinkageError e) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
                 return e;
             } else {
                 return unsupportedMethod(javaClass, "isLocalClass");
@@ -407,13 +410,13 @@ public class SVMHost extends HostVM {
      * @return boolean if class is available or LinkageError if class' parents are not on the
      *         classpath or InternalError if the class is invalid.
      */
-    private static Object isAnonymousClass(Class<?> javaClass) {
+    private Object isAnonymousClass(Class<?> javaClass) {
         try {
             return javaClass.isAnonymousClass();
         } catch (InternalError e) {
             return e;
         } catch (LinkageError e) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
                 return e;
             } else {
                 return unsupportedMethod(javaClass, "isAnonymousClass");
@@ -421,11 +424,9 @@ public class SVMHost extends HostVM {
         }
     }
 
-    private static Object unsupportedMethod(Class<?> javaClass, String methodName) {
-        String message = "Discovered a type for which " + methodName + " can't be called: " + javaClass.getTypeName() +
-                        ". To avoid this issue at build time use the " +
-                        SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
-                        " option. The LinkageError will then be reported at run time when this method is called for the first time.";
+    private Object unsupportedMethod(Class<?> javaClass, String methodName) {
+        String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
+                linkAtBuildTimeSupport.errorMessageFor(javaClass);
         throw new UnsupportedFeatureException(message);
     }
 

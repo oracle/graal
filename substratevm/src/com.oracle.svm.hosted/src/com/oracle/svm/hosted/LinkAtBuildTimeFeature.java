@@ -70,6 +70,11 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private Map<URI, Module> uriModuleMap;
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(this));
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
 

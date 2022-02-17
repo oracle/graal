@@ -41,7 +41,6 @@ import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.DynamicProxySupport;
@@ -63,7 +62,7 @@ public final class DynamicProxyFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
-        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader);
         ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);
         ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
         ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
