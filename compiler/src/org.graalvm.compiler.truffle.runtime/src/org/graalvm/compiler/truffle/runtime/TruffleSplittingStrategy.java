@@ -212,7 +212,7 @@ final class TruffleSplittingStrategy {
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
 
-        if (!callTarget.isSourceCallTarget()) { // ignore split call targets
+        if (callTarget.isSplit()) { // ignore split call targets
             return;
         }
 
