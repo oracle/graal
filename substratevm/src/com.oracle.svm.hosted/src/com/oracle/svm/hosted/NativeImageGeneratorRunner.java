@@ -268,7 +268,6 @@ public class NativeImageGeneratorRunner {
         String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
 
-        HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
         OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
 
         if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
@@ -278,7 +277,6 @@ public class NativeImageGeneratorRunner {
 
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
-        OptionValues parsedHostedOptions = null;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
