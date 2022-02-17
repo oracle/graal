@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.option;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,24 +77,23 @@ public class OptionUtils {
 
     public static List<String> resolveOptionValueRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin) {
         return Arrays.asList(SubstrateUtil.split(optionValue, ",")).stream()
-                        .flatMap(entry -> {
-                            try {
-                                return resolveOptionValueRedirectionFlatMap(entry, origin);
-                            } catch (Exception e) {
-                                throw UserError.abort(e, "Option '%s' from %s contains invalid option value redirection.",
-                                                SubstrateOptionsParser.commandArgument(option, optionValue), origin);
-                            }
-                        })
+                        .flatMap(entry -> resolveOptionValueRedirectionFlatMap(option, optionValue, origin, entry))
                         .collect(Collectors.toList());
     }
 
-    private static Stream<? extends String> resolveOptionValueRedirectionFlatMap(String entry, OptionOrigin origin) throws Exception {
+    private static Stream<? extends String> resolveOptionValueRedirectionFlatMap(OptionKey<?> option, String optionValue, OptionOrigin origin, String entry) {
         if (entry.trim().startsWith("@")) {
             Path valuesFile = Path.of(entry.substring(1));
             if (valuesFile.isAbsolute()) {
-                throw new IllegalArgumentException("Option option value redirection file '" + valuesFile + "' is absolute path");
+                throw UserError.abort("Option '%s' from %s contains value redirection file '%s' that is an absolute path.",
+                                SubstrateOptionsParser.commandArgument(option, optionValue), origin, valuesFile);
             }
-            return origin.getRedirectionValues(valuesFile).stream();
+            try {
+                return origin.getRedirectionValues(valuesFile).stream();
+            } catch (IOException e) {
+                throw UserError.abort(e, "Option '%s' from %s contains invalid option value redirection.",
+                                SubstrateOptionsParser.commandArgument(option, optionValue), origin);
+            }
         } else {
             return Stream.of(entry);
         }

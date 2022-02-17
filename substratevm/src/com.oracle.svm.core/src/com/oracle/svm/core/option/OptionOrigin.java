@@ -159,6 +159,7 @@ public abstract class OptionOrigin {
         protected JarOptionOrigin(URI rawOrigin) {
             var specific = rawOrigin.getSchemeSpecificPart();
             int sep = specific.lastIndexOf('!');
+            VMError.guarantee(sep > 0, "invalid jar origin");
             var origin = specific.substring(0, sep);
             container = URIOptionOrigin.originURI(origin);
             location = Path.of(specific.substring(sep + 2));
@@ -171,19 +172,19 @@ public abstract class OptionOrigin {
             try {
                 probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
             } catch (UnsupportedOperationException e) {
-                throw new FileNotFoundException();
+                probeJarFS = null;
             }
-            if (probeJarFS != null) {
-                try (FileSystem jarFS = probeJarFS) {
-                    var normalizedRedirPath = location().getParent().resolve(valuesFile).normalize();
-                    var pathInJarFS = jarFS.getPath(normalizedRedirPath.toString());
-                    if (Files.exists(pathInJarFS)) {
-                        return Files.readAllLines(pathInJarFS);
-                    }
-                    throw new FileNotFoundException(pathInJarFS.toString());
+            if (probeJarFS == null) {
+                throw new IOException("Unable to create jar file system for " + jarFileURI);
+            }
+            try (FileSystem jarFS = probeJarFS) {
+                var normalizedRedirPath = location().getParent().resolve(valuesFile).normalize();
+                var pathInJarFS = jarFS.getPath(normalizedRedirPath.toString());
+                if (Files.isReadable(pathInJarFS)) {
+                    return Files.readAllLines(pathInJarFS);
                 }
+                throw new FileNotFoundException("Unable to read " + pathInJarFS + " from jar file system " + jarFS);
             }
-            throw new FileNotFoundException(jarFileURI.toString());
         }
     }
 
@@ -206,10 +207,10 @@ public abstract class OptionOrigin {
         @Override
         public List<String> getRedirectionValues(Path valuesFile) throws IOException {
             var normalizedRedirPath = Path.of(container()).resolve(location()).getParent().resolve(valuesFile).normalize();
-            if (Files.exists(normalizedRedirPath)) {
+            if (Files.isReadable(normalizedRedirPath)) {
                 return Files.readAllLines(normalizedRedirPath);
             }
-            throw new FileNotFoundException(normalizedRedirPath.toString());
+            throw new FileNotFoundException("Unable to read file from " + normalizedRedirPath);
         }
     }
 }
