@@ -70,10 +70,14 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
             return pointerFromGlobal;
         }
 
+        if (pointerFromLocal != null) {
+            return pointerFromLocal;
+        }
+
         if (symbol.isGlobalVariable()) {
             if (symbol.isExternalWeak()) {
                 return LLVMNativePointer.createNull();
-            } else if (!intrinsicProvider.isIntrinsified(symbol.getName()) && nativeContextExtension != null) {
+            } else if (nativeContextExtension != null) {
                 NativeContextExtension.NativePointerIntoLibrary pointer = getNativePointer(nativeContextExtension, symbol);
                 if (pointer != null) {
                     return LLVMNativePointer.create(pointer.getAddress());
@@ -105,7 +109,7 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
     }
 
     public LLVMPointer allocExternalFunction(LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
-                                                 LLVMSymbol symbol) {
+                    LLVMSymbol symbol) {
         if (symbol.isGlobalVariable()) {
             if (symbol.isExternalWeak()) {
                 return LLVMNativePointer.createNull();
@@ -121,7 +125,7 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
     }
 
     public LLVMPointer allocExternalGlobal(LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
-                                               LLVMContext context, LLVMSymbol symbol) {
+                    LLVMContext context, LLVMSymbol symbol) {
         if (symbol.isFunction()) {
             if (symbol.isExternalWeak()) {
                 return LLVMNativePointer.createNull();

@@ -110,7 +110,8 @@ public final class LoadModulesNode extends LLVMRootNode {
     private boolean hasInitialised;
     @CompilationFinal private CachedMainFunction main;
 
-    protected enum LLVMLoadingPhase {
+    protected enum LLVMLoadingPhase
+    {
         ALL,
         BUILD_SCOPES,
         BUILD_DEPENDENCY,
@@ -122,9 +123,10 @@ public final class LoadModulesNode extends LLVMRootNode {
         INIT_OVERWRITE,
         INIT_DONE;
 
-        boolean isActive(LLVMLoadingPhase phase) {
-            return phase == this || phase == ALL;
-        }
+    boolean isActive(LLVMLoadingPhase phase) {
+        return phase == this || phase == ALL;
+    }
+
     }
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, boolean isInternalSulongLibrary,
