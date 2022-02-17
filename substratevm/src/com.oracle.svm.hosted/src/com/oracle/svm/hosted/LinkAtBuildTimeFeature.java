@@ -94,24 +94,22 @@ public final class LinkAtBuildTimeFeature implements Feature {
         var value = valueOrigin.getLeft();
         OptionOrigin origin = valueOrigin.getRight();
         if (value.isEmpty()) {
-            if (origin instanceof OptionOrigin.CommandLineOptionOrigin) {
+            if (origin.commandLineLike()) {
                 requireCompleteAll = true;
                 return;
             }
-            if (origin instanceof OptionOrigin.UnsupportedOptionOrigin) {
-                throw notOnModulePath(origin);
-            }
             var originModule = uriModuleMap.get(origin.container());
-            if (originModule == null) {
-                throw notOnModulePath(origin);
+            if (originModule != null) {
+                requireCompleteModules.add(originModule);
+                return;
             }
-            requireCompleteModules.add(originModule);
+            throw notOnModulePath(origin);
         } else {
             for (String entry : OptionUtils.resolveOptionValueRedirection(Options.LinkAtBuildTime, value, origin)) {
                 if (validOptionValue.matcher(entry).matches()) {
                     requireCompletePackageOrClass.add(entry);
                 } else {
-                    throw UserError.abort("Entry '%s' in option '%s' (from location '%s') is neither a package nor a fully qualified classname.",
+                    throw UserError.abort("Entry '%s' in option '%s' provided by '%s' is neither a package nor a fully qualified classname.",
                                     entry, SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
                 }
             }

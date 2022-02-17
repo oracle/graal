@@ -48,11 +48,15 @@ public abstract class OptionOrigin {
         return null;
     }
 
+    public boolean commandLineLike() {
+        return false;
+    }
+
     public List<String> getRedirectionValues(@SuppressWarnings("unused") Path valuesFile) throws IOException {
         throw new IOException(new UnsupportedOperationException());
     }
 
-    public static OptionOrigin of(String origin) {
+    public static OptionOrigin from(String origin) {
 
         if (origin == null) {
             return CommandLineOptionOrigin.singleton;
@@ -60,24 +64,23 @@ public abstract class OptionOrigin {
 
         URI originURI = originURI(origin);
         if (originURI == null) {
-            String macroName = MacroOptionOrigin.macroName(origin);
-            if (macroName != null) {
-                return new MacroOptionOrigin(macroName);
+            var macroOption = MacroOptionOrigin.from(origin);
+            if (macroOption != null) {
+                return macroOption;
             }
-            return new UnsupportedOptionOrigin(origin);
+            throw VMError.shouldNotReachHere("Unsupported OptionOrigin: " + origin);
         }
-
         switch (originURI.getScheme()) {
             case "jar":
                 return new JarOptionOrigin(originURI);
             case "file":
                 Path originPath = Path.of(originURI);
-                if (Files.isReadable(originPath)) {
-                    return new DirectoryOptionOrigin(originPath);
+                if (!Files.isReadable(originPath)) {
+                    VMError.shouldNotReachHere("Directory origin with path that cannot be read: " + originPath);
                 }
-                return new UnsupportedOptionOrigin(origin);
+                return new DirectoryOptionOrigin(originPath);
             default:
-                return new UnsupportedOptionOrigin(origin);
+                throw VMError.shouldNotReachHere("OptionOrigin of unsupported scheme: " + originURI);
         }
     }
 
@@ -93,43 +96,48 @@ public abstract class OptionOrigin {
 
         private static CommandLineOptionOrigin singleton = new CommandLineOptionOrigin();
 
+        private CommandLineOptionOrigin() {
+        }
+
+        @Override
+        public boolean commandLineLike() {
+            return true;
+        }
+
         @Override
         public String toString() {
             return "command line";
         }
     }
 
-    public static final class MacroOptionOrigin extends CommandLineOptionOrigin {
+    public static final class MacroOptionOrigin extends OptionOrigin {
 
-        private static final String PREFIX = OptionUtils.MacroOptionKind.Macro.getDescriptionPrefix(true);
+        public final OptionUtils.MacroOptionKind kind;
+        public final String name;
 
-        private final String name;
-
-        MacroOptionOrigin(String name) {
+        private MacroOptionOrigin(OptionUtils.MacroOptionKind kind, String name) {
+            this.kind = kind;
             this.name = name;
         }
 
-        public static String macroName(String rawOrigin) {
-            return rawOrigin.startsWith(PREFIX) ? rawOrigin.substring(PREFIX.length()) : null;
+        public static MacroOptionOrigin from(String rawOrigin) {
+            for (OptionUtils.MacroOptionKind kind : OptionUtils.MacroOptionKind.values()) {
+                String prefix = kind.getDescriptionPrefix(true);
+                if (rawOrigin.startsWith(prefix)) {
+                    return new MacroOptionOrigin(kind, rawOrigin.substring(prefix.length()));
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public boolean commandLineLike() {
+            return OptionUtils.MacroOptionKind.Macro.equals(kind);
         }
 
         @Override
         public String toString() {
-            return "macro option '" + name + "'";
-        }
-    }
-
-    public static final class UnsupportedOptionOrigin extends OptionOrigin {
-
-        protected final String rawOrigin;
-
-        public UnsupportedOptionOrigin(String rawOrigin) {
-            this.rawOrigin = rawOrigin;
-        }
-
-        @Override
-        public String toString() {
-            return rawOrigin;
+            return kind + " option '" + name + "'";
         }
     }
 
@@ -159,7 +167,7 @@ public abstract class OptionOrigin {
         protected JarOptionOrigin(URI rawOrigin) {
             var specific = rawOrigin.getSchemeSpecificPart();
             int sep = specific.lastIndexOf('!');
-            VMError.guarantee(sep > 0, "invalid jar origin");
+            VMError.guarantee(sep > 0, "Invalid jar origin");
             var origin = specific.substring(0, sep);
             container = URIOptionOrigin.originURI(origin);
             location = Path.of(specific.substring(sep + 2));
@@ -199,7 +207,7 @@ public abstract class OptionOrigin {
                 }
                 ++pathPos;
             }
-            VMError.guarantee(metaInfPos > 0, "invalid directory origin");
+            VMError.guarantee(metaInfPos > 0, "Invalid directory origin");
             container = originPath.getRoot().resolve(originPath.subpath(0, metaInfPos)).toUri();
             location = originPath.subpath(metaInfPos, originPath.getNameCount());
         }

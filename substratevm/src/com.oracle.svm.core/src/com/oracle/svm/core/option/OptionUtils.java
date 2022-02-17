@@ -85,13 +85,13 @@ public class OptionUtils {
         if (entry.trim().startsWith("@")) {
             Path valuesFile = Path.of(entry.substring(1));
             if (valuesFile.isAbsolute()) {
-                throw UserError.abort("Option '%s' from %s contains value redirection file '%s' that is an absolute path.",
+                throw UserError.abort("Option '%s' provided by %s contains value redirection file '%s' that is an absolute path.",
                                 SubstrateOptionsParser.commandArgument(option, optionValue), origin, valuesFile);
             }
             try {
                 return origin.getRedirectionValues(valuesFile).stream();
             } catch (IOException e) {
-                throw UserError.abort(e, "Option '%s' from %s contains invalid option value redirection.",
+                throw UserError.abort(e, "Option '%s' provided by %s contains invalid option value redirection.",
                                 SubstrateOptionsParser.commandArgument(option, optionValue), origin);
             }
         } else {

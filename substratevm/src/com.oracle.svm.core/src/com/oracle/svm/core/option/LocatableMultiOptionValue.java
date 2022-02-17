@@ -77,7 +77,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
     }
 
     public Stream<Pair<T, OptionOrigin>> getValuesWithOrigins() {
-        return values.stream().map(pair -> Pair.create(pair.getLeft(), OptionOrigin.of(pair.getRight())));
+        return values.stream().map(pair -> Pair.create(pair.getLeft(), OptionOrigin.from(pair.getRight())));
     }
 
     @Override
