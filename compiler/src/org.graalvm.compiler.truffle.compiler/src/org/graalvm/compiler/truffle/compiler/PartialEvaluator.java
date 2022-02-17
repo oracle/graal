@@ -642,10 +642,10 @@ public abstract class PartialEvaluator {
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
             AgnosticInliningPhase inliningPhase = new AgnosticInliningPhase(this, request);
             inliningPhase.apply(request.graph, providers);
-            if (inliningPhase.graphFinalized()) {
-                // If we needed to do graph finalization (i.e. if there were any truffle calls in
-                // the
-                // graph) we need ot re-run the truffle tier.
+            if (!inliningPhase.rootIsLeaf()) {
+                // If we've seen a truffle call in the graph, even if we have not inlined any call
+                // target, we need to run the truffle tier phases again after the PE inlining phase
+                // has finalized the graph.
                 // On the other hand, if there are no calls (root is a leaf) we can skip the truffle
                 // tier because there are no finalization points.
                 truffleTier(request);

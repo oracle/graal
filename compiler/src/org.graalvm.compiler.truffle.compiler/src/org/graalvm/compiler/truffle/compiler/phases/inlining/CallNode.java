@@ -391,22 +391,19 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return Integer.compare(id, o.id);
     }
 
-    public boolean finalizeGraph() {
-        boolean finalized = false;
+    public void finalizeGraph() {
         if (state == State.Inlined) {
             for (CallNode child : children) {
-                finalized |= child.finalizeGraph();
+                child.finalizeGraph();
             }
         }
         if (state == State.Cutoff || state == State.Expanded || state == State.BailedOut) {
             if (invoke.isAlive()) {
                 getCallTree().getGraphManager().finalizeGraph(invoke, directCallTarget);
-                return true;
             } else {
                 state = State.Removed;
             }
         }
-        return finalized;
     }
 
     void collectTargetsToDequeue(TruffleInliningData provider) {
