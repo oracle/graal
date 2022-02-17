@@ -29,6 +29,7 @@ import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -62,7 +63,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private final String javaIdentifier = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
     private final Pattern validOptionValue = Pattern.compile(javaIdentifier + "(\\." + javaIdentifier + ")*");
 
-    private final Set<String> requireCompletePackageOrClass = new HashSet<>();
+    private final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
     private final Set<Module> requireCompleteModules = new HashSet<>();
     private boolean requireCompleteAll;
 
@@ -84,7 +85,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
          * the synthetic modifier set (clazz.isSynthetic() returns false for such classes). Any
          * class with package-name jdk.internal.reflect should be treated as link-at-build-time.
          */
-        requireCompletePackageOrClass.add("jdk.internal.reflect");
+        requireCompletePackageOrClass.put("jdk.internal.reflect", null);
 
         Options.LinkAtBuildTime.getValue().getValuesWithOrigins().forEach(this::extractOptionValue);
     }
@@ -107,7 +108,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
         } else {
             for (String entry : OptionUtils.resolveOptionValueRedirection(Options.LinkAtBuildTime, value, origin)) {
                 if (validOptionValue.matcher(entry).matches()) {
-                    requireCompletePackageOrClass.add(entry);
+                    requireCompletePackageOrClass.computeIfAbsent(entry, unused -> new HashSet<>()).add(origin);
                 } else {
                     throw UserError.abort("Entry '%s' in option '%s' provided by '%s' is neither a package nor a fully qualified classname.",
                                     entry, SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
@@ -131,7 +132,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
             return true;
         }
 
-        return requireCompletePackageOrClass.contains(clazz.getName()) || requireCompletePackageOrClass.contains(clazz.getPackageName()) || clazz.isSynthetic();
+        return requireCompletePackageOrClass.containsKey(clazz.getName()) || requireCompletePackageOrClass.containsKey(clazz.getPackageName()) || clazz.isSynthetic();
     }
 
     public static boolean isModuleSynthetic(Module m) {

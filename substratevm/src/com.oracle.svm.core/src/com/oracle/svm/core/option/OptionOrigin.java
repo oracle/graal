@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -92,11 +93,21 @@ public abstract class OptionOrigin {
         }
     }
 
-    public static class CommandLineOptionOrigin extends OptionOrigin {
+    public static final class CommandLineOptionOrigin extends OptionOrigin {
 
         private static CommandLineOptionOrigin singleton = new CommandLineOptionOrigin();
 
         private CommandLineOptionOrigin() {
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof CommandLineOptionOrigin;
         }
 
         @Override
@@ -120,6 +131,21 @@ public abstract class OptionOrigin {
             this.name = name;
         }
 
+        @Override
+        public int hashCode() {
+            return Objects.hash(kind, name);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof MacroOptionOrigin) {
+                var that = (MacroOptionOrigin) obj;
+                return Objects.equals(this.kind, that.kind) &&
+                                Objects.equals(this.name, that.name);
+            }
+            return false;
+        }
+
         public static MacroOptionOrigin from(String rawOrigin) {
             for (OptionUtils.MacroOptionKind kind : OptionUtils.MacroOptionKind.values()) {
                 String prefix = kind.getDescriptionPrefix(true);
@@ -141,7 +167,7 @@ public abstract class OptionOrigin {
         }
     }
 
-    protected static abstract class URIOptionOrigin extends OptionOrigin {
+    protected abstract static class URIOptionOrigin extends OptionOrigin {
 
         protected URI container;
 
@@ -155,6 +181,21 @@ public abstract class OptionOrigin {
         @Override
         public Path location() {
             return location;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(container, location);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof URIOptionOrigin) {
+                var that = (URIOptionOrigin) obj;
+                return Objects.equals(this.container, that.container) &&
+                                Objects.equals(this.location, that.location);
+            }
+            return false;
         }
 
         @Override
