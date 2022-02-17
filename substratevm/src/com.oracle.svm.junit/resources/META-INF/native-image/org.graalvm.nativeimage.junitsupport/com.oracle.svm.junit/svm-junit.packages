@@ -6,8 +6,6 @@ org.hamcrest
 org.hamcrest.core
 org.hamcrest.internal
 org.junit
-org.junit
-org.junit.internal
 org.junit.internal
 org.junit.internal.builders
 org.junit.internal.runners.model
