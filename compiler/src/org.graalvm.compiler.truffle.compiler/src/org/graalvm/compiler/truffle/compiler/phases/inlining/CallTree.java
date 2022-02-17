@@ -109,8 +109,8 @@ public final class CallTree extends Graph {
         getDebug().dump(DebugContext.INFO_LEVEL, this, format, arg);
     }
 
-    public void finalizeGraph() {
-        root.finalizeGraph();
+    public boolean finalizeGraph() {
+        return root.finalizeGraph();
     }
 
     void collectTargetsToDequeue(TruffleInliningData provider) {

@@ -51,7 +51,7 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
 
     private final PartialEvaluator partialEvaluator;
     private final PartialEvaluator.Request request;
-    private boolean rootIsLeaf;
+    private boolean graphFinalized;
 
     public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
         this.partialEvaluator = partialEvaluator;
@@ -80,7 +80,6 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
         final InliningPolicy policy = getInliningPolicyProvider(request.isFirstTier()).get(request.options, coreProviders);
         final CallTree tree = new CallTree(partialEvaluator, request, policy);
-        rootIsLeaf = tree.getRoot().getChildren().isEmpty();
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining()) {
             policy.run(tree);
@@ -88,7 +87,7 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
             tree.collectTargetsToDequeue(request.task.inliningData());
             tree.updateTracingInfo(request.task.inliningData());
         }
-        tree.finalizeGraph();
+        graphFinalized = tree.finalizeGraph();
         tree.trace();
     }
 
@@ -102,7 +101,7 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
         return false;
     }
 
-    public boolean rootIsLeaf() {
-        return rootIsLeaf;
+    public boolean graphFinalized() {
+        return graphFinalized;
     }
 }
