@@ -37,8 +37,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
-import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
