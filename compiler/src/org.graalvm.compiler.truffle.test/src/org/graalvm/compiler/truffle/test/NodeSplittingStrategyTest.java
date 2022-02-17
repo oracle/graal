@@ -528,9 +528,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    for (int i = 0; i < callNodes.length; i++) {
-                        callNodes[i] = (OptimizedDirectCallNode) runtime.createDirectCallNode(target);
-                    }
+                    initCallNodes();
                     // Target turns monomorphic on 1
                     callNodes[0].call(1);
                     // Target turns polymorphic on 0
@@ -539,11 +537,23 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
                     for (OptimizedDirectCallNode callNode : callNodes) {
                         callNode.call(0);
                     }
+                    assertExpectations();
+                    return 42;
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private void initCallNodes() {
+                    for (int i = 0; i < callNodes.length; i++) {
+                        callNodes[i] = (OptimizedDirectCallNode) runtime.createDirectCallNode(target);
+                    }
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private void assertExpectations() {
                     // First is split because we have the budget
                     Assert.assertTrue(callNodes[0].isCallTargetCloned());
                     // Second is not becuase we don't have the budget
                     Assert.assertFalse(callNodes[1].isCallTargetCloned());
-                    return 42;
                 }
             }.getCallTarget();
         }
