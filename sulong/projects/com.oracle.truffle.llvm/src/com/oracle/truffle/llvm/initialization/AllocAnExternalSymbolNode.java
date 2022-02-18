@@ -70,7 +70,11 @@ public class AllocAnExternalSymbolNode extends LLVMNode {
             return pointerFromGlobal;
         }
 
-        if (pointerFromLocal != null) {
+        if (pointerFromLocal == null && pointerFromGlobal != null && isDefaultFlagActive(rtldFlags)) {
+            return pointerFromGlobal;
+        }
+
+        if (pointerFromGlobal == null && pointerFromLocal != null && !(isDefaultFlagActive(rtldFlags))) {
             return pointerFromLocal;
         }
 
