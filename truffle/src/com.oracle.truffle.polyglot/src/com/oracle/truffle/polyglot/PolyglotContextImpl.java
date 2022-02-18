@@ -76,6 +76,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -337,6 +338,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     volatile State state = State.DEFAULT;
     final WeakAssumedValue<PolyglotThreadInfo> singleThreadValue = new WeakAssumedValue<>("Single thread");
     volatile boolean singleThreaded = true;
+    private final Runnable onCancelledRunnable;
+    private final Consumer<Integer> onExitedRunnable;
+    private final Runnable onClosedRunnable;
 
     private final Map<Thread, PolyglotThreadInfo> threads = new WeakHashMap<>();
 
@@ -424,6 +428,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.threadLocalActions = null;
         this.subProcesses = new HashSet<>();
         this.uncachedLocation = null;
+        this.onCancelledRunnable = null;
+        this.onExitedRunnable = null;
+        this.onClosedRunnable = null;
     }
 
     /*
@@ -456,6 +463,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (!config.logLevels.isEmpty()) {
             EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers());
         }
+        this.onCancelledRunnable = null;
+        this.onExitedRunnable = null;
+        this.onClosedRunnable = null;
     }
 
     /*
@@ -491,7 +501,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
      * Constructor for inner contexts.
      */
     @SuppressWarnings("hiding")
-    PolyglotContextImpl(PolyglotLanguageContext creator, Map<String, Object> langConfig) {
+    PolyglotContextImpl(PolyglotLanguageContext creator, Map<String, Object> langConfig, Runnable onCancelledRunnable, Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable) {
         PolyglotContextImpl parent = creator.context;
         this.parent = parent;
         this.layer = new PolyglotSharingLayer(parent.engine);
@@ -523,6 +533,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
+        this.onCancelledRunnable = onCancelledRunnable;
+        this.onExitedRunnable = onExitedRunnable;
+        this.onClosedRunnable = onClosedRunnable;
     }
 
     /**
@@ -1117,7 +1130,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
         }
         if (state.isClosed()) {
-            throw PolyglotEngineException.illegalState("The Context is already closed.");
+            throw PolyglotEngineException.closedException("The Context is already closed.");
         }
     }
 
@@ -2436,7 +2449,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
              * cancel exception based on whether the exit notifications were finished and the hard
              * exit can be completed, or the context was cancelled during exit notifications.
              */
-            TruffleSafepoint.pollHere(exitLocation);
+            TruffleSafepoint.pollHere(exitLocation != null ? exitLocation : uncachedLocation);
         }
     }
 
@@ -3239,4 +3252,24 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    @TruffleBoundary
+    void runOnCancelled() {
+        if (onCancelledRunnable != null) {
+            onCancelledRunnable.run();
+        }
+    }
+
+    @TruffleBoundary
+    void runOnExited(int code) {
+        if (onExitedRunnable != null) {
+            onExitedRunnable.accept(code);
+        }
+    }
+
+    @TruffleBoundary
+    void runOnClosed() {
+        if (onClosedRunnable != null) {
+            onClosedRunnable.run();
+        }
+    }
 }
