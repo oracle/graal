@@ -45,6 +45,8 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -73,6 +75,7 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
@@ -108,7 +111,6 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleOptions;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -296,7 +298,29 @@ public abstract class PartialEvaluator {
         return callInlined;
     }
 
-    public final class Request {
+    private static final class GraphSizeListener extends Graph.NodeEventListener {
+
+        private final int nodeLimit;
+        private final StructuredGraph graph;
+
+        private GraphSizeListener(OptionValues options, StructuredGraph graph) {
+            this.nodeLimit = options.get(MaximumGraalNodeCount);
+            this.graph = graph;
+        }
+
+        @Override
+        public void nodeAdded(Node node) {
+            int nodeCount = graph.getNodeCount();
+            if (nodeCount > nodeLimit && nodeCount % 100 == 0) {
+                int graphSize = NodeCostUtil.computeGraphSize(graph);
+                if (graphSize > nodeLimit) {
+                    throw new GraphTooBigBailoutException("Graph too big to safely compile. Node count: " + nodeCount + ". Graph Size: " + graphSize + ". Limit: " + nodeLimit);
+                }
+            }
+        }
+    }
+
+    public final class Request implements AutoCloseable {
         public final OptionValues options;
         public final DebugContext debug;
         public final CompilableTruffleAST compilable;
@@ -305,6 +329,7 @@ public abstract class PartialEvaluator {
         public final CancellableTruffleCompilationTask task;
         public final StructuredGraph graph;
         final HighTierContext highTierContext;
+        private final Graph.NodeEventScope graphSizeLimitScope;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
                         CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
@@ -332,11 +357,17 @@ public abstract class PartialEvaluator {
             this.graph = builder.build();
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getValidRootAssumptionConstant()));
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
-            highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
+            this.highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
+            this.graphSizeLimitScope = graph.trackNodeEvents(new GraphSizeListener(options, graph));
         }
 
         public boolean isFirstTier() {
             return task.isFirstTier();
+        }
+
+        @Override
+        public void close() {
+            graphSizeLimitScope.close();
         }
     }
 
@@ -534,7 +565,6 @@ public abstract class PartialEvaluator {
     public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         (ReplacementsImpl) providers.getReplacements(),
-                        new NodeLimitControlPlugin(request.options.get(MaximumGraalNodeCount)),
                         inlineInvokePlugin
         };
         PEGraphDecoder decoder = createGraphDecoder(request,
@@ -717,29 +747,5 @@ public abstract class PartialEvaluator {
             return delegate.getNodeClassName();
         }
 
-    }
-
-    private static final class NodeLimitControlPlugin implements InlineInvokePlugin {
-
-        NodeLimitControlPlugin(int nodeLimit) {
-            this.nodeLimit = nodeLimit;
-        }
-
-        private final int nodeLimit;
-
-        @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            final StructuredGraph graph = b.getGraph();
-            if (graph.getNodeCount() > nodeLimit) {
-                try {
-                    throw b.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
-                } catch (BailoutException e) {
-                    // wrap it to detect it later
-                    throw new GraphTooBigBailoutException(e);
-                }
-            }
-            // Continue onto other plugins.
-            return null;
-        }
     }
 }

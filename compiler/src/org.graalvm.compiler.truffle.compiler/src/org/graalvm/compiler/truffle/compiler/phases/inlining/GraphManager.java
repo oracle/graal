@@ -64,13 +64,14 @@ final class GraphManager {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-            final PartialEvaluator.Request request = newRequest(truffleAST, false);
-            request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
-            partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            StructuredGraph graphAfterPE = copyGraphForDebugDump(request);
-            partialEvaluator.truffleTier(request);
-            entry = new Entry(request.graph, plugin, graphAfterPE);
-            irCache.put(truffleAST, entry);
+            try (PartialEvaluator.Request request = newRequest(truffleAST, false)) {
+                request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
+                partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
+                StructuredGraph graphAfterPE = copyGraphForDebugDump(request);
+                partialEvaluator.truffleTier(request);
+                entry = new Entry(request, plugin, graphAfterPE);
+                irCache.put(truffleAST, entry);
+            }
         }
         return entry;
     }
@@ -95,7 +96,7 @@ final class GraphManager {
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootRequest);
         partialEvaluator.truffleTier(rootRequest);
-        return new Entry(rootRequest.graph, plugin, graphAfterPE);
+        return new Entry(rootRequest, plugin, graphAfterPE);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
@@ -104,14 +105,15 @@ final class GraphManager {
     }
 
     void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {
-        final PartialEvaluator.Request request = newRequest(truffleAST, true);
-        partialEvaluator.doGraphPE(request, new InlineInvokePlugin() {
-            @Override
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                return PartialEvaluator.asInlineInfo(method);
-            }
-        }, graphCacheForInlining);
-        InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
+        try (PartialEvaluator.Request request = newRequest(truffleAST, true)) {
+            partialEvaluator.doGraphPE(request, new InlineInvokePlugin() {
+                @Override
+                public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+                    return PartialEvaluator.asInlineInfo(method);
+                }
+            }, graphCacheForInlining);
+            InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
+        }
     }
 
     private static StructuredGraph copyGraphForDebugDump(PartialEvaluator.Request request) {
@@ -129,8 +131,8 @@ final class GraphManager {
         // Populated only when debug dump is enabled with debug dump level >= info.
         final StructuredGraph graphAfterPEForDebugDump;
 
-        Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump) {
-            this.graph = graph;
+        Entry(PartialEvaluator.Request request, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump) {
+            this.graph = request.graph;
             this.invokeToTruffleCallNode = plugin.getInvokeToTruffleCallNode();
             this.indirectInvokes = plugin.getIndirectInvokes();
             this.trivial = invokeToTruffleCallNode.isEmpty() &&

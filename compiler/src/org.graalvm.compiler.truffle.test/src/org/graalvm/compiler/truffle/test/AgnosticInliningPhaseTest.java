@@ -61,7 +61,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return "";
             }
         };
-        final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+        try (PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
                             private TruffleInliningData inlining = new TruffleInlining();
@@ -85,10 +85,11 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             public boolean hasNextTier() {
                                 return false;
                             }
-                        }));
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
-        agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
-        return request.graph;
+                        }))) {
+            final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
+            agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
+            return request.graph;
+        }
     }
 
     protected static final OptimizedCallTarget createDummyNode() {
