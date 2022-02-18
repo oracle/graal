@@ -26,12 +26,11 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
 
     public abstract static class Factory {
-        public abstract CallableFromNative create(Meta meta);
+        public abstract CallableFromNative create();
 
         private final String methodName;
         private final NativeSignature nativeSignature;
@@ -65,6 +64,13 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
             return prependEnv;
         }
     }
+
+    /**
+     * Returns the name of the annotation that generated the node.
+     *
+     * @return The annotation type.
+     */
+    public abstract String generatedBy();
 
     /**
      * The method to invoke when coming from native code.
