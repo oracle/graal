@@ -146,22 +146,23 @@ public final class AArch64EncodeISOArrayOp extends AArch64LIRInstruction {
             masm.neon.uzp2VVV(ASIMDSize.FullReg, ElementSize.Byte, vhix, vtmp0, vtmp2);
             // ISO-check on hi-parts (all zero).
             if (ascii) {
+                // + ASCII-check on lo-parts (no sign).
                 Register vlox = vtmp1; // Merge lower bytes.
                 masm.neon.orrVVV(ASIMDSize.FullReg, vlox, vlo0, vlo1);
                 masm.neon.umovGX(ElementSize.DoubleWord, chk, vhix, 1);
                 masm.neon.cmltZeroVV(ASIMDSize.FullReg, ElementSize.Byte, vlox, vlox);
-                masm.fmov(32, max, vhix);
+                masm.fmov(64, max, vhix);
                 masm.neon.umaxvSV(ASIMDSize.FullReg, ElementSize.Byte, vlox, vlox);
-                masm.orr(32, chk, chk, max);
+                masm.orr(64, chk, chk, max);
                 masm.neon.umovGX(ElementSize.Byte, max, vlo0, 0);
-                masm.orr(32, chk, chk, max);
+                masm.orr(64, chk, chk, max);
             } else {
                 masm.neon.umovGX(ElementSize.DoubleWord, chk, vhix, 1);
-                masm.fmov(32, max, vhix);
-                masm.orr(32, chk, chk, max);
+                masm.fmov(64, max, vhix);
+                masm.orr(64, chk, chk, max);
             }
 
-            masm.cbnz(32, chk, labelFail32);
+            masm.cbnz(64, chk, labelFail32);
             masm.sub(32, cnt, cnt, 32);
             masm.neon.st1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, vlo0, vlo1,
                             AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.ST1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, dst, 32));
@@ -185,16 +186,17 @@ public final class AArch64EncodeISOArrayOp extends AArch64LIRInstruction {
             masm.neon.uzp2VVV(ASIMDSize.FullReg, ElementSize.Byte, vhi, vtmp3, vtmp3);
             // ISO-check on hi-parts (all zero).
             if (ascii) {
+                // + ASCII-check on lo-parts (no sign).
                 masm.neon.cmltZeroVV(ASIMDSize.FullReg, ElementSize.Byte, vtmp2, vlo);
-                masm.fmov(32, chk, vhi);
+                masm.fmov(64, chk, vhi);
                 masm.neon.umaxvSV(ASIMDSize.FullReg, ElementSize.Byte, vtmp2, vtmp2);
                 masm.neon.umovGX(ElementSize.Byte, max, vtmp2, 0);
-                masm.orr(32, chk, chk, max);
+                masm.orr(64, chk, chk, max);
             } else {
-                masm.fmov(32, chk, vhi);
+                masm.fmov(64, chk, vhi);
             }
 
-            masm.cbnz(32, chk, labelSkip8);
+            masm.cbnz(64, chk, labelSkip8);
             masm.fstr(64, vlo, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, dst, 8));
             masm.sub(32, cnt, cnt, 8);
             masm.add(64, src, src, 16);
