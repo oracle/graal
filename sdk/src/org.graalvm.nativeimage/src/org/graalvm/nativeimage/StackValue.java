@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ public final class StackValue {
      * It can be used to allocate a structure on the stack. The following example allocates a
      * {@code ComplexValue} and then sends it as a regular parameter to another function to compute
      * absolute value of the number:
+     *
      * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="ninePlusSixteenSqrt"}
      *
      * @param <T> the type, annotated by {@link CStruct} annotation

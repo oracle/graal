@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,7 @@ public final class ImageSingletons {
         return ImageSingletonsSupport.get().lookup(key);
     }
 
+    // @formatter:off
     /**
      * Checks if a singleton is in the registry. The key must be a compile time constant, so that
      * the call to this method can be replaced with the constant {@code true} or {@code false}.
@@ -100,6 +101,7 @@ public final class ImageSingletons {
      *
      * @since 19.0
      */
+    // @formatter:on
     public static boolean contains(Class<?> key) {
         if (!ImageInfo.inImageCode()) {
             return false;
