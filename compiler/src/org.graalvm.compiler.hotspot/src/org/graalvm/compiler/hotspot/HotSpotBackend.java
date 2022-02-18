@@ -195,6 +195,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor SQUARE_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implSquareToLen", void.class, Word.class, int.class, Word.class, int.class);
 
+    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", void.class, Word.class,
+                    Object.class);
+
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompress", void.class, Word.class,
                     Object.class);
 
@@ -204,9 +207,22 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha5ImplCompress", void.class, Word.class,
                     Object.class);
 
+    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompress", void.class, Word.class,
+                    Object.class);
+
     /**
      * @see DigestBaseSnippets#implCompressMultiBlock0
      */
+    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", int.class, Word.class,
+            Object.class, int.class, int.class);
+
+    public static int md5ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
+        return md5ImplCompressMBStub(HotSpotBackend.MD5_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native int md5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
+
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class);
 
@@ -236,6 +252,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int sha5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
+
+    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompressMB", int.class, Word.class,
+            Object.class, int.class, int.class);
+
+    public static int sha3ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
+        return shaImplCompressMBStub(HotSpotBackend.SHA3_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
@@ -291,11 +317,13 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor BIGINTEGER_RIGHT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "bigIntegerRightShiftWorker", void.class,
                     WordBase.class, WordBase.class, int.class, int.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_electronicCodeBook_encryptAESCrypt", int.class,
-            WordBase.class, WordBase.class, WordBase.class, int.class);
+    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(),
+                    "_electronicCodeBook_encryptAESCrypt", int.class,
+                    WordBase.class, WordBase.class, WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_electronicCodeBook_decryptAESCrypt", int.class,
-            WordBase.class, WordBase.class, WordBase.class, int.class);
+    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(),
+                    "_electronicCodeBook_decryptAESCrypt", int.class,
+                    WordBase.class, WordBase.class, WordBase.class, int.class);
 
     /**
      * @see VMErrorNode

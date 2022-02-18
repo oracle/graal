@@ -296,6 +296,12 @@ public final class UnimplementedGraalIntrinsics {
         if (config.electronicCodeBookDecrypt == 0L) {
             add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
         }
+        if (config.md5ImplCompress == 0L) {
+            add(ignore, "sun/security/provider/MD5.implCompress0([BI)V");
+        }
+        if (config.sha3ImplCompress == 0L) {
+            add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
+        }
 
         if (isJDK16OrHigher()) {
             // JDK-8258558
@@ -307,10 +313,8 @@ public final class UnimplementedGraalIntrinsics {
                             // Added by JDK-8173585: Intrinsify StringLatin1.indexOf(char)
                             // TODO: Enhance StringLatin1IndexOfNode to support this
                             "java/lang/StringLatin1.indexOfChar([BIII)I",
-
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
-
                             // JDK-8223347: Integration of Vector API (Incubator)
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Ljava/lang/Object;",
@@ -333,11 +337,9 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.storeWithMap(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$StoreVectorOperationWithMap;)V",
                             "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/VectorSupport.test(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Z",
-                            "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;",
+                            "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"
                             // @formatter:on
-                            // 8252204: AArch64: Implement SHA3 accelerator/intrinsic
-                            "sun/security/provider/MD5.implCompress0([BI)V",
-                            "sun/security/provider/SHA3.implCompress0([BI)V");
+            );
         }
 
         if (arch instanceof AArch64) {

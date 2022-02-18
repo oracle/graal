@@ -111,7 +111,6 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -217,6 +216,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
+                registerMD5Plugins(invocationPlugins, config, replacements);
                 registerGHASHPlugins(invocationPlugins, config, metaAccess, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
@@ -950,31 +950,31 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    static class SHAInvocationPlugin extends InvocationPlugin {
+    static class DigestInvocationPlugin extends InvocationPlugin {
         private final ForeignCallDescriptor descriptor;
 
-        SHAInvocationPlugin(ForeignCallDescriptor descriptor) {
+        DigestInvocationPlugin(ForeignCallDescriptor descriptor) {
             super("implCompress0", Receiver.class, byte[].class, int.class);
             this.descriptor = descriptor;
         }
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
-            ValueNode realReceiver = b.add(new PiNode(receiver.get(), targetMethod.getDeclaringClass(), false, true));
-            JavaKind wordKind = JavaKind.Long;
-            int stateOffset = HotSpotReplacementsUtil.getFieldOffset(targetMethod.getDeclaringClass(), "state");
-            ValueNode state = b.add(new RawLoadNode(realReceiver, b.add(ConstantNode.forIntegerKind(wordKind, stateOffset)), JavaKind.Object, LocationIdentity.any()));
-            int intArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Int);
-            int byteArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte);
-            ValueNode bufAddr = b.add(new ComputeObjectAddressNode(buf, new AddNode(ConstantNode.forInt(byteArrayBaseOffset), ofs)));
-            ValueNode stateAddr = b.add(new ComputeObjectAddressNode(state, ConstantNode.forInt(intArrayBaseOffset)));
-            b.add(new ForeignCallNode(descriptor, bufAddr, stateAddr));
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode realReceiver = b.add(new PiNode(receiver.get(), targetMethod.getDeclaringClass(), false, true));
+                ResolvedJavaField stateField = helper.getField(targetMethod.getDeclaringClass(), "state");
+                ValueNode state = helper.loadField(realReceiver, stateField);
+                ValueNode bufAddr = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
+                ValueNode stateAddr = helper.arrayStart(state, stateField.getType().getComponentType().getJavaKind());
+                b.add(new ForeignCallNode(descriptor, bufAddr, stateAddr));
+            }
             return true;
         }
 
     }
 
     private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        boolean useMD5 = config.md5ImplCompressMultiBlock != 0L;
         boolean useSha1 = config.useSHA1Intrinsics();
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
@@ -988,9 +988,11 @@ public class HotSpotGraphBuilderPlugins {
                 ResolvedJavaType declaringClass = targetMethod.getDeclaringClass();
                 return new Object[]{
                                 declaringClass,
+                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/MD5;"),
                                 HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA;"),
                                 HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA2;"),
-                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA5;")
+                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA5;"),
+                                HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA3;")
                 };
             }
 
@@ -1001,13 +1003,21 @@ public class HotSpotGraphBuilderPlugins {
         });
 
         Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
-        rSha1.registerConditional(config.useSHA1Intrinsics(), new SHAInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS));
+        rSha1.registerConditional(useSha1, new DigestInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS));
 
         Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-        rSha256.registerConditional(config.useSHA256Intrinsics(), new SHAInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
+        rSha256.registerConditional(useSha256, new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
 
         Registration rSha512 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
-        rSha512.registerConditional(config.useSHA512Intrinsics(), new SHAInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
+        rSha512.registerConditional(useSha512, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
+
+        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
+        rSha3.registerConditional(config.sha3ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
+    }
+
+    private static void registerMD5Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "sun.security.provider.MD5", replacements);
+        r.registerConditional(config.md5ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.MD5_IMPL_COMPRESS));
     }
 
     private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, Replacements replacements) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,9 +41,9 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Exercise the execution of the SHA digest substitutions.
+ * Exercise the execution of message digest substitutions.
  */
-public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
+public class TestMessageDigestSubstitutions extends HotSpotGraalCompilerTest {
 
     public byte[] testDigest(String name, byte[] data) throws NoSuchAlgorithmException {
         MessageDigest digest;
@@ -113,4 +113,15 @@ public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
         testWithInstalledIntrinsic("sun.security.provider.SHA5", "implCompress0", "testDigest", "SHA-512", getData());
     }
 
+    @Test
+    public void testSha3() {
+        assumeTrue("SHA3 not supported", getConfig().sha3ImplCompress != 0L);
+        testWithInstalledIntrinsic("sun.security.provider.SHA3", "implCompress0", "testDigest", "SHA-3", getData());
+    }
+
+    @Test
+    public void testMD5() {
+        assumeTrue("MD5 not supported", getConfig().md5ImplCompress != 0L);
+        testWithInstalledIntrinsic("sun.security.provider.MD5", "implCompress0", "testDigest", "MD5", getData());
+    }
 }
