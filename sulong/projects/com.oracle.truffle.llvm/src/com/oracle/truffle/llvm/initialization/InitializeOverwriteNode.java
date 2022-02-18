@@ -64,7 +64,7 @@ import java.util.ArrayList;
  */
 public final class InitializeOverwriteNode extends LLVMNode {
 
-    @Child private AllocAnExternalSymbolNode allocExternalSymbol;
+    @Child private AllocExternalSymbolNode allocExternalSymbol;
     @CompilationFinal(dimensions = 1) private final LLVMFunction[] functions;
     @CompilationFinal(dimensions = 1) private final LLVMGlobal[] globals;
 
@@ -94,7 +94,7 @@ public final class InitializeOverwriteNode extends LLVMNode {
         }
         this.functions = functionsList.toArray(LLVMFunction.EMPTY);
         this.globals = globalsList.toArray(LLVMGlobal.EMPTY);
-        this.allocExternalSymbol = new AllocAnExternalSymbolNode(result);
+        this.allocExternalSymbol = new AllocExternalSymbolNode(result);
     }
 
     public void execute(LLVMContext context, LLVMScopeChain localScope, RTLDFlags rtldFlags) {

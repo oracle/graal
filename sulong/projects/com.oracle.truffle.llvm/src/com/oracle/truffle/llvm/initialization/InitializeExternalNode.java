@@ -75,10 +75,10 @@ import java.util.ArrayList;
 public final class InitializeExternalNode extends LLVMNode {
     @CompilationFinal(dimensions = 1) private final LLVMFunction[] functions;
     @CompilationFinal(dimensions = 1) private final LLVMGlobal[] globals;
-    @Child private AllocAnExternalSymbolNode allocExternalSymbol;
+    @Child private AllocExternalSymbolNode allocExternalSymbol;
 
     public InitializeExternalNode(LLVMParserResult result) {
-        allocExternalSymbol = new AllocAnExternalSymbolNode(result);
+        allocExternalSymbol = new AllocExternalSymbolNode(result);
         LLVMScope fileScope = result.getRuntime().getFileScope();
         ArrayList<LLVMFunction> functionList = new ArrayList<>();
         ArrayList<LLVMGlobal> globalList = new ArrayList<>();
