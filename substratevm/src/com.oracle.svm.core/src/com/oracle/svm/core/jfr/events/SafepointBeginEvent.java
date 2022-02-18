@@ -39,8 +39,13 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
 public class SafepointBeginEvent {
+    /**
+     * HotSpot reports the number of Java threads, so we do the same. In our case that includes the
+     * VM operation thread. This is a major difference to HotSpot but affects other JFR areas as
+     * well.
+     */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(UnsignedWord safepointId, int numOfThreads, long startTicks) {
+    public static void emit(UnsignedWord safepointId, int numJavaThreads, long startTicks) {
         if (!HasJfrSupport.get()) {
             return;
         }
@@ -55,7 +60,7 @@ public class SafepointBeginEvent {
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, safepointId.rawValue());
-            JfrNativeEventWriter.putInt(data, numOfThreads);
+            JfrNativeEventWriter.putInt(data, numJavaThreads);
             JfrNativeEventWriter.putInt(data, 0); // jniCriticalThreadCount
             JfrNativeEventWriter.endEventWrite(data, false);
         }

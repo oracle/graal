@@ -628,12 +628,12 @@ public final class Safepoint {
             Statistics.setStartNanos();
             ImageSingletons.lookup(Heap.class).prepareForSafepoint();
             safepointState = SYNCHRONIZING;
-            int numOfThreads = requestSafepoints(reason);
+            int numJavaThreads = requestSafepoints(reason);
             waitForSafepoints(reason);
             Statistics.setFrozenNanos();
             safepointState = AT_SAFEPOINT;
             safepointId = safepointId.add(1);
-            SafepointBeginEvent.emit(getSafepointId(), numOfThreads, startTicks);
+            SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
             return lock;
         }
 
