@@ -151,8 +151,8 @@ public abstract class SubstrateBackend extends Backend {
 
     public abstract BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache);
 
-    public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                                                                int threadIsolateOffset, boolean nonVirtual, int methodObjEntryPointOffset, CallingConvention callingConvention);
+    public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, int threadIsolateOffset,
+                                                                boolean nonVirtual, int methodObjEntryPointOffset, CallingConvention callingConvention);
 
     /**
      * Returns whether the backend can fold the stack overflow check into the method prologue for
