@@ -63,11 +63,11 @@ public final class ImageSingletonsTest {
 
     @Test
     public void checkAndUseWorksOnRegularJDK() throws Exception {
-        // BEGIN: org.graalvm.nativeimage.ImageSingletonsTest
+        // @start region="ImageSingletonsTest"
         if (ImageSingletons.contains(MyService.class)) {
             MyService myService = ImageSingletons.lookup(MyService.class);
             myService.useMyService();
         }
-        // END: org.graalvm.nativeimage.ImageSingletonsTest
+        // @end region="ImageSingletonsTest"
     }
 }

@@ -93,7 +93,7 @@ public final class ImageSingletons {
      * The method returns {@code false} since 19.3.0 when not used in the context of a native image.
      * As such it is safe to write:
      *
-     * {@codesnippet org.graalvm.nativeimage.ImageSingletonsTest}
+     * {@snippet file="org/graalvm/nativeimage/ImageSingletonsTest.java" region="ImageSingletonsTest"}
      *
      * and let such code run fine in the context of {@link ImageInfo#inImageCode() native image} as
      * well as outside of it.
