@@ -24,6 +24,8 @@
  */
 package org.graalvm.nativebridge;
 
+import org.graalvm.nativeimage.c.function.CEntryPoint.AlwaysIncluded;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -57,14 +59,4 @@ public @interface GenerateHotSpotToNativeBridge {
      * {@link JNIConfig} instance is used for marshallers' lookup.
      */
     Class<?> jniConfig();
-
-    /**
-     * A {@link BooleanSupplier} that always returns {@code true}.
-     */
-    class AlwaysIncluded implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return true;
-        }
-    }
 }

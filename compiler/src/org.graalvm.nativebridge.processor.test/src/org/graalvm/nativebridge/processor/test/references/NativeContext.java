@@ -30,9 +30,9 @@ import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.NativeIsolate;
 import org.graalvm.nativebridge.NativeObject;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
+@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
 abstract class NativeContext extends NativeObject implements Context {
 
     NativeContext(NativeIsolate isolate, long handle) {

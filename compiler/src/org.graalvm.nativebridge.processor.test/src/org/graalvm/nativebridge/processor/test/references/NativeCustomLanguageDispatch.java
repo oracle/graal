@@ -29,8 +29,9 @@ import org.graalvm.nativebridge.CustomDispatchFactory;
 import org.graalvm.nativebridge.CustomReceiverAccessor;
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class)
+@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
 abstract class NativeCustomLanguageDispatch extends CustomLanguageDispatch {
 
     private static final NativeCustomLanguageDispatch INSTANCE = NativeCustomLanguageDispatchGen.createHotSpotToNative();
