@@ -59,10 +59,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef POLYGLOT_LEGACY_MODE
-typedef void *polyglot_value;
-#else
+#ifdef POLYGLOT_STRICT_MODE
 typedef struct __polyglot_value *polyglot_value;
+#else
+typedef void *polyglot_value;
+#pragma message(                                                                                                                                     \
+    "The polyglot_value pointer is a type alias for void*. To disable this set POLYGLOT_STRICT_MODE. This may become the default setting in the future.")
 #endif
 
 /**
