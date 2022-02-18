@@ -176,7 +176,12 @@ public final class ObjectKlass extends Klass {
             fieldTable[localFieldTableIndex + i] = instanceField;
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
-            Field staticField = new Field(klassVersion, lkStaticFields[i], pool);
+            Field staticField;
+            if (superKlass == getMeta().java_lang_Enum && lkStaticFields[i].getName() != Name.$VALUES) {
+                staticField = new EnumConstantField(klassVersion, lkStaticFields[i], pool);
+            } else {
+                staticField = new Field(klassVersion, lkStaticFields[i], pool);
+            }
             staticFieldTable[i] = staticField;
         }
 

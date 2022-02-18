@@ -272,7 +272,13 @@ public final class ClassRedefinition {
                         // inject it under the existing JDWP ID
                         classRegistry.onInnerClassRemoved(type);
                         ObjectKlass newKlass = classRegistry.defineKlass(type, classInfo.getBytes());
+                        assert newKlass != loadedKlass && newKlass == classRegistry.findLoadedKlass(type);
+
                         packet.info.setKlass(newKlass);
+                    } else if (classInfo.isNewInnerTestKlass()) {
+                        // New inner test classes cannot be loaded because they'll
+                        // have a versioned name on disk, so let's define them directly
+                        classRegistry.defineKlass(type, classInfo.getBytes());
                     }
                     return 0;
                 default:

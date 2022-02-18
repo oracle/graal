@@ -98,7 +98,7 @@ public final class InnerClassRedefiner {
                     // get the outer classinfo if present
                     HotSwapClassInfo info = handled.get(getOuterClassName(klassName));
                     if (info != null) {
-                        HotSwapClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context);
+                        HotSwapClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context, redefineInfo.isInnerTestKlass());
                         info.addInnerClass(classInfo);
                         handled.put(klassName, classInfo);
                         it.remove();
@@ -107,7 +107,7 @@ public final class InnerClassRedefiner {
                     // pure named class
                     it.remove();
                     if (redefineInfo.getKlass() != null) {
-                        HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context);
+                        HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context, redefineInfo.isInnerTestKlass());
                         handled.put(klassName, classInfo);
                         hotswapState.put(klassName, classInfo);
                     }
@@ -182,7 +182,7 @@ public final class InnerClassRedefiner {
                     // NoSuchMethod errors because they're marked as removed
                 }
                 if (classBytes != null) {
-                    hotswapInfo.addInnerClass(ClassInfo.create(innerName, classBytes, definingLoader, context));
+                    hotswapInfo.addInnerClass(ClassInfo.create(innerName, classBytes, definingLoader, context, false));
                 }
             }
         }
