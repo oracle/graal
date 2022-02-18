@@ -53,7 +53,6 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -109,6 +108,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
 
             // Determine register for jmethodID argument
             HostedProviders providers = (HostedProviders) config.getProviders();
+
             List<JavaType> parameters = new ArrayList<>();
             parameters.add(providers.getMetaAccess().lookupJavaType(JNIEnvironment.class));
             parameters.add(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
@@ -117,21 +117,20 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             }
             parameters.add(providers.getMetaAccess().lookupJavaType(JNIMethodId.class));
             ResolvedJavaType returnType = providers.getWordTypes().getWordImplType();
-            CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
-                            SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
-            RegisterValue threadArg = null;
+
             int threadIsolateOffset = -1;
             if (SubstrateOptions.SpawnIsolates.getValue()) {
-                threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
                 if (SubstrateOptions.MultiThreaded.getValue()) {
                     threadIsolateOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.IsolateTL);
                 }
                 // NOTE: GR-17030: JNI is currently broken in the single-threaded, multi-isolate
                 // case. Fixing this also requires changes to how trampolines are generated.
             }
-            RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
-            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers));
+            CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
+                    SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
+
+            return backend.createJNITrampolineMethod(method, identifier, threadIsolateOffset, nonVirtual, getFieldOffset(providers), callingConvention);
         };
     }
 

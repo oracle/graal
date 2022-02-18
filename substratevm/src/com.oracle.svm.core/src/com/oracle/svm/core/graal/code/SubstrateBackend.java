@@ -47,9 +47,9 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SubstrateBackend extends Backend {
@@ -152,7 +152,7 @@ public abstract class SubstrateBackend extends Backend {
     public abstract BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache);
 
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset);
+                                                                int threadIsolateOffset, boolean nonVirtual, int methodObjEntryPointOffset, CallingConvention callingConvention);
 
     /**
      * Returns whether the backend can fold the stack overflow check into the method prologue for

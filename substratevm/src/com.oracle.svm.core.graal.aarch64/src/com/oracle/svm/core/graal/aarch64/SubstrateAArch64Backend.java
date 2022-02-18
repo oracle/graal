@@ -1053,7 +1053,16 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+                                                       int threadIsolateOffset, boolean nonVirtual, int methodObjEntryPointOffset,
+                                                       CallingConvention callingConvention) {
+
+        RegisterValue threadArg = null;
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
+            // NOTE: GR-17030: JNI is currently broken in the single-threaded, multi-isolate
+            // case. Fixing this also requires changes to how trampolines are generated.
+        }
+        RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(nonVirtual ? 3 : 2);
 
         CompilationResult result = new CompilationResult(identifier);
         AArch64MacroAssembler asm = new AArch64MacroAssembler(getTarget());

@@ -130,7 +130,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.DataSectionReference;
@@ -1017,7 +1016,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return transitionWrapper;
     }
 
-    void createJNITrampoline(RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+    void createJNITrampoline(int threadIsolateOffset, int methodIdArg, int methodObjEntryPointOffset) {
         builder.setFunctionAttribute(Attribute.Naked);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
@@ -1029,14 +1028,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         LLVMValueRef jumpAddressAddress;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            LLVMValueRef thread = buildInlineGetRegister(threadArg.getRegister().name);
+            LLVMValueRef thread = builder.getFunctionParam(0);
             LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
             LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
-            LLVMValueRef methodId = buildInlineGetRegister(methodIdArg.getRegister().name);
+            LLVMValueRef methodId = builder.getFunctionParam(methodIdArg);
             LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
             jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         } else {
-            LLVMValueRef methodBase = buildInlineGetRegister(methodIdArg.getRegister().name);
+            LLVMValueRef methodBase = builder.getFunctionParam(methodIdArg);
             jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
         }
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());

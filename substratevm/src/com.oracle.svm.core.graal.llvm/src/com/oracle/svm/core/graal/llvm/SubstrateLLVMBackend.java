@@ -50,11 +50,11 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.meta.JavaConstant;
@@ -76,14 +76,14 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     }
 
     @Override
-    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, int threadIsolateOffset,
+                                                       boolean nonVirtual, int methodObjEntryPointOffset, CallingConvention callingConvention) {
 
         CompilationResult result = new CompilationResult(identifier);
         result.setMethods(method, Collections.emptySet());
 
         LLVMGenerator generator = new LLVMGenerator(getProviders(), result, null, method, 0);
-        generator.createJNITrampoline(threadArg, threadIsolateOffset, methodIdArg, methodObjEntryPointOffset);
+        generator.createJNITrampoline(threadIsolateOffset, nonVirtual ? 3 : 2, methodObjEntryPointOffset);
         byte[] bitcode = generator.getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
 
