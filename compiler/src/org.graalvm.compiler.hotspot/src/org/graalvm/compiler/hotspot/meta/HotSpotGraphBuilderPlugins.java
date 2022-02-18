@@ -209,7 +209,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCounterModePlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
-                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
+                StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
