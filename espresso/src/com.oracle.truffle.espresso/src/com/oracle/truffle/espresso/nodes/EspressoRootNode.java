@@ -71,9 +71,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         this.cookieSlot = SLOT_UNINITIALIZED;
     }
 
+    // Splitting constructor
     private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
-        this.methodNode = methodNode;
+        this.methodNode = methodNode.split();
         this.monitorSlot = split.monitorSlot;
         this.cookieSlot = split.cookieSlot;
     }
@@ -245,7 +246,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             super(frameDescriptor, methodNode, true);
         }
 
-        Synchronized(Synchronized split) {
+        private Synchronized(Synchronized split) {
             super(split, split.getFrameDescriptor(), split.getMethodNode());
         }
 
@@ -286,7 +287,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             super(frameDescriptor, methodNode, methodNode.getMethod().usesMonitors());
         }
 
-        Default(Default split) {
+        private Default(Default split) {
             super(split, split.getFrameDescriptor(), split.getMethodNode());
         }
 

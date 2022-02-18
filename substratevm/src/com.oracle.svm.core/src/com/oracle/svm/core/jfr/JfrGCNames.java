@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,25 +23,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr;
 
-package com.oracle.svm.test.jfr;
+import java.util.Arrays;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-public class TestClassEvent extends JfrTest {
+public class JfrGCNames {
+    private JfrGCName[] names;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{
-                        ClassEvent.class.getName()
-        };
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrGCNames() {
+        names = new JfrGCName[0];
     }
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+    @Fold
+    public static JfrGCNames singleton() {
+        return ImageSingletons.lookup(JfrGCNames.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized JfrGCName addGCName(String name) {
+        int id = names.length;
+        JfrGCName result = new JfrGCName(id, name);
+
+        // We only expect a very small number of GC names (usually just 1).
+        JfrGCName[] newArr = Arrays.copyOf(names, id + 1);
+        newArr[id] = result;
+        names = newArr;
+        return result;
+    }
+
+    public JfrGCName[] getNames() {
+        return names;
     }
 }

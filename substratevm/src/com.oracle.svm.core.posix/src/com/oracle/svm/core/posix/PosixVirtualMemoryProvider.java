@@ -123,7 +123,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         mappingSize = UnsignedUtils.roundUp(mappingSize, granularity);
         int flags = MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE();
-        if (Platform.includedIn(Platform.DARWIN_AARCH64.class) && executable) {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && executable) {
             flags |= MAP_JIT();
         }
         Pointer mappingBegin = mmap(nullPointer(), mappingSize, PROT_NONE(), flags, NO_FD, NO_FD_OFFSET);
@@ -176,7 +176,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
 
         boolean isWX = (access & Access.WRITE) != 0 && (access & Access.EXECUTE) != 0;
-        if (Platform.includedIn(Platform.DARWIN_AARCH64.class) && isWX) {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && isWX) {
             flags |= MAP_JIT();
         }
         /* The memory returned by mmap is guaranteed to be zeroed. */

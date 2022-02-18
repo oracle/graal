@@ -45,6 +45,7 @@ public enum JfrEvent {
     PhysicalMemory("jdk.PhysicalMemory"),
     ExecutionSample("jdk.ExecutionSample"),
     NativeMethodSample("jdk.NativeMethodSample"),
+    GarbageCollection("jdk.GarbageCollection"),
     GCPhasePauseEvent("jdk.GCPhasePause"),
     GCPhasePauseLevel1Event("jdk.GCPhasePauseLevel1"),
     GCPhasePauseLevel2Event("jdk.GCPhasePauseLevel2"),
