@@ -235,6 +235,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
     static final String IMPORT_STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
+    static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
     static final String IMPORT_ESPRESSO_CONTEXT = "com.oracle.truffle.espresso.runtime.EspressoContext";
     static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
@@ -663,7 +664,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
 
-        if (helper.hasMetaInjection || helper.hasContextInjection) {
+        if (helper.hasMetaInjection) {
+            expectedImports.add(IMPORT_META);
+        }
+        if (helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
         expectedImports.add(IMPORT_COLLECT);
