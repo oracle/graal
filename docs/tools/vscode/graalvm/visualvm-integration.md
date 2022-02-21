@@ -15,8 +15,8 @@ A special launch configuration, **Launch VisualVM & Java 8+ Application**, is pr
 To get started, do the following:
 
 1. Click **Gr** in the activity panel, install the latest GraalVM release, and activate it, as described [here](README.md#graalvm-installation-wizard).
-2. Create the _launch.json_ file. If not already created, create a new _launch.json_ file from the **Run and Debug** activity using the create a launch.json file link. Select the Java 8+ environment when asked.
-3. Open _launch.json_ and click the **Add Configuration…** button in the bottom right corner of the editor. Select the **GraalVM: Launch Java 8+ Application with VisualVM** configuration. Make sure to save the _launch.json_ file after editing.
+2. Create the _launch.json_ file. If not already created, create a new `launch.json` file from the **Run and Debug** activity using the create a launch.json file link. Select the Java 8+ environment when asked.
+3. Open `launch.json` and click the **Add Configuration…** button in the bottom right corner of the editor. Select the **GraalVM: Launch Java 8+ Application with VisualVM** configuration. Make sure to save the `launch.json` file after editing.
 4. Select the action to perform when project starts. In the VisualVM pane of the **Gr** activity view, click the **Configure** action to define the action to perform when the project is started.
 5. Select the **Launch VisualVM & Java 8+ Application** launch configuration in the **Run and Debug** activity. Use the **Start Debugging** or **Run Without Debugging** action to start the current project.
 
@@ -127,7 +127,7 @@ The following settings can be configured using the Configure action:
 
   - **Sampling rate**
   Definition of the CPU sampling rate.
-  The sampling rate controls which methods are "visible" to the sampler engine - the higher the sampling rate is, the shorter executing methods can be tracked, but the higher overhead is imposed to the monitored process, and its execution biased. Available values are 20 ms ~ 10.000 ms.
+  The sampling rate controls which methods are "visible" to the sampler engine - the higher the sampling rate is, the shorter executing methods can be tracked, but the higher overhead is imposed to the monitored process, and its execution biased. Available values are 20 ms - 10.000 ms.
   By default, 100 ms value is selected.
   Typically, this is the optimal choice when searching for a performance bottleneck, while letting the process run at almost full speed.
 
@@ -149,7 +149,7 @@ The following settings can be configured using the Configure action:
 
   - **Sampling rate**
   Definition of the memory sampling rate.
-  The sampling rate controls how frequently a class histogram will be obtained from the process and displayed in VisualVM. Available values are 100 ms ~ 10.000 ms. By default, 1.000 ms value is selected.
+  The sampling rate controls how frequently a class histogram will be obtained from the process and displayed in VisualVM. Available values are 100 ms - 10.000 ms. By default, 1.000 ms value is selected.
   Typically, this is an optimal choice for evaluating which classes and instances are currently allocated on heap and whether they are eventually released at the expected time.
 
 **JDK Flight Recorder**

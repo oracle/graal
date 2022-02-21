@@ -15,7 +15,7 @@ To learn how to debug Java from GDB, see the dedicated [Native Image Debug Info 
 ## Get Started
 
 You can debug a native image process the same way as debugging a regular Java application: when your native executable is running, the debugger attaches to the application process, the Java source file is opened, letting you debug it. You can perform regular debugging actions like setting breakpoints, creating watches, inspecting the state of your application, etc.
-Debugger attachment is enabled by adding a separate configuration, **Native Image: launch**, into the _launch.json_ file.
+Debugger attachment is enabled by adding a separate configuration, **Native Image: launch**, to the `launch.json` file.
 
   > Note: To debug a native image from within VS Code, you must install GraalVM Enterprise.
 
@@ -31,7 +31,7 @@ Debugger attachment is enabled by adding a separate configuration, **Native Imag
 
 The demo is a simple Java factorial calculator that uses the [Native Build Tools for GraalVM Native Image](https://graalvm.github.io/native-build-tools/latest/index.html), which provides support for building and testing native executables using Apache Maven™ and Gradle.
 
-The Maven _pom.xml_ file is extended with a native profile, which makes building a native executable easier (read more about Maven Profiles [here](https://maven.apache.org/guides/introduction/introduction-to-profiles.html)).
+The Maven `pom.xml` file is extended with a native profile, which makes building a native executable easier (read more about Maven Profiles [here](https://maven.apache.org/guides/introduction/introduction-to-profiles.html)).
 To add debug information, the `<buildArg>` tags are used in the native profile configuration to pass parameters to the `native-image` build process:
 
 ```xml
@@ -55,9 +55,9 @@ Disabling all optimizations is not required, but in general it makes the debuggi
   mvn -Pnative -DskipTests package
   ```
   This command compiles and packages a Java application into a runnable JAR file and then uses GraalVM Native Image to generate a native executable from it.
-  Once you have your executable with debug symbols generated, the next step is to add the Native Image debugger configuration, **Native Image: launch**, into the _launch.json_ file in VS Code.
+  Once you have your executable with debug symbols generated, the next step is to add the Native Image debugger configuration, **Native Image: launch**, into the `launch.json` file in VS Code.
 
-3. Select **Run | Add Configuration…** and then select **Native Image: Launch** from the list of available configurations. It will add the following code to _launch.json_:
+3. Select **Run Add Configuration…** and then select **Native Image: Launch** from the list of available configurations. It will add the following code to `launch.json`:
 
   ```JSON
   {
@@ -67,7 +67,7 @@ Disabling all optimizations is not required, but in general it makes the debuggi
    “nativeImagePath”: “${workspaceFolder}/build/native-image/application”
    }
   ```
-   The value of the `nativeImagePath` property has to match the executable name and the location specified in the _pom.xml_, so change the last line of the configuration to `"nativeImagePath": "${workspaceFolder}/target/javagdb"`.
+   The value of the `nativeImagePath` property has to match the executable name and the location specified in the `pom.xml`, so change the last line of the configuration to `"nativeImagePath": "${workspaceFolder}/target/javagdb"`.
 
 4. Add an argument to specify the number that you want to calculate the factorial, for example, `“args”: “100”`. Your configuration should look like this:
   ```JSON
@@ -98,3 +98,7 @@ The `native-image` builder removes the code that is not used by the application 
 This could be some uncalled library or some unreachable methods.
 The VS Code extension recognises these elimitations and will grey out both the body of eliminated method and the method call.
 The shaded code is not a part of the native executable.
+
+## Learn More
+
+Get hands-on lab experience debugging a native executable using the Oracle Linux environment in Oracle Cloud by running this dedicated lab: [GraalVM Native Image Debugging](https://luna.oracle.com/lab/cbe9d331-5dbc-4300-a5ca-20b88346cbcf/steps).
