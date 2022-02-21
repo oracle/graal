@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.compiler;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalGraphSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
@@ -306,7 +306,7 @@ public abstract class PartialEvaluator {
         private final int slowCheckLimit;
 
         private GraphSizeListener(OptionValues options, StructuredGraph graph) {
-            this.nodeLimit = options.get(MaximumGraalNodeCount);
+            this.nodeLimit = options.get(MaximumGraalGraphSize);
             this.noCheckLimit = nodeLimit / 2;
             this.slowCheckLimit = (3 * nodeLimit) / 4;
             this.graph = graph;
