@@ -131,15 +131,14 @@ final class BreakpointExceptionFilter {
         if (node instanceof InstrumentableNode) {
             InstrumentableNode inode = (InstrumentableNode) node;
             if (inode.isInstrumentable() && inode.hasTag(TryBlockTag.class)) {
-                Object exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject();
                 Object nodeObject = inode.getNodeObject();
-                if (nodeObject != null && exceptionObject != null) {
+                if (nodeObject != null) {
                     InteropLibrary library = InteropLibrary.getFactory().getUncached(nodeObject);
                     TruffleObject object = (TruffleObject) nodeObject;
                     if (library.isMemberInvocable(nodeObject, "catches")) {
                         Object catches;
                         try {
-                            catches = library.invokeMember(nodeObject, "catches", exceptionObject);
+                            catches = library.invokeMember(nodeObject, "catches", exception);
                         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException ex) {
                             throw new IllegalStateException("Unexpected exception from 'catches' on '" + object, exception);
                         }

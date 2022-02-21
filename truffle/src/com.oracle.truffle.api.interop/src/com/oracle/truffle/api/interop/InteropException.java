@@ -109,8 +109,8 @@ public abstract class InteropException extends Exception {
         if (t == null) {
             return;
         }
-        if (!(t instanceof com.oracle.truffle.api.TruffleException)) {
-            throw new IllegalArgumentException("Cause exception must implement TruffleException but was " + t.getClass() + ".");
+        if (!InteropAccessor.EXCEPTION.isException(t)) {
+            throw new IllegalArgumentException("Cause exception must extend AbstractTruffleException but was " + t.getClass() + ".");
         }
     }
 

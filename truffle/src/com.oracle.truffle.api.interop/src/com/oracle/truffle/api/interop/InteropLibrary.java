@@ -1874,8 +1874,7 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"throwException"})
     public boolean isException(Object receiver) {
         // A workaround for missing inheritance feature for default exports.
-        return InteropAccessor.EXCEPTION.isException(receiver) ||
-                        LegacyTruffleExceptionSupport.isException(receiver);
+        return InteropAccessor.EXCEPTION.isException(receiver);
     }
 
     /**
@@ -1901,8 +1900,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             throw InteropAccessor.EXCEPTION.throwException(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            throw LegacyTruffleExceptionSupport.throwException(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1925,8 +1922,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return (ExceptionType) InteropAccessor.EXCEPTION.getExceptionType(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionType(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1945,8 +1940,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.isExceptionIncompleteSource(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.isExceptionIncompleteSource(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1970,8 +1963,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionExitStatus(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionExitStatus(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1991,8 +1982,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasExceptionCause(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasExceptionCause(receiver);
         } else {
             return false;
         }
@@ -2014,8 +2003,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionCause(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionCause(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2034,8 +2021,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasExceptionMessage(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasExceptionMessage(receiver);
         } else {
             return false;
         }
@@ -2056,8 +2041,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionMessage(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionMessage(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2076,8 +2059,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasExceptionStackTrace(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasExceptionStackTrace(receiver);
         } else {
             return false;
         }
@@ -2106,8 +2087,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionStackTrace(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2279,9 +2258,6 @@ public abstract class InteropLibrary extends Library {
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasSourceLocation(receiver);
         }
-        if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasSourceLocation(receiver);
-        }
         return false;
     }
 
@@ -2304,9 +2280,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getSourceLocation(receiver);
-        }
-        if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getSourceLocation(receiver);
         }
         throw UnsupportedMessageException.create();
     }
@@ -4508,7 +4481,7 @@ public abstract class InteropLibrary extends Library {
             }
             assert preCondition(receiver);
             boolean wasException = delegate.isException(receiver);
-            boolean wasTruffleException = false;
+            boolean wasAbstractTruffleException = false;
             boolean unsupported = false;
             try {
                 throw delegate.throwException(receiver);
@@ -4518,12 +4491,12 @@ public abstract class InteropLibrary extends Library {
                 unsupported = true;
                 throw e;
             } catch (Throwable e) {
-                wasTruffleException = LegacyTruffleExceptionSupport.isTruffleException(e);
+                wasAbstractTruffleException = InteropAccessor.EXCEPTION.isException(e);
                 throw e;
             } finally {
                 if (!unsupported) {
                     assert wasException : violationInvariant(receiver);
-                    assert wasTruffleException : violationInvariant(receiver);
+                    assert wasAbstractTruffleException : violationInvariant(receiver);
                 }
             }
         }

@@ -265,7 +265,7 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Returns <code>true</code> if a TruffleException leaving this node should capture
+     * Returns <code>true</code> if an AbstractTruffleException leaving this node should capture
      * {@link Frame} objects in its stack trace in addition to the default information. This is
      * <code>false</code> by default to avoid the attached overhead. The captured frames are then
      * accessible through {@link TruffleStackTraceElement#getFrame()}

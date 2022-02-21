@@ -1706,18 +1706,16 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     boolean hasExceptionCause() {
-        return isException() && ((Throwable) obj).getCause() instanceof com.oracle.truffle.api.TruffleException;
+        return isException() && InteropLibrary.getUncached().isException(((Throwable) obj).getCause());
     }
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     Object getExceptionCause() throws UnsupportedMessageException {
         if (isException()) {
             Throwable cause = ((Throwable) obj).getCause();
-            if (cause instanceof com.oracle.truffle.api.TruffleException) {
+            if (InteropLibrary.getUncached().isException(cause)) {
                 return cause;
             }
         }

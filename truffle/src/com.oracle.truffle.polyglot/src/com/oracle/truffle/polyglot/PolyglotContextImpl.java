@@ -78,6 +78,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -2489,7 +2490,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    @SuppressWarnings("deprecation")
     void finishCleanup() {
         ExecutorService localCleanupService;
         synchronized (this) {
@@ -2509,7 +2509,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 } catch (InterruptedException ie) {
                     engine.getEngineLogger().log(Level.INFO, "Waiting for polyglot context cleanup was interrupted!", ie);
                 } catch (ExecutionException ee) {
-                    assert !(ee.getCause() instanceof com.oracle.truffle.api.TruffleException);
+                    assert !(ee.getCause() instanceof AbstractTruffleException);
                     throw sneakyThrow(ee.getCause());
                 }
             } finally {

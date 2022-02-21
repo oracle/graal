@@ -131,7 +131,7 @@ public final class TruffleStackTraceElement {
     public Object getGuestObject() {
         assert LanguageAccessor.engineAccess().getCurrentCreatorTruffleContext() != null : "The TruffleContext must be entered.";
         Object guestObject = LanguageAccessor.nodesAccess().translateStackTraceElement(this);
-        assert LanguageAccessor.exceptionAccess().assertGuestObject(guestObject);
+        assert LanguageAccessor.EXCEPTIONS.assertGuestObject(guestObject);
         return guestObject;
     }
 
