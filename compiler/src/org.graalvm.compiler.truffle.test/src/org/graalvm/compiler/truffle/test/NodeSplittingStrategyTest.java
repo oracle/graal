@@ -524,36 +524,28 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
                 final OptimizedCallTarget target = (OptimizedCallTarget) new SplittingTestRootNode(
                                 NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
 
-                final OptimizedDirectCallNode[] callNodes = new OptimizedDirectCallNode[2];
+                final OptimizedDirectCallNode callNode1 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
+                final OptimizedDirectCallNode callNode2 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    initCallNodes();
                     // Target turns monomorphic on 1
-                    callNodes[0].call(1);
+                    callNode1.call(1);
                     // Target turns polymorphic on 0
-                    callNodes[1].call(0);
+                    callNode2.call(0);
                     // Give each a chance to split
-                    for (OptimizedDirectCallNode callNode : callNodes) {
-                        callNode.call(0);
-                    }
+                    callNode1.call(0);
+                    callNode2.call(0);
                     assertExpectations();
                     return 42;
                 }
 
                 @CompilerDirectives.TruffleBoundary
-                private void initCallNodes() {
-                    for (int i = 0; i < callNodes.length; i++) {
-                        callNodes[i] = (OptimizedDirectCallNode) runtime.createDirectCallNode(target);
-                    }
-                }
-
-                @CompilerDirectives.TruffleBoundary
                 private void assertExpectations() {
                     // First is split because we have the budget
-                    Assert.assertTrue(callNodes[0].isCallTargetCloned());
-                    // Second is not becuase we don't have the budget
-                    Assert.assertFalse(callNodes[1].isCallTargetCloned());
+                    Assert.assertTrue(callNode1.isCallTargetCloned());
+                    // Second is not because we don't have the budget
+                    Assert.assertFalse(callNode2.isCallTargetCloned());
                 }
             }.getCallTarget();
         }
