@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: vscode
+toc_group: graalvm-extension
 link_title: GraalVM Tools for Java Extension
 permalink: /tools/vscode/graalvm-extension/
 ---
