@@ -3,19 +3,19 @@
 
   "jdks": {
     "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-21.3-b05", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u321+07-jvmci-21.3-b09", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u321+07-jvmci-21.3-b09-fastdebug", "platformspecific": true },
+    "oraclejdk8":         {"name": "oraclejdk", "version": "8u331+07-jvmci-21.3-b10-20220228101339-me_GR_22828_1-master-0efc5dea3c", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u331+07-jvmci-21.3-b10-20220228101339-me_GR_22828_1-master-0efc5dea3c-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-21.3-b09", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-21.3-b09", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+4-jvmci-21.3-b10-20220303090806-me_GR_22828_1-master-0b4c0a423c", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.15+7-jvmci-21.3-b10-20220302230139-me_GR_22828_1-master-8e42fc7fc2+be148ef3eb", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-21.3-b09", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-21.3-b09-debug", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-21.3-b09", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-21.3-b09-debug", "platformspecific": true }
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-21.3-b10-20220302163027-me_GR_22828_1-master-1aef6369cf", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-21.3-b10-20220302163027-me_GR_22828_1-master-1aef6369cf-debug", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.3+7-jvmci-21.3-b10-20220301201604-me_GR_22828_1-master-e20d4531ef+a8b3742393", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.3+7-jvmci-21.3-b10-20220301201604-me_GR_22828_1-master-e20d4531ef+a8b3742393-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
