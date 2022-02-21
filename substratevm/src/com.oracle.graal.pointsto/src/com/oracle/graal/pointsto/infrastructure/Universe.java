@@ -24,9 +24,8 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-
 import com.oracle.graal.pointsto.api.HostVM;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;

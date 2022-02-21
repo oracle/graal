@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,44 @@
  */
 package com.oracle.truffle.dsl.processor.java;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.function.Function;
+
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.TypeElement;
 
 final class ModuleCache {
+    private static final Map<ProcessingEnvironment, Map<String, ModuleElement>> moduleCacheCleaner = new WeakHashMap<>();
 
     private ModuleCache() {
         throw new IllegalStateException("Cannot instantiate.");
     }
 
     static TypeElement getTypeElement(final ProcessingEnvironment processingEnv, final CharSequence typeName) {
-        return processingEnv.getElementUtils().getTypeElement(typeName);
+        if (processingEnv.getSourceVersion().compareTo(SourceVersion.RELEASE_9) < 0) {
+            return processingEnv.getElementUtils().getTypeElement(typeName);
+        }
+        final Map<String, ModuleElement> moduleCache = moduleCacheCleaner.computeIfAbsent(processingEnv, new Function<ProcessingEnvironment, Map<String, ModuleElement>>() {
+            @Override
+            public Map<String, ModuleElement> apply(ProcessingEnvironment t) {
+                return new HashMap<>();
+            }
+        });
+        final String typeNameString = typeName.toString();
+        ModuleElement moduleElement = moduleCache.get(typeNameString);
+        if (moduleElement == null) {
+            final TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(typeName);
+            if (typeElement != null) {
+                moduleElement = processingEnv.getElementUtils().getModuleOf(typeElement);
+                moduleCache.put(typeNameString, moduleElement);
+            }
+            return typeElement;
+        } else {
+            return processingEnv.getElementUtils().getTypeElement(moduleElement, typeName);
+        }
     }
 }

@@ -176,7 +176,9 @@ public class EncodedSnippets {
     ResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = snippetTypes.get(clazz);
         if (type == null && isGraalClass(clazz)) {
-            throw new GraalError("Missing graal class " + clazz);
+            // During libgraal image building references to Graal classes from snippets are tracked.
+            // If a class isn't found in this path at runtime it means something was missed.
+            throw new GraalError("Missing Graal class " + clazz.getName());
         }
         return type;
     }

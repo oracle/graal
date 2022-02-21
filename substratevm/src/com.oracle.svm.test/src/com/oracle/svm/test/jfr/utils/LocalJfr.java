@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,26 +34,30 @@ import java.nio.file.Path;
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 
-public class LocalJFR implements JFR {
+public class LocalJfr implements Jfr {
 
     @Override
-    public Recording startRecording(String recordingName) throws Exception {
-        return startRecording(new Recording(), recordingName);
+    public Recording createRecording(String recordingName) throws Exception {
+        return createRecording(new Recording(), recordingName);
     }
 
     @Override
-    public Recording startRecording(String recordingName, String configName) throws Exception {
+    public Recording createRecording(String recordingName, String configName) throws Exception {
         Configuration c = Configuration.getConfiguration(configName);
-        return startRecording(new Recording(c), recordingName);
+        return createRecording(new Recording(c), recordingName);
     }
 
-    private static Recording startRecording(Recording recording, String name) throws Exception {
+    @Override
+    public void startRecording(Recording recording) {
+        recording.start();
+    }
+
+    private static Recording createRecording(Recording recording, String name) throws Exception {
         long id = recording.getId();
 
         Path destination = File.createTempFile(name + "-" + id, ".jfr").toPath();
         recording.setDestination(destination);
 
-        recording.start();
         return recording;
     }
 

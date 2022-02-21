@@ -20,13 +20,6 @@ download-hsdis : {
   ]
 }
 
-oraclejdk8 :          { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
-oraclejdk8Only :      { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
-oraclejdk8Debug :     { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
-oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
-
-openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
-
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
 oraclejdk17 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk17} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
@@ -122,18 +115,6 @@ svm-capabilities-manycores : {
 }
 
 svm-common-darwin: ${svm-common} ${svm.deps.darwin} ${darwin-amd64} {
-  timelimit: "45:00"
-}
-
-svm-common-windows-openjdk8: ${svm-common} ${svm.deps.windows} ${windows-amd64} ${devkits.windows-openjdk8} {
-  packages : {
-  }
-  timelimit: "45:00"
-}
-
-svm-common-windows-oraclejdk8: ${svm-common} ${svm.deps.windows} ${windows-amd64} ${devkits.windows-oraclejdk8} {
-  packages : {
-  }
   timelimit: "45:00"
 }
 

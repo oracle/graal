@@ -69,6 +69,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -4270,7 +4271,7 @@ public class FlatNodeGenFactory {
         // here: we must ensure that the item that is being appended to the list is fully
         // initialized.
         builder.startStatement();
-        builder.startStaticCall(context.getTypes().MemoryFence, "storeStore");
+        builder.startStaticCall(context.getType(VarHandle.class), "storeStoreFence");
         builder.end();
         builder.end();
         builder.startStatement();

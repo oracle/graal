@@ -561,8 +561,8 @@ public abstract class Launcher {
     }
 
     /**
-     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin} or
-     * {@code jre/bin} directory.
+     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin}
+     * directory.
      *
      * @param binaryName binary name, without path.
      * @return OS-dependent binary filename.
@@ -574,14 +574,9 @@ public abstract class Launcher {
             throw abort("Cannot exec to GraalVM binary: could not find GraalVM home");
         }
         for (String executableName : executableNames) {
-            Path[] execPaths = new Path[]{
-                            graalVMHome.resolve("bin").resolve(executableName),
-                            graalVMHome.resolve("jre").resolve("bin").resolve(executableName)
-            };
-            for (Path execPath : execPaths) {
-                if (Files.exists(execPath)) {
-                    return execPath;
-                }
+            Path execPath = graalVMHome.resolve("bin").resolve(executableName);
+            if (Files.exists(execPath)) {
+                return execPath;
             }
         }
         throw abort("Cannot exec to GraalVM binary: could not find a '" + binaryName + "' executable");

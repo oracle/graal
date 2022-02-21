@@ -102,9 +102,9 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     private static final CounterKey counterConstantInputReplacements = DebugContext.counter("FixReads_ConstantInputReplacement");
     private static final CounterKey counterBetterMergedStamps = DebugContext.counter("FixReads_BetterMergedStamp");
 
-    protected boolean replaceInputsWithConstants;
-    protected BasePhase<? super CoreProviders> schedulePhase;
-    protected CanonicalizerPhase canonicalizerPhase;
+    protected final boolean replaceInputsWithConstants;
+    protected final BasePhase<? super CoreProviders> schedulePhase;
+    protected final CanonicalizerPhase canonicalizerPhase;
 
     @Override
     public float codeSizeIncrease() {
@@ -682,7 +682,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    public void setReplaceInputsWithConstants(boolean replaceInputsWithConstants) {
-        this.replaceInputsWithConstants = replaceInputsWithConstants;
+    public BasePhase<? super CoreProviders> getSchedulePhase() {
+        return schedulePhase;
+    }
+
+    public CanonicalizerPhase getCanonicalizerPhase() {
+        return canonicalizerPhase;
     }
 }

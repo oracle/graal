@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.jfr.JfrGCNames;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -177,6 +178,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
+        ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());

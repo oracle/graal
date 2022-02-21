@@ -80,7 +80,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
-    private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<Closeable, CallTarget>() {
+    private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<>() {
 
         @Override
         protected Closeable createTestContext(String testName) {
@@ -269,7 +269,10 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
         @SuppressWarnings("unchecked")
         static <S> Iterable<S> load(Class<S> service) {
-            TruffleJDKServices.addUses(service);
+            Module truffleModule = DefaultTruffleRuntime.class.getModule();
+            if (!truffleModule.canUse(service)) {
+                truffleModule.addUses(service);
+            }
             if (LOAD_METHOD != null) {
                 try {
                     return (Iterable<S>) LOAD_METHOD.invoke(null, service);

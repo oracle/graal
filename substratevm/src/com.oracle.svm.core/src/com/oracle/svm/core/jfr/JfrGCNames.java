@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +23,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.debug;
+package com.oracle.svm.core.jfr;
 
-import com.oracle.truffle.api.impl.Accessor;
+import java.util.Arrays;
 
-final class CompilerDebugAccessor extends Accessor {
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    private static final CompilerDebugAccessor ACCESSOR = new CompilerDebugAccessor();
+public class JfrGCNames {
+    private JfrGCName[] names;
 
-    private CompilerDebugAccessor() {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrGCNames() {
+        names = new JfrGCName[0];
     }
 
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
+    @Fold
+    public static JfrGCNames singleton() {
+        return ImageSingletons.lookup(JfrGCNames.class);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized JfrGCName addGCName(String name) {
+        int id = names.length;
+        JfrGCName result = new JfrGCName(id, name);
+
+        // We only expect a very small number of GC names (usually just 1).
+        JfrGCName[] newArr = Arrays.copyOf(names, id + 1);
+        newArr[id] = result;
+        names = newArr;
+        return result;
+    }
+
+    public JfrGCName[] getNames() {
+        return names;
+    }
 }

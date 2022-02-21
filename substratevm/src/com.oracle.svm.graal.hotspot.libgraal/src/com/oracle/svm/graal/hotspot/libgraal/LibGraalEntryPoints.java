@@ -89,6 +89,8 @@ public final class LibGraalEntryPoints {
      */
     static final CGlobalData<Pointer> MANAGEMENT_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
+    static final CGlobalData<Pointer> GLOBAL_TIMESTAMP = CGlobalDataFactory.createBytes(() -> 8);
+
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
 

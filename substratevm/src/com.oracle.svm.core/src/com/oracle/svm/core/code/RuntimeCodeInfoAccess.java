@@ -26,8 +26,13 @@ package com.oracle.svm.core.code;
 
 import java.util.EnumSet;
 
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -246,6 +251,32 @@ public final class RuntimeCodeInfoAccess {
 
     public static void makeCodeMemoryWriteableNonExecutable(CodePointer start, UnsignedWord size) {
         CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
+    }
+
+    @Platforms(Platform.MACOS_AARCH64.class) private static final FastThreadLocalInt jitProtectDepth = FastThreadLocalFactory.createInt("jitProtectDepth");
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void acquireThreadWriteAccess() {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
+            // Disabling write protection can be nested, for example a GC can be triggered during
+            // code installation which in turn causes walk of references in code. Both need to
+            // disable write protection, but only the outer one should enable it again.
+            if (jitProtectDepth.get() == 0) {
+                VirtualMemoryProvider.get().jitWriteProtect(false);
+            }
+            jitProtectDepth.set(jitProtectDepth.get() + 1);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void releaseThreadWriteAccess() {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
+            VMError.guarantee(jitProtectDepth.get() >= 1);
+            jitProtectDepth.set(jitProtectDepth.get() - 1);
+            if (jitProtectDepth.get() == 0) {
+                VirtualMemoryProvider.get().jitWriteProtect(true);
+            }
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)

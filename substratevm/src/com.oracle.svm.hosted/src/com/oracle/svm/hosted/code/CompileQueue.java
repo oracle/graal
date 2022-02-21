@@ -132,7 +132,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
@@ -397,8 +396,7 @@ public class CompileQueue {
     public void finish(DebugContext debug) {
         ProgressReporter reporter = ProgressReporter.singleton();
         try {
-            String imageName = universe.getBigBang().getHostVM().getImageName();
-            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -417,7 +415,7 @@ public class CompileQueue {
             }
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
+                try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
                     inlineTrivialMethods(debug);
                 }
             } else {
@@ -426,7 +424,7 @@ public class CompileQueue {
 
             assert suitesNotCreated();
             createSuites();
-            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
@@ -1401,7 +1399,10 @@ public class CompileQueue {
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
         ListIterator<BasePhase<? super LowTierContext>> it = lowTier.findPhase(FixReadsPhase.class);
         if (it != null) {
-            ((FixReadsPhase) it.previous()).setReplaceInputsWithConstants(false);
+            FixReadsPhase fixReads = (FixReadsPhase) it.previous();
+            it.remove();
+            boolean replaceInputsWithConstants = false;
+            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase(), fixReads.getCanonicalizerPhase()));
         }
     }
 

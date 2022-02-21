@@ -43,6 +43,7 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -55,7 +56,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
@@ -116,17 +116,17 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
         try (Indent indent = debug.logAndIndent("layout methods")) {
             BatchExecutor executor = new BatchExecutor(bb, threadPool);
-            try (StopTimer t = new Timer(imageName, "(bitcode)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(bitcode)")) {
                 writeBitcode(executor);
             }
             int numBatches;
-            try (StopTimer t = new Timer(imageName, "(prelink)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(prelink)")) {
                 numBatches = createBitcodeBatches(executor, debug);
             }
-            try (StopTimer t = new Timer(imageName, "(llvm)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(llvm)")) {
                 compileBitcodeBatches(executor, debug, numBatches);
             }
-            try (StopTimer t = new Timer(imageName, "(postlink)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(postlink)")) {
                 linkCompiledBatches(executor, debug, numBatches);
             }
         }

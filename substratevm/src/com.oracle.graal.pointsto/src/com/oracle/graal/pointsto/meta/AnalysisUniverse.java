@@ -130,8 +130,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    SnippetReflectionProvider originalSnippetReflection,
-                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
+                    SnippetReflectionProvider originalSnippetReflection, SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
