@@ -126,4 +126,9 @@
   windows_amd64::             self.windows             + self.amd64,
   windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
   linux_aarch64::             self.linux               + self.aarch64,
+
+  // Utils
+  disable_proxies:: {
+    setup+: [["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]],
+  },
 }
