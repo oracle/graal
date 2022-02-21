@@ -19,6 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `FrameDescriptor.getInfo()` and `FrameDescriptor.Builder.info()` to associate a user-defined object with a frame descriptor.
 * GR-33851 Dropped Java 8 support.
 * Deprecated `MemoryFence`. Please use `VarHandle` directly.
+* Deprecated `TruffleSafepoint.setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)`, in favor of `TruffleSafepoint.setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer<Throwable>)`, which allows handling of safepoint-thrown exceptions in `afterInterrupt`.
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.
