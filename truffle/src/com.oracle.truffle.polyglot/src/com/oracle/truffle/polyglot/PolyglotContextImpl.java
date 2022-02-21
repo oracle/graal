@@ -99,6 +99,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1655,11 +1656,52 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return heapRoots.toArray();
     }
 
+    private void addRootPointerForGuestToHostStackFrameArgument(Object obj, List<Object> heapRoots) {
+        if (InteropLibrary.isValidValue(obj)) {
+            heapRoots.add(obj);
+        } else if (obj instanceof PolyglotWrapper) {
+            heapRoots.add(((PolyglotWrapper) obj).getGuestObject());
+        } else if (obj instanceof Value) {
+            heapRoots.add(getAPIAccess().getReceiver((Value) obj));
+        }
+    }
+
     private void addRootPointersForStackFrames(List<Object> heapRoots) {
-        FrameInstance[][] frameInstances = PolyglotStackFramesRetriever.getStackFrames(this);
-        for (int i = 0; i < frameInstances.length; i++) {
-            for (int j = 0; j < frameInstances[i].length; j++) {
-                heapRoots.add(frameInstances[i][j].getFrame(FrameInstance.FrameAccess.READ_ONLY));
+        FrameInstance[][] frameInstancesPerThread = PolyglotStackFramesRetriever.getStackFrames(this);
+        for (FrameInstance[] threadInstances : frameInstancesPerThread) {
+            for (FrameInstance frameInstance : threadInstances) {
+                Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                RootNode rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                if (rootNode instanceof HostToGuestRootNode) {
+                    /*
+                     * HostToGuestRootNode frames are ignored. We don't care about objects
+                     * referenced only form the host side.
+                     */
+                } else if (EngineAccessor.HOST.isGuestToHostRootNode(rootNode)) {
+                    /*
+                     * For GuestToHostRootNode frames, we are interested only in arguments, and only
+                     * those arguments which wrap guest objects or those that are valid interop
+                     * values.
+                     */
+                    for (Object obj : frame.getArguments()) {
+                        /*
+                         * Argument array of the called host method is an element in the frame's
+                         * argument array.
+                         */
+                        if (obj instanceof Object[]) {
+                            for (Object elem : ((Object[]) obj)) {
+                                addRootPointerForGuestToHostStackFrameArgument(elem, heapRoots);
+                            }
+                        } else {
+                            addRootPointerForGuestToHostStackFrameArgument(obj, heapRoots);
+                        }
+                    }
+                } else {
+                    /*
+                     * All types in the frame are safe to traverse.
+                     */
+                    heapRoots.add(frame);
+                }
             }
         }
     }
