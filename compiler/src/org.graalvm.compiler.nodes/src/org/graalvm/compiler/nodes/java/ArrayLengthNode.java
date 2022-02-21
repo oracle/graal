@@ -38,16 +38,19 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -59,7 +62,7 @@ import jdk.vm.ci.meta.JavaKind;
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 @NodeIntrinsicFactory
-public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
+public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayLengthNode> TYPE = NodeClass.create(ArrayLengthNode.class);
     @Input ValueNode array;
@@ -76,6 +79,11 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     public ArrayLengthNode(ValueNode array) {
         super(TYPE, StampFactory.positiveInt());
         this.array = array;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
     }
 
     public static ValueNode create(ValueNode forValue, ConstantReflectionProvider constantReflection) {

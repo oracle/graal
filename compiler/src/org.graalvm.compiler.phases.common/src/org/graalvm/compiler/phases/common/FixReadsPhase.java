@@ -68,7 +68,7 @@ import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -135,8 +135,8 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                     // Pi nodes are no longer necessary at this point.
                     piNode.replaceAndDelete(piNode.getOriginalNode());
                 }
-            } else if (node instanceof MemoryAccess) {
-                MemoryAccess memoryAccess = (MemoryAccess) node;
+            } else if (node instanceof FloatableMemoryAccess) {
+                FloatableMemoryAccess memoryAccess = (FloatableMemoryAccess) node;
                 memoryAccess.setLastLocationAccess(null);
             }
         }

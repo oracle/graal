@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,26 +28,10 @@ import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * This interface marks nodes that access some memory location, and that have an edge to the last
- * node that kills this location.
+ * This interface marks nodes that access some memory location. Such nodes are either fixed before
+ * floating read nodes or part of the memory graph.
  */
 public interface MemoryAccess extends ValueNodeInterface {
 
     LocationIdentity getLocationIdentity();
-
-    /**
-     *
-     * @return a {@linkplain MemoryKill} that represents the last memory state in the memory graph
-     *         for the {@linkplain LocationIdentity} returned by
-     *         {@linkplain MemoryAccess#getLocationIdentity()}
-     */
-    MemoryKill getLastLocationAccess();
-
-    /**
-     * @param lla the {@link MemoryKill} that represents the last kill of the
-     *            {@linkplain LocationIdentity} returned by
-     *            {@linkplain MemoryAccess#getLocationIdentity()}
-     */
-    void setLastLocationAccess(MemoryKill lla);
-
 }

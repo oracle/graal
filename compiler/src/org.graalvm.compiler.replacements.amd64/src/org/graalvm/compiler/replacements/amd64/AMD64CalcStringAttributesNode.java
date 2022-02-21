@@ -39,7 +39,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -57,7 +57,7 @@ import jdk.vm.ci.meta.Value;
  * @see AMD64CalcStringAttributesOp
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class AMD64CalcStringAttributesNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
+public final class AMD64CalcStringAttributesNode extends FixedWithNextNode implements LIRLowerable, FloatableMemoryAccess {
 
     public static final NodeClass<AMD64CalcStringAttributesNode> TYPE = NodeClass.create(AMD64CalcStringAttributesNode.class);
 

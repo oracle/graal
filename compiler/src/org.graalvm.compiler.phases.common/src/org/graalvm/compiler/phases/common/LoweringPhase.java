@@ -68,7 +68,9 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -267,6 +269,10 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                 }
             }
         }
+
+        final boolean wasMemoryAccessBefore = node instanceof MemoryAccess;
+        final boolean wasMemoryKillBefore = node instanceof MemoryKill && ((MemoryKill) node).actuallyKills();
+
         for (Node n : newNodesAfterLowering) {
             if (n instanceof Lowerable) {
                 ((Lowerable) n).lower(loweringTool);
@@ -274,7 +280,48 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                 assert postLoweringMark.equals(mark) : graph + ": lowering of " + node + " produced lowerable " + n + " that should have been recursively lowered as it introduces these new nodes: " +
                                 graph.getNewNodes(postLoweringMark).snapshot();
             }
-            if (graph.isAfterStage(StageFlag.FLOATING_READS) && n instanceof MemoryKill && !(node instanceof MemoryKill) && !(node instanceof ControlSinkNode)) {
+            if (!graph.isSubstitution()) {
+                if (loweringTool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+                    if (n instanceof MemoryAccess && !(n instanceof MemoryMapNode)) {
+                        MemoryAccess access = (MemoryAccess) n;
+                        if (access.getLocationIdentity().isMutable()) {
+                            if (wasMemoryKillBefore && !wasMemoryAccessBefore) {
+                                if (node instanceof SingleMemoryKill) {
+                                    if (!((SingleMemoryKill) node).getKilledLocationIdentity().overlaps(access.getLocationIdentity())) {
+                                        GraalError.shouldNotReachHere(String.format("Node %s was a memory kill killing %s but lowered to a memory access %s which accesses %s", node,
+                                                        ((SingleMemoryKill) node).getKilledLocationIdentity(), n, access.getLocationIdentity()));
+                                    }
+                                } else if (node instanceof MultiMemoryKill) {
+                                    boolean found = false;
+                                    for (LocationIdentity ident : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
+                                        if (ident.overlaps(access.getLocationIdentity())) {
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!found) {
+                                        GraalError.shouldNotReachHere(String.format("Node %s was a memory kill not killing the location accessed by the lowered node: %s which accesses %s", node, n,
+                                                        access.getLocationIdentity()));
+                                    }
+                                } else {
+                                    throw GraalError.shouldNotReachHere("Unknown type of memory kill " + node);
+                                }
+
+                            } else if (wasMemoryAccessBefore) {
+                                if (!access.getLocationIdentity().overlaps(((MemoryAccess) node).getLocationIdentity())) {
+                                    GraalError.shouldNotReachHere(
+                                                    String.format("Node %s was a memory access (%s) but lowered to a memory access %s %s", node, ((MemoryAccess) node).getLocationIdentity(),
+                                                                    n, access.getLocationIdentity()));
+                                }
+                            } else {
+                                GraalError.shouldNotReachHere(String.format("Node %s was not a memory access but lowered to a memory access %s", node, n));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (n instanceof MemoryKill && !(n instanceof MemoryMapNode) && !(wasMemoryKillBefore) && !(node instanceof ControlSinkNode)) {
                 /*
                  * The lowering introduced a MemoryCheckpoint but the current node isn't a
                  * checkpoint. This is only OK if the locations involved don't affect the memory

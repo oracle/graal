@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,47 +24,27 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.word.LocationIdentity;
+
 /**
- *
- * A special form of {@linkplain FloatableMemoryAccess} requiring barrier information for garbage
- * collection.
+ * Marker interface for nodes participating in the memory graph. They have an edge to the last node
+ * that kills this location.
  */
-public interface OnHeapMemoryAccess extends FloatableMemoryAccess {
+public interface FloatableMemoryAccess extends MemoryAccess {
 
     /**
-     * The types of (write/read) barriers attached to stores.
+     *
+     * @return a {@linkplain MemoryKill} that represents the last memory state in the memory graph
+     *         for the {@linkplain LocationIdentity} returned by
+     *         {@linkplain FloatableMemoryAccess#getLocationIdentity()}
      */
-    enum BarrierType {
-        /**
-         * Primitive access which do not necessitate barriers.
-         */
-        NONE,
-        /**
-         * Array object access.
-         */
-        ARRAY,
-        /**
-         * Field object access.
-         */
-        FIELD,
-        /**
-         * Unknown (aka field or array) object access.
-         */
-        UNKNOWN,
-        /**
-         * Weak field access (e.g. Hotspot's Reference.referent field).
-         */
-        WEAK_FIELD,
-        /**
-         * Phantom field access (e.g. Hotspot's Reference.referent field of a PhantomReference
-         * instance).
-         */
-        PHANTOM_FIELD
-    }
+    MemoryKill getLastLocationAccess();
 
     /**
-     * Gets the write barrier type for that particular access.
+     * @param lla the {@link MemoryKill} that represents the last kill of the
+     *            {@linkplain LocationIdentity} returned by
+     *            {@linkplain FloatableMemoryAccess#getLocationIdentity()}
      */
-    BarrierType getBarrierType();
+    void setLastLocationAccess(MemoryKill lla);
 
 }

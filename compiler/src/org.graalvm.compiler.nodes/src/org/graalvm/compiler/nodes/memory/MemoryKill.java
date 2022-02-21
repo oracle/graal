@@ -39,4 +39,12 @@ import org.graalvm.word.LocationIdentity;
  */
 public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
 
+    /**
+     * Hook for subclasses to specify if a memory kill actually kills something. This can be
+     * necessary for nodes which are not a memory kill in the common case but can kill locations in
+     * specific scenarios.
+     */
+    default boolean actuallyKills() {
+        return true;
+    }
 }

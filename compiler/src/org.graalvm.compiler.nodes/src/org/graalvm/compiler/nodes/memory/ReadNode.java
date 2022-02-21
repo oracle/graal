@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
@@ -72,7 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -105,6 +106,16 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             // guard-type usages
             return this;
         }
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return ordersMemoryAccesses() ? LocationIdentity.any() : NamedLocationIdentity.FINAL_LOCATION;
+    }
+
+    @Override
+    public boolean actuallyKills() {
+        return ordersMemoryAccesses();
     }
 
     @SuppressWarnings("try")

@@ -36,18 +36,21 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaOrderedReadNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable {
+public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable, SingleMemoryKill, MemoryAccess {
     public static final NodeClass<LoadVMThreadLocalNode> TYPE = NodeClass.create(LoadVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;
@@ -67,6 +70,24 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
         this.barrierType = barrierType;
         this.holder = holder;
         this.memoryOrder = memoryOrder;
+    }
+
+    @Override
+    public boolean actuallyKills() {
+        return MemoryOrderMode.ordersMemoryAccesses(memoryOrder);
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (actuallyKills()) {
+            return LocationIdentity.any();
+        }
+        return threadLocalInfo.locationIdentity;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return getKilledLocationIdentity();
     }
 
     @Override

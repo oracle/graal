@@ -36,7 +36,7 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
  * compression and inflation depending on {@code strideSrc} and {@code strideDst}.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryAccess, MultiMemoryKill {
+public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint implements LIRLowerable, FloatableMemoryAccess, MultiMemoryKill {
 
     public static final NodeClass<ArrayCopyWithConversionsNode> TYPE = NodeClass.create(ArrayCopyWithConversionsNode.class);
 

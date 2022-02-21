@@ -29,11 +29,11 @@ import org.graalvm.word.LocationIdentity;
 
 /**
  *
- * A special form of {@linkplain MemoryAccess} exposing the {@linkplain AddressNode} representing
- * the {@linkplain LocationIdentity} touched by this memory access. Typically used during a later
- * stage in the compilation pipeline.
+ * A special form of {@linkplain FloatableMemoryAccess} exposing the {@linkplain AddressNode}
+ * representing the {@linkplain LocationIdentity} touched by this memory access. Typically used
+ * during a later stage in the compilation pipeline.
  */
-public interface AddressableMemoryAccess extends MemoryAccess {
+public interface AddressableMemoryAccess extends FloatableMemoryAccess {
 
     /**
      * Determines if the memory touch operation represented by this node can use OS level semantics

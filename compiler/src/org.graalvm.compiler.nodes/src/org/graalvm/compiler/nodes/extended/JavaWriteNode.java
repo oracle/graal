@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.JavaKind;
  * write barriers, implicit conversions and optionally oop compression.
  */
 @NodeInfo(nameTemplate = "JavaWrite#{p#location/s}")
-public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, MemoryAccess {
+public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, FloatableMemoryAccess {
 
     public static final NodeClass<JavaWriteNode> TYPE = NodeClass.create(JavaWriteNode.class);
     protected final JavaKind writeKind;

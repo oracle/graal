@@ -29,9 +29,9 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
  *
- * A {@linkplain MemoryAccess} that requires a {@linkplain GuardingNode} as a pre-condition to its
- * execution.
+ * A {@linkplain FloatableMemoryAccess} that requires a {@linkplain GuardingNode} as a pre-condition
+ * to its execution.
  */
-public interface GuardedMemoryAccess extends MemoryAccess, GuardedNode {
+public interface GuardedMemoryAccess extends FloatableMemoryAccess, GuardedNode {
 
 }

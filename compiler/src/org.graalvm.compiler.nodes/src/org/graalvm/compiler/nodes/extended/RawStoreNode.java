@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -52,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the store.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, SingleMemoryKill {
+public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable {
 
     public static final NodeClass<RawStoreNode> TYPE = NodeClass.create(RawStoreNode.class);
     @Input ValueNode value;
@@ -100,6 +99,11 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
 
     @NodeIntrinsic
     public static native Object storeByte(Object object, long offset, byte value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    @Override
+    public boolean actuallyKills() {
+        return true;
+    }
 
     public boolean needsBarrier() {
         return needsBarrier;
@@ -156,11 +160,4 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
         return stateAfter;
     }
 
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        if (ordersMemoryAccesses()) {
-            return LocationIdentity.any();
-        }
-        return getLocationIdentity();
-    }
 }

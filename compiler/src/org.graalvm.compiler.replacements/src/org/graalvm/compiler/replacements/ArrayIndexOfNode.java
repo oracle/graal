@@ -47,7 +47,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -96,7 +96,7 @@ import jdk.vm.ci.meta.Value;
  * </ul>
  */
 @NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess {
+public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, FloatableMemoryAccess {
 
     public static final NodeClass<ArrayIndexOfNode> TYPE = NodeClass.create(ArrayIndexOfNode.class);
 
