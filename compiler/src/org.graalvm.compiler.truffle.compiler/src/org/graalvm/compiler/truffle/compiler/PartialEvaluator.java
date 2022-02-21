@@ -302,21 +302,38 @@ public abstract class PartialEvaluator {
 
         private final int nodeLimit;
         private final StructuredGraph graph;
+        private final int noCheckLimit;
+        private final int slowCheckLimit;
 
         private GraphSizeListener(OptionValues options, StructuredGraph graph) {
             this.nodeLimit = options.get(MaximumGraalNodeCount);
+            this.noCheckLimit = nodeLimit / 2;
+            this.slowCheckLimit = (3 * nodeLimit) / 4;
             this.graph = graph;
         }
 
         @Override
         public void nodeAdded(Node node) {
             int nodeCount = graph.getNodeCount();
-            if (nodeCount > nodeLimit && nodeCount % 100 == 0) {
+            if (shouldCheck(nodeCount)) {
                 int graphSize = NodeCostUtil.computeGraphSize(graph);
                 if (graphSize > nodeLimit) {
                     throw new GraphTooBigBailoutException("Graph too big to safely compile. Node count: " + nodeCount + ". Graph Size: " + graphSize + ". Limit: " + nodeLimit);
                 }
             }
+        }
+
+        private boolean shouldCheck(int nodeCount) {
+            if (nodeCount < noCheckLimit) {
+                return false;
+            }
+            if (nodeCount < slowCheckLimit) {
+                return (nodeCount - noCheckLimit) % 10_000 == 0;
+            }
+            if (nodeCount < nodeLimit) {
+                return (nodeCount - slowCheckLimit) % 1_000 == 0;
+            }
+            return (nodeCount - nodeLimit) % 100 == 0;
         }
     }
 
