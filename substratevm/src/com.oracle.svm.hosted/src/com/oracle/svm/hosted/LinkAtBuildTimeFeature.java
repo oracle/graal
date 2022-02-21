@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted;
 
-import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.file.Path;
@@ -128,14 +127,10 @@ public final class LinkAtBuildTimeFeature implements Feature {
         assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
 
         var module = clazz.getModule();
-        if (module.isNamed() && (requireCompleteModules.contains(module) || isModuleSynthetic(module))) {
+        if (module.isNamed() && (requireCompleteModules.contains(module))) {
             return true;
         }
 
-        return requireCompletePackageOrClass.containsKey(clazz.getName()) || requireCompletePackageOrClass.containsKey(clazz.getPackageName()) || clazz.isSynthetic();
-    }
-
-    public static boolean isModuleSynthetic(Module m) {
-        return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
+        return requireCompletePackageOrClass.containsKey(clazz.getName()) || requireCompletePackageOrClass.containsKey(clazz.getPackageName());
     }
 }

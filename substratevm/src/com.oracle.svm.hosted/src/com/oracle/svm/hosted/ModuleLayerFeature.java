@@ -158,7 +158,7 @@ public final class ModuleLayerFeature implements Feature {
 
         Set<Module> analysisReachableSyntheticModules = analysisReachableNamedModules
                         .stream()
-                        .filter(LinkAtBuildTimeFeature::isModuleSynthetic)
+                        .filter(ModuleLayerFeature::isModuleSynthetic)
                         .collect(Collectors.toSet());
 
         Set<String> allReachableModules = analysisReachableNamedModules
@@ -251,7 +251,7 @@ public final class ModuleLayerFeature implements Feature {
                         continue;
                     }
                     Module runtimeTo = e2.getValue().runtimeModule;
-                    if (LinkAtBuildTimeFeature.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
+                    if (isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
                         moduleLayerFeatureUtils.addReads(runtimeFrom, runtimeTo);
                         if (hostedFrom == builderModule) {
                             for (Module appModule : applicationModules) {
@@ -260,7 +260,7 @@ public final class ModuleLayerFeature implements Feature {
                         }
                     }
                     for (String pn : runtimeFrom.getPackages()) {
-                        if (LinkAtBuildTimeFeature.isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
+                        if (isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
                             moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, runtimeTo);
                             if (hostedTo == builderModule) {
                                 for (Module appModule : applicationModules) {
@@ -268,7 +268,7 @@ public final class ModuleLayerFeature implements Feature {
                                 }
                             }
                         }
-                        if (LinkAtBuildTimeFeature.isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
+                        if (isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
                             moduleLayerFeatureUtils.addExports(runtimeFrom, pn, runtimeTo);
                             if (hostedTo == builderModule) {
                                 for (Module appModule : applicationModules) {
@@ -282,6 +282,10 @@ public final class ModuleLayerFeature implements Feature {
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to transfer hosted module relations to the runtime boot module layer.", ex);
         }
+    }
+
+    private static boolean isModuleSynthetic(Module m) {
+        return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
     }
 
     private static List<Module> findApplicationModules(ModuleLayer runtimeBootLayer, List<Path> applicationModulePath) {
