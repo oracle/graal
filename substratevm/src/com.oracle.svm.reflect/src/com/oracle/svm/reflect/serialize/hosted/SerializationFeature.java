@@ -84,6 +84,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -218,9 +220,10 @@ public class SerializationFeature implements Feature {
          */
         for (Class<?> clazz : capturingClasses) {
             ResolvedJavaType clazzType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
-            ResolvedJavaMethod[] methods = clazzType.getDeclaredMethods();
+            List<ResolvedJavaMethod> allMethods = new ArrayList<>(Arrays.asList(clazzType.getDeclaredMethods()));
+            allMethods.addAll(Arrays.asList(clazzType.getDeclaredConstructors()));
 
-            for (ResolvedJavaMethod method : methods) {
+            for (ResolvedJavaMethod method : allMethods) {
                 if (method.hasBytecodes()) {
                     registerLambdasFromMethod(method, impl.getDebugContext());
                 }
