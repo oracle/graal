@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.lir;
 
+import static org.graalvm.compiler.core.common.GraalOptions.LoopHeaderAlignment;
+
+import java.util.ArrayList;
+
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder.ComputationTime;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -55,7 +59,10 @@ public final class ComputeCodeEmissionOrder extends PostAllocationOptimizationPh
         lir.setCodeEmittingOrder(context.blockOrder.computeCodeEmittingOrder(lir.getOptions(), ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS));
         for (AbstractBlockBase<?> block : lir.getBlocks()) {
             if (block.isAligned()) {
-                lir.alignLabelInBlock(block);
+                ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+                StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
+                label.setAlignment(LoopHeaderAlignment.getValue(lir.getOptions()));
             }
         }
     }

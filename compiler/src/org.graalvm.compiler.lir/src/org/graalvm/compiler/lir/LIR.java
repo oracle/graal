@@ -289,18 +289,4 @@ public final class LIR extends LIRGenerator.VariableProvider {
             }
         }
     }
-
-    /**
-     * If the given block {@linkplain AbstractBlockBase#isAligned() is aligned}, also align its
-     * incoming label.
-     */
-    public void alignLabelInBlock(AbstractBlockBase<?> block) {
-        if (!block.isAligned()) {
-            return;
-        }
-        ArrayList<LIRInstruction> instructions = getLIRforBlock(block);
-        assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
-        StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
-        label.setAlign(true);
-    }
 }
