@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -118,12 +119,7 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     void shutdownAndWaitReferenceDrain() throws InterruptedException {
         if (hostToGuestReferenceDrainThread != null) {
-            context.getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ThreadLocalAction(false, false) {
-                @Override
-                protected void perform(Access access) {
-                    throw new EspressoExitException(0);
-                }
-            });
+            context.getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
             hostToGuestReferenceDrainThread.interrupt();
             hostToGuestReferenceDrainThread.join();
         }
@@ -195,9 +191,24 @@ class EspressoReferenceDrainer implements ContextAccess {
         getMeta().java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
     }
 
+    private static final class ExitTLA extends ThreadLocalAction {
+        private ExitTLA() {
+            super(true, false);
+        }
+
+        @Override
+        protected void perform(Access access) {
+            throw new EspressoExitException(0);
+        }
+    }
+
     private abstract class ReferenceDrain implements Runnable {
 
-        SubstitutionProfiler profiler = new SubstitutionProfiler();
+        protected final SubstitutionProfiler profiler = new SubstitutionProfiler();
+
+        private void safepoint() {
+            TruffleSafepoint.poll(profiler);
+        }
 
         @SuppressWarnings("rawtypes")
         @Override
@@ -213,6 +224,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                         // so that the References are not considered active.
                         EspressoReference head;
                         do {
+                            safepoint();
                             head = (EspressoReference) referenceQueue.remove();
                             assert head != null;
                         } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
@@ -231,6 +243,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                                 meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
                                 casNextIfNullAndMaybeClear(ref);
                                 prev = ref;
+                                safepoint();
                             }
 
                             meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
