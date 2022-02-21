@@ -72,7 +72,12 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
         if (!config.usePopCountInstruction) {
             if (name.equals("bitCount")) {
-                assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
+                GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
+                return;
+            }
+        }
+        if (!config.useUnalignedAccesses) {
+            if (name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
                 return;
             }
         }
@@ -86,7 +91,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 // MacroNode based plugins can only be used for inlining since they
                 // require a valid bci should they need to replace themselves with
                 // an InvokeNode during lowering.
-                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroInvokable.class.getSimpleName(), node, plugin);
+                GraalError.guarantee(plugin.inlineOnly(), "plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroInvokable.class.getSimpleName(), node, plugin);
             }
         }
         if (GraalOptions.ImmutableCode.getValue(b.getOptions())) {

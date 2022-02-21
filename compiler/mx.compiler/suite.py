@@ -1567,6 +1567,11 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+        "java.base" : [
+          "jdk.internal.misc",
+          "jdk.internal.vm.annotation",
         ],
       },
       "checkstyle" : "org.graalvm.compiler.graph",
