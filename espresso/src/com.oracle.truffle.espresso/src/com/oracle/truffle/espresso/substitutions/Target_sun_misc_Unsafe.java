@@ -1372,6 +1372,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true)
+    @SuppressWarnings("try")
     public static void park(@JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
                     @Inject Meta meta) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all

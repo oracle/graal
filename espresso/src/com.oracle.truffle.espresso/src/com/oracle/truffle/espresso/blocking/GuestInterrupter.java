@@ -50,7 +50,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
  * will be possible.
  */
 public abstract class GuestInterrupter<T> implements TruffleSafepoint.Interrupter {
-    public static final GuestInterrupter<Object> EMPTY = new GuestInterrupter<Object>() {
+    public static final GuestInterrupter<Object> EMPTY = new GuestInterrupter<>() {
         @Override
         public void guestInterrupt(Thread t, Object guestThread) {
         }

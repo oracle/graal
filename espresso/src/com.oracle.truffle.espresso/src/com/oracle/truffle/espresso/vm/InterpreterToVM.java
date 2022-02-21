@@ -406,6 +406,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @SuppressWarnings("try")
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
         StaticObject thread = context.getCurrentThread();
         try (Transition transition = Transition.transition(context, State.BLOCKED)) {

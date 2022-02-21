@@ -154,7 +154,7 @@ public final class BlockingSupport<T> {
     }
 
     private static Interruptible<Long> sleepInterruptible() {
-        return new Interruptible<Long>() {
+        return new Interruptible<>() {
             private final long start = System.nanoTime();
 
             @Override

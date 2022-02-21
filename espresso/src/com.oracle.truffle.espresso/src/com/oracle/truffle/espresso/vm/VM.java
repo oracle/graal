@@ -130,6 +130,7 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.overlay.ReferenceSupport;
+import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -140,7 +141,6 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
-import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -798,6 +798,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl(isJni = true)
     @TruffleBoundary
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
+    @SuppressWarnings("try")
     public void JVM_MonitorWait(@JavaType(Object.class) StaticObject self, long timeout,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {

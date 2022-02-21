@@ -212,6 +212,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
+    @SuppressWarnings("try")
     public static void sleep(long millis, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         StaticObject thread = meta.getContext().getCurrentThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
