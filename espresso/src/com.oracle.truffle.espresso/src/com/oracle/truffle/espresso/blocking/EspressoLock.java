@@ -256,39 +256,38 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     @Override
     public boolean await(long timeout, TimeUnit unit) throws GuestInterruptedException {
         WaitInterruptible interruptible = new WaitInterruptible(timeout, unit);
-        if (timeout >= 0) {
-            if (!isHeldByCurrentThread()) {
-                throw new IllegalMonitorStateException();
-            }
-            waiters++;
-            try {
-                blockingSupport.enterBlockingRegion(interruptible, dummy, this,
-                                /*
-                                 * Upon being notified to safepoint, control is returned after lock
-                                 * has been acquired. We must unlock it, allowing other thread to
-                                 * process safepoints while we process ours.
-                                 */
-                                this::unlock,
-                                /*
-                                 * Since we unlocked to allow other threads to process safepoints,
-                                 * we must re-lock ourselves. If this lock was woken up by a signal,
-                                 * then a Signaled exception is thrown.
-                                 */
-                                this::afterSafepointForWait);
-            } catch (Signaled e) {
-                e.maybeRethrow();
-            } catch (Throwable e) {
-                /*
-                 * Either GuestInterruptedException or an exception thrown by a safepoint. Since at
-                 * that point, we are still considered in waiting, we may have missed a signal.
-                 */
-                consumeSignal();
-                throw e;
-            } finally {
-                waiters--;
-            }
-        } else {
+        if (timeout < 0) {
             throw new IllegalArgumentException();
+        }
+        if (!isHeldByCurrentThread()) {
+            throw new IllegalMonitorStateException();
+        }
+        waiters++;
+        try {
+            blockingSupport.enterBlockingRegion(interruptible, dummy, this,
+                            /*
+                             * Upon being notified to safepoint, control is returned after lock has
+                             * been acquired. We must unlock it, allowing other thread to process
+                             * safepoints while we process ours.
+                             */
+                            this::unlock,
+                            /*
+                             * Since we unlocked to allow other threads to process safepoints, we
+                             * must re-lock ourselves. If this lock was woken up by a signal, then a
+                             * Signaled exception is thrown.
+                             */
+                            this::afterSafepointForWait);
+        } catch (Signaled e) {
+            e.maybeRethrow();
+        } catch (Throwable e) {
+            /*
+             * Either GuestInterruptedException or an exception thrown by a safepoint. Since at that
+             * point, we are still considered in waiting, we may have missed a signal.
+             */
+            consumeSignal();
+            throw e;
+        } finally {
+            waiters--;
         }
         return interruptible.result;
     }
