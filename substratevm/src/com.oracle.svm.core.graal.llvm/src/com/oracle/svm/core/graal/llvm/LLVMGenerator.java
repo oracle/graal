@@ -1016,7 +1016,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return transitionWrapper;
     }
 
-    void createJNITrampoline(int threadIsolateOffset, int methodIdArg, int methodObjEntryPointOffset) {
+    void createJNITrampoline(int threadIdIndex, int threadIsolateOffset, int methodIdIndex, int methodObjEntryPointOffset) {
         builder.setFunctionAttribute(Attribute.Naked);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
@@ -1028,14 +1028,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         LLVMValueRef jumpAddressAddress;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            LLVMValueRef thread = builder.getFunctionParam(0);
+            LLVMValueRef thread = builder.getFunctionParam(threadIdIndex);
             LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
             LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
-            LLVMValueRef methodId = builder.getFunctionParam(methodIdArg);
+            LLVMValueRef methodId = builder.getFunctionParam(methodIdIndex);
             LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
             jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         } else {
-            LLVMValueRef methodBase = builder.getFunctionParam(methodIdArg);
+            LLVMValueRef methodBase = builder.getFunctionParam(methodIdIndex);
             jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
         }
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());

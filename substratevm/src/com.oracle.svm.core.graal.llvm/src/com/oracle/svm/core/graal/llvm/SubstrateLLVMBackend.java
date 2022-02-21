@@ -76,14 +76,14 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     }
 
     @Override
-    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, int threadIsolateOffset,
-                                                       boolean nonVirtual, int methodObjEntryPointOffset, CallingConvention callingConvention) {
+    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, int threadIdIndex, int threadIsolateOffset,
+                                                       int methodIdIndex, int methodObjEntryPointOffset, CallingConvention callingConvention) {
 
         CompilationResult result = new CompilationResult(identifier);
         result.setMethods(method, Collections.emptySet());
 
         LLVMGenerator generator = new LLVMGenerator(getProviders(), result, null, method, 0);
-        generator.createJNITrampoline(threadIsolateOffset, nonVirtual ? 3 : 2, methodObjEntryPointOffset);
+        generator.createJNITrampoline(threadIdIndex, threadIsolateOffset, methodIdIndex, methodObjEntryPointOffset);
         byte[] bitcode = generator.getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
 
