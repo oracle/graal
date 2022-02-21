@@ -621,6 +621,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
 
+    public final long jbyteFill = getFieldValue("StubRoutines::_jbyte_fill", Long.class, "address");
+    public final long jshortFill = getFieldValue("StubRoutines::_jshort_fill", Long.class, "address");
+    public final long jintFill = getFieldValue("StubRoutines::_jint_fill", Long.class, "address");
+    public final long arrayofJbyteFill = getFieldValue("StubRoutines::_arrayof_jbyte_fill", Long.class, "address");
+    public final long arrayofJshortFill = getFieldValue("StubRoutines::_arrayof_jshort_fill", Long.class, "address");
+    public final long arrayofJintFill = getFieldValue("StubRoutines::_arrayof_jint_fill", Long.class, "address");
+
     // Allocation stubs that throw an exception when allocation fails
     public final long newInstanceAddress = getAddress("JVMCIRuntime::new_instance");
     public final long newArrayAddress = getAddress("JVMCIRuntime::new_array");

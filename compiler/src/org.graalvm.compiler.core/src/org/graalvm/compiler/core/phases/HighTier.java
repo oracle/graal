@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.OptConvertDeoptsToGuards;
 import static org.graalvm.compiler.core.common.GraalOptions.OptReadElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.OptimizeFill;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
@@ -93,6 +94,10 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
+        }
+
+        if (OptimizeFill.getValue(options)) {
+            appendPhase(new IntrinsifyArrayFillPhase());
         }
 
         LoopPolicies loopPolicies = createLoopPolicies(options);

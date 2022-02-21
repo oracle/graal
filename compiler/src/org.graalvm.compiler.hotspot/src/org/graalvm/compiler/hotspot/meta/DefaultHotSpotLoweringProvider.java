@@ -94,6 +94,7 @@ import org.graalvm.compiler.hotspot.replacements.RegisterFinalizerSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
@@ -121,6 +122,7 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.debug.StringToBytesNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
+import org.graalvm.compiler.nodes.extended.ArrayFillNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
@@ -246,6 +248,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected AssertionSnippets.Templates assertionSnippets;
     protected LogSnippets.Templates logSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
+    protected HotSpotArrayFillSnippets.Templates arrayFillSnippets;
     protected StringToBytesSnippets.Templates stringToBytesSnippets;
     protected ObjectSnippets.Templates objectSnippets;
     protected UnsafeSnippets.Templates unsafeSnippets;
@@ -296,6 +299,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assertionSnippets = new AssertionSnippets.Templates(options, providers);
         logSnippets = new LogSnippets.Templates(options, providers);
         arraycopySnippets = new ArrayCopySnippets.Templates(new HotSpotArraycopySnippets(), runtime, options, providers);
+        arrayFillSnippets = new HotSpotArrayFillSnippets.Templates(options, factories, runtime, providers, target, config);
         stringToBytesSnippets = new StringToBytesSnippets.Templates(options, providers);
         identityHashCodeSnippets = new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
         isArraySnippets = new IsArraySnippets.Templates(new HotSpotIsArraySnippets(), options, providers);
@@ -437,6 +441,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
         } else if (n instanceof ArrayCopyNode) {
             arraycopySnippets.lower((ArrayCopyNode) n, tool);
+        } else if (n instanceof ArrayFillNode) {
+            arrayFillSnippets.lower((ArrayFillNode) n, tool);
         } else if (n instanceof ArrayCopyWithDelayedLoweringNode) {
             arraycopySnippets.lower((ArrayCopyWithDelayedLoweringNode) n, tool);
         } else if (n instanceof G1PreWriteBarrier) {

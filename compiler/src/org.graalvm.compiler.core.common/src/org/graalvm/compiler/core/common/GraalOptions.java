@@ -122,6 +122,9 @@ public final class GraalOptions {
                    "dominate the back edge of a loop.", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
 
+    @Option(help = "Convert array fill counted loop to stub call", type = OptionType.Debug)
+    public static final OptionKey<Boolean> OptimizeFill = new OptionKey<>(true);
+
     // debugging settings
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> ZapStackOnMethodEntry = new OptionKey<>(false);

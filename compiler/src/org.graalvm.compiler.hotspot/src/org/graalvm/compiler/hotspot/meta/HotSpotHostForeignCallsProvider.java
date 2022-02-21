@@ -79,6 +79,12 @@ import static org.graalvm.compiler.hotspot.replacements.Log.LOG_PRIMITIVE;
 import static org.graalvm.compiler.hotspot.replacements.Log.LOG_PRINTF;
 import static org.graalvm.compiler.hotspot.replacements.MonitorSnippets.MONITORENTER;
 import static org.graalvm.compiler.hotspot.replacements.MonitorSnippets.MONITOREXIT;
+import static org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets.ARRAYOF_JBYTE_FILL_CALL;
+import static org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets.ARRAYOF_JINT_FILL_CALL;
+import static org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets.ARRAYOF_JSHORT_FILL_CALL;
+import static org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets.JBYTE_FILL_CALL;
+import static org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets.JINT_FILL_CALL;
+import static org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArrayFillSnippets.JSHORT_FILL_CALL;
 import static org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub.EXCEPTION_HANDLER_FOR_PC;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
@@ -488,6 +494,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArrayCopy(JavaKind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
         registerArrayCopy(JavaKind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
         registerArrayCopy(JavaKind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
+
+        registerForeignCall(JBYTE_FILL_CALL, c.jbyteFill, NativeCall);
+        registerForeignCall(JSHORT_FILL_CALL, c.jshortFill, NativeCall);
+        registerForeignCall(JINT_FILL_CALL, c.jintFill, NativeCall);
+        registerForeignCall(ARRAYOF_JBYTE_FILL_CALL, c.arrayofJbyteFill, NativeCall);
+        registerForeignCall(ARRAYOF_JSHORT_FILL_CALL, c.arrayofJshortFill, NativeCall);
+        registerForeignCall(ARRAYOF_JINT_FILL_CALL, c.arrayofJintFill, NativeCall);
 
         registerCheckcastArraycopyDescriptor(true, c.checkcastArraycopyUninit);
         registerCheckcastArraycopyDescriptor(false, c.checkcastArraycopy);
