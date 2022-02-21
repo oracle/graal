@@ -2345,7 +2345,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
-            extra_installable_qualifiers += [component.short_name for component in other_involved_components]
+            extra_installable_qualifiers += [c.short_name for c in other_involved_components]
         if extra_installable_qualifiers:
             name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
@@ -2388,6 +2388,10 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svmee')
+        for _component in involved_components:
+            other_comp_names += _component.extra_installable_qualifiers
+
+        other_comp_names = sorted(other_comp_names)
 
         self.main_comp_dir_name = component.dir_name
 
