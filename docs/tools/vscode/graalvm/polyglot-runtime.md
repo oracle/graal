@@ -209,10 +209,10 @@ To start a debug session:
 2. Once you have your launch configuration set, start your debug session with F5. Alternatively, you can run your configuration through **View**, then **Command Palette** (use the _Ctrl+Shift+P_  hot keys combination for Linux, or _Command+Shift+P_ for macOS).
 3. Set filtering to **Debug: Select and Start Debugging**, or type “debug” and select one of the configurations:
 
-  ![R Debug Configuration](images/select-r-debug-config.png)
+    ![R Debug Configuration](images/select-r-debug-config.png)
 
-* __Launch R Script__  launches an R script using GraalVM in a debug mode.
-* __Launch R Terminal__ launches an integrated R terminal running on GraalVM in a debug mode.
+    * __Launch R Script__  launches an R script using GraalVM in a debug mode.
+    * __Launch R Terminal__ launches an integrated R terminal running on GraalVM in a debug mode.
 
 You also can choose which debugging protocol to use ([Debug Adapter Protocol](../../dap.md) or [Chrome Dev Tools protocol](../../chrome-debugger.md)) by setting the `protocol` attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
 For example, to connect to the Chrome Dev Tools protocol port, the content of the `launch.json` should be:

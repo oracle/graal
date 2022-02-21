@@ -137,13 +137,13 @@ There are several launch configurations available by default, and you can add mo
 1. The CodeLens feature in the source code uses the **Java 8+...** launch configuration (Debugger or Run) when **Run main** and/or **Debug main** CodeLens is selected in the code.
 2. When **Java 8+...** is selected in the **Run and Debug** activity panel, the following options are available:
 
-![Debug configurations](images/java_debuggers.png)
+    ![Debug configurations](images/java_debuggers.png)
 
-* **Launch Java 8+ App** to debug or run a current Java project.
-* **Attach to Port** and **Attach to Process** to attach the debugger. Available when **Java 8+ ...** is selected at the bottom of the dropdown list.
-    * Select this configuration, then click **Run**
-    * Select either from the available processes or enter the port to connect to a JVM running with JDWP
-    * **Attach to Shared Memory** is available on Windows in addition to _Attach..._ mentioned above
+    * **Launch Java 8+ App** to debug or run a current Java project.
+    * **Attach to Port** and **Attach to Process** to attach the debugger. Available when **Java 8+ ...** is selected at the bottom of the dropdown list.
+        * Select this configuration, then click **Run**
+        * Select either from the available processes or enter the port to connect to a JVM running with JDWP
+        * **Attach to Shared Memory** is available on Windows in addition to _Attach..._ mentioned above
 
 To add more launch configurations, go to **Run**, then **Add Configuration**, or open the _.vscode/launch.json_ file, and click **Add Configuration** in the right-hand side corner.
 Suggestions for launch configuration options are available using code completion in `launch.json`.
@@ -212,9 +212,9 @@ To build a native executable of your Java application in VS Code, do the followi
 4. In the **Run and Debug** activity panel, choose the **Launch Native Image Agent & Java 8+ Application** configuration and click **Run Without Debugging** to start the current project. 
     > Note: Do not click the **Start Debugging** action to start a project. The Tracing agent is not compatible with the debugger agent and running such a configuration will fail.
 5. Specify the output folder for configuration files to be generated. During the execution, the agent interfaces with a JVM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent generates configuration files containing all intercepted dynamic accesses and and stores them in the output folder you specify. When you start the project, VS Code asks you to select the desired location. The following choices are available:
-  * `META-INF/native-image` - the default location in project sources to store the configuration files
-  * `/tmp` - the configuration files will be stored to the `/tmp/native-image` folder
-  * Custom folder - the configuration files will be stored in the custom folder you specify
+    * `META-INF/native-image` - the default location in project sources to store the configuration files
+    * `/tmp` - the configuration files will be stored to the `/tmp/native-image` folder
+    * Custom folder - the configuration files will be stored in the custom folder you specify
 6. Generate load to the running process to invoke more code and generate the best configuration.
 7. Once all possible execution paths have been executed, terminate the process. At this point the Tracing agent dumps the collected configuration to the selected output folder.
 8. Go to **Terminal**, and click **New Terminal**. To build a native executable from a Java class file in the current working folder, use the following command:
@@ -224,8 +224,9 @@ To build a native executable of your Java application in VS Code, do the followi
 
 If you project is Maven or Gradle based, there are dedicated Maven or Gradle plugins to add support for building and testing native executables written in Java. 
 Refer to the following pages for more specific documentation:
-    * [Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html)
-    * [Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html)
+
+* [Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html)
+* [Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html)
 
 If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](../micronaut/README.md#generate-native-images-of-micronaut-projects) to learn how.
 
