@@ -174,7 +174,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNode(int nodeLimit, Supplier<RootNode> rootNodeFactory) {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
         RootCallTarget target = rootNodeFactory.get().getCallTarget();
         final Object[] arguments = {1};
         partialEval((OptimizedCallTarget) target, arguments, getCompilationId(target));
