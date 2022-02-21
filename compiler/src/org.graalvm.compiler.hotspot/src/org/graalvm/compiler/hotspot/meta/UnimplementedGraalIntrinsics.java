@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot.meta;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Formatter;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -39,8 +38,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import jdk.vm.ci.hotspot.VMField;
 
 /**
  * This class documents unimplemented Graal intrinsics and categorizes them into 3 categories:
@@ -382,19 +379,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-    }
-
-    /**
-     * Determines if the StubRoutines corresponding to JDK-8225625 are potentially available. That
-     * is, are the fields pointing to these routines defined. The routines themselves will only be
-     * generated if the following code in the VM condition is true:
-     * {@code VM_Version::supports_vaes() && VM_Version::supports_avx512vl() && VM_Version::supports_avx512dq()}
-     */
-    private static boolean hasAESElectronicCodebookStubRoutineFields(GraalHotSpotVMConfig config) {
-        HotSpotVMConfigStore store = config.getStore();
-        Map<String, VMField> fields = store.getFields();
-        return fields.containsKey("StubRoutines::_electronicCodeBook_encryptAESCrypt") &&
-                        fields.containsKey("StubRoutines::_electronicCodeBook_decryptAESCrypt");
     }
 
     private static boolean isJDK16OrHigher() {
