@@ -130,7 +130,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
                     SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
 
-            return backend.createJNITrampolineMethod(method, identifier, 0, threadIsolateOffset, nonVirtual ? 3 : 2, getFieldOffset(providers), callingConvention);
+            return backend.createJNITrampolineMethod(method, identifier, 0, threadIsolateOffset, parameters.size() - 1, getFieldOffset(providers), callingConvention);
         };
     }
 
