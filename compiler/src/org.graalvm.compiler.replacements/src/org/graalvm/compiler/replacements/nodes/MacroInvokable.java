@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -105,10 +106,10 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
      */
     @SuppressWarnings("try")
     static StructuredGraph lowerReplacement(StructuredGraph graph, StructuredGraph replacementGraph, LoweringTool tool) {
-        if (graph.isAfterStage(StructuredGraph.StageFlag.VALUE_PROXY_REMOVAL)) {
+        if (graph.isAfterStage(GraphState.StageFlag.VALUE_PROXY_REMOVAL)) {
             new RemoveValueProxyPhase(CanonicalizerPhase.create()).apply(replacementGraph, null);
         }
-        StructuredGraph.GuardsStage guardsStage = graph.getGuardsStage();
+        GraphState.GuardsStage guardsStage = graph.getGuardsStage();
         if (!guardsStage.allowsFloatingGuards()) {
             new GuardLoweringPhase().apply(replacementGraph, null);
             if (guardsStage.areFrameStatesAtDeopts()) {

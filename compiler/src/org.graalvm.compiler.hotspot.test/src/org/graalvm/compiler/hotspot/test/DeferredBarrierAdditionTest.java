@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,6 +88,7 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
             new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, highContext);
             new GuardLoweringPhase().apply(graph, midContext);
             new MidTierLoweringPhase(createCanonicalizerPhase()).apply(graph, midContext);
+            graph.getGraphState().setAfterFSA();
             new WriteBarrierAdditionPhase().apply(graph, midContext);
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After Write Barrier Addition");
 

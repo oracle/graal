@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,14 +135,14 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
         HotSpotBackendFactory backendFactory = lowTierCompilerConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
         HotSpotBackend firstTierBackend = backendFactory.createBackend(hotspotGraalRuntime, compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
-        Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
+        Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options, firstTierBackend.getTarget().arch);
         LIRSuites firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
         Providers firstTierProviders = firstTierBackend.getProviders();
         PartialEvaluatorConfiguration firstTierPe = new EconomyPartialEvaluatorConfiguration();
         firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
         TruffleTierConfiguration firstTierSetup = new TruffleTierConfiguration(firstTierPe, firstTierBackend, firstTierProviders, firstTierSuites, firstTierLirSuites, knownTruffleTypes);
-        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup, knownTruffleTypes);
-
+        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup, knownTruffleTypes,
+                        backend.getSuites().getDefaultSuites(options, backend.getTarget().arch));
         return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, compilerConfig);
     }
 
@@ -284,13 +284,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                     CompilationResultBuilderFactory resultFactory,
                     InvocationPlugins plugins) {
         TruffleTierConfiguration tier = config.lastTier();
-        Suites newSuites = tier.suites().copy();
+        Suites newSuites = config.hostSuite().copy();
         removeInliningPhases(newSuites);
-
-        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.NO)//
-                        .profileProvider(null)//
-                        .method(javaMethod) //
-                        .compilationId(compilationId).build();
+        removeSpeculativePhases(newSuites);
 
         final Providers lastTierProviders = tier.providers();
         final Backend backend = tier.backend();
@@ -301,6 +297,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                         .withEagerResolving(true)//
                         .withUnresolvedIsError(true)//
                         .withNodeSourcePosition(infoPoints);
+
+        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.NO)//
+                        .profileProvider(null)//
+                        .method(javaMethod) //
+                        .compilationId(compilationId) //
+                        .build();
 
         new GraphBuilderPhase.Instance(lastTierProviders, newBuilderConfig, OptimisticOptimizations.ALL, null).apply(graph);
 
@@ -338,6 +340,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             inliningPhase.remove();
             inliningPhase = suites.getHighTier().findPhase(AbstractInliningPhase.class);
         }
+    }
+
+    private static void removeSpeculativePhases(Suites suites) {
+        suites.getHighTier().removeSpeculativePhases();
+        suites.getMidTier().removeSpeculativePhases();
+        suites.getLowTier().removeSpeculativePhases();
     }
 
     @Override

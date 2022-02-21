@@ -26,6 +26,8 @@ package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -35,6 +37,8 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -63,11 +67,20 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        // This phase creates {@link OffsetAddressNode}s that needs to be lowered.
+                        NotApplicable.mustRunBefore(this, StageFlag.ADDRESS_LOWERING, graphState),
+                        NotApplicable.notApplicableIf(!graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This should happen after FSA."))));
+    }
+
+    @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
-        if (!Options.UseTrappingNullChecks.getValue(graph.getOptions()) || context.getTarget().implicitNullCheckLimit <= 0) {
+        assert context.getTarget().implicitNullCheckLimit > 0 : "The implicitNullCheckLimit should be greater than 0.";
+        if (!Options.UseTrappingNullChecks.getValue(graph.getOptions())) {
             return;
         }
-        assert graph.getGuardsStage().areFrameStatesAtDeopts();
         MetaAccessProvider metaAccessProvider = context.getMetaAccess();
         for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
             tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(), deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),

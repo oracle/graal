@@ -119,8 +119,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -267,13 +267,19 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Suites createSuites(OptionValues opts) {
-        Suites ret = backend.getSuites().getDefaultSuites(opts).copy();
+        Suites ret = backend.getSuites().getDefaultSuites(opts, getTarget().arch).copy();
 
         String phasePlanFile = System.getProperty("test.graal.phaseplan.file");
         if (phasePlanFile != null) {
             ret = loadPhasePlan(phasePlanFile, ret);
         } else {
             testPhasePlanSerialization(ret, opts);
+        }
+
+        if (getSpeculationLog() == null) {
+            ret.getHighTier().removeSpeculativePhases();
+            ret.getMidTier().removeSpeculativePhases();
+            ret.getLowTier().removeSpeculativePhases();
         }
 
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
@@ -284,8 +290,7 @@ public abstract class GraalCompilerTest extends GraalTest {
              */
             iter = ret.getHighTier().findPhase(CanonicalizerPhase.class);
         }
-        ret.getHighTier().appendPhase(new Phase() {
-
+        ret.getHighTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 checkHighTierGraph(graph);
@@ -301,8 +306,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return "CheckGraphPhase";
             }
         });
-        ret.getMidTier().appendPhase(new Phase() {
-
+        ret.getMidTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 checkMidTierGraph(graph);
@@ -318,8 +322,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return "CheckGraphPhase";
             }
         });
-        ret.getLowTier().appendPhase(new Phase() {
-
+        ret.getLowTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 checkLowTierGraph(graph);
@@ -431,7 +434,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 savePhasePlan(dos, originalSuites);
             }
             try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
-                newSuites = loadPhasePlan(in, backend.getSuites().getDefaultSuites(opts).copy());
+                newSuites = loadPhasePlan(in, backend.getSuites().getDefaultSuites(opts, getTarget().arch).copy());
             }
         } catch (IOException e) {
             throw new GraalError(e, "Error in phase plan serialization");
@@ -1304,6 +1307,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph lastCompiledGraph;
 
+    /**
+     * This method needs to be overwritten by tests that want to use {@link Speculative} phases. It
+     * may be called multiple times before a compilation is started.
+     */
     protected SpeculationLog getSpeculationLog() {
         return null;
     }
@@ -1469,7 +1476,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, OptionValues options) {
-        return new Builder(options, getDebugContext(options, compilationId.toString(CompilationIdentifier.Verbosity.ID), method), allowAssumptions).method(method).compilationId(compilationId);
+        return new Builder(options, getDebugContext(options, compilationId.toString(CompilationIdentifier.Verbosity.ID), method), allowAssumptions).method(method).compilationId(
+                        compilationId);
     }
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, OptionValues options) {

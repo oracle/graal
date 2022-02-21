@@ -27,6 +27,7 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -39,6 +40,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -137,13 +140,17 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
     private static final int UNSET = -1;
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        // This phase can cause reads to be non-canonicalizable.
+        return NotApplicable.mustRunAfter(this, StageFlag.FINAL_CANONICALIZATION, graphState);
+    }
+
+    @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
         if (!context.getLowerer().narrowsUseCastValue()) {
             // Nothing to be done
             return;
         }
-
-        assert graph.isAfterStage(StructuredGraph.StageFlag.FINAL_CANONICALIZATION) : "this phase can cause reads to be non-canonicalizable";
 
         int origNumExtends = 0;
         EconomicSet<ValueNode> defsWithExtends = EconomicSet.create(Equivalence.DEFAULT);

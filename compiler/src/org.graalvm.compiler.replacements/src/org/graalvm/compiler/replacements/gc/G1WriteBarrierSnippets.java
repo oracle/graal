@@ -490,7 +490,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             if (address instanceof OffsetAddressNode) {
                 args.add("object", ((OffsetAddressNode) address).getBase());
             } else {
-                assert barrier.usePrecise() : "found imprecise barrier that's not an object access " + barrier;
+                assert barrier.usePrecise() : "found imprecise barrier that's not an object access " + barrier + " at address " + address;
                 args.add("object", null);
             }
 

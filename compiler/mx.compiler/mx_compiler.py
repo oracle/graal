@@ -495,7 +495,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # Run ctw against rt.jar on hosted
     ctw_flags = [
         '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
+        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true', '-Dgraal.VerifyPhasePlan=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
@@ -608,7 +608,7 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
+_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D', '-Dgraal.VerifyPhasePlan=true']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
@@ -703,6 +703,7 @@ def _unittest_config_participant(config):
                 vmArgs.append('--add-modules=' + jmd.name)
 
     vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
+    vmArgs.append('-Dgraal.VerifyPhasePlan=true')
     vmArgs.append('-esa')
 
     # Always run unit tests without UseJVMCICompiler unless explicitly requested

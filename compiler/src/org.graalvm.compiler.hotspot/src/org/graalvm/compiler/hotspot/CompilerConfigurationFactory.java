@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -236,7 +236,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                     CompilerConfiguration config = factory.createCompilerConfiguration();
                     printPlan("High tier:", config.createHighTier(options));
                     printPlan("Mid tier:", config.createMidTier(options));
-                    printPlan("Low tier:", config.createLowTier(options));
+                    printPlan("Low tier:", config.createLowTier(options, runtime.getHostJVMCIBackend().getTarget().arch));
                     printPlan("Pre regalloc stage:", config.createPreAllocationOptimizationStage(options));
                     printPlan("Regalloc stage:", config.createAllocationStage(options));
                     printPlan("Post regalloc stage:", config.createPostAllocationOptimizationStage(options));

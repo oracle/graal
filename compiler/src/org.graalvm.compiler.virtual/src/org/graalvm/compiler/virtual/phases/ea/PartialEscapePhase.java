@@ -27,8 +27,12 @@ package org.graalvm.compiler.virtual.phases.ea;
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalysisIterations;
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -111,6 +115,14 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         if (cleanupPhase != null) {
             cleanupPhase.apply(graph, context);
         }
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.mustRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        cleanupPhase != null ? cleanupPhase.canApply(graphState) : ALWAYS_APPLICABLE);
     }
 
     @Override

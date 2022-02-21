@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -144,7 +144,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         super.build(startInstruction, startFrameState);
 
         /* We never have floating guards in AOT compiled code. */
-        getGraph().setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        getGraph().getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
 
         assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub ";
 

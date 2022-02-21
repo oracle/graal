@@ -33,7 +33,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -141,7 +140,8 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
          * BCIs must not survive until code generation, thus they are cleared shortly before frame
          * state assignment, thus we only verify them until their removal
          */
-        assert !this.graph().getFrameStateVerification().implies(FrameStateVerificationFeature.LOOP_EXITS) || this.stateAfter != null : "Loop exit must have a state until FSA " + this;
+        assert !this.graph().getGraphState().getFrameStateVerification().implies(GraphState.FrameStateVerificationFeature.LOOP_EXITS) ||
+                        this.stateAfter != null : "Loop exit must have a state until FSA " + this;
 
         // Because the scheduler doesn't schedule ProxyNodes, the inputs to the ProxyNode can end up
         // in the wrong place in the earliest local schedule. Ensuring there's a BeginNode before

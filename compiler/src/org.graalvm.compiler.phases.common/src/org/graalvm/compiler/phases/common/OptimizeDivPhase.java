@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -32,6 +34,7 @@ import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -61,10 +64,15 @@ import jdk.vm.ci.code.CodeUtil;
  * express it in faster, equivalent, arithmetic.
  */
 public class OptimizeDivPhase extends BasePhase<CoreProviders> {
-    protected final CanonicalizerPhase canon;
+    protected final CanonicalizerPhase canonicalizer;
 
-    public OptimizeDivPhase(CanonicalizerPhase canon) {
-        this.canon = canon;
+    public OptimizeDivPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return this.canonicalizer.canApply(graphState);
     }
 
     @Override
@@ -94,7 +102,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
             }
         }
         if (!ec.getNodes().isEmpty()) {
-            canon.applyIncremental(graph, context, ec.getNodes());
+            canonicalizer.applyIncremental(graph, context, ec.getNodes());
         }
 
     }
