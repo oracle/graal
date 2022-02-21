@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.regex.RegexExecNode;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexSource;
@@ -72,6 +71,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexLiteralLookAroundExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.RegexASTPostProcessor;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -149,7 +149,7 @@ public final class TRegexCompilationRequest {
         phaseStart("Parser");
         try {
             ast = regexParser.parse();
-            regexParser.prepareForDFA();
+            new RegexASTPostProcessor(ast, compilationBuffer).prepareForDFA();
         } finally {
             phaseEnd("Parser");
         }
@@ -307,7 +307,7 @@ public final class TRegexCompilationRequest {
         phaseStart("Parser");
         try {
             ast = regexParser.parse();
-            regexParser.prepareForDFA();
+            new RegexASTPostProcessor(ast, compilationBuffer).prepareForDFA();
         } finally {
             phaseEnd("Parser");
         }
@@ -315,7 +315,7 @@ public final class TRegexCompilationRequest {
     }
 
     private RegexParser createParser() {
-        return new RegexParser(language, source, RegexFlags.parseFlags(source), compilationBuffer);
+        return new RegexParser(language, source, compilationBuffer);
     }
 
     private void createNFA() {
