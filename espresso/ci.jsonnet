@@ -32,24 +32,22 @@
     common.jdk17_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('jvm-ce-llvm'   , guest_jvm_config='multi-tier'     , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-multi_tier-jdk17-linux-amd64'},
     common.jdk17_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('native-ce-llvm', guest_jvm_config='multi-tier')                                                       + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-multi_tier-jdk17-linux-amd64'},
 
-    // On-demand benchmarks
     // Scala DaCapo warmup benchmarks
-    common.jdk17_on_demand_bench_linux + common.graal_benchmark('jvm-ce-llvm', common.scala_dacapo_jvm_warmup)                                                                       + {name: 'ondemand-bench-espresso-jvm-ce-scala_dacapo_warmup-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux    + common.graal_benchmark('jvm-ce-llvm', common.scala_dacapo_jvm_warmup)                                                                       + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-reference-jdk17-linux-amd64'},
 
     // Memory footprint
     common.jdk17_on_demand_linux       + common.espresso_minheap_benchmark('jvm-ce-llvm', 'awfy:*', 'infinite-overhead')                                                             + {name: 'ondemand-bench-espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk17-linux-amd64'},
     common.jdk17_on_demand_bench_linux + common.espresso_minheap_benchmark('jvm-ce-llvm', 'awfy:*', '1.5-overhead')                                                                  + {name: 'ondemand-bench-espresso-jvm-ce-awfy-minheap-1.5-ovh-jdk17-linux-amd64'},
 
-    // Longer-running benchmarks are on-demand
     // single tier
-    common.jdk17_on_demand_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm'                                              , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-scala_dacapo-single_tier-jdk17-linux-amd64'},
-    common.jdk17_on_demand_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm')                                                                                             + {name: 'ondemand-bench-espresso-native-ce-scala_dacapo-single_tier-jdk17-linux-amd64'},
-    common.jdk17_on_demand_bench_linux + common.dacapo_benchmark('jvm-ce-llvm'                                                    , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-dacapo-single_tier-jdk17-linux-amd64'},
-    common.jdk17_on_demand_bench_linux + common.dacapo_benchmark('native-ce-llvm')                                                                                                   + {name: 'ondemand-bench-espresso-native-ce-dacapo-single_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm'                                                                           , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo-single_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm')                                                                                                                          + {name: 'weekly-bench-espresso-native-ce-scala_dacapo-single_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.dacapo_benchmark('jvm-ce-llvm'                                                                                 , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-dacapo-single_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.dacapo_benchmark('native-ce-llvm')                                                                                                                                + {name: 'weekly-bench-espresso-native-ce-dacapo-single_tier-jdk17-linux-amd64'},
     // multi tier
-    common.jdk17_on_demand_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm', 'multi-tier'                                , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-scala_dacapo-multi_tier-jdk17-linux-amd64'},
-    common.jdk17_on_demand_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm', 'multi-tier')                                                                               + {name: 'ondemand-bench-espresso-native-ce-scala_dacapo-multi_tier-jdk17-linux-amd64'},
-    common.jdk17_on_demand_bench_linux + common.dacapo_benchmark('jvm-ce-llvm', 'multi-tier'                                      , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-dacapo-multi_tier-jdk17-linux-amd64'},
-    common.jdk17_on_demand_bench_linux + common.dacapo_benchmark('native-ce-llvm', 'multi-tier')                                                                                     + {name: 'ondemand-bench-espresso-native-ce-dacapo-multi_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm', 'multi-tier'                                                             , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo-multi_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm', 'multi-tier')                                                                                                            + {name: 'weekly-bench-espresso-native-ce-scala_dacapo-multi_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.dacapo_benchmark('jvm-ce-llvm', 'multi-tier'                                                                   , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-dacapo-multi_tier-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux + common.dacapo_benchmark('native-ce-llvm', 'multi-tier')                                                                                                                  + {name: 'weekly-bench-espresso-native-ce-dacapo-multi_tier-jdk17-linux-amd64'},
   ]
 }
