@@ -183,7 +183,7 @@ public final class OptionDescriptor {
         // Append the default value first
         for (Enum constant : enumConstants) {
             if (defaultValue.equals(constant)) {
-                sb.append(constant.name());
+                sb.append(constant);
                 break;
             }
         }
@@ -191,7 +191,7 @@ public final class OptionDescriptor {
         for (Enum constant : enumConstants) {
             if (!defaultValue.equals(constant)) {
                 sb.append("|");
-                sb.append(constant.name());
+                sb.append(constant.toString());
             }
         }
         return sb.toString();
