@@ -41,6 +41,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -73,6 +74,11 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
                     PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
         return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
                         wordTypes, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider);
+    }
+
+    @Override
+    protected LoweringProvider createLoweringProvider(Providers p) {
+        return SubstrateLoweringProvider.createForHosted(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
     }
 
     @Override

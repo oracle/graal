@@ -990,19 +990,19 @@ public final class Context implements AutoCloseable {
 
     private static final Context EMPTY = new Context();
 
-    static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<String>() {
+    static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<>() {
         public boolean test(String t) {
             return false;
         }
     };
 
-    static final Predicate<String> NO_HOST_CLASSES = new Predicate<String>() {
+    static final Predicate<String> NO_HOST_CLASSES = new Predicate<>() {
         public boolean test(String t) {
             return false;
         }
     };
 
-    static final Predicate<String> ALL_HOST_CLASSES = new Predicate<String>() {
+    static final Predicate<String> ALL_HOST_CLASSES = new Predicate<>() {
         public boolean test(String t) {
             return true;
         }

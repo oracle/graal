@@ -440,7 +440,7 @@ public final class Safepoint {
         if (ActionOnExitSafepointSupport.isActionPending()) {
             // LLVM Backend do not support `FarReturnNode`,
             // we explicit specify Loom JDK here.
-            if (JavaContinuations.useLoom() && ActionOnExitSafepointSupport.getSwitchStack()) {
+            if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.getSwitchStack()) {
                 ActionOnExitSafepointSupport.clearActions();
                 KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);
             } else {
@@ -882,7 +882,7 @@ public final class Safepoint {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected UnsignedWord getSafepointId() {
+        public UnsignedWord getSafepointId() {
             return safepointId;
         }
 

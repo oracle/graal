@@ -66,7 +66,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static final String PATH_SEPARATOR_REGEX;
     static {
-        if (OS.getCurrent().equals(OS.WINDOWS)) {
+        if (OS.WINDOWS.isCurrent()) {
             PATH_SEPARATOR_REGEX = ":|;";
         } else {
             PATH_SEPARATOR_REGEX = File.pathSeparator;

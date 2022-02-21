@@ -74,7 +74,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class NIOFileSystemTest {
 
-    private static final FileAttribute<?> ATTR_UNKNOWN = new FileAttribute<Object>() {
+    private static final FileAttribute<?> ATTR_UNKNOWN = new FileAttribute<>() {
         @Override
         public String name() {
             return "unknown";
@@ -303,13 +303,13 @@ public class NIOFileSystemTest {
 
     @Test
     public void testNewDirectoryStream() throws IOException {
-        DirectoryStream.Filter<Path> allFilter = new DirectoryStream.Filter<Path>() {
+        DirectoryStream.Filter<Path> allFilter = new DirectoryStream.Filter<>() {
             @Override
             public boolean accept(Path entry) throws IOException {
                 return true;
             }
         };
-        DirectoryStream.Filter<Path> errFilter = new DirectoryStream.Filter<Path>() {
+        DirectoryStream.Filter<Path> errFilter = new DirectoryStream.Filter<>() {
             @Override
             public boolean accept(Path entry) throws IOException {
                 throw new RuntimeException();

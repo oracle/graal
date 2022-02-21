@@ -40,7 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.jfc.JFC;
 
-@TargetClass(value = jdk.jfr.internal.jfc.JFC.class, onlyWith = JfrEnabled.class)
+@TargetClass(value = jdk.jfr.internal.jfc.JFC.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_jfc_JFC {
     @Substitute
     public static List<Configuration> getConfigurations() {

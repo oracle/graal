@@ -982,7 +982,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExecuteFunction() {
-        Value function = context.asValue(new Function<Object, Object>() {
+        Value function = context.asValue(new Function<>() {
             public Object apply(Object t) {
                 return ((int) t) * 2;
             }
@@ -993,19 +993,19 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionFrames1() {
-        Value innerInner = context.asValue(new Function<Object, Object>() {
+        Value innerInner = context.asValue(new Function<>() {
             public Object apply(Object t) {
                 throw new RuntimeException("foobar");
             }
         });
 
-        Value inner = context.asValue(new Function<Object, Object>() {
+        Value inner = context.asValue(new Function<>() {
             public Object apply(Object t) {
                 return innerInner.execute(t);
             }
         });
 
-        Value outer = context.asValue(new Function<Object, Object>() {
+        Value outer = context.asValue(new Function<>() {
             public Object apply(Object t) {
                 return inner.execute(t);
             }
@@ -1140,7 +1140,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionFramesWithCallToMethodInvoke() {
-        Value inner = context.asValue(new Supplier<Object>() {
+        Value inner = context.asValue(new Supplier<>() {
             public Object get() {
                 throw new RuntimeException("foobar");
             }

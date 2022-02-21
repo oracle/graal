@@ -60,7 +60,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.jni.JNIJavaVMList;
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -293,7 +293,7 @@ final class JNIInvocationInterface {
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
-        JavaThreads.singleton().joinAllNonDaemons();
+        PlatformThreads.singleton().joinAllNonDaemons();
         return JNIErrors.JNI_OK();
     }
 
@@ -355,7 +355,7 @@ final class JNIInvocationInterface {
                  * thread. In this case neither AttachCurrentThread nor this routine have any effect
                  * on the daemon status of the thread."
                  */
-                JavaThreads.ensureJavaThread(name, group, asDaemon);
+                PlatformThreads.ensureCurrentAssigned(name, group, asDaemon);
 
                 return JNIErrors.JNI_OK();
             }

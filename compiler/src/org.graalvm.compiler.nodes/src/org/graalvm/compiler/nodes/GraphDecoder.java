@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1067,10 +1067,17 @@ public class GraphDecoder {
         assert loopExit.stateAfter() == null;
         int stateAfterOrderId = readOrderId(methodScope);
 
-        BeginNode begin = graph.add(new BeginNode());
-
         FixedNode loopExitSuccessor = loopExit.next();
-        loopExit.replaceAtPredecessor(begin);
+
+        BeginNode begin;
+        if (loopExit.predecessor() instanceof BeginNode) {
+            // Optimization: Reuse an existing BeginNode rather than creating a new one.
+            begin = (BeginNode) loopExit.predecessor();
+            loopExit.replaceAtPredecessor(null);
+        } else {
+            begin = graph.add(new BeginNode());
+            loopExit.replaceAtPredecessor(begin);
+        }
 
         MergeNode loopExitPlaceholder = null;
         if (methodScope.loopExplosion.mergeLoops() && loopScope.loopDepth == 1) {
@@ -1282,7 +1289,7 @@ public class GraphDecoder {
         return false;
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected void readProperties(MethodScope methodScope, Node node) {
         try (DebugCloseable a = ReadPropertiesTimer.start(debug)) {
             NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
@@ -1502,7 +1509,7 @@ public class GraphDecoder {
      * successor list, but no properties or edges are loaded yet. That is done when the successor is
      * on top of the worklist in {@link #processNextNode}.
      */
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected void makeSuccessorStubs(MethodScope methodScope, LoopScope loopScope, Node node, boolean updatePredecessors) {
         try (DebugCloseable a = MakeSuccessorStubsTimer.start(debug)) {
             Edges edges = node.getNodeClass().getSuccessorEdges();

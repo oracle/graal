@@ -69,7 +69,7 @@ final class PolyglotStackFramesRetriever {
                     @Override
                     protected void perform(Access access) {
                         List<FrameInstance> frameInstances = new ArrayList<>();
-                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
                                 return frameInstances.add(frameInstance);

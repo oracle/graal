@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,9 +36,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.jdk.UninterruptibleEntry;
+import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.JavaLangThreadGroupSubstitutions;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
@@ -71,7 +71,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 // IsolateThreads without a Java thread just started executing and will register
                 // themselves later on.
-                Thread thread = JavaThreads.fromVMThread(isolateThread);
+                Thread thread = PlatformThreads.fromVMThread(isolateThread);
                 if (thread != null) {
                     registerThread0(thread);
                 }
@@ -193,7 +193,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
     private static int writeThreads(JfrChunkWriter writer, JfrThreadEpochData epochData) {
         VMError.guarantee(epochData.visitedThreads.getSize() > 0, "Thread repository must not be empty.");
 
-        writer.writeCompressedLong(JfrTypes.Thread.getId());
+        writer.writeCompressedLong(JfrType.Thread.getId());
         writer.writeCompressedInt(epochData.visitedThreads.getSize());
         writer.write(epochData.threadBuffer);
 
@@ -206,7 +206,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
             return EMPTY;
         }
 
-        writer.writeCompressedLong(JfrTypes.ThreadGroup.getId());
+        writer.writeCompressedLong(JfrType.ThreadGroup.getId());
         writer.writeCompressedInt(threadGroupCount);
         writer.write(epochData.threadGroupBuffer);
 

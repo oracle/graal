@@ -72,7 +72,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
+public abstract class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
@@ -463,6 +463,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     private void markReachable() {
         if (AtomicUtils.atomicMark(isReachable)) {
+            universe.notifyReachableType();
             universe.hostVM.checkForbidden(this, UsageKind.Reachable);
             if (isArray()) {
                 /*
@@ -600,7 +601,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
          * is registered as unsafe during the analysis and then walk down the type hierarchy and
          * invalidate the cached value of all the sub-types.
          */
-        return unsafeAccessedFieldsRegistered || (getSuperclass() != null ? getSuperclass().hasUnsafeAccessedFields() : false);
+        return unsafeAccessedFieldsRegistered || (getSuperclass() != null && getSuperclass().hasUnsafeAccessedFields());
     }
 
     public List<AnalysisField> unsafeAccessedFields() {
@@ -999,7 +1000,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         try {
             return wrapped.isLocal();
         } catch (InternalError e) {
-            universe.hostVM().warn("unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
+            System.err.println("warning: unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
                             "to the library or language author. The issue is caused by " + wrapped.getName() + " which is not following the naming convention.");
             return false;
         }

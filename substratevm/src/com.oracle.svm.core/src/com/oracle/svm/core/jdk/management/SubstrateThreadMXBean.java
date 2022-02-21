@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
@@ -247,7 +247,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
             return -1;
         }
 
-        return JavaThreads.getThreadAllocatedBytes(id);
+        return PlatformThreads.getThreadAllocatedBytes(id);
     }
 
     @Override
@@ -258,7 +258,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
         long[] sizes = new long[ids.length];
         Arrays.fill(sizes, -1);
         if (valid) {
-            JavaThreads.getThreadAllocatedBytes(ids, sizes);
+            PlatformThreads.getThreadAllocatedBytes(ids, sizes);
         }
         return sizes;
     }

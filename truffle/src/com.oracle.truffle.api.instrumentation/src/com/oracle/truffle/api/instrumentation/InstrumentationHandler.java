@@ -2476,7 +2476,7 @@ final class InstrumentationHandler {
 
         @Override
         public Iterator<E> iterator() {
-            return new Iterator<E>() {
+            return new Iterator<>() {
                 private final E[] snapshot = getArray();
                 private int cursor = 0;
 
@@ -2665,7 +2665,7 @@ final class InstrumentationHandler {
          */
         @Override
         public Iterator<R> iterator() {
-            return new Iterator<R>() {
+            return new Iterator<>() {
 
                 /*
                  * We need to capture the values field in the iterator to have a consistent view on

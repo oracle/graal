@@ -12,7 +12,7 @@ meth public static int indexOfWithOrMask(byte[],int,int,byte[],byte[])
 meth public static int indexOfWithOrMask(char[],int,int,char[],char[])
 meth public static int indexOfWithOrMask(java.lang.String,int,int,java.lang.String,java.lang.String)
 supr java.lang.Object
-hfds JAVA_SPEC,UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
+hfds UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
 
 CLSS public abstract interface com.oracle.truffle.api.Assumption
 meth public abstract boolean isValid()
@@ -662,6 +662,7 @@ innr public abstract interface static Interrupter
 innr public abstract interface static Interruptible
 meth public abstract <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.lang.Runnable)
 meth public abstract boolean hasPendingSideEffectingActions()
+meth public abstract boolean setAllowActions(boolean)
 meth public abstract boolean setAllowSideEffects(boolean)
 meth public static <%0 extends java.lang.Object> void setBlockedThreadInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0})
 meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()
@@ -818,6 +819,7 @@ meth public int getNumberOfSlots()
 meth public int getSize()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.lang.Object getDefaultValue()
+meth public java.lang.Object getInfo()
 meth public java.lang.Object getSlotInfo(int)
 meth public java.lang.Object getSlotName(int)
 meth public java.lang.String toString()
@@ -835,7 +837,7 @@ meth public void setFrameSlotKind(com.oracle.truffle.api.frame.FrameSlot,com.ora
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public void setSlotKind(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds EMPTY_BYTE_ARRAY,NEVER_PART_OF_COMPILATION_MESSAGE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,disabledAuxiliarySlots,identifierToNotInFrameAssumptionMap,identifierToSlotMap,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,size,slots,version
+hfds EMPTY_BYTE_ARRAY,NEVER_PART_OF_COMPILATION_MESSAGE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,descriptorInfo,disabledAuxiliarySlots,identifierToNotInFrameAssumptionMap,identifierToSlotMap,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,size,slots,version
 
 CLSS public final static com.oracle.truffle.api.frame.FrameDescriptor$Builder
  outer com.oracle.truffle.api.frame.FrameDescriptor
@@ -843,8 +845,9 @@ meth public com.oracle.truffle.api.frame.FrameDescriptor build()
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValue(java.lang.Object)
 meth public int addSlot(com.oracle.truffle.api.frame.FrameSlotKind,java.lang.Object,java.lang.Object)
 meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
 supr java.lang.Object
-hfds DEFAULT_CAPACITY,defaultValue,infos,names,size,tags
+hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
@@ -956,6 +959,7 @@ meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.memory.MemoryFence
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="22.1.0")
 meth public static void acquire()
 meth public static void full()
 meth public static void loadLoad()

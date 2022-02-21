@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -382,7 +383,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                          * Truffle API client since the Truffle API module descriptor only exports
                          * these packages to modules known at build time (such as the Graal module).
                          */
-                        EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                        ModuleUtils.exportTo(loader, null);
                     }
                     return c;
                 } catch (ClassNotFoundException e) {
@@ -454,6 +455,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public FileSystem newDefaultFileSystem() {
         return FileSystems.newDefaultFileSystem();
+    }
+
+    @Override
+    public ProcessHandler newDefaultProcessHandler() {
+        return ProcessHandlers.newDefaultProcessHandler();
+    }
+
+    @Override
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return ProcessHandlers.isDefault(processHandler);
+    }
+
+    @Override
+    public ThreadScope createThreadScope() {
+        return null;
     }
 
     @Override

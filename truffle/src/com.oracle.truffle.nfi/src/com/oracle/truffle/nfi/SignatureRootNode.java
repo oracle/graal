@@ -87,7 +87,7 @@ final class SignatureRootNode extends RootNode {
             this.argBuilders = argBuilders;
         }
 
-        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<NFIType>() {
+        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<>() {
 
             @Override
             public NFIType[] create(int size) {

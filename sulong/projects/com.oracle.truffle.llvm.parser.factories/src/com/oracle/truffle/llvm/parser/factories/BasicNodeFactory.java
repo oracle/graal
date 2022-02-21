@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,13 +28,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.factories;
-
-import java.lang.reflect.Array;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
@@ -246,6 +239,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMIVarBitLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI16VectorNodeGen;
@@ -367,6 +361,13 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMLanguage language;
@@ -789,6 +790,8 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError(type);
             }
+        } else if (type instanceof VariableBitWidthType) {
+            return LLVMIVarBitLoadNodeGen.create(targetAddress, ((VariableBitWidthType) type).getBitSizeInt());
         } else if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
             int vectorLength = vectorType.getNumberOfElementsInt();
@@ -1082,6 +1085,8 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError(llvmType + " is not supported for insertvalue");
             }
+        } else if (llvmType instanceof VariableBitWidthType) {
+            store = LLVMIVarBitStoreNodeGen.create();
         } else if (llvmType instanceof VectorType) {
             store = LLVMStoreVectorNodeGen.create(null, null, ((VectorType) llvmType).getNumberOfElementsInt());
         } else if (llvmType instanceof PointerType) {

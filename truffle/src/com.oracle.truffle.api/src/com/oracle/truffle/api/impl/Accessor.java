@@ -678,6 +678,8 @@ public abstract class Accessor {
         public abstract boolean getNeedsAllEncodings();
 
         public abstract boolean requireLanguageWithAllEncodings(Object encoding);
+
+        public abstract AutoCloseable createPolyglotThreadScope();
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1123,64 +1125,6 @@ public abstract class Accessor {
         }
     }
 
-    public static final class JDKSupport {
-
-        private JDKSupport() {
-        }
-
-        public void exportTo(ClassLoader loader, String moduleName) {
-            TruffleJDKServices.exportTo(loader, moduleName);
-        }
-
-        public void exportTo(Class<?> client) {
-            TruffleJDKServices.exportTo(client);
-        }
-
-        public <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
-            return TruffleJDKServices.getTruffleRuntimeLoaders(serviceClass);
-        }
-
-        public <S> void addUses(Class<S> service) {
-            TruffleJDKServices.addUses(service);
-        }
-
-        public void addReads(Class<?> client) {
-            TruffleJDKServices.addReads(client);
-        }
-
-        public Object getUnnamedModule(ClassLoader classLoader) {
-            return TruffleJDKServices.getUnnamedModule(classLoader);
-        }
-
-        public boolean verifyModuleVisibility(Object lookupModule, Class<?> memberClass) {
-            return TruffleJDKServices.verifyModuleVisibility(lookupModule, memberClass);
-        }
-
-        public boolean isNonTruffleClass(Class<?> clazz) {
-            return TruffleJDKServices.isNonTruffleClass(clazz);
-        }
-
-        public void fullFence() {
-            TruffleJDKServices.fullFence();
-        }
-
-        public void acquireFence() {
-            TruffleJDKServices.acquireFence();
-        }
-
-        public void releaseFence() {
-            TruffleJDKServices.releaseFence();
-        }
-
-        public void loadLoadFence() {
-            TruffleJDKServices.loadLoadFence();
-        }
-
-        public void storeStoreFence() {
-            TruffleJDKServices.storeStoreFence();
-        }
-    }
-
 // A separate class to break the cycle such that Accessor can fully initialize
 // before ...Accessor classes static initializers run, which call methods from Accessor.
     private static class Constants {
@@ -1226,8 +1170,6 @@ public abstract class Accessor {
         }
     }
 
-    private static final Accessor.JDKSupport JDKSERVICES = new JDKSupport();
-
     protected Accessor() {
         String thisClassName = this.getClass().getName();
         if ("com.oracle.truffle.api.LanguageAccessor".equals(thisClassName) ||
@@ -1250,7 +1192,6 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
                         "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
-                        "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.ImplAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
@@ -1307,10 +1248,6 @@ public abstract class Accessor {
 
     public final IOSupport ioSupport() {
         return Constants.IO;
-    }
-
-    public final JDKSupport jdkSupport() {
-        return JDKSERVICES;
     }
 
     /**

@@ -47,8 +47,5 @@ public @interface RestrictHeapAccess {
 
     Access access();
 
-    // Unnecessary, will be removed in GR-34779.
-    boolean overridesCallers() default false;
-
     String reason();
 }

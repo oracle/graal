@@ -757,7 +757,7 @@ public class HostAccessTest {
 
     }
 
-    static final TypeLiteral<List<TargetClass1>> TARGET_CLASS_LIST = new TypeLiteral<List<TargetClass1>>() {
+    static final TypeLiteral<List<TargetClass1>> TARGET_CLASS_LIST = new TypeLiteral<>() {
     };
 
     @Test
@@ -792,10 +792,10 @@ public class HostAccessTest {
         assertEquals("422", list.get(1).o);
     }
 
-    static final TypeLiteral<Map<String, TargetClass1>> TARGET_CLASS_MAP_STRING = new TypeLiteral<Map<String, TargetClass1>>() {
+    static final TypeLiteral<Map<String, TargetClass1>> TARGET_CLASS_MAP_STRING = new TypeLiteral<>() {
     };
 
-    static final TypeLiteral<Map<Long, TargetClass1>> TARGET_CLASS_MAP_LONG = new TypeLiteral<Map<Long, TargetClass1>>() {
+    static final TypeLiteral<Map<Long, TargetClass1>> TARGET_CLASS_MAP_LONG = new TypeLiteral<>() {
     };
 
     @Test
@@ -1009,7 +1009,7 @@ public class HostAccessTest {
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.allowPublicAccess(true);
         final IllegalArgumentException error = new IllegalArgumentException();
-        Predicate<Integer> errorAccepts = new Predicate<Integer>() {
+        Predicate<Integer> errorAccepts = new Predicate<>() {
             public boolean test(Integer t) {
                 error.initCause(new RuntimeException());
                 throw error;

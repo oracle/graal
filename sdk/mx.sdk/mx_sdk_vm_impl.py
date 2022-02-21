@@ -354,10 +354,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         else:
             self.jdk_base = src_jdk_base
 
-        if _src_jdk_version == 8:
-            self.jre_base = '/'.join((self.jdk_base, 'jre'))
-        else:
-            self.jre_base = self.jdk_base
+        self.jre_base = self.jdk_base
 
         path_substitutions = mx_subst.SubstitutionEngine(mx_subst.path_substitutions)
         path_substitutions.register_no_arg('jdk_base', lambda: self.jdk_base)
@@ -420,7 +417,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             for _src in list(src):
                 src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
                 if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
-                    if with_sources and _include_sources(src_dict['dependency']) and (_src_jdk_version == 8 or src_dict['dependency'] not in self.jimage_jars or not _jlink_libraries()):
+                    if with_sources and _include_sources(src_dict['dependency']) and (src_dict['dependency'] not in self.jimage_jars or not _jlink_libraries()):
                         src_src_dict = {
                             'source_type': 'dependency',
                             'dependency': src_dict['dependency'],
@@ -592,15 +589,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
-            if _src_jdk_version == 8:
-                # Generate and add the 'release' file.
-                # On JDK9+ this is done in GraalVmJImageBuildTask because it depends on the result of jlink.
-                _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-                _metadata = self._get_metadata(_sorted_suites, join(exclude_base, 'release'))
-                _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
-                if any(comp.jvmci_parent_jars for comp in registered_graalvm_components(stage1)):
-                    _add(layout, '<jre_base>/lib/jvmci/parentClassLoader.classpath', 'dependency:{}'.format(GraalVmJvmciParentClasspath.project_name()))
-
         # Add the rest of the GraalVM
 
         component_suites = {}
@@ -633,9 +621,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 _component_base = _component_type_base
 
-            if _src_jdk_version == 8:
-                _add(layout, '<jre_base>/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
-            elif not _jlink_libraries():
+            if not _jlink_libraries():
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions + _component.jvmci_parent_jars], _component, with_sources=True)
             _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
@@ -657,7 +643,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'exclude': [],
                 'path': None,
             } for d in _component.support_libraries_distributions], _component)
-            if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and (_src_jdk_version == 8 or not _jlink_libraries()):
+            if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and (not _jlink_libraries()):
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
             if isinstance(_component, mx_sdk.GraalVmJdkComponent):
@@ -739,7 +725,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             if _libpolyglot_macro_dir is not None and GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(_component):
                 _add(layout, _libpolyglot_macro_dir, 'dependency:' + _libpolyglot_macro_dist_name(_component))
 
-            if _src_jdk_version == 8 or not _jlink_libraries():
+            if not _jlink_libraries():
                 graalvm_dists.difference_update(_component.boot_jars)
             graalvm_dists.difference_update(_component.jar_distributions)
             graalvm_dists.difference_update(_component.jvmci_parent_jars)
@@ -757,11 +743,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _link_dest = _component_base + mx_subst.results_substitutions.substitute(_provided_executable)
                     _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                     _jre_bin_names.append(basename(_link_path))
-
-            if _src_jdk_version == 8 and 'jre' in _jdk_jre_bin:
-                # Add jdk to jre links
-                for _name in _jre_bin_names:
-                    _add_link('<jdk_base>/bin/', '<jre_base>/bin/' + _name, _component)
 
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _component.graal_compiler:
                 has_graal_compiler = True
@@ -1175,7 +1156,7 @@ class GraalVmNativeProperties(GraalVmProject):
         # With Java > 8 there are cases where image_config.get_add_exports is getting called in
         # mx_sdk_vm_impl.NativePropertiesBuildTask.contents. This only works after the jar_distributions
         # are made into proper modules. Therefore they have to be specified as dependencies here.
-        deps = [] if _src_jdk_version == 8 else list(image_config.jar_distributions)
+        deps = list(image_config.jar_distributions)
         super(GraalVmNativeProperties, self).__init__(component, GraalVmNativeProperties.project_name(image_config), deps=deps, **kw_args)
 
     @staticmethod
@@ -2822,10 +2803,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_distribution(standalone)
                 with_debuginfo.append(standalone)
 
-    if register_project:
-        if _src_jdk_version == 8 and jvmci_parent_jars:
-            register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
-
     if needs_stage1:
         if register_project:
             for component in registered_graalvm_components(stage1=True):
@@ -3276,8 +3253,8 @@ def check_versions(jdk, graalvm_version_regex, expect_graalvm, check_jvmci):
     out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
 
     jdk_version = jdk.version
-    if jdk_version < mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11'):
-        mx.abort("GraalVM requires JDK8 or >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk.home, jdk_version, out, check_env))
+    if jdk_version <= mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11'):
+        mx.abort("GraalVM requires >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk.home, jdk_version, out, check_env))
 
     match = graalvm_version_regex.match(out)
     if expect_graalvm and match is None:
@@ -3450,6 +3427,10 @@ def _with_polyglot_lib_project():
 
 def _with_polyglot_launcher_project():
     return 'poly' in [c.short_name for c in registered_graalvm_components()]
+
+
+def _with_native_image_inspect_project():
+    return 'nii' in [c.short_name for c in registered_graalvm_components()]
 
 
 def _force_bash_launchers(launcher):

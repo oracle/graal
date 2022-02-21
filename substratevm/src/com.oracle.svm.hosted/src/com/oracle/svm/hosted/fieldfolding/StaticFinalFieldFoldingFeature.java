@@ -152,7 +152,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        access.getHostVM().addMethodAfterParsingHook(this::onAnalysisMethodParsed);
+        access.getHostVM().addMethodAfterParsingListener(this::onAnalysisMethodParsed);
     }
 
     @Override

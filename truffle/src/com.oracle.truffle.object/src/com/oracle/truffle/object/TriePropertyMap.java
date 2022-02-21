@@ -368,7 +368,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
 
     @Override
     public Set<Map.Entry<Object, Property>> entrySet() {
-        return new AbstractSet<Map.Entry<Object, Property>>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Map.Entry<Object, Property>> iterator() {
                 return orderedEntryIterator();
@@ -383,7 +383,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
 
     @Override
     public Set<Object> keySet() {
-        return new AbstractSet<Object>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Object> iterator() {
                 return TriePropertyMap.this.orderedKeyIterator();
@@ -398,7 +398,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
 
     @Override
     public Collection<Property> values() {
-        return new AbstractSet<Property>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Property> iterator() {
                 return TriePropertyMap.this.orderedValueIterator();
@@ -412,7 +412,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     }
 
     public Set<Map.Entry<Object, Property>> reverseOrderEntrySet() {
-        return new AbstractSet<Map.Entry<Object, Property>>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Map.Entry<Object, Property>> iterator() {
                 return reverseOrderedEntryIterator();
@@ -426,7 +426,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     }
 
     public Set<Object> reverseOrderKeys() {
-        return new AbstractSet<Object>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Object> iterator() {
                 return TriePropertyMap.this.reverseOrderedKeyIterator();
@@ -440,7 +440,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     }
 
     public Set<Property> reverseOrderValues() {
-        return new AbstractSet<Property>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Property> iterator() {
                 return TriePropertyMap.this.reverseOrderedValueIterator();

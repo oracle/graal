@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,13 +33,10 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.llvm.runtime.options.TargetStream;
 
 public final class LLVMTracerInstrument {
 
-    private final TargetStream targetStream;
-
-    public LLVMTracerInstrument(TruffleLanguage.Env env, String optionString) {
+    public static void attach(TruffleLanguage.Env env) {
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         builder.mimeTypeIs("text/x-llvmir");
         builder.tagIs(StandardTags.StatementTag.class, StandardTags.RootTag.class);
@@ -49,11 +46,6 @@ public final class LLVMTracerInstrument {
         if (instrumenter == null) {
             throw new IllegalStateException("Could not find Instrumenter");
         }
-        targetStream = new TargetStream(env, optionString);
-        instrumenter.attachExecutionEventFactory(filter, new LLVMTraceNodeFactory(targetStream));
-    }
-
-    public void dispose() {
-        targetStream.dispose();
+        instrumenter.attachExecutionEventFactory(filter, new LLVMTraceNodeFactory());
     }
 }

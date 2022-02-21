@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 
 final class PolyglotThread extends Thread {
 
@@ -127,10 +128,11 @@ final class PolyglotThread extends Thread {
         }
 
         @TruffleBoundary
+        @SuppressWarnings("try")
         private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
             Object[] prev = languageContext.enterThread(thread);
             assert prev == null; // is this assertion correct?
-            try {
+            try (ThreadScope scope = languageContext.getImpl().getRootImpl().createThreadScope()) {
                 run.execute();
             } catch (CancelExecution cancel) {
                 if (PolyglotEngineOptions.TriggerUncaughtExceptionHandlerForCancel.getValue(languageContext.context.engine.getEngineOptionValues())) {

@@ -172,8 +172,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         RegisterValue regFromIndex = REG_FROM_INDEX.asValue(fromIndex.getValueKind());
         RegisterValue regSearchValue1 = REG_SEARCH_VALUE_1.asValue(searchValues[0].getValueKind());
         Value regSearchValue2 = nValues > 1 ? REG_SEARCH_VALUE_2.asValue(searchValues[1].getValueKind()) : Value.ILLEGAL;
-        Value regSearchValue3 = nValues > 2 ? searchValues[2] : Value.ILLEGAL;
-        Value regSearchValue4 = nValues > 3 ? searchValues[3] : Value.ILLEGAL;
+        Value regSearchValue3 = nValues > 2 ? tool.asAllocatable(searchValues[2]) : Value.ILLEGAL;
+        Value regSearchValue4 = nValues > 3 ? tool.asAllocatable(searchValues[3]) : Value.ILLEGAL;
 
         tool.emitMove(regArray, arrayPtr);
         tool.emitMove(regOffset, arrayOffset);

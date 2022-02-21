@@ -47,7 +47,6 @@ import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -137,7 +136,6 @@ import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
@@ -173,7 +171,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -187,8 +184,7 @@ import sun.misc.Unsafe;
  */
 public class StandardGraphBuilderPlugins {
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess,
-                    SnippetReflectionProvider snippetReflection,
+    public static void registerInvocationPlugins(SnippetReflectionProvider snippetReflection,
                     InvocationPlugins plugins,
                     Replacements replacements,
                     boolean allowDeoptimization,
@@ -212,7 +208,7 @@ public class StandardGraphBuilderPlugins {
         }
         registerArrayPlugins(plugins, replacements);
         registerUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks);
-        registerEdgesPlugins(metaAccess, plugins);
+        registerEdgesPlugins(plugins);
         registerGraalDirectivesPlugins(plugins, snippetReflection);
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins, replacements);
@@ -291,26 +287,7 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        Registration sr = new Registration(plugins, StringSubstitutions.class);
-        sr.register(new InlineOnlyInvocationPlugin("getValue", String.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                ValueNode object = b.nullCheckedValue(value);
-                b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                                b.getOptions(), b.getAssumptions(), object, field, false, false));
-                return true;
-            }
-        });
-        sr.register(new InlineOnlyInvocationPlugin("getCoder", String.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
-                b.addPush(JavaKind.Int, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                                b.getOptions(), b.getAssumptions(), value, field, false, false));
-                return true;
-            }
-        });
+        Registration sr = new Registration(plugins, StringHelperIntrinsics.class);
         sr.register(new InlineOnlyInvocationPlugin("getByte", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
@@ -1027,13 +1004,13 @@ public class StandardGraphBuilderPlugins {
      * substitutions improve the performance by forcing the relevant methods to be inlined
      * (intrinsification being a special form of inlining) and removing a checked cast.
      */
-    private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerEdgesPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Edges.class);
         for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
             r.register(new InvocationPlugin("get" + c.getSimpleName() + "Unsafe", Node.class, long.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
-                    ObjectStamp stamp = StampFactory.object(TypeReference.createTrusted(b.getAssumptions(), metaAccess.lookupJavaType(c)));
+                    Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
                     RawLoadNode value = b.add(new RawLoadNode(stamp, node, offset, LocationIdentity.any(), JavaKind.Object));
                     b.addPush(JavaKind.Object, value);
                     return true;

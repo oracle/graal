@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -525,9 +525,9 @@ public class OptimizedBlockNodeTest {
 
     @Test
     public void testBlockCompilationTrigger() {
-        // the number 200 for the maximum compile limit is heavily dependent
+        // the number 150 for the maximum compile limit is heavily dependent
         // on implementation details and might need to be updated the future.
-        setup(10, 200);
+        setup(10, 150);
 
         // test not triggering the limit
         OptimizedBlockNode<?> block = createBlock(1, 1);

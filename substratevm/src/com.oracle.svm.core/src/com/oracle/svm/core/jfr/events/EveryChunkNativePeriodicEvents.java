@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.jfr.JfrEvents;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import org.graalvm.nativeimage.StackValue;
@@ -55,12 +55,12 @@ public class EveryChunkNativePeriodicEvents extends Event {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emitJavaThreadStats(long activeCount, long daemonCount, long accumulatedCount, long peakCount) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.JavaThreadStatistics)) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.JavaThreadStatistics)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.JavaThreadStatistics.getId());
+            JfrNativeEventWriter.putLong(data, JfrEvent.JavaThreadStatistics.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, activeCount);
             JfrNativeEventWriter.putLong(data, daemonCount);
@@ -72,12 +72,12 @@ public class EveryChunkNativePeriodicEvents extends Event {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emitPhysicalMemory(long totalSize, long usedSize) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.PhysicalMemory)) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.PhysicalMemory)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.PhysicalMemory.getId());
+            JfrNativeEventWriter.putLong(data, JfrEvent.PhysicalMemory.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, totalSize);
             JfrNativeEventWriter.putLong(data, usedSize);

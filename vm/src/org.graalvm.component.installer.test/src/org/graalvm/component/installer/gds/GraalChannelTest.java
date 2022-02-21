@@ -146,7 +146,7 @@ public class GraalChannelTest extends CommandTestBase {
     @Test
     public void testReleasesFilteredOut() throws Exception {
         Path p = dataFile("data/releases-mix.json");
-        channel.setReleasesIndexURL(p.toUri().toURL());
+        channel.setIndexURL(p.toUri().toURL());
         channel.setAllowUpdates(false);
         List<ReleaseEntry> loaded = channel.loadReleasesIndex(p);
         assertEquals(1, loaded.size());
@@ -160,7 +160,7 @@ public class GraalChannelTest extends CommandTestBase {
     public void testLoadComponentStorage() throws Exception {
         Path p = dataFile("data/releases2.json");
         channel.setAllowUpdates(false);
-        channel.setReleasesIndexURL(p.toUri().toURL());
+        channel.setIndexURL(p.toUri().toURL());
         ComponentStorage store = channel.getStorage();
         Collection<String> cids = store.listComponentIDs();
 
@@ -171,7 +171,7 @@ public class GraalChannelTest extends CommandTestBase {
     public void testNormalizedOsAndArch() throws Exception {
         List<ReleaseEntry> loaded;
         Path p = dataFile("data/releases-mix.json");
-        channel.setReleasesIndexURL(p.toUri().toURL());
+        channel.setIndexURL(p.toUri().toURL());
         // disable updates to get the test to previous state
         channel.setAllowUpdates(false);
 

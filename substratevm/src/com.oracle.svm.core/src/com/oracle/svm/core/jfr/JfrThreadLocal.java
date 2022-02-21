@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.jfr.events.ThreadEndEvent;
-import com.oracle.svm.core.jfr.events.ThreadStartEvent;
-import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -38,6 +35,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
+import com.oracle.svm.core.jfr.events.ThreadEndEvent;
+import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -247,12 +247,12 @@ public class JfrThreadLocal implements ThreadListener {
         assert buffer.isNonNull();
         assert unflushedSize.aboveThan(0);
         UnsignedWord totalDataLoss = increaseDataLost(unflushedSize);
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.DataLoss)) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.DataLoss)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, buffer);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.DataLoss.getId());
+            JfrNativeEventWriter.putLong(data, JfrEvent.DataLoss.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, unflushedSize.rawValue());
             JfrNativeEventWriter.putLong(data, totalDataLoss.rawValue());

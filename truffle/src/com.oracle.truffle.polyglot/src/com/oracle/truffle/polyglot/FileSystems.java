@@ -330,7 +330,7 @@ final class FileSystems {
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
             DirectoryStream<Path> delegateStream = delegate.newDirectoryStream(unwrap(dir), filter);
-            return new DirectoryStream<Path>() {
+            return new DirectoryStream<>() {
                 @Override
                 public Iterator<Path> iterator() {
                     return new WrappingPathIterator(delegateStream.iterator());

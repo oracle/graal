@@ -31,7 +31,7 @@ import java.io.IOException;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ClassConstantPoolParser extends ConstantPoolParser {
@@ -41,9 +41,9 @@ public class ClassConstantPoolParser extends ConstantPoolParser {
         int numberOfClasses = input.readInt();
         for (int i = 0; i < numberOfClasses; i++) {
             addFoundId(input.readLong()); // ClassId.
-            addExpectedId(JfrTypes.ClassLoader, input.readLong()); // ClassLoaderId.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // ClassName.
-            addExpectedId(JfrTypes.Package, input.readLong()); // PackageId.
+            addExpectedId(JfrType.ClassLoader, input.readLong()); // ClassLoaderId.
+            addExpectedId(JfrType.Symbol, input.readLong()); // ClassName.
+            addExpectedId(JfrType.Package, input.readLong()); // PackageId.
             Assert.assertTrue("Modifier value is not correct!", input.readLong() >= 0); // Modifier.
             if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 input.readBoolean(); // IsHiddenClass.

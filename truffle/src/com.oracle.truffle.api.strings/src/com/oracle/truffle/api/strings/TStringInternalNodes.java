@@ -62,6 +62,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride2;
 import static com.oracle.truffle.api.strings.TStringGuards.isSupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
+import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
@@ -646,18 +647,22 @@ final class TStringInternalNodes {
             }
         }
 
-        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isSupportedEncoding(encoding) || isBytes(encoding)"})
+        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isSupportedOrBytes(encoding) || is7Bit(codeRangeA)"})
         static int doFixed(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, @SuppressWarnings("unused") int encoding) {
             assert isStride0(a);
             return TStringOps.readS0(a, arrayA, i);
         }
 
-        @Specialization(guards = {"isUnsupportedEncoding(encoding)"})
+        @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Bit(codeRangeA)"})
         int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, @SuppressWarnings("unused") int encoding) {
             assert isStride0(a);
             JCodings.Encoding jCoding = JCodings.getInstance().get(a.encoding());
             byte[] bytes = JCodings.asByteArray(arrayA);
             return JCodings.getInstance().decode(a, bytes, JCodings.getInstance().codePointIndexToRaw(this, a, bytes, 0, i, false, jCoding), jCoding);
+        }
+
+        static boolean isSupportedOrBytes(int encoding) {
+            return isSupportedEncoding(encoding) || isBytes(encoding);
         }
     }
 
@@ -715,13 +720,13 @@ final class TStringInternalNodes {
             }
         }
 
-        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isSupportedEncoding(encoding)"})
+        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isSupportedEncoding(encoding) || is7Bit(codeRangeA)"})
         static int doFixed(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, @SuppressWarnings("unused") int encoding) {
             assert isStride0(a);
             return TStringOps.readS0(a, arrayA, i);
         }
 
-        @Specialization(guards = {"isUnsupportedEncoding(encoding)"})
+        @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Bit(codeRangeA)"})
         static int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, @SuppressWarnings("unused") int encoding) {
             return JCodings.getInstance().decode(a, JCodings.asByteArray(arrayA), i, JCodings.getInstance().get(encoding));
         }
@@ -939,6 +944,7 @@ final class TStringInternalNodes {
         @Specialization(guards = {"length > 0", "length != length(a)", "lazy"})
         TruffleString createLazySubstring(TruffleString a, Object arrayA, int codeRangeA, int fromIndex, int length, @SuppressWarnings("unused") boolean lazy,
                         @Cached CalcStringAttributesNode calcAttributesNode,
+                        @Cached ConditionProfile stride1MustMaterializeProfile,
                         @Cached ConditionProfile stride2MustMaterializeProfile) {
             int lazyOffset = a.offset() + (fromIndex << a.stride());
             long attrs = calcAttributesNode.execute(a, arrayA, lazyOffset, length, a.stride(), a.encoding(), codeRangeA);
@@ -947,7 +953,16 @@ final class TStringInternalNodes {
             final Object array;
             final int offset;
             final int stride;
-            if (stride2MustMaterializeProfile.profile(a.stride() == 2 && TSCodeRange.isMoreRestrictiveOrEqual(codeRange, TSCodeRange.get16Bit()))) {
+            if (stride1MustMaterializeProfile.profile(a.stride() == 1 && TSCodeRange.isMoreRestrictiveOrEqual(codeRange, TSCodeRange.get8Bit()))) {
+                assert isUTF16Or32(a);
+                stride = 0;
+                offset = 0;
+                final byte[] newBytes = new byte[length];
+                TStringOps.arraycopyWithStride(this,
+                                arrayA, lazyOffset, 1, 0,
+                                newBytes, offset, 0, 0, length);
+                array = newBytes;
+            } else if (stride2MustMaterializeProfile.profile(a.stride() == 2 && TSCodeRange.isMoreRestrictiveOrEqual(codeRange, TSCodeRange.get16Bit()))) {
                 // Always materialize 4-byte UTF-32 strings when they can be compacted. Otherwise,
                 // they could get re-interpreted as UTF-16 and break the assumption that all UTF-16
                 // strings are stride 0 or 1.
@@ -1391,59 +1406,37 @@ final class TStringInternalNodes {
             final int stride;
             final int codeRange;
             final int codePointLength;
-            if (TStringUnsafe.JAVA_SPEC <= 8) {
-                if (length > TStringConstants.MAX_ARRAY_SIZE_S1) {
-                    throw InternalErrors.outOfMemory();
+            int strideJS = TStringUnsafe.getJavaStringStride(javaString);
+            int offsetJS = charOffset << 1;
+            byte[] arrayJS = TStringUnsafe.getJavaStringArray(javaString);
+            if (utf16CompactProfile.profile(strideJS == 0)) {
+                if (length == 1) {
+                    return TStringConstants.getSingleByte(Encodings.getUTF16(), Byte.toUnsignedInt(arrayJS[charOffset]));
                 }
-                final char[] value = TStringUnsafe.getJavaStringArrayJDK8(javaString);
-                if (length == 1 && value[charOffset] <= 0xff) {
-                    return TStringConstants.getSingleByte(Encodings.getUTF16(), value[charOffset]);
+                codeRange = TStringOps.calcStringAttributesLatin1(this, arrayJS, offsetJS, length);
+                codePointLength = length;
+            } else {
+                assert strideJS == 1;
+                if (length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff) {
+                    return TStringConstants.getSingleByte(Encodings.getUTF16(), TStringOps.readFromByteArray(arrayJS, 1, charOffset));
                 }
-                final int offsetJS = charOffset << 1;
-                final long attrs = TStringOps.calcStringAttributesUTF16C(this, value, offsetJS, length);
+                final long attrs = TStringOps.calcStringAttributesUTF16(this, arrayJS, offsetJS, length, false);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
+            }
+            if (!copy || length == javaString.length()) {
+                stride = strideJS;
+                offset = offsetJS;
+                array = arrayJS;
+            } else {
                 stride = Stride.fromCodeRangeUTF16(codeRange);
                 array = new byte[length << stride];
                 offset = 0;
-                if (utf16CompactProfile.profile(stride == 0)) {
-                    TStringOps.arraycopyWithStrideCB(this, value, offsetJS, array, offset, 0, length);
+                if (strideJS == 1 && stride == 0) {
+                    TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 1, 0, array, offset, 0, 0, length);
                 } else {
-                    TStringOps.arraycopyWithStrideCB(this, value, offsetJS, array, offset, 1, length);
-                }
-            } else {
-                int strideJS = TStringUnsafe.getJavaStringStride(javaString);
-                int offsetJS = charOffset << 1;
-                byte[] arrayJS = TStringUnsafe.getJavaStringArrayJDK9(javaString);
-                if (utf16CompactProfile.profile(strideJS == 0)) {
-                    if (length == 1) {
-                        return TStringConstants.getSingleByte(Encodings.getUTF16(), Byte.toUnsignedInt(arrayJS[charOffset]));
-                    }
-                    codeRange = TStringOps.calcStringAttributesLatin1(this, arrayJS, offsetJS, length);
-                    codePointLength = length;
-                } else {
-                    assert strideJS == 1;
-                    if (length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff) {
-                        return TStringConstants.getSingleByte(Encodings.getUTF16(), TStringOps.readFromByteArray(arrayJS, 1, charOffset));
-                    }
-                    final long attrs = TStringOps.calcStringAttributesUTF16(this, arrayJS, offsetJS, length, false);
-                    codePointLength = StringAttributes.getCodePointLength(attrs);
-                    codeRange = StringAttributes.getCodeRange(attrs);
-                }
-                if (!copy || length == javaString.length()) {
-                    stride = strideJS;
-                    offset = offsetJS;
-                    array = arrayJS;
-                } else {
-                    stride = Stride.fromCodeRangeUTF16(codeRange);
-                    array = new byte[length << stride];
-                    offset = 0;
-                    if (strideJS == 1 && stride == 0) {
-                        TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 1, 0, array, offset, 0, 0, length);
-                    } else {
-                        assert strideJS == stride;
-                        TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 0, 0, array, offset, 0, 0, length << stride);
-                    }
+                    assert strideJS == stride;
+                    TStringOps.arraycopyWithStride(this, arrayJS, offsetJS, 0, 0, array, offset, 0, 0, length << stride);
                 }
             }
             TruffleString ret = TruffleString.createFromArray(array, offset, length, stride, Encodings.getUTF16(), codePointLength, codeRange);
@@ -1487,53 +1480,28 @@ final class TStringInternalNodes {
 
         abstract String execute(AbstractTruffleString a, Object arrayA);
 
-        @Specialization(guards = "isStride0(a)")
-        String latin1s0(AbstractTruffleString a, Object arrayA) {
+        @Specialization
+        String createJavaString(AbstractTruffleString a, Object arrayA,
+                        @Cached ConditionProfile reuseProfile,
+                        @Cached GetCodeRangeNode getCodeRangeNode,
+                        @Cached RawArrayCopyBytesNode arrayCopyBytesNode) {
             assert isUTF16Compatible(a);
-            char[] chars = new char[a.length()];
-            for (int i = 0; i < a.length(); i++) {
-                chars[i] = (char) TStringOps.readS0(a, arrayA, i);
-                TStringConstants.truffleSafePointPoll(this, i + 1);
+            final int codeRange = getCodeRangeNode.execute(a);
+            final int stride = Stride.fromCodeRangeUTF16(codeRange);
+            final byte[] bytes;
+            if (reuseProfile.profile(a instanceof TruffleString && arrayA instanceof byte[] && a.length() << a.stride() == ((byte[]) arrayA).length && a.stride() == stride)) {
+                assert a.offset() == 0;
+                bytes = (byte[]) arrayA;
+            } else {
+                bytes = new byte[a.length() << stride];
+                arrayCopyBytesNode.execute(arrayA, a.offset(), a.stride(), bytes, 0, stride, a.length());
             }
-            return createString(chars);
-        }
-
-        @Specialization(guards = "isStride1(a)")
-        String utf16S1(AbstractTruffleString a, Object arrayA) {
-            assert isUTF16Compatible(a);
-            // using the string constructor with byte array + charset would alter broken UTF-16
-            // strings (containing broken surrogate pairs or 0xFFFE), work around by converting the
-            // byte array to a char array
-            char[] chars = new char[a.length()];
-            for (int i = 0; i < a.length(); i++) {
-                chars[i] = TStringOps.readS1(a, arrayA, i);
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            return createString(chars);
-        }
-
-        @Specialization(guards = "isStride2(a)")
-        String utf16S2(AbstractTruffleString a, Object arrayA) {
-            assert isUTF16Compatible(a);
-            // using the string constructor with byte array + charset would alter broken UTF-16
-            // strings (containing broken surrogate pairs or 0xFFFE), work around by converting the
-            // byte array to a char array
-            char[] chars = new char[a.length()];
-            for (int i = 0; i < a.length(); i++) {
-                chars[i] = (char) TStringOps.readS2(a, arrayA, i);
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            return createString(chars);
+            return TStringUnsafe.createJavaString(bytes, stride);
         }
 
         private static boolean isUTF16Compatible(AbstractTruffleString a) {
             return a.isCompatibleTo(TruffleString.Encoding.UTF_16) ||
                             a instanceof MutableTruffleString && ((MutableTruffleString) a).codeRange() < TruffleString.Encoding.UTF_16.maxCompatibleCodeRange;
-        }
-
-        @TruffleBoundary
-        private static String createString(char[] chars) {
-            return new String(chars);
         }
     }
 
@@ -1641,6 +1609,7 @@ final class TStringInternalNodes {
                 int codepoint = iteratorNextNode.execute(it);
                 if (Encodings.isUTF16Surrogate(codepoint) || Integer.toUnsignedLong(codepoint) > Character.MAX_CODE_POINT) {
                     codeRange = TSCodeRange.getBrokenMultiByte();
+                    codepoint = Encodings.invalidCodepoint();
                 }
                 int n = Encodings.utf8EncodedSize(codepoint);
                 assert isLarge || length + n <= buffer.length;

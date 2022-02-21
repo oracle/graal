@@ -53,8 +53,8 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
+import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
@@ -170,7 +170,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "cipherBlockChaining_decrypt_aescrypt", int.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
 
     /**
-     * @see BigIntegerSubstitutions#multiplyToLen
+     * @see BigIntegerSnippets#implMultiplyToLen(int[], int, int[], int, int[])
      */
     public static final HotSpotForeignCallDescriptor MULTIPLY_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "multiplyToLen",
@@ -205,7 +205,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     Object.class);
 
     /**
-     * @see DigestBaseSubstitutions#implCompressMultiBlock0
+     * @see DigestBaseSnippets#implCompressMultiBlock0
      */
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class);

@@ -154,8 +154,8 @@ meth public final {com.oracle.truffle.api.library.LibraryFactory%0} getUncached(
 meth public java.lang.String toString()
 meth public static <%0 extends com.oracle.truffle.api.library.Library> com.oracle.truffle.api.library.LibraryFactory<{%%0}> resolve(java.lang.Class<{%%0}>)
 supr java.lang.Object
-hfds EMPTY_DEFAULT_EXPORT_ARRAY,LIBRARIES,UNSAFE,afterBuiltinDefaultExports,aot,beforeBuiltinDefaultExports,cachedCache,dispatchLibrary,eagerExportProviders,exportCache,externalDefaultProviders,libraryClass,messages,nameToMessages,proxyExports,uncachedCache,uncachedDispatch
-hcls CachedAOTExports,ProxyExports,ResolvedDispatch
+hfds EMPTY_DEFAULT_EXPORT_ARRAY,LIBRARIES,afterBuiltinDefaultExports,aot,beforeBuiltinDefaultExports,cachedCache,dispatchLibrary,eagerExportProviders,exportCache,externalDefaultProviders,libraryClass,messages,nameToMessages,proxyExports,uncachedCache,uncachedDispatch
+hcls CachedAOTExports,Lazy,ProxyExports,ResolvedDispatch
 
 CLSS public abstract com.oracle.truffle.api.library.Message
 cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,int,java.lang.Class<?>,java.lang.Class<?>[])

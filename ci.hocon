@@ -18,6 +18,3 @@ vm_subdir = "vm"
 
 include "compiler/ci_common/bench.hocon"
 
-# ------------------ SVM ----------------------
-include "substratevm/ci_includes/gate.hocon"
-

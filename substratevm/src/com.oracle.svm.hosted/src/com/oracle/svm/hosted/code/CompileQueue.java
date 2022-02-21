@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -74,7 +75,9 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -102,6 +105,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
@@ -128,7 +132,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
@@ -393,8 +396,7 @@ public class CompileQueue {
     public void finish(DebugContext debug) {
         ProgressReporter reporter = ProgressReporter.singleton();
         try {
-            String imageName = universe.getBigBang().getHostVM().getImageName();
-            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -413,7 +415,7 @@ public class CompileQueue {
             }
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
+                try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
                     inlineTrivialMethods(debug);
                 }
             } else {
@@ -422,7 +424,7 @@ public class CompileQueue {
 
             assert suitesNotCreated();
             createSuites();
-            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
@@ -610,7 +612,7 @@ public class CompileQueue {
 
         int round = 0;
         do {
-            ProgressReporter.singleton().printStageProgress();
+            ProgressReporter.singleton().reportStageProgress();
             inliningProgress = false;
             round++;
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
@@ -1137,7 +1139,7 @@ public class CompileQueue {
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
 
-        if (SubstrateOptions.Optimize.getValue() <= 0 && !method.isDeoptTarget()) {
+        if (SubstrateOptions.optimizationLevel() <= 0 && !method.isDeoptTarget()) {
             /*
              * Disabling liveness analysis preserves the values of local variables beyond the
              * bytecode-liveness. This greatly helps debugging. When local variable numbers are
@@ -1386,7 +1388,7 @@ public class CompileQueue {
     }
 
     protected void removeDeoptTargetOptimizations(Suites suites) {
-        GraalConfiguration.instance().removeDeoptTargetOptimizations(suites);
+        GraalConfiguration.hostedInstance().removeDeoptTargetOptimizations(suites);
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         highTier.removePhase(PartialEscapePhase.class);
@@ -1395,11 +1397,20 @@ public class CompileQueue {
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         midTier.removePhase(FloatingReadPhase.class);
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
-        ((FixReadsPhase) lowTier.findPhase(FixReadsPhase.class).previous()).setReplaceInputsWithConstants(false);
+        ListIterator<BasePhase<? super LowTierContext>> it = lowTier.findPhase(FixReadsPhase.class);
+        if (it != null) {
+            FixReadsPhase fixReads = (FixReadsPhase) it.previous();
+            it.remove();
+            boolean replaceInputsWithConstants = false;
+            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase(), fixReads.getCanonicalizerPhase()));
+        }
     }
 
     private static void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
-        lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class).remove();
+        ListIterator<LIRPhase<PostAllocationOptimizationContext>> it = lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class);
+        if (it != null) {
+            it.remove();
+        }
         lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
     }
 
@@ -1511,6 +1522,7 @@ public class CompileQueue {
             String className = method.getDeclaringClass().getName();
             if (className.contains("/svm/core/code/CodeInfoEncoder") ||
                             className.contains("com/oracle/svm/core/thread/JavaThreads") ||
+                            className.contains("com/oracle/svm/core/thread/PlatformThreads") ||
                             className.contains("com/oracle/svm/core/heap/") ||
                             className.contains("com/oracle/svm/core/genscavenge/") ||
                             className.contains("com/oracle/svm/core/thread/VMOperationControl") ||

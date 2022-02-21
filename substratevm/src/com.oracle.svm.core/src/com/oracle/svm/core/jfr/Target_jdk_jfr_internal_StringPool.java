@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = JfrEnabled.class)
+@TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_StringPool {
     @Substitute
     public static long addString(@SuppressWarnings("unused") String s) {

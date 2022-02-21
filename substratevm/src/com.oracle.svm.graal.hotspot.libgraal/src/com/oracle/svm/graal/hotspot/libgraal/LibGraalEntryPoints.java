@@ -32,6 +32,7 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
 
+import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.hotspot.CompilationContext;
@@ -87,6 +88,8 @@ public final class LibGraalEntryPoints {
      * {@code org.graalvm.compiler.hotspot.management.libgraal.MBeanProxy#defineClassesInHotSpot}.
      */
     static final CGlobalData<Pointer> MANAGEMENT_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
+
+    static final CGlobalData<Pointer> GLOBAL_TIMESTAMP = CGlobalDataFactory.createBytes(() -> 8);
 
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
@@ -248,6 +251,12 @@ public final class LibGraalEntryPoints {
             UNSAFE.putInt(stackTraceAddress, length);
             UNSAFE.copyMemory(stackTrace, ARRAY_BYTE_BASE_OFFSET, null, stackTraceAddress + Integer.BYTES, length);
             return 0L;
+        } finally {
+            /*
+             * libgraal doesn't use a dedicated reference handler thread, so we trigger the
+             * reference handling manually when a compilation finishes.
+             */
+            Heap.getHeap().doReferenceHandling();
         }
     }
 }

@@ -110,7 +110,7 @@ local vm_common = import '../ci_common/common.jsonnet';
       self.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=partial-evaluation-time'],
       self.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
     ],
-    timelimit: '1:00:00',
+    timelimit: '1:30:00',
     notify_emails: [],
   },
 
@@ -149,7 +149,6 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_allocated_bytes + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-allocated-bytes-linux-amd64'},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_8  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java8-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java11-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64'},
 

@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted;
 
-import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Objects;
 
@@ -33,26 +32,21 @@ import com.oracle.svm.core.util.UserError;
 
 public class NativeImageSystemIOWrappers {
 
-    final CapturingStdioWrapper outWrapper;
-    final CapturingStdioWrapper errWrapper;
+    final StdioWrapper outWrapper;
+    final StdioWrapper errWrapper;
 
-    boolean useCapturing;
+    boolean listenForNextStdioWrite;
 
     NativeImageSystemIOWrappers() {
-        outWrapper = new CapturingStdioWrapper(System.out, new ByteArrayOutputStream(128));
-        errWrapper = new CapturingStdioWrapper(System.err, new ByteArrayOutputStream(128));
-        useCapturing = false;
+        outWrapper = new StdioWrapper(System.out);
+        errWrapper = new StdioWrapper(System.err);
+        listenForNextStdioWrite = false;
     }
 
     void verifySystemOutErrReplacement() {
         String format = "%s was changed during image building. This is not allowed.";
         UserError.guarantee(System.out == outWrapper, format, "System.out");
         UserError.guarantee(System.err == errWrapper, format, "System.err");
-    }
-
-    void flushCapturedContent() {
-        outWrapper.flushCapturedContent();
-        errWrapper.flushCapturedContent();
     }
 
     void replaceSystemOutErr() {
@@ -81,40 +75,36 @@ public class NativeImageSystemIOWrappers {
     }
 
     /**
-     * Wrapper with the ability to temporarily capture output to stdout and stderr.
+     * Wrapper with the ability to inform {@link ProgressReporter} before a write.
      */
-    private final class CapturingStdioWrapper extends PrintStream {
-        private final ByteArrayOutputStream buffer;
+    private final class StdioWrapper extends PrintStream {
         private PrintStream delegate;
 
-        private CapturingStdioWrapper(PrintStream delegate, ByteArrayOutputStream buffer) {
-            super(buffer);
-            this.buffer = buffer;
+        private StdioWrapper(PrintStream delegate) {
+            super(delegate);
             this.delegate = delegate;
         }
 
         @Override
         public void write(int b) {
-            if (useCapturing) {
-                super.write(b);
-            } else {
-                delegate.write(b);
+            if (listenForNextStdioWrite) {
+                listenForNextStdioWrite = false;
+                if (ProgressReporter.isInstalled()) {
+                    ProgressReporter.singleton().beforeNextStdioWrite();
+                }
             }
+            delegate.write(b);
         }
 
         @Override
         public void write(byte[] buf, int off, int len) {
-            if (useCapturing) {
-                super.write(buf, off, len);
-            } else {
-                delegate.write(buf, off, len);
+            if (listenForNextStdioWrite) {
+                listenForNextStdioWrite = false;
+                if (ProgressReporter.isInstalled()) {
+                    ProgressReporter.singleton().beforeNextStdioWrite();
+                }
             }
-        }
-
-        private void flushCapturedContent() {
-            byte[] byteArray = buffer.toByteArray();
-            delegate.write(byteArray, 0, byteArray.length);
-            buffer.reset();
+            delegate.write(buf, off, len);
         }
     }
 }

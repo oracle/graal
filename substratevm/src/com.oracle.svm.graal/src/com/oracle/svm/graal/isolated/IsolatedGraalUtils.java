@@ -66,8 +66,8 @@ public final class IsolatedGraalUtils {
         if (addressSpaceSize > 0) {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
         }
-        // Compilation isolates never need a dedicated reference handler thread.
-        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, false));
+        // Compilation isolates do the reference handling manually to avoid the extra thread.
+        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false));
         CreateIsolateParameters params = builder.build();
         CompilerIsolateThread isolate = (CompilerIsolateThread) Isolates.createIsolate(params);
         initializeCompilationIsolate(isolate);

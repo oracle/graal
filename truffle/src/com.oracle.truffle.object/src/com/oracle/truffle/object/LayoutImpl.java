@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.object;
 
+import java.lang.invoke.VarHandle;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.memory.MemoryFence;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
@@ -174,7 +174,7 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
         public final void setShapeWithStoreFence(DynamicObject object, Shape shape) {
             if (shape.isShared()) {
-                MemoryFence.storeStore();
+                VarHandle.storeStoreFence();
             }
             super.setShape(object, shape);
         }

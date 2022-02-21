@@ -437,7 +437,7 @@ final class PolyglotExceptionImpl {
         if (materializedFrames != null) {
             return materializedFrames;
         } else {
-            return new Iterable<StackFrame>() {
+            return new Iterable<>() {
                 public Iterator<StackFrame> iterator() {
                     return createStackFrameIterator(PolyglotExceptionImpl.this);
                 }

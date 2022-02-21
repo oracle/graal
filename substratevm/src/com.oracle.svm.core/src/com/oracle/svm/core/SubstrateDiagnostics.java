@@ -78,7 +78,7 @@ import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -191,7 +191,7 @@ public class SubstrateDiagnostics {
          * further errors occur while printing diagnostics.
          */
         if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
-            log.string("Error: printDiagnostics already in progress by another thread.").newline();
+            log.string("Error: printFatalError already in progress by another thread.").newline();
             log.newline();
             return false;
         }
@@ -658,7 +658,7 @@ public class SubstrateDiagnostics {
                     log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
 
                     if (allowJavaHeapAccess) {
-                        Thread threadObj = JavaThreads.fromVMThread(thread);
+                        Thread threadObj = PlatformThreads.fromVMThread(thread);
                         log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
                         if (threadObj != null && threadObj.isDaemon()) {
                             log.string(", daemon");

@@ -2,10 +2,6 @@
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
   "jdks": {
-    "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-22.0-b01", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u311+11-jvmci-22.0-b01", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u311+11-jvmci-22.0-b01-fastdebug", "platformspecific": true },
-
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.13+8-jvmci-22.0-b02", "platformspecific": true },
@@ -24,8 +20,6 @@
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
-      "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
-      "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
       "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
   },

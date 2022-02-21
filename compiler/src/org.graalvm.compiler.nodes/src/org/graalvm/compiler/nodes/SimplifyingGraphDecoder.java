@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -181,7 +181,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         try (DebugCloseable a = CanonicalizeFixedNode.start(debug)) {
@@ -265,8 +265,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             int survivingOrderId = readOrderId(methodScope);
             methodScope.reader.setByteIndex(successorsByteIndex + 2 * methodScope.orderIdWidth);
 
-            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, survivingOrderId);
-            graph.removeSplit(ifNode, survivingSuccessor);
+            removeSplit(methodScope, loopScope, ifNode, survivingOrderId);
             return true;
         } else if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
             /*
@@ -293,11 +292,26 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             int survivingOrderId = readOrderId(methodScope);
             methodScope.reader.setByteIndex(successorsByteIndex + size * methodScope.orderIdWidth);
 
-            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, survivingOrderId);
-            graph.removeSplit(switchNode, survivingSuccessor);
+            removeSplit(methodScope, loopScope, switchNode, survivingOrderId);
             return true;
         } else {
             return false;
+        }
+    }
+
+    private void removeSplit(MethodScope methodScope, LoopScope loopScope, ControlSplitNode controlSplit, int survivingOrderId) {
+        if (controlSplit.predecessor() instanceof BeginNode && getNodeClass(methodScope, loopScope, survivingOrderId) == controlSplit.predecessor().getNodeClass()) {
+            // Reuse the previous BeginNode but mark it in nodesToProcess so that the decoding loop
+            // continues decoding.
+            loopScope.nodesToProcess.set(survivingOrderId);
+            registerNode(loopScope, survivingOrderId, controlSplit.predecessor(), false, false);
+            assert controlSplit.hasNoUsages();
+            controlSplit.clearSuccessors();
+            controlSplit.replaceAtPredecessor(null);
+            controlSplit.safeDelete();
+        } else {
+            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, survivingOrderId);
+            graph.removeSplit(controlSplit, survivingSuccessor);
         }
     }
 

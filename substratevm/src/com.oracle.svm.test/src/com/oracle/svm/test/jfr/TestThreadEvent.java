@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,13 @@ import org.junit.Test;
 /**
  * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
  */
-public class TestThreadEvent extends JFRTest {
+public class TestThreadEvent extends JfrTest {
+    @Override
+    public String[] getTestedEvents() {
+        return new String[]{
+                        ThreadEvent.class.getName()
+        };
+    }
 
     @Test
     public void test() throws Exception {

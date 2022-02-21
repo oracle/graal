@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,6 +84,7 @@ import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -121,6 +122,15 @@ public final class GCImpl implements GC {
     }
 
     @Override
+    public String getName() {
+        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+            return "Epsilon GC";
+        } else {
+            return "Serial GC";
+        }
+    }
+
+    @Override
     public void collect(GCCause cause) {
         collect(cause, false);
     }
@@ -151,7 +161,7 @@ public final class GCImpl implements GC {
             if (outOfMemory) {
                 throw OUT_OF_MEMORY_ERROR;
             }
-            doReferenceHandling();
+            doReferenceHandlingInRegularThread();
         }
     }
 
@@ -208,15 +218,21 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
-            if (outOfMemory) {
-                // Avoid running out of memory with a full GC that reclaims softly reachable objects
-                ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
-                try {
-                    outOfMemory = doCollectImpl(cause, requestingNanoTime, true, true);
-                } finally {
-                    ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
+            long startTicks = JfrGCEvents.getTicks();
+            try {
+                outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
+                if (outOfMemory) {
+                    // Avoid running out of memory with a full GC that reclaims softly reachable
+                    // objects
+                    ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
+                    try {
+                        outOfMemory = doCollectImpl(cause, requestingNanoTime, true, true);
+                    } finally {
+                        ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
+                    }
                 }
+            } finally {
+                JfrGCEvents.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
             }
         } finally {
             nav.close();
@@ -231,14 +247,25 @@ public final class GCImpl implements GC {
 
         boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false);
         boolean outOfMemory = false;
+
         if (incremental) {
-            outOfMemory = doCollectOnce(cause, requestingNanoTime, false, false);
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                outOfMemory = doCollectOnce(cause, requestingNanoTime, false, false);
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
+            }
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
                 CommittedMemoryProvider.get().afterGarbageCollection();
             }
-            outOfMemory = doCollectOnce(cause, requestingNanoTime, true, incremental);
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                outOfMemory = doCollectOnce(cause, requestingNanoTime, true, incremental);
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Full GC", startTicks);
+            }
         }
 
         HeapImpl.getChunkProvider().freeExcessAlignedChunks();
@@ -495,13 +522,19 @@ public final class GCImpl implements GC {
     /** Scavenge, either from dirty roots or from all roots, and process discovered references. */
     private void scavenge(boolean incremental) {
         GreyToBlackObjRefVisitor.Counters counters = greyToBlackObjRefVisitor.openCounters();
+        long startTicks;
         try {
             Timer rootScanTimer = timers.rootScan.open();
             try {
-                if (incremental) {
-                    cheneyScanFromDirtyRoots();
-                } else {
-                    cheneyScanFromRoots();
+                startTicks = JfrGCEvents.startGCPhasePause();
+                try {
+                    if (incremental) {
+                        cheneyScanFromDirtyRoots();
+                    } else {
+                        cheneyScanFromRoots();
+                    }
+                } finally {
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan Roots" : "Scan Roots", startTicks);
                 }
             } finally {
                 rootScanTimer.close();
@@ -515,7 +548,12 @@ public final class GCImpl implements GC {
                      * operation. To avoid side-effects between the code cache cleaning and the GC
                      * core, it is crucial that all the GC core work finished before.
                      */
-                    cleanRuntimeCodeCache();
+                    startTicks = JfrGCEvents.startGCPhasePause();
+                    try {
+                        cleanRuntimeCodeCache();
+                    } finally {
+                        JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Clean Runtime CodeCache", startTicks);
+                    }
                 } finally {
                     cleanCodeCacheTimer.close();
                 }
@@ -523,8 +561,13 @@ public final class GCImpl implements GC {
 
             Timer referenceObjectsTimer = timers.referenceObjects.open();
             try {
-                Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
-                HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
+                startTicks = JfrGCEvents.startGCPhasePause();
+                try {
+                    Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
+                    HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
+                } finally {
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
+                }
             } finally {
                 referenceObjectsTimer.close();
             }
@@ -532,20 +575,31 @@ public final class GCImpl implements GC {
             Timer releaseSpacesTimer = timers.releaseSpaces.open();
             try {
                 assert chunkReleaser.isEmpty();
-                releaseSpaces();
+                startTicks = JfrGCEvents.startGCPhasePause();
+                try {
+                    releaseSpaces();
 
-                /*
-                 * Do not uncommit any aligned chunks yet if we just did an incremental GC so if we
-                 * decide to do a full GC next, we can reuse the chunks for copying live old objects
-                 * with fewer chunk allocations. In either case, excess chunks are released later.
-                 */
-                boolean keepAllAlignedChunks = incremental;
-                chunkReleaser.release(keepAllAlignedChunks);
+                    /*
+                     * Do not uncommit any aligned chunks yet if we just did an incremental GC so if
+                     * we decide to do a full GC next, we can reuse the chunks for copying live old
+                     * objects with fewer chunk allocations. In either case, excess chunks are
+                     * released later.
+                     */
+                    boolean keepAllAlignedChunks = incremental;
+                    chunkReleaser.release(keepAllAlignedChunks);
+                } finally {
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
+                }
             } finally {
                 releaseSpacesTimer.close();
             }
 
-            swapSpaces();
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                swapSpaces();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Swap Spaces", startTicks);
+            }
         } finally {
             counters.close();
         }
@@ -816,15 +870,20 @@ public final class GCImpl implements GC {
             }
 
             if (DeoptimizationSupport.enabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
-                /*
-                 * For runtime-compiled code that is currently on the stack, we need to treat all
-                 * the references to Java heap objects as strong references. It is important that we
-                 * really walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might
-                 * decide to invalidate too much code, depending on the order in which the CodeInfo
-                 * objects are visited.
-                 */
-                RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
-                RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+                RuntimeCodeInfoAccess.acquireThreadWriteAccess();
+                try {
+                    /*
+                     * For runtime-compiled code that is currently on the stack, we need to treat
+                     * all the references to Java heap objects as strong references. It is important
+                     * that we really walk *all* those references here. Otherwise,
+                     * RuntimeCodeCacheWalker might decide to invalidate too much code, depending on
+                     * the order in which the CodeInfo objects are visited.
+                     */
+                    RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
+                    RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+                } finally {
+                    RuntimeCodeInfoAccess.releaseThreadWriteAccess();
+                }
             }
 
             if (!JavaStackWalker.continueWalk(walk, queryResult, deoptFrame)) {
@@ -1055,46 +1114,23 @@ public final class GCImpl implements GC {
         collectionInProgress = false;
     }
 
+    // This method will be removed as soon as possible, see GR-36676.
+    static void doReferenceHandlingInRegularThread() {
+        if (ReferenceHandler.useRegularJavaThread() && !VMOperation.isInProgress() && PlatformThreads.isCurrentAssigned()) {
+            doReferenceHandling();
+        }
+    }
+
     /**
-     * NOTE: All code that is transitively reachable from this method may get executed as a side
-     * effect of a GC or as a side effect of an allocation slow path. To prevent hard to debug
-     * transient issues, we execute as little code as possible in this method. Multiple threads may
-     * execute this method concurrently.
-     *
-     * Without a dedicated reference handler thread, arbitrary complex code can get executed as a
-     * side effect of this method. So, allocations of Java objects or an explicitly triggered GC can
-     * result in a recursive invocation of methods.
-     *
-     * This can have the effect that global state changes unexpectedly and may result in issues that
-     * look similar to races but that can even happen in single-threaded environments, e.g.:
-     *
-     * <pre>
-     * {@code
-     * private static Object singleton;
-     *
-     * private static synchronized Object createSingleton() {
-     *     if (singleton == null) {
-     *         Object o = new Object();
-     *         // If the allocation above enters the allocation slow path code, then it is possible
-     *         // that doReferenceHandling() gets executed by the current thread. If the method
-     *         // createSingleton() is called as a side effect of doReferenceHandling(), then the
-     *         // assertion below may fail because the singleton got already initialized by the same
-     *         // thread in the meanwhile.
-     *         assert singleton == null;
-     *         singleton = o;
-     *     }
-     *     return result;
-     * }
-     * }
-     * </pre>
+     * Inside a VMOperation, we are not allowed to do certain things, e.g., perform synchronization
+     * (because it can deadlock when a lock is held outside the VMOperation). Similar restrictions
+     * apply if we are too early in the attach sequence of a thread.
      */
     static void doReferenceHandling() {
-        if (ReferenceHandler.useDedicatedThread()) {
-            return;
-        }
-
+        assert !VMOperation.isInProgress() : "could result in deadlocks";
+        assert PlatformThreads.isCurrentAssigned() : "thread is not fully initialized yet";
         /* Most of the time, we won't have a pending reference list. So, we do that check first. */
-        if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe() && ReferenceHandler.isReferenceHandlingAllowed()) {
+        if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe()) {
             long startTime = System.nanoTime();
             ReferenceHandler.processPendingReferencesInRegularThread();
 

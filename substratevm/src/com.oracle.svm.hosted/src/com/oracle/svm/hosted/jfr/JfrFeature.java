@@ -28,15 +28,15 @@ import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
+import com.oracle.svm.core.jfr.JfrGCNames;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
- * current support is limited to JDK 11 on Linux/MacOS.
+ * current support is limited to Linux & MacOS.
  *
  * There are two different kinds of JFR events:
  * <ul>
@@ -117,22 +117,22 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 @AutomaticFeature
 public class JfrFeature implements Feature {
-
-    private final boolean hostedEnabled;
-
-    public JfrFeature() {
-        hostedEnabled = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
-    }
+    /*
+     * Note that we could initialize the native part of JFR at image build time and that the native
+     * code sets the FlightRecorder option as a side effect. Therefore, we must ensure that we check
+     * the value of the option before it can be affected by image building.
+     */
+    private static final boolean HOSTED_ENABLED = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         boolean systemSupported = osSupported();
-        if (hostedEnabled && !systemSupported) {
+        if (HOSTED_ENABLED && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
                             "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
         }
         boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
-        if (hostedEnabled && !runtimeEnabled) {
+        if (HOSTED_ENABLED && !runtimeEnabled) {
             System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                             "This can affect the measurements because it can can make the image larger and image build time longer.");
             runtimeEnabled = true;
@@ -141,7 +141,7 @@ public class JfrFeature implements Feature {
     }
 
     private static boolean osSupported() {
-        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN;
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 
     /**
@@ -173,17 +173,18 @@ public class JfrFeature implements Feature {
         List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
 
-        ImageSingletons.add(JfrManager.class, new JfrManager(hostedEnabled));
+        ImageSingletons.add(JfrManager.class, new JfrManager(HOSTED_ENABLED));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
+        ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
-        if (hostedEnabled) {
+        if (HOSTED_ENABLED) {
             RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");
             rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", "Allow FlightRecorder to be used at image build time");
@@ -209,6 +210,12 @@ public class JfrFeature implements Feature {
         JfrManager manager = JfrManager.get();
         runtime.addStartupHook(manager.startupHook());
         runtime.addShutdownHook(manager.shutdownHook());
+
+        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
+        if (eventClass != null) {
+            access.registerSubtypeReachabilityHandler(JfrFeature::eventSubtypeReachable, eventClass);
+        }
+
     }
 
     @Override
@@ -229,26 +236,21 @@ public class JfrFeature implements Feature {
         }
     }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess a) {
+    private static void eventSubtypeReachable(DuringAnalysisAccess a, Class<?> c) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
-        if (eventClass != null && access.isReachable(eventClass)) {
-            Set<Class<?>> s = access.reachableSubtypes(eventClass);
-            for (Class<?> c : s) {
-                // Use canonical name for package private AbstractJDKEvent
-                if (c.getCanonicalName().equals("jdk.jfr.Event") || c.getCanonicalName().equals("jdk.internal.event.Event") || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
-                                c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
-                    continue;
-                }
-                try {
-                    Field f = c.getDeclaredField("eventHandler");
-                    RuntimeReflection.register(f);
-                    access.rescanRoot(f);
-                } catch (Exception e) {
-                    throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
-                }
-            }
+        if (c.getCanonicalName().equals("jdk.jfr.Event") ||
+                        c.getCanonicalName().equals("jdk.internal.event.Event") ||
+                        c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
+                        c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
+            return;
+        }
+        try {
+            Field f = c.getDeclaredField("eventHandler");
+            RuntimeReflection.register(f);
+            access.rescanRoot(f);
+            a.requireAnalysisIteration();
+        } catch (Exception e) {
+            throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
         }
     }
 }

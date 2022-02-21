@@ -30,7 +30,6 @@ import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -41,8 +40,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -67,13 +64,11 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -83,6 +78,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -120,18 +116,15 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SVMHost implements HostVM {
+public class SVMHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
     private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
     private final Platform platform;
-    private final OptionValues options;
-    private final ClassLoader classLoader;
     private final ClassInitializationSupport classInitializationSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
-    private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
     private final SnippetReflectionProvider originalSnippetReflection;
 
     /**
@@ -151,12 +144,10 @@ public class SVMHost implements HostVM {
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
-        this.options = options;
-        this.classLoader = classLoader;
+        super(options, classLoader);
         this.classInitializationSupport = classInitializationSupport;
         this.originalSnippetReflection = originalSnippetReflection;
         this.stringTable = HostedStringDeduplication.singleton();
-        this.classReachabilityListeners = new ArrayList<>();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
@@ -211,23 +202,8 @@ public class SVMHost implements HostVM {
     }
 
     @Override
-    public OptionValues options() {
-        return options;
-    }
-
-    @Override
     public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
-    }
-
-    @Override
-    public String inspectServerContentPath() {
-        return PointstoOptions.InspectServerContentPath.getValue(options);
-    }
-
-    @Override
-    public void warn(String message) {
-        System.err.println("warning: " + message);
     }
 
     @Override
@@ -241,12 +217,8 @@ public class SVMHost implements HostVM {
     }
 
     @Override
-    public void clearInThread() {
-    }
-
-    @Override
     public void installInThread(Object vmConfig) {
-        Thread.currentThread().setContextClassLoader(classLoader);
+        super.installInThread(vmConfig);
         assert vmConfig == ImageSingletonsSupportImpl.HostedManagement.get();
     }
 
@@ -271,6 +243,9 @@ public class SVMHost implements HostVM {
     public void initializeType(AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
+        }
+        if (BuildPhaseProvider.isAnalysisFinished()) {
+            throw VMError.shouldNotReachHere("Initializing type after analysis: " + analysisType);
         }
 
         /* Decide when the type should be initialized. */
@@ -325,11 +300,11 @@ public class SVMHost implements HostVM {
              * reused by javac, local variables can still get illegal values. Since we cannot
              * "restore" such illegal values during deoptimization, we cannot disable liveness
              * analysis for deoptimization target methods.
-             * 
+             *
              * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
              * later.
              */
-            return SubstrateOptions.Optimize.getValue() <= 0;
+            return SubstrateOptions.optimizationLevel() <= 0;
 
         } else {
             /*
@@ -466,22 +441,6 @@ public class SVMHost implements HostVM {
         return field.getAnnotation(UnknownPrimitiveField.class) != null;
     }
 
-    public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
-        classReachabilityListeners.add(listener);
-    }
-
-    public void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
-        for (AnalysisType type : universe.getTypes()) {
-            if (type.isReachable() && !type.getReachabilityListenerNotified()) {
-                type.setReachabilityListenerNotified(true);
-
-                for (BiConsumer<DuringAnalysisAccess, Class<?>> listener : classReachabilityListeners) {
-                    listener.accept(access, type.getJavaClass());
-                }
-            }
-        }
-    }
-
     public ClassInitializationSupport getClassInitializationSupport() {
         return classInitializationSupport;
     }
@@ -538,12 +497,6 @@ public class SVMHost implements HostVM {
         }
     }
 
-    private final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingHooks = new CopyOnWriteArrayList<>();
-
-    public void addMethodAfterParsingHook(BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook) {
-        methodAfterParsingHooks.add(methodAfterParsingHook);
-    }
-
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
@@ -558,9 +511,7 @@ public class SVMHost implements HostVM {
                 CanonicalizerPhase.create().apply(graph, bb.getProviders());
             }
 
-            for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
-                methodAfterParsingHook.accept(method, graph);
-            }
+            super.methodAfterParsingHook(bb, method, graph);
         }
     }
 
@@ -652,7 +603,7 @@ public class SVMHost implements HostVM {
             /*
              * Unsafe memory access nodes are rare, so it does not pay off to check what kind of
              * field they are accessing.
-             * 
+             *
              * Methods that access a thread-local value cannot be initialized at image build time
              * because such values are not available yet.
              */

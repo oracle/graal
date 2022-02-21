@@ -110,7 +110,7 @@ public class Signal {
         VoidPointer si_addr();
     }
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN_AARCH64.class})
     @CPointerTo(nameOfCType = "long long int")
     public interface GregsPointer extends PointerBase {
         long read(int index);
@@ -123,7 +123,7 @@ public class Signal {
         GregsPointer uc_mcontext_linux_amd64_gregs();
 
         @CFieldAddress("uc_mcontext")
-        @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
+        @Platforms({Platform.LINUX_AARCH64_BASE.class})
         mcontext_linux_aarch64_t uc_mcontext_linux_aarch64();
 
         @CField("uc_mcontext")
@@ -131,7 +131,7 @@ public class Signal {
         AMD64DarwinMContext64 uc_mcontext_darwin_amd64();
 
         @CField("uc_mcontext")
-        @Platforms({Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
+        @Platforms({Platform.DARWIN_AARCH64.class})
         AArch64DarwinMContext64 uc_mcontext_darwin_aarch64();
     }
 
@@ -328,7 +328,7 @@ public class Signal {
      * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/arm64/include/uapi/asm/sigcontext.h#L28
      */
     @CStruct(value = "mcontext_t")
-    @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
+    @Platforms({Platform.LINUX_AARCH64_BASE.class})
     public interface mcontext_linux_aarch64_t extends PointerBase {
         @CField
         long fault_address();
@@ -418,7 +418,7 @@ public class Signal {
      * Information about _STRUCT_ARM_THREAD_STATE64 can be found at
      * https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/osfmk/mach/arm/_structs.h#L102
      */
-    @Platforms({Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
+    @Platforms({Platform.DARWIN_AARCH64.class})
     @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
     public interface AArch64DarwinMContext64 extends PointerBase {
         @CFieldAddress("__ss.__x")

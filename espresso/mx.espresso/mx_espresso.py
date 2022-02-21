@@ -159,16 +159,10 @@ And adapt the code to the modified headers in '{committed}'.
 add_gate_runner(_suite, _espresso_gate_runner)
 
 
-if mx_sdk_vm.base_jdk_version() > 8:
-    if mx.is_windows():
-        lib_espresso_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-espresso.jar'
-    else:
-        lib_espresso_cp = '${GRAALVM_HOME}/lib/graalvm/lib-espresso.jar'
+if mx.is_windows():
+    lib_espresso_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-espresso.jar'
 else:
-    if mx.is_windows():
-        lib_espresso_cp = '%GRAALVM_HOME%\\jre\\lib\\graalvm\\lib-espresso.jar'
-    else:
-        lib_espresso_cp = '${GRAALVM_HOME}/jre/lib/graalvm/lib-espresso.jar'
+    lib_espresso_cp = '${GRAALVM_HOME}/lib/graalvm/lib-espresso.jar'
 
 
 espresso_library_config = mx_sdk_vm.LibraryConfig(
@@ -180,7 +174,7 @@ espresso_library_config = mx_sdk_vm.LibraryConfig(
         '-H:+EnableSignalAPI',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
-        '--features=com.oracle.truffle.espresso.FinalizationFeature',
+        '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
     ],
     home_finder=True,
 )
