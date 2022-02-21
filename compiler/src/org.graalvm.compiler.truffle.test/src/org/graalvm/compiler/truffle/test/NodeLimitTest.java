@@ -103,14 +103,14 @@ public class NodeLimitTest extends PartialEvaluationTest {
         private static class MyClass {
             int[] array = new int[100];
 
-            public MyClass() {
+            MyClass() {
                 for (int i = 0; i < array.length; i++) {
                     array[i] = value();
                 }
             }
 
             @CompilerDirectives.TruffleBoundary
-            private int value() {
+            private static int value() {
                 return 1;
             }
 
