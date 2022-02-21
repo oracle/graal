@@ -32,6 +32,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -68,8 +71,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 
 public final class ClassRedefinition {
 
@@ -295,6 +296,30 @@ public final class ClassRedefinition {
     // changes
     private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
                     throws RedefintionNotSupportedException {
+        // handle enum constant changes
+        // currently, we only allow appending new enum constants
+        if (oldKlass.getSuperKlass() == oldKlass.getMeta().java_lang_Enum) {
+            Field[] oldEnumFields = oldKlass.getDeclaredFields();
+            ParserField[] newEnumFields = newParserKlass.getFields();
+            for (int i = 0; i < oldEnumFields.length; i++) {
+                Field enumField = oldEnumFields[i];
+                if (enumField.getType() != oldKlass.getType()) {
+                    break;
+                } else {
+                    // old constant MUST be present in new class
+                    if (i >= newEnumFields.length) {
+                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                    }
+                    ParserField newEnumField = newEnumFields[i];
+                    if (newEnumField.getType() != oldKlass.getType()) {
+                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                    } else if (newEnumField.getName() != enumField.getName()) {
+                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                    }
+                }
+            }
+        }
+
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
