@@ -74,23 +74,22 @@ public class AllocExternalSymbolNode extends LLVMNode {
     public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
                     LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
 
-        // Allocating symbols to the symbol table as provided by the local scope.
-        LLVMPointer pointerFromLocal = lookupFromScope(localScope, symbol, context, BranchProfile.create());
+        LLVMPointer pointerFromLocal = lookupFromScope(localScope, symbol, context);
+        // The default case for active default flag is to search the local scope first.
         if (pointerFromLocal != null && isDefaultFlagActive(rtldFlags)) {
             return pointerFromLocal;
         }
 
-        LLVMPointer pointerFromGlobal = lookupFromScope(globalScope, symbol, context, BranchProfile.create());
-        if (pointerFromGlobal != null && !(isDefaultFlagActive(rtldFlags))) {
+        LLVMPointer pointerFromGlobal = lookupFromScope(globalScope, symbol, context);
+        // Otherwise, if the symbol exists in the global scope, then it is returned. (Regardless of
+        // the default flag, global scope takes priority if the default flag is not active.)
+        if (pointerFromGlobal != null) {
             return pointerFromGlobal;
         }
 
-        // Allocating symbols to the symbol table as provided by the global scope.
-        if (pointerFromLocal == null && pointerFromGlobal != null && isDefaultFlagActive(rtldFlags)) {
-            return pointerFromGlobal;
-        }
-
-        if (pointerFromGlobal == null && pointerFromLocal != null && !(isDefaultFlagActive(rtldFlags))) {
+        // Finally, the symbol is searched in the local scope again (for the case where the default
+        // flag is not active).
+        if (pointerFromLocal != null) {
             return pointerFromLocal;
         }
 
@@ -156,13 +155,12 @@ public class AllocExternalSymbolNode extends LLVMNode {
     }
 
     @TruffleBoundary
-    private static LLVMPointer lookupFromScope(LLVMScopeChain scope, LLVMSymbol symbol, LLVMContext context, BranchProfile exception) {
+    private static LLVMPointer lookupFromScope(LLVMScopeChain scope, LLVMSymbol symbol, LLVMContext context) {
         LLVMSymbol resultSymbol = scope.get(symbol.getName());
         if (resultSymbol == null) {
             return null;
         }
-        LLVMSymbol function = LLVMAlias.resolveAlias(resultSymbol);
-        LLVMPointer pointer = context.getSymbol(function, exception);
+        LLVMPointer pointer = context.getSymbolUncached(LLVMAlias.resolveAlias(resultSymbol));
         context.registerSymbol(symbol, pointer);
         return pointer;
     }
