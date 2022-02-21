@@ -481,7 +481,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
 
         @TruffleBoundary(allowInlining = true)
-        private static LLVMPointer getElement(ArrayList<LLVMPointer> list, int idx) {
+        private static LLVMPointer getElement(EconomicMap<Integer, LLVMPointer> list, int idx) {
             return list.get(idx);
         }
     }

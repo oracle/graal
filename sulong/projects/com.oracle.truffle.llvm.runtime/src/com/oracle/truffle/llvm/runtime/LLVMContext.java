@@ -108,7 +108,7 @@ public final class LLVMContext {
     // The list contains all the symbols declared from the same symbol defined.
     private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
-    protected final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
+    protected final EconomicMap<Integer, LLVMPointer> globalsNonPointerStore = EconomicMap.create();
     protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
     public final Object atomicInstructionsLock = new Object();
@@ -1112,10 +1112,10 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerGlobals(LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
+    public void registerGlobals(int id, LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
             language.initFreeGlobalBlocks(nodeFactory);
-            globalsNonPointerStore.add(nonPointerStore);
+            globalsNonPointerStore.put(id, nonPointerStore);
         }
     }
 

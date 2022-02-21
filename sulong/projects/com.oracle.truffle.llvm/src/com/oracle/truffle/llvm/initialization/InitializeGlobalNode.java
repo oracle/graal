@@ -41,8 +41,10 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
@@ -76,18 +78,24 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
     @Child private StaticInitsNode globalVarInit;
     @Child private DirectCallNode threadGlobalVarInit;
     @Child private LLVMMemoryOpNode protectRoData;
+    private final NodeFactory nodeFactory;
 
-    public InitializeGlobalNode(LLVMParserResult parserResult, String moduleName) {
+    public InitializeGlobalNode(LLVMParserResult parserResult, String moduleName, DataSectionFactory dataSectionFactory) {
+
         this.dataLayout = parserResult.getDataLayout();
 
-        this.globalVarInit = (StaticInitsNode) createGlobalVariableInitializer(parserResult.getDefinedGlobals(), parserResult.getRuntime(), moduleName, false);
+        this.globalVarInit = (StaticInitsNode) createGlobalVariableInitializer(parserResult.getDefinedGlobals(), parserResult.getRuntime(), moduleName, false, dataSectionFactory);
 
         this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
 
-        this.threadGlobalVarInit = Truffle.getRuntime().createDirectCallNode((CallTarget)createGlobalVariableInitializer(parserResult.getThreadLocalGlobals(), parserResult.getRuntime(), moduleName, true));
+        this.threadGlobalVarInit = Truffle.getRuntime().createDirectCallNode((CallTarget)createGlobalVariableInitializer(parserResult.getThreadLocalGlobals(), parserResult.getRuntime(), moduleName, true, dataSectionFactory));
+
+        this.nodeFactory = parserResult.getRuntime().getNodeFactory();
     }
 
     public void execute(VirtualFrame frame, LLVMPointer roDataBase) {
+
+
         globalVarInit.execute(frame);
         if (roDataBase != null) {
             // TODO could be a compile-time check
@@ -102,12 +110,20 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         context.addGlobalInitializer(threadGlobalVarInit.getCallTarget());
     }
 
+    private static LLVMPointer allocOrNull(LLVMAllocateNode allocNode) {
+        if (allocNode != null) {
+            return allocNode.executeWithTarget();
+        } else {
+            return null;
+        }
+    }
+
     @Override
     public DataLayout getDatalayout() {
         return dataLayout;
     }
 
-    private Object createGlobalVariableInitializer(List<GlobalVariable> globals, LLVMParserRuntime runtime, Object moduleName, boolean isThreadLocal) {
+    private Object createGlobalVariableInitializer(List<GlobalVariable> globals, LLVMParserRuntime runtime, Object moduleName, boolean isThreadLocal, DataSectionFactory dataSectionFactory) {
         GetStackSpaceFactory stackFactory = GetStackSpaceFactory.createAllocaFactory();
         Object initNode;
         int totalSize = 0;
@@ -153,7 +169,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
                 globalIndex++;
             }
             if (isThreadLocal) {
-                initNode = buffer.createTLGlobalNode(bufferOffsets, descriptors, isThreadLocal, this);
+                initNode = buffer.createTLGlobalNode(bufferOffsets, descriptors, isThreadLocal, this, dataSectionFactory);
             } else {
                 initNode = buffer.createNode(bufferOffsets, descriptors, isThreadLocal);
             }
@@ -224,11 +240,12 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             return AggregateLiteralInPlaceNodeGen.create(buffer.array(), stores, offsets, sizes, bufferOffsets, descriptors, isThreadLocal);
         }
 
-        public AggregateTLGlobalInPlaceNode createTLGlobalNode(int[] bufferOffsets, LLVMGlobal[] descriptors, boolean isThreadLocal, LLVMNode node) {
+        public AggregateTLGlobalInPlaceNode createTLGlobalNode(int[] bufferOffsets, LLVMGlobal[] descriptors, boolean isThreadLocal, LLVMNode node, DataSectionFactory dataSectionFactory) {
             assert isThreadLocal;
             LLVMLanguage language = LLVMLanguage.get(node);
             AggregateLiteralInPlaceNode aggregateLiteralInPlaceNode = (AggregateLiteralInPlaceNode) createNode(bufferOffsets, descriptors, isThreadLocal);
-            return new AggregateTLGlobalInPlaceNode(language, aggregateLiteralInPlaceNode);
+            LLVMAllocateNode allocateNode = dataSectionFactory.getThreadLocalSection().createAllocateNode(runtime.getNodeFactory(), "tlglobals_struct", true);
+            return new AggregateTLGlobalInPlaceNode(language, aggregateLiteralInPlaceNode, allocateNode, runtime.getBitcodeID());
         }
 
     }
