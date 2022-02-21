@@ -347,9 +347,6 @@ public abstract class PartialEvaluator {
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                // Even if we have not inlined any call target, we need to run the truffle tier
-                // phases again after the PE inlining phase has finalized the graph.
-                truffleTier(request);
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
                 if (request.task.isCancelled()) {
@@ -640,15 +637,21 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"unused", "try"})
-    private boolean inliningGraphPE(Request request) {
+    private void inliningGraphPE(Request request) {
         boolean inlined;
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
             AgnosticInliningPhase inliningPhase = new AgnosticInliningPhase(this, request);
             inliningPhase.apply(request.graph, providers);
-            inlined = inliningPhase.hasInlined();
+            if (!inliningPhase.rootIsLeaf()) {
+                // If we've seen a truffle call in the graph, even if we have not inlined any call
+                // target, we need to run the truffle tier phases again after the PE inlining phase
+                // has finalized the graph.
+                // On the other hand, if there are no calls (root is a leaf) we can skip the truffle
+                // tier because there are no finalization points.
+                truffleTier(request);
+            }
         }
         request.graph.maybeCompress();
-        return inlined;
     }
 
     protected void applyInstrumentationPhases(Request request) {
