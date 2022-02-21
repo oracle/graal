@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.ExecuteVMOperationEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperationControl.OpInProgress;
 import com.oracle.svm.core.util.VMError;
@@ -83,8 +85,10 @@ public abstract class VMOperation {
         VMOperation prevOperation = control.getInProgress().getOperation();
         IsolateThread prevQueuingThread = control.getInProgress().getQueuingThread();
         IsolateThread prevExecutingThread = control.getInProgress().getExecutingThread();
+        IsolateThread requestingThread = getQueuingThread(data);
 
-        control.setInProgress(this, getQueuingThread(data), CurrentIsolate.getCurrentThread(), true);
+        control.setInProgress(this, requestingThread, CurrentIsolate.getCurrentThread(), true);
+        long startTicks = JfrTicks.elapsedTicks();
         try {
             trace.string("[Executing operation ").string(name);
             operate(data);
@@ -93,6 +97,7 @@ public abstract class VMOperation {
             trace.string("[VMOperation.execute caught: ").string(t.getClass().getName()).string("]").newline();
             throw VMError.shouldNotReachHere(t);
         } finally {
+            ExecuteVMOperationEvent.emit(this, requestingThread, startTicks);
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread, false);
         }
     }

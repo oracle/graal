@@ -65,6 +65,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         count += writeClassLoaders(writer, typeInfo);
         count += writeGCCauses(writer);
         count += writeGCNames(writer);
+        count += writeVMOperations(writer);
         return count;
     }
 
@@ -222,6 +223,20 @@ public class JfrTypeRepository implements JfrConstantPool {
             writer.writeCompressedLong(name.getId());
             writer.writeString(name.getName());
         }
+        return NON_EMPTY;
+    }
+
+    private static int writeVMOperations(JfrChunkWriter writer) {
+        Class<?>[] vmOperations = JfrVMOperations.singleton().getVMOperations();
+
+        assert vmOperations.length > 0;
+        writer.writeCompressedLong(JfrType.VMOperation.getId());
+        writer.writeCompressedLong(vmOperations.length);
+        for (int id = 0; id < vmOperations.length; id++) {
+            writer.writeCompressedLong(id + 1);  // id starts with 1
+            writer.writeString(vmOperations[id].getCanonicalName());
+        }
+
         return NON_EMPTY;
     }
 

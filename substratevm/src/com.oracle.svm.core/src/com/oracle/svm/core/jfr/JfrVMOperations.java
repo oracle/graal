@@ -23,25 +23,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr;
 
-package com.oracle.svm.test.jfr;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.junit.Test;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-public class TestGCEvents extends JfrTest {
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{
-                        "jdk.GarbageCollection",
-                        "jdk.GCPhasePause",
-                        "jdk.GCPhasePauseLevel1",
-                        "jdk.GCPhasePauseLevel2",
-                        "jdk.ExecuteVMOperation"
-        };
+import java.util.Collection;
+
+public class JfrVMOperations {
+    private Class<?>[] vmOperations;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrVMOperations() {
+        vmOperations = new Class<?>[0];
     }
 
-    @Test
-    public void test() throws Exception {
-        System.gc();
+    @Fold
+    public static JfrVMOperations singleton() {
+        return ImageSingletons.lookup(JfrVMOperations.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addVMOperations(Collection<Class<?>> vmOps) {
+        vmOperations = vmOps.toArray(new Class<?>[vmOps.size()]);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getVMOperationId(Class<?> clazz) {
+        for (int id = 0; id < vmOperations.length; id++) {
+            if (vmOperations[id] == clazz) {
+                return id + 1;    // id starts with 1
+            }
+        }
+        return 0;
+    }
+
+    public Class<?>[] getVMOperations() {
+        return vmOperations;
     }
 }

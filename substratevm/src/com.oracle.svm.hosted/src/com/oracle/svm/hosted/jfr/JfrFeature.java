@@ -25,11 +25,12 @@
 package com.oracle.svm.hosted.jfr;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.jfr.JfrGCNames;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -47,12 +48,14 @@ import com.oracle.svm.core.jfr.JfrChunkWriter;
 import com.oracle.svm.core.jfr.JfrFrameTypeSerializer;
 import com.oracle.svm.core.jfr.JfrGlobalMemory;
 import com.oracle.svm.core.jfr.JfrManager;
+import com.oracle.svm.core.jfr.JfrGCNames;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrRecorderThread;
 import com.oracle.svm.core.jfr.JfrSerializerSupport;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.JfrThreadStateSerializer;
+import com.oracle.svm.core.jfr.JfrVMOperations;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -60,10 +63,12 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
@@ -179,6 +184,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
         ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
+        ImageSingletons.add(JfrVMOperations.class, new JfrVMOperations());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
@@ -228,12 +234,23 @@ public class JfrFeature implements Feature {
 
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
         Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
+        Collection<Class<?>> vmOperations = new ArrayList<>();
         for (SharedType type : types) {
             DynamicHub hub = type.getHub();
             Class<?> clazz = hub.getHostedJavaClass();
             // Off-set by one for error-catcher
             JfrTraceId.assign(clazz, hub.getTypeID() + 1);
+
+            // Capture concrete VMOperation types for ExecuteVMOperationEvent
+            HostedType ht = (HostedType) type;
+            if (VMOperation.class.isAssignableFrom(clazz) &&
+                            !clazz.isInterface() &&
+                            !Modifier.isAbstract(clazz.getModifiers()) &&
+                            ht.getWrapped().isReachable()) {
+                vmOperations.add(clazz);
+            }
         }
+        ImageSingletons.lookup(JfrVMOperations.class).addVMOperations(vmOperations);
     }
 
     private static void eventSubtypeReachable(DuringAnalysisAccess a, Class<?> c) {
