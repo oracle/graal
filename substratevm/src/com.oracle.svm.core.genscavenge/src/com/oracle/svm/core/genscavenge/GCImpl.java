@@ -534,7 +534,7 @@ public final class GCImpl implements GC {
                         cheneyScanFromRoots();
                     }
                 } finally {
-                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan Roots" : "Scan Roots", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan" : "Scan", startTicks);
                 }
             } finally {
                 rootScanTimer.close();
@@ -631,44 +631,61 @@ public final class GCImpl implements GC {
     private void cheneyScanFromRoots() {
         Timer cheneyScanFromRootsTimer = timers.cheneyScanFromRoots.open();
         try {
-            /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
-            /*
-             * Debugging tip: I could move the taking of the snapshot and the scanning of grey
-             * Objects into each of the blackening methods, or even put them around individual
-             * Object reference visits.
-             */
-            prepareForPromotion(false);
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
+                /*
+                 * Debugging tip: I could move the taking of the snapshot and the scanning of grey
+                 * Objects into each of the blackening methods, or even put them around individual
+                 * Object reference visits.
+                 */
+                prepareForPromotion(false);
 
-            /*
-             * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
-             * objects are in fromSpace.
-             */
-            promoteChunksWithPinnedObjects();
+                /*
+                 * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
+                 * objects are in fromSpace.
+                 */
+                promoteChunksWithPinnedObjects();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Objects", startTicks);
+            }
 
-            /*
-             * Stack references are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenStackRoots();
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Stack references are grey at the beginning of a collection, so I need to blacken
+                 * them.
+                 */
+                blackenStackRoots();
 
-            /* Custom memory regions which contain object references. */
-            walkThreadLocals();
+                /* Custom memory regions which contain object references. */
+                walkThreadLocals();
 
-            /*
-             * Native image Objects are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenImageHeapRoots();
+                /*
+                 * Native image Objects are grey at the beginning of a collection, so I need to
+                 * blacken them.
+                 */
+                blackenImageHeapRoots();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan Roots", startTicks);
+            }
 
-            /* Visit all the Objects promoted since the snapshot. */
-            scanGreyObjects(false);
-
-            if (DeoptimizationSupport.enabled()) {
-                /* Visit the runtime compiled code, now that we know all the reachable objects. */
-                walkRuntimeCodeCache();
-
-                /* Visit all objects that became reachable because of the compiled code. */
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
+
+                if (DeoptimizationSupport.enabled()) {
+                    /*
+                     * Visit the runtime compiled code, now that we know all the reachable objects.
+                     */
+                    walkRuntimeCodeCache();
+
+                    /* Visit all objects that became reachable because of the compiled code. */
+                    scanGreyObjects(false);
+                }
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
             }
 
             greyToBlackObjectVisitor.reset();
@@ -680,63 +697,79 @@ public final class GCImpl implements GC {
     private void cheneyScanFromDirtyRoots() {
         Timer cheneyScanFromDirtyRootsTimer = timers.cheneyScanFromDirtyRoots.open();
         try {
-            /*
-             * Move all the chunks in fromSpace to toSpace. That does not make those chunks grey, so
-             * I have to use the dirty cards marks to blacken them, but that's what card marks are
-             * for.
-             */
-            OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-            oldGen.emptyFromSpaceIntoToSpace();
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Move all the chunks in fromSpace to toSpace. That does not make those chunks
+                 * grey, so I have to use the dirty cards marks to blacken them, but that's what
+                 * card marks are for.
+                 */
+                OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+                oldGen.emptyFromSpaceIntoToSpace();
 
-            /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
-            /*
-             * Debugging tip: I could move the taking of the snapshot and the scanning of grey
-             * Objects into each of the blackening methods, or even put them around individual
-             * Object reference visits.
-             */
-            prepareForPromotion(true);
+                /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
+                /*
+                 * Debugging tip: I could move the taking of the snapshot and the scanning of grey
+                 * Objects into each of the blackening methods, or even put them around individual
+                 * Object reference visits.
+                 */
+                prepareForPromotion(true);
 
-            /*
-             * Make sure any released objects are in toSpace (because this is an incremental
-             * collection). I do this before blackening any roots to make sure the chunks with
-             * pinned objects are moved entirely, as opposed to promoting the objects individually
-             * by roots. This makes the objects in those chunks grey.
-             */
-            promoteChunksWithPinnedObjects();
-
-            /*
-             * Blacken Objects that are dirty roots. There are dirty cards in ToSpace. Do this early
-             * so I don't have to walk the cards of individually promoted objects, which will be
-             * visited by the grey object scanner.
-             */
-            blackenDirtyCardRoots();
-
-            /*
-             * Stack references are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenStackRoots();
-
-            /* Custom memory regions which contain object references. */
-            walkThreadLocals();
-
-            /*
-             * Native image Objects are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenDirtyImageHeapRoots();
-
-            /* Visit all the Objects promoted since the snapshot, transitively. */
-            scanGreyObjects(true);
-
-            if (DeoptimizationSupport.enabled()) {
-                /* Visit the runtime compiled code, now that we know all the reachable objects. */
-                walkRuntimeCodeCache();
-
-                /* Visit all objects that became reachable because of the compiled code. */
-                scanGreyObjects(true);
+                /*
+                 * Make sure any released objects are in toSpace (because this is an incremental
+                 * collection). I do this before blackening any roots to make sure the chunks with
+                 * pinned objects are moved entirely, as opposed to promoting the objects
+                 * individually by roots. This makes the objects in those chunks grey.
+                 */
+                promoteChunksWithPinnedObjects();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Objects", startTicks);
             }
 
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Blacken Objects that are dirty roots. There are dirty cards in ToSpace. Do this
+                 * early so I don't have to walk the cards of individually promoted objects, which
+                 * will be visited by the grey object scanner.
+                 */
+                blackenDirtyCardRoots();
+
+                /*
+                 * Stack references are grey at the beginning of a collection, so I need to blacken
+                 * them.
+                 */
+                blackenStackRoots();
+
+                /* Custom memory regions which contain object references. */
+                walkThreadLocals();
+
+                /*
+                 * Native image Objects are grey at the beginning of a collection, so I need to
+                 * blacken them.
+                 */
+                blackenDirtyImageHeapRoots();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan Roots", startTicks);
+            }
+
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Visit all the Objects promoted since the snapshot, transitively. */
+                scanGreyObjects(true);
+
+                if (DeoptimizationSupport.enabled()) {
+                    /*
+                     * Visit the runtime compiled code, now that we know all the reachable objects.
+                     */
+                    walkRuntimeCodeCache();
+
+                    /* Visit all objects that became reachable because of the compiled code. */
+                    scanGreyObjects(true);
+                }
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
+            }
             greyToBlackObjectVisitor.reset();
         } finally {
             cheneyScanFromDirtyRootsTimer.close();
