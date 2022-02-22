@@ -301,7 +301,7 @@ public class AMD64TruffleArrayUtilsWithMaskSnippets implements Snippets {
         private void instantiate(Arguments args, FixedWithNextNode arrayOperation) {
             StructuredGraph graph = arrayOperation.graph();
             SnippetTemplate template = template(arrayOperation, args);
-            FrameState beforeState = SnippetTemplate.findLastFrameState(arrayOperation);
+            FrameState beforeState = GraphUtil.findLastFrameState(arrayOperation);
             UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arrayOperation, SnippetTemplate.DEFAULT_REPLACER, args, false);
             for (Node originalNode : replacements.getKeys()) {
                 if (originalNode instanceof AbstractMergeNode || originalNode instanceof LoopExitNode) {

@@ -1294,8 +1294,8 @@ public class GraphUtil {
      * This method will check Graal's invariant relations regarding side-effects and framestates.
      */
     public static FrameState findLastFrameState(FixedNode start) {
-        GraalError.guarantee(start.graph().getGuardsStage().areFrameStatesAtSideEffects(), "Framestates must be at side effects when looking for state split nodes");
         assert start != null;
+        GraalError.guarantee(start.graph().getGuardsStage().areFrameStatesAtSideEffects(), "Framestates must be at side effects when looking for state split nodes");
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
         while (true) {
