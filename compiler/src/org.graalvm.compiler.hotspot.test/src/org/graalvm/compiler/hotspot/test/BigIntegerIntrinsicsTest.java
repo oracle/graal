@@ -164,7 +164,7 @@ public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
         TestIntrinsic tin = new TestIntrinsic("bigIntegerLeftShiftWorker", javaclass,
-                        "shiftLeft", BigInteger.class, BigInteger.class);
+                        "shiftLeft", int.class);
 
         for (int i = 0; i < N; i++) {
 
@@ -199,7 +199,7 @@ public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
         TestIntrinsic tin = new TestIntrinsic("bigIntegerRightShiftWorker", javaclass,
-                        "shiftRight", BigInteger.class, BigInteger.class);
+                        "shiftRight", int.class);
 
         for (int i = 0; i < N; i++) {
 
