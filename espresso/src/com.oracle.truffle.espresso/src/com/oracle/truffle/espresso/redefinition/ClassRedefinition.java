@@ -484,8 +484,9 @@ public final class ClassRedefinition {
     }
 
     private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(oldKlass.getContext());
         Klass klass;
-        klass = oldKlass.getContext().getRegistries().findLoadedClass(klassType, oldKlass.getDefiningClassLoader());
+        klass = oldKlass.getContext().getRegistries().findLoadedClass(env, klassType, oldKlass.getDefiningClassLoader());
         if (klass == null) {
             // new super interface must be loaded eagerly then
             StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(Types.binaryName(klassType));
