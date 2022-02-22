@@ -81,6 +81,9 @@ public class RegexASTPostProcessor {
     }
 
     public void prepareForDFA() {
+        if (ast.getOptions().isBooleanMatch()) {
+            DisableCaptureGroupsVisitor.disableCaptureGroups(ast);
+        }
         OptimizeLookAroundsVisitor.optimizeLookArounds(ast, compilationBuffer);
         if (properties.hasQuantifiers()) {
             UnrollQuantifiersVisitor.unrollQuantifiers(ast, compilationBuffer);
@@ -457,6 +460,26 @@ public class RegexASTPostProcessor {
 
             // No optimization found.
             return null;
+        }
+    }
+
+    private static final class DisableCaptureGroupsVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+        private final RegexAST ast;
+
+        private DisableCaptureGroupsVisitor(RegexAST ast) {
+            this.ast = ast;
+        }
+
+        public static void disableCaptureGroups(RegexAST ast) {
+            new DisableCaptureGroupsVisitor(ast).run(ast.getRoot());
+        }
+
+        @Override
+        protected void visit(Group group) {
+            if (group.isCapturing() && !ast.isGroupReferenced(group.getGroupNumber())) {
+                group.clearGroupNumber();
+            }
         }
     }
 }

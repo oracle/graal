@@ -254,37 +254,6 @@ public final class RegexLexer {
         index = restoreIndex;
     }
 
-    public boolean hasBackReferences() {
-        int nCG = numberOfCaptureGroups();
-        final int restoreIndex = index;
-        boolean insideCharClass = false;
-        while (findChars('\\', '[', ']')) {
-            switch (consumeChar()) {
-                case '\\':
-                    if (!atEnd()) {
-                        char c = consumeChar();
-                        if (!insideCharClass) {
-                            if ('1' <= c && c <= '9' && parseInteger(c - '0') < nCG) {
-                                index = restoreIndex;
-                                return true;
-                            }
-                        }
-                    }
-                    break;
-                case '[':
-                    insideCharClass = true;
-                    break;
-                case ']':
-                    insideCharClass = false;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-        }
-        index = restoreIndex;
-        return false;
-    }
-
     private Token charClass(int codePoint) {
         if (flags.isIgnoreCase()) {
             curCharClass.clear();

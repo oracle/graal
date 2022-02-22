@@ -43,8 +43,8 @@ package com.oracle.truffle.regex.tregex.parser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -75,47 +75,56 @@ import java.util.Map;
 public final class RegexASTBuilder {
 
     private final RegexParserGlobals globals;
-    public final RegexAST ast;
-    private final RegexProperties properties;
-    private final RegexSource source;
     private final RegexFlags flags;
+    private final RegexOptions options;
+    private final RegexAST ast;
+    private final RegexProperties properties;
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
-    private final boolean ignoreCaptureGroups;
-
-    public Group curGroup;
-    private Sequence curSequence;
-    public Term curTerm;
-
     private final CompilationBuffer compilationBuffer;
 
+    private Group curGroup;
+    private Sequence curSequence;
+    private Term curTerm;
+
     @TruffleBoundary
-    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, CompilationBuffer compilationBuffer) {
         this.globals = language.parserGlobals;
-        this.source = source;
         this.flags = flags;
+        this.options = source.getOptions();
         this.ast = new RegexAST(language, source, flags);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.countVisitor = new NodeCountVisitor();
-        this.setSourceSectionVisitor = source.getOptions().isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
+        this.setSourceSectionVisitor = options.isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
-        this.ignoreCaptureGroups = source.getOptions().isBooleanMatch() && !new RegexLexer(source, flags).hasBackReferences();
     }
 
-    public void pushRootGroup() {
-        pushRootGroup(true);
+    public Group getCurGroup() {
+        return curGroup;
+    }
+
+    public Sequence getCurSequence() {
+        return curSequence;
+    }
+
+    public Term getCurTerm() {
+        return curTerm;
     }
 
     public boolean curGroupIsRoot() {
         return curGroup == ast.getRoot();
     }
 
+    public void pushRootGroup() {
+        pushRootGroup(true);
+    }
+
     public void pushRootGroup(boolean rootCapture) {
         RegexASTRootNode rootParent = ast.createRootNode();
         ast.setRoot(pushGroup(null, false, rootCapture, rootParent));
-        if (source.getOptions().isDumpAutomataWithSourceSections()) {
+        if (options.isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(ast.getRoot(),
                             Arrays.asList(ast.getSource().getSource().createSection(0, 1), ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1)));
@@ -131,18 +140,28 @@ public final class RegexASTBuilder {
     }
 
     public void pushGroup(Token token) {
-        pushGroup(token, true, false, true, null);
+        pushGroup(token, true, false, null);
     }
 
     public void pushCaptureGroup(Token token) {
-        pushGroup(token, true, !ignoreCaptureGroups, true, null);
+        pushGroup(token, true, true, null);
     }
 
-    public Group pushGroup(Token token, boolean addToSeq, boolean capture, RegexASTSubtreeRootNode parent) {
-        return pushGroup(token, addToSeq, capture, true, parent);
+    public void pushLookBehindAssertion(Token token, boolean negate) {
+        LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
+        ast.addSourceSection(lookBehind, token);
+        addTerm(lookBehind);
+        pushGroup(token, false, false, lookBehind);
     }
 
-    private Group pushGroup(Token token, boolean addToSeq, boolean capture, boolean setEnclosed, RegexASTSubtreeRootNode parent) {
+    public void pushLookAheadAssertion(Token token, boolean negate) {
+        LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
+        ast.addSourceSection(lookAhead, token);
+        addTerm(lookAhead);
+        pushGroup(token, false, false, lookAhead);
+    }
+
+    private Group pushGroup(Token token, boolean addToSeq, boolean capture, RegexASTSubtreeRootNode parent) {
         Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
         if (parent != null) {
             parent.setGroup(group);
@@ -152,21 +171,9 @@ public final class RegexASTBuilder {
         }
         ast.addSourceSection(group, token);
         curGroup = group;
-        if (setEnclosed) {
-            curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        }
+        curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
         addSequence();
         return group;
-    }
-
-    /**
-     * Adds a new {@link Sequence} to the current {@link Group}.
-     */
-    public void addSequence() {
-        if (!tryMergeSingleCharClassAlternations()) {
-            curSequence = curGroup.addSequence(ast);
-            curTerm = null;
-        }
     }
 
     public void popGroup(Token token) {
@@ -191,139 +198,51 @@ public final class RegexASTBuilder {
         curGroup = curSequence.getParent();
     }
 
+    /**
+     * Adds a new {@link Sequence} to the current {@link Group}.
+     */
+    public void addSequence() {
+        if (!tryMergeSingleCharClassAlternations()) {
+            curSequence = curGroup.addSequence(ast);
+            curTerm = null;
+        }
+    }
+
     public void addTerm(Term term) {
         curSequence.add(term);
         curTerm = term;
     }
 
-    public void pushLookBehindAssertion(Token token, boolean negate) {
-        LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
-        ast.addSourceSection(lookBehind, token);
-        addTerm(lookBehind);
-        pushGroup(token, false, false, lookBehind);
-    }
-
-    public void pushLookAheadAssertion(Token token, boolean negate) {
-        LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
-        ast.addSourceSection(lookAhead, token);
-        addTerm(lookAhead);
-        pushGroup(token, false, false, lookAhead);
-    }
-
-    public void addBackReference(Token.BackReference token) {
-        BackReference backReference = ast.createBackReference(token.getGroupNr());
-        ast.addSourceSection(backReference, token);
-        addTerm(backReference);
-        if (backReference.getGroupNr() >= groupCount.getCount()) {
-            backReference.setForwardReference();
-        } else if (isNestedBackReference(backReference)) {
-            backReference.setNestedBackReference();
-        }
-    }
-
-    private static boolean isNestedBackReference(BackReference backReference) {
-        RegexASTNode parent = backReference.getParent().getParent();
-        while (true) {
-            if (parent.asGroup().getGroupNumber() == backReference.getGroupNr()) {
-                return true;
-            }
-            parent = parent.getParent();
-            if (parent.isRoot()) {
-                return false;
-            }
-            if (parent.isLookAroundAssertion()) {
-                parent = parent.getParent();
-            }
-            parent = parent.getParent();
-        }
-    }
-
-    public void addPositionAssertion(Token token) {
-        PositionAssertion.Type type;
-        if (token.kind == Token.Kind.caret) {
-            type = PositionAssertion.Type.CARET;
-        } else if (token.kind == Token.Kind.dollar) {
-            type = PositionAssertion.Type.DOLLAR;
-        } else {
-            throw new IllegalArgumentException("unexpected token kind: " + token.kind);
-        }
-        PositionAssertion positionAssertion = ast.createPositionAssertion(type);
-        ast.addSourceSection(positionAssertion, token);
-        addTerm(positionAssertion);
-    }
-
-    public void addQuantifier(Token.Quantifier quantifier) {
-        assert curTerm == curSequence.getLastTerm();
-        if (quantifier.getMin() == -1) {
-            replaceCurTermWithDeadNode();
-            return;
-        }
-        if (quantifier.getMax() == 0) {
-            removeCurTerm();
-            return;
-        }
-        boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
-        if (source.getOptions().getFlavor().canHaveEmptyLoopIterations()) {
-            // In flavors like Python or Ruby, we cannot remove optional zero-width groups or
-            // lookaround assertions as those should be executed even though they will only match
-            // the empty string. These expressions could change the state of capture groups and
-            // the empty checks in these dialects either a) check the state of the capture groups
-            // and/or b) do not backtrack when the empty check fails.
-            if (quantifier.getMin() == 0 && curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing()) {
-                removeCurTerm();
-                return;
+    public void addCharClass(Token.CharacterClass token) {
+        CodePointSet codePointSet = token.getCodePointSet();
+        if (flags.isUnicode()) {
+            if (codePointSet.matchesNothing()) {
+                // We need this branch because a Group with no alternatives is invalid
+                addTerm(createCharClass(CodePointSet.getEmpty(), token));
+            } else {
+                addTerm(translateUnicodeCharClass(token));
             }
         } else {
-            if (quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
-                            curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
-                removeCurTerm();
-                return;
-            }
-        }
-        ast.addSourceSection(curTerm, quantifier);
-        if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
-            // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
-            // ignore.
-            return;
-        }
-        if (quantifier.getMin() == 1 && quantifier.getMax() == 1) {
-            // x{1,1} -> x
-            return;
-        }
-        setQuantifier((QuantifiableTerm) curTerm, quantifier);
-        // merge equal successive quantified terms
-        if (curSequence.size() > 1) {
-            Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
-            if (prevTerm.isQuantifiableTerm()) {
-                QuantifiableTerm prev = prevTerm.asQuantifiableTerm();
-                if (prev.hasQuantifier() && ((QuantifiableTerm) curTerm).equalsSemantic(prev, true)) {
-                    removeCurTerm();
-                    long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
-                    long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
-                    if (min > Integer.MAX_VALUE) {
-                        replaceCurTermWithDeadNode();
-                        return;
-                    }
-                    if (max > Integer.MAX_VALUE) {
-                        max = -1;
-                    }
-                    setQuantifier(prev, Token.createQuantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
-                }
-            }
+            addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
         }
     }
 
-    private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
-        term.setQuantifier(quantifier);
-        if (!term.isUnrollingCandidate()) {
-            properties.setLargeCountedRepetitions();
+    private CharacterClass createCharClass(CodePointSet charSet, Token token) {
+        return createCharClass(charSet, token, false);
+    }
+
+    private CharacterClass createCharClass(CodePointSet charSet, Token token, boolean wasSingleChar) {
+        CharacterClass characterClass = ast.createCharacterClass(charSet);
+        ast.addSourceSection(characterClass, token);
+        if (wasSingleChar) {
+            characterClass.setWasSingleChar();
         }
-        properties.setQuantifiers();
+        return characterClass;
     }
 
     private Term translateUnicodeCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = token.getCodePointSet();
-        if (!source.getOptions().isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
+        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
             return createCharClass(codePointSet, token, token.wasSingleChar());
         }
         Group group = ast.createGroup();
@@ -425,36 +344,120 @@ public final class RegexASTBuilder {
         return group;
     }
 
-    public void addCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
-        if (flags.isUnicode()) {
-            if (codePointSet.matchesNothing()) {
-                // We need this branch because a Group with no alternatives is invalid
-                addTerm(createCharClass(CodePointSet.getEmpty(), token));
-            } else {
-                addTerm(translateUnicodeCharClass(token));
+    public void addBackReference(Token.BackReference token) {
+        BackReference backReference = ast.createBackReference(token.getGroupNr());
+        ast.addSourceSection(backReference, token);
+        addTerm(backReference);
+        if (backReference.getGroupNr() >= groupCount.getCount()) {
+            backReference.setForwardReference();
+        } else if (isNestedBackReference(backReference)) {
+            backReference.setNestedBackReference();
+        }
+    }
+
+    private static boolean isNestedBackReference(BackReference backReference) {
+        RegexASTNode parent = backReference.getParent().getParent();
+        while (true) {
+            if (parent.asGroup().getGroupNumber() == backReference.getGroupNr()) {
+                return true;
+            }
+            parent = parent.getParent();
+            if (parent.isRoot()) {
+                return false;
+            }
+            if (parent.isLookAroundAssertion()) {
+                parent = parent.getParent();
+            }
+            parent = parent.getParent();
+        }
+    }
+
+    public void addPositionAssertion(Token token) {
+        PositionAssertion.Type type;
+        if (token.kind == Token.Kind.caret) {
+            type = PositionAssertion.Type.CARET;
+        } else if (token.kind == Token.Kind.dollar) {
+            type = PositionAssertion.Type.DOLLAR;
+        } else {
+            throw new IllegalArgumentException("unexpected token kind: " + token.kind);
+        }
+        PositionAssertion positionAssertion = ast.createPositionAssertion(type);
+        ast.addSourceSection(positionAssertion, token);
+        addTerm(positionAssertion);
+    }
+
+    public void addQuantifier(Token.Quantifier quantifier) {
+        assert curTerm == curSequence.getLastTerm();
+        if (quantifier.getMin() == -1) {
+            replaceCurTermWithDeadNode();
+            return;
+        }
+        if (quantifier.getMax() == 0) {
+            removeCurTerm();
+            return;
+        }
+        boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
+        if (options.getFlavor().canHaveEmptyLoopIterations()) {
+            // In flavors like Python or Ruby, we cannot remove optional zero-width groups or
+            // lookaround assertions as those should be executed even though they will only match
+            // the empty string. These expressions could change the state of capture groups and
+            // the empty checks in these dialects either a) check the state of the capture groups
+            // and/or b) do not backtrack when the empty check fails.
+            if (quantifier.getMin() == 0 && curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing()) {
+                removeCurTerm();
+                return;
             }
         } else {
-            addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
+            if (quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
+                            curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+                removeCurTerm();
+                return;
+            }
+        }
+        ast.addSourceSection(curTerm, quantifier);
+        if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
+            // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
+            // ignore.
+            return;
+        }
+        if (quantifier.getMin() == 1 && quantifier.getMax() == 1) {
+            // x{1,1} -> x
+            return;
+        }
+        setQuantifier((QuantifiableTerm) curTerm, quantifier);
+        // merge equal successive quantified terms
+        if (curSequence.size() > 1) {
+            Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
+            if (prevTerm.isQuantifiableTerm()) {
+                QuantifiableTerm prev = prevTerm.asQuantifiableTerm();
+                if (prev.hasQuantifier() && ((QuantifiableTerm) curTerm).equalsSemantic(prev, true)) {
+                    removeCurTerm();
+                    long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
+                    long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
+                    if (min > Integer.MAX_VALUE) {
+                        replaceCurTermWithDeadNode();
+                        return;
+                    }
+                    if (max > Integer.MAX_VALUE) {
+                        max = -1;
+                    }
+                    setQuantifier(prev, Token.createQuantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
+                }
+            }
         }
     }
 
-    private CharacterClass createCharClass(CodePointSet charSet, Token token) {
-        return createCharClass(charSet, token, false);
-    }
-
-    private CharacterClass createCharClass(CodePointSet charSet, Token token, boolean wasSingleChar) {
-        CharacterClass characterClass = ast.createCharacterClass(charSet);
-        ast.addSourceSection(characterClass, token);
-        if (wasSingleChar) {
-            characterClass.setWasSingleChar();
+    private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
+        term.setQuantifier(quantifier);
+        if (!term.isUnrollingCandidate()) {
+            properties.setLargeCountedRepetitions();
         }
-        return characterClass;
+        properties.setQuantifiers();
     }
 
     public void addCopy(Token token, Group sourceGroup) {
         Group copy = sourceGroup.copyRecursive(ast, compilationBuffer);
-        if (this.source.getOptions().isDumpAutomataWithSourceSections()) {
+        if (options.isDumpAutomataWithSourceSections()) {
             setSourceSectionVisitor.run(copy, token);
         }
         addTerm(copy);
@@ -470,6 +473,8 @@ public final class RegexASTBuilder {
         removeCurTerm();
         addTerm(createCharClass(CodePointSet.getEmpty(), null));
     }
+
+    /* optimizations */
 
     private void optimizeGroup() {
         sortAlternatives(curGroup);

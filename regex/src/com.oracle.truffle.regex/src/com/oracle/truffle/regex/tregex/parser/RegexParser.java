@@ -92,8 +92,9 @@ public final class RegexParser {
         while (lexer.hasNext()) {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
-            if (!source.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry() && token.kind != Token.Kind.quantifier && astBuilder.curTerm != null && astBuilder.curTerm.isBackReference() &&
-                            astBuilder.curTerm.asBackReference().isNestedOrForwardReference() && !isNestedInLookBehindAssertion(astBuilder.curTerm)) {
+            if (!source.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry() && token.kind != Token.Kind.quantifier && astBuilder.getCurTerm() != null &&
+                            astBuilder.getCurTerm().isBackReference() && astBuilder.getCurTerm().asBackReference().isNestedOrForwardReference() &&
+                            !isNestedInLookBehindAssertion(astBuilder.getCurTerm())) {
                 // In JavaScript, nested backreferences are dropped as no-ops.
                 // However, in Python and Ruby, they are valid, since the contents of capture groups
                 // are not cleared when re-entering a loop.
@@ -150,13 +151,13 @@ public final class RegexParser {
                     astBuilder.addBackReference((Token.BackReference) token);
                     break;
                 case quantifier:
-                    if (astBuilder.curTerm == null) {
+                    if (astBuilder.getCurTerm() == null) {
                         throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                     }
-                    if (flags.isUnicode() && astBuilder.curTerm.isLookAheadAssertion()) {
+                    if (flags.isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
                         throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                     }
-                    if (astBuilder.curTerm.isLookBehindAssertion()) {
+                    if (astBuilder.getCurTerm().isLookBehindAssertion()) {
                         throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
                     }
                     astBuilder.addQuantifier((Token.Quantifier) token);
@@ -177,7 +178,7 @@ public final class RegexParser {
                     astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
                     break;
                 case groupEnd:
-                    if (astBuilder.curGroup.getParent() instanceof RegexASTRootNode) {
+                    if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
                         throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
                     }
                     astBuilder.popGroup(token);
