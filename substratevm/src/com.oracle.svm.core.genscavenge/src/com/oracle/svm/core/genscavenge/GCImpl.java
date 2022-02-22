@@ -702,18 +702,18 @@ public final class GCImpl implements GC {
     private void cheneyScanFromDirtyRoots() {
         Timer cheneyScanFromDirtyRootsTimer = timers.cheneyScanFromDirtyRoots.open();
         try {
-             long startTicks = JfrGCEvents.startGCPhasePause();
-             try {
-                  /*
-                   * Move all the chunks in fromSpace to toSpace. That does not make those chunks
-                   * grey, so I have to use the dirty cards marks to blacken them, but that's what
-                   * card marks are for.
-                   */
-                  OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-                  oldGen.emptyFromSpaceIntoToSpace();
-             } finally {
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Move all the chunks in fromSpace to toSpace. That does not make those chunks
+                 * grey, so I have to use the dirty cards marks to blacken them, but that's what
+                 * card marks are for.
+                 */
+                 OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+                 oldGen.emptyFromSpaceIntoToSpace();
+            } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Old Generation", startTicks);
-             }
+            }
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
