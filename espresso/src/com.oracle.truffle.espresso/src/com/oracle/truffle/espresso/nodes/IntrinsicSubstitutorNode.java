@@ -44,7 +44,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
         this.substitution = factory.create();
 
         EspressoError.guarantee(!substitution.isTrivial() || !method.isSynchronized(),
-                        "Substitution for synchronized method '" + method + "' cannot be marked as trivial");
+                        "Substitution for synchronized method cannot be marked as trivial", method);
 
         if (substitution.canSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));

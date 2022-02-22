@@ -147,7 +147,7 @@ public abstract class NativeEnv implements ContextAccess {
     private Map<String, CallableFromNative.Factory> buildMethodsMap() {
         Map<String, CallableFromNative.Factory> map = new HashMap<>();
         for (CallableFromNative.Factory method : getCollector()) {
-            EspressoError.guarantee(!map.containsKey(method.methodName()), "Substitution for " + method + " already exists");
+            EspressoError.guarantee(!map.containsKey(method.methodName()), "Substitution already exists", method);
             map.put(method.methodName(), method);
         }
         return Collections.unmodifiableMap(map);

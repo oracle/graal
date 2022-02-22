@@ -2716,7 +2716,7 @@ public final class JniEnv extends NativeEnv {
         try {
             String dotName = name.replace('/', '.');
             guestClass = (StaticObject) getMeta().java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
-            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
+            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null", dotName);
         } catch (EspressoException e) {
             profiler.profile(5);
             if (InterpreterToVM.instanceOf(e.getGuestException(), meta.java_lang_ClassNotFoundException)) {

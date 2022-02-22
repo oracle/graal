@@ -484,7 +484,7 @@ public abstract class ClassRegistry implements ContextAccess {
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
 
-        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
+        EspressoError.guarantee(previous == null, "Class already defined", type);
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
         getRegistries().onKlassDefined(klass);

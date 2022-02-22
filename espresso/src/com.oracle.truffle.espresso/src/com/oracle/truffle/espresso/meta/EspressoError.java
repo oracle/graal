@@ -102,6 +102,23 @@ public final class EspressoError extends Error {
     }
 
     /**
+     * Checks a given condition and throws a {@link EspressoError} if it is false. Guarantees are
+     * stronger than assertions in that they are always checked. Error messages for guarantee
+     * violations should clearly indicate the nature of the problem as well as a suggested solution
+     * if possible.
+     *
+     * @param condition the condition to check
+     * @param message the message that will be associated with the error
+     * @param additionalContext appended to the exception message that condition doesn't hold
+     */
+    public static void guarantee(boolean condition, String message, Object additionalContext) {
+        if (!condition) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new EspressoError("failed guarantee: " + message + " " + additionalContext);
+        }
+    }
+
+    /**
      * This constructor creates a {@link EspressoError} with a given message.
      *
      * @param message the message that will be associated with the error
