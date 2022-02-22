@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -454,9 +453,8 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    static String toDisplayString(LLVMPointerImpl receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
-        return receiver.toString();
+    static String toDisplayString(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        throw CompilerDirectives.shouldNotReachHere("should be overridden");
     }
 
     @ExportMessage

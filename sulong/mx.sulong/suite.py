@@ -1008,7 +1008,7 @@ suite = {
       "bundledLLVMOnly" : True,
       "cmakeConfig" : {
         "CMAKE_C_FLAGS" : "-pthread",
-        "CMAKE_C_LINK_FLAGS" : "-pthread",
+        "CMAKE_SHARED_LINKER_FLAGS" : "-lgraalvm-llvm",
         "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
         "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
       },
