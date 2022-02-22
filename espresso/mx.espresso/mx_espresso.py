@@ -50,7 +50,7 @@ def _espresso_launcher_command(args):
 
 
 def _java_truffle_command(args):
-    """Java launcher using libespresso in GraalVM + arguments"""
+    """Java launcher using libjavavm in GraalVM + arguments"""
     return _espresso_command('java', ['-truffle'] + args)
 
 
@@ -106,24 +106,24 @@ def _espresso_gate_runner(args, tasks):
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
         if t:
             import mx_sdk_vm_impl
-            run_instructions = "$ mx --dynamicimports=/substratevm --native-images=lib:espresso gate --all-suites --task '{}'".format(mokapot_header_gate_name)
+            run_instructions = "$ mx --dynamicimports=/substratevm --native-images=lib:javavm gate --all-suites --task '{}'".format(mokapot_header_gate_name)
             if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
                 mx.abort("""\
-The registration of the Espresso library ('lib:espresso') is skipped. Please run this gate as follows:
+The registration of the Espresso library ('lib:javavm') is skipped. Please run this gate as follows:
 {}""".format(run_instructions))
 
             errors = False
             mokapot_dir = join(mx.project('com.oracle.truffle.espresso.mokapot').dir, 'include')
-            libespresso_dir = mx.project(mx_sdk_vm_impl.GraalVmNativeImage.project_name(espresso_library_config)).get_output_root()
+            libjavavm_dir = mx.project(mx_sdk_vm_impl.GraalVmNativeImage.project_name(espresso_library_config)).get_output_root()
 
-            for header in ['libespresso_dynamic.h', 'graal_isolate_dynamic.h']:
+            for header in ['libjavavm_dynamic.h', 'graal_isolate_dynamic.h']:
                 committed_header = join(mokapot_dir, header)
                 if not mx.exists(committed_header):
                     mx.abort("Cannot locate '{}'. Was the file moved or renamed?".format(committed_header))
 
-                generated_header = join(libespresso_dir, header)
+                generated_header = join(libjavavm_dir, header)
                 if not mx.exists(generated_header):
-                    mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:espresso build'".format(generated_header))
+                    mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:javavm build'".format(generated_header))
 
                 committed_header_copyright = []
                 with open(committed_header, 'r') as committed_header_file:
@@ -151,7 +151,7 @@ One or more header files in the include dir of the mokapot project ('{committed}
 To fix the issue, run this gate locally:
 {instructions}
 And adapt the code to the modified headers in '{committed}'.
-""".format(committed=os.path.relpath(mokapot_dir, _suite.vc_dir), generated=os.path.relpath(libespresso_dir, _suite.vc_dir), instructions=run_instructions))
+""".format(committed=os.path.relpath(mokapot_dir, _suite.vc_dir), generated=os.path.relpath(libjavavm_dir, _suite.vc_dir), instructions=run_instructions))
 
 
 # REGISTER MX GATE RUNNER
@@ -160,14 +160,14 @@ add_gate_runner(_suite, _espresso_gate_runner)
 
 
 if mx.is_windows():
-    lib_espresso_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-espresso.jar'
+    lib_javavm_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-javavm.jar'
 else:
-    lib_espresso_cp = '${GRAALVM_HOME}/lib/graalvm/lib-espresso.jar'
+    lib_javavm_cp = '${GRAALVM_HOME}/lib/graalvm/lib-javavm.jar'
 
 
 espresso_library_config = mx_sdk_vm.LibraryConfig(
-    destination='lib/<lib:espresso>',
-    jar_distributions=['espresso:LIB_ESPRESSO'],
+    destination='lib/<lib:javavm>',
+    jar_distributions=['espresso:LIB_JAVAVM'],
     build_args=[
         '--language:java',
         '--tool:all',
@@ -191,7 +191,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['espresso:ESPRESSO'],
     support_distributions=['espresso:ESPRESSO_SUPPORT'],
     library_configs=[espresso_library_config],
-    polyglot_lib_jar_dependencies=['espresso:LIB_ESPRESSO'],
+    polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
     has_polyglot_lib_entrypoints=True,
     priority=1,
     post_install_msg="""
@@ -203,7 +203,7 @@ Usage: java -truffle [-options] class [args...]
            (to execute a jar file)
 
 To rebuild the polyglot library:
-    gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
+    gu rebuild-images libpolyglot -cp """ + lib_javavm_cp,
     stability="supported",
 ))
 
