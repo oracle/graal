@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 /**
  * This class is a convenience layer on top of
- * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)}.
+ * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)}.
  * <p>
  * BlockingSupport provides custom implementations of the common blocking methods from the
  * {@link java.lang.Thread} class which behaves as their original counterpart, save for two details:
@@ -105,7 +105,7 @@ public final class BlockingSupport<T> {
     @TruffleBoundary
     public <U> void enterBlockingRegion(Interruptible<U> blockingRegion, Node location, U object) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, null, guestInterrupter::afterInterrupt);
+        safepoint.setBlockedWithException(location, guestInterrupter, blockingRegion, object, null, guestInterrupter::afterInterrupt);
     }
 
     /**
@@ -118,7 +118,7 @@ public final class BlockingSupport<T> {
     @TruffleBoundary
     public <U> void enterBlockingRegion(Interruptible<U> blockingRegion, Node location, U object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, beforeSafepoint, (ex) -> {
+        safepoint.setBlockedWithException(location, guestInterrupter, blockingRegion, object, beforeSafepoint, (ex) -> {
             if (afterSafepoint != null) {
                 afterSafepoint.accept(ex);
             }
