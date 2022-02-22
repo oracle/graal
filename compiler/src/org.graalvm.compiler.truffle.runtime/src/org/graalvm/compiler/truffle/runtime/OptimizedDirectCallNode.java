@@ -55,7 +55,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
      */
     OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
-        assert target.getSourceCallTarget() == null;
+        assert target.isSourceCallTarget();
     }
 
     @Override

@@ -290,16 +290,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     public final EngineData engine;
 
-    /** Only set for a source CallTarget with a clonable RootNode. */
+    /**
+     * Only set for a source CallTarget, when
+     * {@code rootNode.isCloningAllowed() && !rootNode.isCloneUninitializedSupported()}.
+     */
     private volatile RootNode uninitializedRootNode;
+
+    /**
+     * Source CallTarget if this target is a split CallTarget, null if this target is a source
+     * CallTarget.
+     */
+    private final OptimizedCallTarget sourceCallTarget;
 
     /**
      * The speculation log to keep track of assumptions taken and failed for previous compilations.
      */
     protected volatile SpeculationLog speculationLog;
-
-    /** Source target if this target was duplicated. */
-    private final OptimizedCallTarget sourceCallTarget;
 
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -692,7 +698,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private synchronized void initialize(boolean validate) {
         if (!initialized) {
-            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
+            if (isSourceCallTarget() && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
@@ -839,7 +845,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final OptimizedCallTarget cloneUninitialized() {
-        assert sourceCallTarget == null : "Cannot clone a clone.";
+        assert !isSplit() : "Cannot clone a clone.";
         ensureInitialized();
         RootNode clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(this, rootNode, uninitializedRootNode);
         return (OptimizedCallTarget) clonedRoot.getCallTarget();
@@ -995,7 +1001,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         String result = nameCache;
         if (result == null) {
             result = rootNode.toString();
-            if (sourceCallTarget != null) {
+            if (isSplit()) {
                 result += " <split-" + id + ">";
             }
             nameCache = result;
@@ -1425,6 +1431,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /*
      * Splitting related code.
      */
+
+    public final boolean isSourceCallTarget() {
+        return sourceCallTarget == null;
+    }
 
     public final boolean isSplit() {
         return sourceCallTarget != null;
