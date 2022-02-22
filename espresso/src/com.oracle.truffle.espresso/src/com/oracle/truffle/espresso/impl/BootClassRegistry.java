@@ -89,7 +89,7 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type) throws EspressoClassLoadingException {
         ClasspathFile classpathFile = getClasspathFile(env, type);
         if (classpathFile == null) {
             return null;
@@ -120,6 +120,10 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     private ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
-        return !Types.isPrimitive(type) ? env.getClasspath().readClassFile(type) : null;
+        if (Types.isPrimitive(type)) {
+            return null;
+        }
+        ClasspathFile classpathFile = env.getClasspath().readClassFile(type);
+        return classpathFile;
     }
 }

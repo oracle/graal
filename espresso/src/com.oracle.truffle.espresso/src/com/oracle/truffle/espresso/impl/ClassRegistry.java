@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
@@ -66,7 +67,7 @@ public abstract class ClassRegistry {
      * registry.
      */
     public static final class ClassDefinitionInfo {
-        public static final ClassRegistry.ClassDefinitionInfo EMPTY = new ClassRegistry.ClassDefinitionInfo(null, null, null, null, null, false, false);
+        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, null, false, false);
 
         // Constructor for regular definition, but with a specified protection domain
         public ClassDefinitionInfo(StaticObject protectionDomain) {
@@ -160,16 +161,16 @@ public abstract class ClassRegistry {
     }
 
     public static final class TypeStack {
-        ClassRegistry.TypeStack.Node head;
+        Node head;
 
         public TypeStack() {
         }
 
         static final class Node {
             Symbol<Type> entry;
-            ClassRegistry.TypeStack.Node next;
+            Node next;
 
-            Node(Symbol<Type> entry, ClassRegistry.TypeStack.Node next) {
+            Node(Symbol<Type> entry, Node next) {
                 this.entry = entry;
                 this.next = next;
             }
@@ -180,7 +181,7 @@ public abstract class ClassRegistry {
         }
 
         boolean contains(Symbol<Type> type) {
-            ClassRegistry.TypeStack.Node curr = head;
+            Node curr = head;
             while (curr != null) {
                 if (curr.entry == type) {
                     return true;
@@ -201,7 +202,7 @@ public abstract class ClassRegistry {
         }
 
         void push(Symbol<Type> type) {
-            head = new ClassRegistry.TypeStack.Node(type, head);
+            head = new Node(type, head);
         }
     }
 
@@ -233,7 +234,7 @@ public abstract class ClassRegistry {
      * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
      * a whole class registry and all its contained classes.
      */
-    protected final ConcurrentHashMap<Symbol<Symbol.Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
 
     /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
@@ -241,10 +242,6 @@ public abstract class ClassRegistry {
      * classes strongly reachable from the class registry.
      */
     private volatile Collection<Klass> strongHiddenKlasses = null;
-
-    private Object getStrongHiddenClassRegistrationLock() {
-        return this;
-    }
 
     protected ClassRegistry(int loaderID) {
         this.loaderID = loaderID;
@@ -254,7 +251,7 @@ public abstract class ClassRegistry {
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = ModuleTable.ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
+        this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
     }
 
     public List<Klass> getLoadedKlasses() {
@@ -265,7 +262,7 @@ public abstract class ClassRegistry {
         return klasses;
     }
 
-    public ParserKlass createParserKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
+    public ParserKlass createParserKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
         if (!env.isLoaderBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
@@ -274,7 +271,7 @@ public abstract class ClassRegistry {
         return parserKlass;
     }
 
-    private LinkedKlass loadLinkedKlassRecursively(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info, boolean notInterface) throws EspressoClassLoadingException {
+    private LinkedKlass loadLinkedKlassRecursively(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info, boolean notInterface) throws EspressoClassLoadingException {
         LinkedKlass linkedKlass = loadLinkedKlass(env, type, info);
         if (notInterface == Modifier.isInterface(linkedKlass.getFlags())) {
             throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
@@ -282,7 +279,7 @@ public abstract class ClassRegistry {
         return linkedKlass;
     }
 
-    public LinkedKlass createLinkedKlass(ClassLoadingEnv env, ParserKlass parserKlass, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public LinkedKlass createLinkedKlass(ClassLoadingEnv env, ParserKlass parserKlass, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         Symbol<Type> type = parserKlass.getType();
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
         EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
@@ -336,15 +333,16 @@ public abstract class ClassRegistry {
     /**
      * Queries a registry to load a Klass for us.
      *
+     * @param env the environment in which the loading is taking place
      * @param type the symbolic reference to the Klass we want to load
-     * @param protectionDomain The protection domain extracted from the guest class, or
-     *            {@link StaticObject#NULL} if trusted.
+     * @param protectionDomain the protection domain extracted from the guest class, or
+     *            {@link StaticObject#NULL} if trusted
      * @return The Klass corresponding to given type
      */
     @SuppressWarnings("try")
-    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, StaticObject protectionDomain, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public Klass loadKlass(ClassLoadingEnv.InContext env, Symbol<Type> type, StaticObject protectionDomain) throws EspressoClassLoadingException {
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(env, env.getTypes().getElementalType(type), protectionDomain, info);
+            Klass elemental = loadKlass(env, env.getTypes().getElementalType(type), protectionDomain);
             if (elemental == null) {
                 return null;
             }
@@ -362,7 +360,7 @@ public abstract class ClassRegistry {
             synchronized (type) {
                 entry = classes.get(type);
                 if (entry == null) {
-                    if (loadKlassImpl(env, type, info) == null) {
+                    if (loadKlassImpl(env, type) == null) {
                         return null;
                     }
                     entry = classes.get(type);
@@ -373,7 +371,10 @@ public abstract class ClassRegistry {
             loadKlassCacheHitsInc();
         }
         assert entry != null;
-        entry.checkPackageAccess(env.getMeta(), getClassLoader(), protectionDomain);
+        StaticObject classLoader = getClassLoader();
+        if (!StaticObject.isNull(classLoader)) {
+            entry.checkPackageAccess(env.getMeta(), classLoader, protectionDomain);
+        }
         return entry.klass();
     }
 
@@ -394,11 +395,11 @@ public abstract class ClassRegistry {
     }
 
     public final ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes) throws EspressoClassLoadingException {
-        return defineKlass(env, typeOrNull, bytes, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        return defineKlass(env, typeOrNull, bytes, ClassDefinitionInfo.EMPTY);
     }
 
     @SuppressWarnings("try")
-    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
             parserKlass = createParserKlass(env, bytes, typeOrNull, info);
@@ -423,14 +424,14 @@ public abstract class ClassRegistry {
     }
 
     @SuppressWarnings("try")
-    private ObjectKlass createKlass(ClassLoadingEnv.InContext env, LinkedKlass linkedKlass, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    private ObjectKlass createKlass(ClassLoadingEnv.InContext env, LinkedKlass linkedKlass, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         Symbol<Type> type = linkedKlass.getType();
         Symbol<Type> superKlassType = null;
 
         ObjectKlass superKlass = null;
         if (linkedKlass.getSuperKlass() != null) {
             superKlassType = linkedKlass.getSuperKlass().getType();
-            superKlass = loadKlassRecursively(env, linkedKlass.getSuperKlass().getType(), true, info);
+            superKlass = loadKlassRecursively(env, superKlassType, true);
         }
 
         LinkedKlass[] linkedInterfaces = linkedKlass.getInterfaces();
@@ -439,7 +440,7 @@ public abstract class ClassRegistry {
                         : new ObjectKlass[linkedInterfaces.length];
 
         for (int i = 0; i < linkedInterfaces.length; ++i) {
-            ObjectKlass interf = loadKlassRecursively(env, linkedInterfaces[i].getType(), false, info);
+            ObjectKlass interf = loadKlassRecursively(env, linkedInterfaces[i].getType(), false);
             superInterfaces[i] = interf;
             linkedInterfaces[i] = interf.getLinkedKlass();
         }
@@ -479,11 +480,11 @@ public abstract class ClassRegistry {
         return klass;
     }
 
-    private ObjectKlass loadKlassRecursively(ClassLoadingEnv.InContext env, Symbol<Type> type, boolean notInterface, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    private ObjectKlass loadKlassRecursively(ClassLoadingEnv.InContext env, Symbol<Type> type, boolean notInterface) throws EspressoClassLoadingException {
         Meta meta = env.getMeta();
         Klass klass;
         try {
-            klass = loadKlass(env, type, StaticObject.NULL, info);
+            klass = loadKlass(env, type, StaticObject.NULL);
         } catch (EspressoException e) {
             if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
@@ -553,11 +554,15 @@ public abstract class ClassRegistry {
         }
     }
 
-    public abstract ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException;
+    private Object getStrongHiddenClassRegistrationLock() {
+        return this;
+    }
 
-    public abstract LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException;
+    public abstract ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException;
 
-    protected abstract Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException;
+    public abstract LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException;
+
+    protected abstract Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type) throws EspressoClassLoadingException;
 
     protected abstract void loadKlassCountInc();
 

@@ -229,7 +229,7 @@ public final class ClassRegistries {
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.loadKlass(env, type, protectionDomain, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        return registry.loadKlass(env, type, protectionDomain);
     }
 
     @TruffleBoundary

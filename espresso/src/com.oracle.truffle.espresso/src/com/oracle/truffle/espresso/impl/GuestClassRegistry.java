@@ -79,27 +79,27 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @Override
     public ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
-        ObjectKlass klass = performLoadKlass(env, type, info);
+        ObjectKlass klass = performLoadKlass(env, type);
         return klass.getLinkedKlass().getParserKlass();
     }
 
     @Override
     public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
-        ObjectKlass klass = performLoadKlass(env, type, info);
+        ObjectKlass klass = performLoadKlass(env, type);
         return klass.getLinkedKlass();
     }
 
-    private ObjectKlass performLoadKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+    private ObjectKlass performLoadKlass(ClassLoadingEnv env, Symbol<Type> type) {
         if (!(env instanceof ClassLoadingEnv.InContext)) {
             throw EspressoError.shouldNotReachHere("This registry cannot load classes in no-context environment");
         }
         ClassLoadingEnv.InContext contextEnv = (ClassLoadingEnv.InContext) env;
-        Klass klass = loadKlassImpl(contextEnv, type, info);
+        Klass klass = loadKlassImpl(contextEnv, type);
         return (ObjectKlass) klass;
     }
 
     @Override
-    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+    public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type) {
         assert StaticObject.notNull(classLoader);
         StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, env.getMeta().toGuestString(Types.binaryName(type)));
         Klass klass = guestClass.getMirrorKlass();
