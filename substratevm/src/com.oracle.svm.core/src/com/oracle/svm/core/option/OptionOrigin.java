@@ -95,7 +95,7 @@ public abstract class OptionOrigin {
 
     public static final class CommandLineOptionOrigin extends OptionOrigin {
 
-        private static CommandLineOptionOrigin singleton = new CommandLineOptionOrigin();
+        public static final CommandLineOptionOrigin singleton = new CommandLineOptionOrigin();
 
         private CommandLineOptionOrigin() {
         }

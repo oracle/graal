@@ -56,7 +56,7 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public boolean linkAtBuildTime(Class<?> clazz) {
-        return feature.requiresCompleteDefinition(clazz);
+        return feature.linkAtBuildTime(clazz);
     }
 
     public String errorMessageFor(ResolvedJavaType type) {
@@ -68,8 +68,7 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public String errorMessageFor(Class<?> clazz) {
-        return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by ";
-        // TODO add information from locatable option where the class is registered for build time
-        // initialization.
+        assert feature.linkAtBuildTime(clazz);
+        return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by " + feature.linkAtBuildTimeReason(clazz);
     }
 }

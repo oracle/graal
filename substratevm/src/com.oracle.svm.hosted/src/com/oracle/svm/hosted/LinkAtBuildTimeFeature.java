@@ -28,6 +28,7 @@ package com.oracle.svm.hosted;
 import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -61,6 +62,8 @@ public final class LinkAtBuildTimeFeature implements Feature {
 
     private final String javaIdentifier = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
     private final Pattern validOptionValue = Pattern.compile(javaIdentifier + "(\\." + javaIdentifier + ")*");
+
+    private final Set<OptionOrigin> reasonCommandLine = Collections.singleton(OptionOrigin.CommandLineOptionOrigin.singleton);
 
     private final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
     private final Set<Module> requireCompleteModules = new HashSet<>();
@@ -121,21 +124,42 @@ public final class LinkAtBuildTimeFeature implements Feature {
         }
     }
 
-    boolean requiresCompleteDefinition(Class<?> clazz) {
-        if (requireCompleteAll || clazz.isArray()) {
-            return true;
+    boolean linkAtBuildTime(Class<?> clazz) {
+        return linkAtBuildTimeImpl(clazz) != null;
+    }
+
+    @SuppressWarnings("unchecked")
+    String linkAtBuildTimeReason(Class<?> clazz) {
+        Object reason = linkAtBuildTimeImpl(clazz);
+        if (reason == null) {
+            return null;
+        }
+        if (reason instanceof String) {
+            return (String) reason;
+        }
+        Set<OptionOrigin> origins = (Set<OptionOrigin>) reason;
+        return origins.stream().map(OptionOrigin::toString).collect(Collectors.joining(" and "));
+    }
+
+    private Object linkAtBuildTimeImpl(Class<?> clazz) {
+        if (requireCompleteAll) {
+            return reasonCommandLine;
         }
 
-        if (!classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
-            return true;
+        if (clazz.isArray() || !classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
+            return "system default";
         }
         assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
 
         var module = clazz.getModule();
         if (module.isNamed() && (requireCompleteModules.contains(module))) {
-            return true;
+            return module.toString();
         }
 
-        return requireCompletePackageOrClass.containsKey(clazz.getName()) || requireCompletePackageOrClass.containsKey(clazz.getPackageName());
+        Set<OptionOrigin> origins = requireCompletePackageOrClass.get(clazz.getName());
+        if (origins != null) {
+            return origins;
+        }
+        return requireCompletePackageOrClass.get(clazz.getPackageName());
     }
 }
