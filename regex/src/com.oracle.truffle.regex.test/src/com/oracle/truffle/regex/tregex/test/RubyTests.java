@@ -48,7 +48,7 @@ public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby,IgnoreAtomicGroups=true";
+        return "Flavor=Ruby";
     }
 
     void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
@@ -342,7 +342,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void ignoreAtomicGroups() {
-        test("(?>foo)", "", "foo", 0, true, 0, 3);
+        test("(?>foo)", "", "IgnoreAtomicGroups=true", "foo", 0, true, 0, 3);
     }
 
     @Test
