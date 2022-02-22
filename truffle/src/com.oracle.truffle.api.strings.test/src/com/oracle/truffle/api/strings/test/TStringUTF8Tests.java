@@ -156,8 +156,8 @@ public class TStringUTF8Tests extends TStringTestBase {
 
     @Test
     public void testIndexOf5() {
-        TruffleString ts1 = TruffleString.fromJavaStringUncached("a£b£", UTF_8);
-        TruffleString ts2 = TruffleString.fromJavaStringUncached("a£", UTF_8);
+        TruffleString ts1 = TruffleString.fromJavaStringUncached("a\u00A3b\u00A3", UTF_8);
+        TruffleString ts2 = TruffleString.fromJavaStringUncached("a\u00A3", UTF_8);
         Assert.assertEquals(-1, ts1.lastIndexOfStringUncached(ts2, 4, 1, UTF_8));
         Assert.assertEquals(-1, ts1.lastByteIndexOfStringUncached(ts2, 6, 1, UTF_8));
     }
