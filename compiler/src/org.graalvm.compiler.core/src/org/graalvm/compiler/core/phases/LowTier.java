@@ -39,6 +39,7 @@ import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
+import org.graalvm.compiler.phases.common.UseTrappingDivPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -71,9 +72,13 @@ public class LowTier extends BaseTier<LowTierContext> {
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS),
                         canonicalizerWithoutGVN));
 
+        appendPhase(canonicalizerWithoutGVN);
+
         appendPhase(new UseTrappingNullChecksPhase());
 
         appendPhase(canonicalizerWithoutGVN.copyWithoutFurtherCanonicalizations());
+
+        appendPhase(new UseTrappingDivPhase());
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 

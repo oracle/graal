@@ -136,4 +136,56 @@ public class FloatingDivTest extends GraalCompilerTest {
         test(opt, "snippet4", 10, 3);
         check(true);
     }
+
+    public static int snippet5(int a, @SuppressWarnings("unused") int b) {
+        int i = a / b;
+        GraalDirectives.sideEffect();
+        i += a / b;
+        return i;
+    }
+
+    @Test
+    public void test05() {
+        check(false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(opt, "snippet5", 10, 3);
+        check(true);
+    }
+
+    public static int snippet6(@SuppressWarnings("unused") int a, int b) {
+        int i = 100 / b;
+        GraalDirectives.sideEffect();
+        i += 100 / b;
+        return i;
+    }
+
+    @Test
+    public void test06() {
+        check(false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(opt, "snippet6", 10, 3);
+        check(true);
+    }
+
+    public static int snippet7(int[] arr) {
+        int result = 0;
+        int len = arr.length;
+        for (int i = 0; i < len; i++) {
+            int divisor = arr[i];
+            int res1 = len / divisor;
+            int res2 = len % divisor;
+            int res3 = len / divisor;
+            result += res1 + res2 + res3;
+        }
+        return result;
+    }
+
+    @Test
+    public void test07() {
+        check(false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(opt, "snippet7", new int[]{1, 2, 3, 4, 5, 6});
+        check(true);
+    }
+
 }

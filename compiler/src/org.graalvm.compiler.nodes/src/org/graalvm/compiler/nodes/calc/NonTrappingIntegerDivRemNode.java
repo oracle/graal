@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 /**
  * {@link FloatingNode} version of {@link IntegerDivRemNode} if it is known that this node cannot
  * trap nor overflow (either based on the input stamps, or based on the input stamps and an
- * additional guard node.
+ * additional guard node).
  */
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1)
 public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode {
@@ -53,10 +53,10 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     protected NonTrappingIntegerDivRemNode(NodeClass<? extends NonTrappingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode guard) {
         super(c, op, x, y);
-        this.guard = guard;
+        this.zeroGuard = guard;
     }
 
-    @OptionalInput(InputType.Guard) protected GuardingNode guard;
+    @OptionalInput(InputType.Guard) protected GuardingNode zeroGuard;
 
     /**
      * TODO Loop Stamps and divisors.
@@ -65,7 +65,7 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @Override
     public GuardingNode getGuard() {
-        return guard;
+        return zeroGuard;
     }
 
     public void setDividendOverflowChecked() {
@@ -74,8 +74,8 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsagesInterface(this.guard, guard);
-        this.guard = guard;
+        updateUsagesInterface(this.zeroGuard, guard);
+        this.zeroGuard = guard;
     }
 
     private boolean canTrap() {

@@ -104,7 +104,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
         boolean isSupportedReason(DeoptimizationReason reason);
 
-        boolean canReplaceCondition(LogicNode condition);
+        boolean canReplaceCondition(LogicNode condition, IfNode ifNode);
 
         boolean useAddressOptimization(AddressNode adr);
 
@@ -112,13 +112,19 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
                         IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation);
 
         DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation);
+
+        boolean trueSuccessorIsDeopt();
+
+        void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition);
+
+        void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
     }
 
     static class UseTrappingNullChecksVersion implements UseTrappingVersion {
 
         final int implicitNullCheckLimit;
 
-        public UseTrappingNullChecksVersion(int implicitNullCheckLimit) {
+        UseTrappingNullChecksVersion(int implicitNullCheckLimit) {
             this.implicitNullCheckLimit = implicitNullCheckLimit;
         }
 
@@ -128,7 +134,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
 
         @Override
-        public boolean canReplaceCondition(LogicNode condition) {
+        public boolean canReplaceCondition(LogicNode condition, IfNode ifNode) {
             return condition instanceof IsNullNode;
         }
 
@@ -186,6 +192,20 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             return graph.add(NullCheckNode.create(isNullNode.getValue(), deoptReasonAndAction, deoptSpeculation));
         }
 
+        @Override
+        public boolean trueSuccessorIsDeopt() {
+            return true;
+        }
+
+        @Override
+        public void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition) {
+            // nothing to do
+        }
+
+        @Override
+        public void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode) {
+            // nothing to do
+        }
     }
 
     public static void tryUseTrappingVersion(MetaAccessProvider metaAccessProvider, DynamicDeoptimizeNode deopt, UseTrappingVersion trappingVersion) {
@@ -255,7 +275,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
     }
 
-    private static void tryUseTrappingVersion(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason,
+    static void tryUseTrappingVersion(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason,
                     Speculation speculation, UseTrappingVersion trappingVersion, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         assert predecessor != null;
         if (!GraalServices.supportsArbitraryImplicitException() && !trappingVersion.isSupportedReason(deoptimizationReason)) {
@@ -301,11 +321,17 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
         if (current instanceof IfNode) {
             IfNode ifNode = (IfNode) current;
-            if (branch != ifNode.trueSuccessor()) {
-                return;
+            if (trappingVersion.trueSuccessorIsDeopt()) {
+                if (branch != ifNode.trueSuccessor()) {
+                    return;
+                }
+            } else {
+                if (branch != ifNode.falseSuccessor()) {
+                    return;
+                }
             }
             LogicNode condition = ifNode.condition();
-            if (trappingVersion.canReplaceCondition(condition)) {
+            if (trappingVersion.canReplaceCondition(condition, ifNode)) {
                 replaceWithTrappingVersion(deopt, ifNode, condition, deoptimizationReason, trappingVersion, deoptReasonAndAction, deoptSpeculation);
             }
         }
@@ -322,8 +348,8 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         if (deoptimizationReason == DeoptimizationReason.UnreachedCode) {
             counterTrappingNullCheckUnreached.increment(debug);
         }
-        AbstractBeginNode nonTrappingContinuation = ifNode.falseSuccessor();
-        AbstractBeginNode trappingContinuation = ifNode.trueSuccessor();
+        AbstractBeginNode nonTrappingContinuation = trappingVersion.trueSuccessorIsDeopt() ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
+        AbstractBeginNode trappingContinuation = trappingVersion.trueSuccessorIsDeopt() ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
         DeoptimizingFixedWithNextNode trappingVersionNode = null;
         trappingVersionNode = trappingVersion.tryReplaceExisting(graph, nonTrappingContinuation, trappingContinuation, condition, ifNode, deopt, deoptReasonAndAction, deoptSpeculation);
         if (trappingVersionNode == null) {
@@ -333,6 +359,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             debug.log("Inserted NullCheckNode %s", trappingVersionNode);
         }
         trappingVersionNode.setStateBefore(deopt.stateBefore());
+        trappingVersion.actionBeforeGuardRewrite(trappingVersionNode);
         /*
          * We now have the pattern NullCheck/BeginNode/... It's possible some node is using the
          * BeginNode as a guard input, so replace guard users of the Begin with the NullCheck and
@@ -343,6 +370,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             GraphUtil.unlinkFixedNode(nonTrappingContinuation);
             nonTrappingContinuation.safeDelete();
         }
+        trappingVersion.finalAction(trappingVersionNode, condition);
         GraphUtil.killCFG(trappingContinuation);
         GraphUtil.tryKillUnused(condition);
     }

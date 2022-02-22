@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_32;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
@@ -38,8 +39,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
-@NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lowerable, IterableNodeType {
+import jdk.vm.ci.meta.JavaConstant;
+
+@NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_32, size = SIZE_1)
+public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lowerable, IterableNodeType, GuardingNode {
 
     public static final NodeClass<IntegerDivRemNode> TYPE = NodeClass.create(IntegerDivRemNode.class);
 
@@ -58,13 +61,15 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     private final Op op;
     private final Type type;
     private boolean canDeopt;
+    private boolean forceLowerFloating;
+    protected JavaConstant deoptReasonAndAction;
+    protected JavaConstant deoptSpeculation;
 
     protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode x, ValueNode y, GuardingNode zeroCheck) {
         super(c, stamp, x, y);
         this.zeroCheck = zeroCheck;
         this.op = op;
         this.type = type;
-
         this.canDeopt = calculateCanDeoptimize();
     }
 
@@ -90,6 +95,14 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         return (yStamp.contains(0) && zeroCheck == null) || yStamp.contains(-1);
     }
 
+    public boolean isForceLowerFloating() {
+        return forceLowerFloating;
+    }
+
+    public void setForceLowerFloating() {
+        this.forceLowerFloating = true;
+    }
+
     @Override
     public boolean canDeoptimize() {
         /*
@@ -99,5 +112,19 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
          */
         canDeopt = canDeopt && calculateCanDeoptimize();
         return canDeopt;
+    }
+
+    public JavaConstant getDeoptReasonAndAction() {
+        return deoptReasonAndAction;
+    }
+
+    public JavaConstant getDeoptSpeculation() {
+        return deoptSpeculation;
+    }
+
+    public void setImplicitDeoptimization(JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+        assert deoptReasonAndAction != null && deoptSpeculation != null;
+        this.deoptReasonAndAction = deoptReasonAndAction;
+        this.deoptSpeculation = deoptSpeculation;
     }
 }
