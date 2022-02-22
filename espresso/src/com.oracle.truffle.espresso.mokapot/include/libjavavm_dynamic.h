@@ -20,8 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef __LIBESPRESSO_H
-#define __LIBESPRESSO_H
+#ifndef __LIBJAVAVM_H
+#define __LIBJAVAVM_H
 
 #include <graal_isolate_dynamic.h>
 
