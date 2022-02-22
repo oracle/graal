@@ -709,8 +709,8 @@ public final class GCImpl implements GC {
                  * grey, so I have to use the dirty cards marks to blacken them, but that's what
                  * card marks are for.
                  */
-                 OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-                 oldGen.emptyFromSpaceIntoToSpace();
+                OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+                oldGen.emptyFromSpaceIntoToSpace();
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Old Generation", startTicks);
             }
