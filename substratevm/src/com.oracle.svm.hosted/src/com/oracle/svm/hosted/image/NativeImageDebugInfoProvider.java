@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
@@ -1061,10 +1062,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public ResolvedJavaType ownerType() {
+            ResolvedJavaType result;
             if (method instanceof HostedMethod) {
-                return getDeclaringClass((HostedMethod) method, true);
+                result = getDeclaringClass((HostedMethod) method, true);
+            } else {
+                result = method.getDeclaringClass();
             }
-            return method.getDeclaringClass();
+            if (result instanceof WrappedJavaType) {
+                result = ((WrappedJavaType) result).getWrapped();
+            }
+            return result;
         }
 
         @Override
