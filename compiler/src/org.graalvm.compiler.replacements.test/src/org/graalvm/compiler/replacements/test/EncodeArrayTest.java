@@ -95,8 +95,8 @@ public class EncodeArrayTest extends GraalCompilerTest {
             StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
             InstalledCode compiledMethod = getCode(method, graph);
 
-            // Caller of the tested method should guarantee the indexes are within the range -- there is
-            // no need for boundary-value testing.
+            // Caller of the tested method should guarantee the indexes are within the range --
+            // there is no need for boundary-value testing.
             for (String input : testData) {
                 char[] value = input.toCharArray();
                 int len = value.length;

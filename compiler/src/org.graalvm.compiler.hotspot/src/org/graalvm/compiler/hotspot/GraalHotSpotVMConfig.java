@@ -126,7 +126,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class);
-    private final boolean useBase64Intrinsics = getFlag("UseBASE64Intrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
     private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class);

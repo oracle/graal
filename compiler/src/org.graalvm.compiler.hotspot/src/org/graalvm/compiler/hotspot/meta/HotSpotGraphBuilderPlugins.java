@@ -635,8 +635,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    // Fully qualified name is a workaround for JDK-8056066
-    static abstract class AESCryptPluginBase extends InvocationPlugin {
+    abstract static class AESCryptPluginBase extends InvocationPlugin {
         /**
          * The AES block size is a constant 128 bits as defined by the
          * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf">standard<a/>.
@@ -684,7 +683,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    static class AESCryptPlugin extends AESCryptPluginBase {
+    public static class AESCryptPlugin extends AESCryptPluginBase {
 
         AESCryptPlugin(CryptMode mode) {
             super(mode.isEncrypt() ? AESCRYPT_ENCRYPTBLOCK : AESCRYPT_DECRYPTBLOCK,
@@ -723,7 +722,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    static class CipherBlockChainingCryptPlugin extends AESCryptPluginBase {
+    public static class CipherBlockChainingCryptPlugin extends AESCryptPluginBase {
 
         CipherBlockChainingCryptPlugin(CryptMode mode) {
             super(mode.isEncrypt() ? CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT : CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT,
@@ -753,7 +752,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    static class ElectronicCodeBookCryptPlugin extends AESCryptPluginBase {
+    public static class ElectronicCodeBookCryptPlugin extends AESCryptPluginBase {
 
         ElectronicCodeBookCryptPlugin(CryptMode mode) {
             super(mode.isEncrypt() ? ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT : ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT,
@@ -780,7 +779,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    static class CounterModeCryptPlugin extends AESCryptPluginBase {
+    public static class CounterModeCryptPlugin extends AESCryptPluginBase {
 
         CounterModeCryptPlugin() {
             super(COUNTERMODE_IMPL_CRYPT, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
@@ -978,8 +977,9 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha1 = config.useSHA1Intrinsics();
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
+        boolean useSha3 = config.sha3ImplCompressMultiBlock != 0L;
 
-        boolean implCompressMultiBlock0Enabled = isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useSha1 || useSha256 || useSha512);
+        boolean implCompressMultiBlock0Enabled = isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useMD5 || useSha1 || useSha256 || useSha512 || useSha3);
         Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
         r.registerConditional(implCompressMultiBlock0Enabled, new SnippetSubstitutionInvocationPlugin<>(DigestBaseSnippets.Templates.class,
                         "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
