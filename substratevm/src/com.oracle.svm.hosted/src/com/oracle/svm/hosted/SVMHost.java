@@ -292,7 +292,7 @@ public class SVMHost extends HostVM {
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
         return config.withRetainLocalVariables(retainLocalVariables())
-                .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()));
+                        .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()));
     }
 
     private boolean retainLocalVariables() {
@@ -426,7 +426,7 @@ public class SVMHost extends HostVM {
 
     private Object unsupportedMethod(Class<?> javaClass, String methodName) {
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
-                linkAtBuildTimeSupport.errorMessageFor(javaClass);
+                        linkAtBuildTimeSupport.errorMessageFor(javaClass);
         throw new UnsupportedFeatureException(message);
     }
 
