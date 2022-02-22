@@ -570,6 +570,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         return getParam(function, index);
     }
 
+    public int getFunctionParamsCount() {
+        return LLVM.LLVMCountParams(function);
+    }
+
     public static LLVMValueRef getParam(LLVMValueRef func, int index) {
         return LLVM.LLVMGetParam(func, index);
     }

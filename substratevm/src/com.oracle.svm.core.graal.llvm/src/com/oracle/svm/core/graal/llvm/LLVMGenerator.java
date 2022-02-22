@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
+import jdk.vm.ci.code.RegisterValue;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -1031,12 +1032,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             LLVMValueRef thread = builder.getFunctionParam(threadIdIndex);
             LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
             LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
-            LLVMValueRef methodId = builder.getFunctionParam(methodIdIndex);
+            LLVMValueRef methodId = builder.getFunctionParam(builder.getFunctionParamsCount() - 1);
             LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
             jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         } else {
-            LLVMValueRef methodBase = builder.getFunctionParam(methodIdIndex);
-            jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
+            LLVMValueRef methodBase = builder.getFunctionParam(builder.getFunctionParamsCount() - 1);
+            jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         }
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
         buildInlineJump(jumpAddress);
