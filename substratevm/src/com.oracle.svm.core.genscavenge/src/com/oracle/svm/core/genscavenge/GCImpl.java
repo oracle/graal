@@ -640,14 +640,19 @@ public final class GCImpl implements GC {
                  * Object reference visits.
                  */
                 prepareForPromotion(false);
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Snapshot Heap", startTicks);
+            }
 
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
                 /*
                  * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
                  * objects are in fromSpace.
                  */
                 promoteChunksWithPinnedObjects();
             } finally {
-                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Objects", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Pinned Objects", startTicks);
             }
 
             startTicks = JfrGCEvents.startGCPhasePause();
@@ -697,16 +702,21 @@ public final class GCImpl implements GC {
     private void cheneyScanFromDirtyRoots() {
         Timer cheneyScanFromDirtyRootsTimer = timers.cheneyScanFromDirtyRoots.open();
         try {
-            long startTicks = JfrGCEvents.startGCPhasePause();
-            try {
-                /*
-                 * Move all the chunks in fromSpace to toSpace. That does not make those chunks
-                 * grey, so I have to use the dirty cards marks to blacken them, but that's what
-                 * card marks are for.
-                 */
-                OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-                oldGen.emptyFromSpaceIntoToSpace();
+             long startTicks = JfrGCEvents.startGCPhasePause();
+             try {
+                  /*
+                   * Move all the chunks in fromSpace to toSpace. That does not make those chunks
+                   * grey, so I have to use the dirty cards marks to blacken them, but that's what
+                   * card marks are for.
+                   */
+                  OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+                  oldGen.emptyFromSpaceIntoToSpace();
+             } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Old Generation", startTicks);
+             }
 
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
                 /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
                 /*
                  * Debugging tip: I could move the taking of the snapshot and the scanning of grey
@@ -714,7 +724,12 @@ public final class GCImpl implements GC {
                  * Object reference visits.
                  */
                 prepareForPromotion(true);
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Snapshot Heap", startTicks);
+            }
 
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
                 /*
                  * Make sure any released objects are in toSpace (because this is an incremental
                  * collection). I do this before blackening any roots to make sure the chunks with
@@ -723,7 +738,7 @@ public final class GCImpl implements GC {
                  */
                 promoteChunksWithPinnedObjects();
             } finally {
-                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Objects", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Pinned Objects", startTicks);
             }
 
             startTicks = JfrGCEvents.startGCPhasePause();
