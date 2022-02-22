@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <pthread.h>
+#include <stdio.h>
+#include <graalvm/llvm/polyglot.h>
 
 pthread_t threads[3];
 
@@ -47,4 +49,23 @@ int check_different() {
         }
     }
     return 1;
+}
+
+char buffer[10240];
+
+FILE *open_buffer() {
+    return fmemopen(buffer, sizeof(buffer), "w");
+}
+
+void concurrent_put(FILE *f, int id) {
+    for (int i = 0; i < 20; i++) {
+        fprintf(f, "thread %d %d\n", id, i);
+    }
+}
+
+void *finalize_buffer(FILE *f) {
+    int length = ftell(f);
+    fclose(f);
+
+    return polyglot_from_string_n(buffer, length, "ASCII");
 }
