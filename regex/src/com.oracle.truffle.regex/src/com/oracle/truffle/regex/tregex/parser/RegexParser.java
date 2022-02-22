@@ -98,11 +98,6 @@ public final class RegexParser {
                 // However, in Python and Ruby, they are valid, since the contents of capture groups
                 // are not cleared when re-entering a loop.
                 astBuilder.removeCurTerm();
-            } else if (token.kind != Token.Kind.quantifier) {
-                // We have to delay this optimization because it may remove look-around assertions
-                // entirely, which would lead to successive quantifiers being applied to the
-                // preceding term, e.g. /x(?=)*/ would be wrongfully transformed to /x*/.
-                astBuilder.optimizeLookAround();
             }
             switch (token.kind) {
                 case caret:

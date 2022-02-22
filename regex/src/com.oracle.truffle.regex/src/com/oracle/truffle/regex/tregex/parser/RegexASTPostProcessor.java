@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.regex.RegexFlags;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -49,6 +50,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
@@ -57,9 +60,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 public class RegexASTPostProcessor {
 
@@ -76,6 +81,7 @@ public class RegexASTPostProcessor {
     }
 
     public void prepareForDFA() {
+        OptimizeLookAroundsVisitor.optimizeLookArounds(ast, compilationBuffer);
         if (properties.hasQuantifiers()) {
             UnrollQuantifiersVisitor.unrollQuantifiers(ast, compilationBuffer);
         }
@@ -269,14 +275,14 @@ public class RegexASTPostProcessor {
                 if (unroll && quantifier.getMin() > 0) {
                     // stash successors of toExpand to buffer
                     int size = curSequence.size();
-                    for (int i = curTerm.getSeqIndex() + 1; i < size; i++) {
+                    for (int i = toExpand.getSeqIndex() + 1; i < size; i++) {
                         buf.add(curSequence.getLastTerm());
                         curSequence.removeLastTerm();
                     }
                     // unroll non-optional part ( x{3} -> xxx )
-                    curTerm.setExpandedQuantifier(true);
+                    toExpand.setExpandedQuantifier(true);
                     for (int i = 0; i < quantifier.getMin() - 1; i++) {
-                        Term term = copyVisitor.copy(curTerm);
+                        Term term = copyVisitor.copy(toExpand);
                         term.setExpandedQuantifier(true);
                         curSequence.add(term);
                         curTerm = term;
@@ -310,6 +316,147 @@ public class RegexASTPostProcessor {
                     }
                 }
             }
+        }
+    }
+
+    private static final class OptimizeLookAroundsVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+        private final RegexAST ast;
+        private final CompilationBuffer compilationBuffer;
+        private final NodeCountVisitor countVisitor = new NodeCountVisitor();
+
+        private OptimizeLookAroundsVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
+            this.ast = ast;
+            this.compilationBuffer = compilationBuffer;
+        }
+
+        public static void optimizeLookArounds(RegexAST ast, CompilationBuffer compilationBuffer) {
+            new OptimizeLookAroundsVisitor(ast, compilationBuffer).run(ast.getRoot());
+        }
+
+        private void removeTerm(Sequence sequence, int i) {
+            ObjectArrayBuffer<Term> buf = compilationBuffer.getObjectBuffer1();
+            // stash successors of term to buffer
+            int size = sequence.size();
+            for (int j = i + 1; j < size; j++) {
+                buf.add(sequence.getLastTerm());
+                sequence.removeLastTerm();
+            }
+            // drop term
+            sequence.removeLastTerm();
+            // restore the stashed successors
+            for (int j = buf.length() - 1; j >= 0; j--) {
+                sequence.add(buf.get(j));
+            }
+        }
+
+        @Override
+        protected void leave(Sequence sequence) {
+            int i = 0;
+            while (i < sequence.size()) {
+                Term term = sequence.get(i);
+                if (term.isLookAroundAssertion()) {
+                    Optional<Term> replacement = optimizeLookAround((LookAroundAssertion) term);
+                    if (replacement != null) {
+                        if (replacement.isPresent()) {
+                            sequence.replace(i, replacement.get());
+                        } else {
+                            removeTerm(sequence, i);
+                            i--;
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+
+        /**
+         * Tries to find an optimized representation of a look-around assertion.
+         * 
+         * @return either:
+         *         <ul>
+         *         <li>a present {@link Term} which is supposed to replace the look-around
+         *         assertion</li>
+         *         <li>{@link Optional#empty()} if the look-around assertion is to be dropped</li>
+         *         <li>{@code null} if no replacement was found</li>
+         *         </ul>
+         */
+        private Optional<Term> optimizeLookAround(LookAroundAssertion lookaround) {
+            Group group = lookaround.getGroup();
+
+            // Drop empty lookarounds:
+            // * (?=) -> NOP
+            // * (?<=) -> NOP
+            // * (?!) -> DEAD
+            // * (?<!) -> DEAD
+            if (group.size() == 1 && group.getFirstAlternative().isEmpty()) {
+                if (lookaround.isNegated()) {
+                    // empty negative lookarounds never match
+                    ast.getNodeCount().dec(countVisitor.count(lookaround));
+                    return Optional.of(ast.createCharacterClass(CodePointSet.getEmpty()));
+                } else {
+                    // empty positive lookarounds are no-ops
+                    ast.getNodeCount().dec(countVisitor.count(lookaround));
+                    return Optional.empty();
+                }
+            }
+
+            // Extract position assertions from positive lookarounds
+            if (!lookaround.isNegated()) {
+                if (group.size() == 1 && group.getFirstAlternative().size() == 1 && group.getFirstAlternative().getFirstTerm().isPositionAssertion()) {
+                    // unwrap positive lookarounds containing only a position assertion
+                    // * (?=$) -> $
+                    ast.getNodeCount().dec(countVisitor.count(lookaround));
+                    PositionAssertion positionAssertion = (PositionAssertion) group.getFirstAlternative().getFirstTerm();
+                    ast.register(positionAssertion);
+                    return Optional.of(positionAssertion);
+                } else {
+                    int innerPositionAssertion = -1;
+                    for (int i = 0; i < group.size(); i++) {
+                        Sequence s = group.getAlternatives().get(i);
+                        if (s.size() == 1 && s.getFirstTerm().isPositionAssertion()) {
+                            innerPositionAssertion = i;
+                            break;
+                        }
+                    }
+                    // extract alternatives consisting of a single position assertion
+                    // * (?=...|$) -> (?:$|(?=...))
+                    // * (?=...|$|...) -> (?:$|(?=...|...))
+                    if (innerPositionAssertion >= 0) {
+                        Sequence removed = group.getAlternatives().remove(innerPositionAssertion);
+                        Group wrapGroup = ast.createGroup();
+                        wrapGroup.setEnclosedCaptureGroupsLow(group.getEnclosedCaptureGroupsLow());
+                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getEnclosedCaptureGroupsHigh());
+                        wrapGroup.add(removed);
+                        Sequence wrapSeq = wrapGroup.addSequence(ast);
+                        wrapSeq.add(lookaround);
+                        return Optional.of(wrapGroup);
+                    }
+                }
+            }
+
+            // Convert single-character-class negative lookarounds to positive ones
+            // * (?!x) -> (?:$|(?=[^x]))
+            // This simplifies things for the DFA generator.
+            if (lookaround.isNegated() && group.size() == 1 && group.getFirstAlternative().isSingleCharClass()) {
+                // we don't have to expand the inverse in unicode explode mode here, because the
+                // character set is guaranteed to be in BMP range, and its inverse will match all
+                // surrogates
+                CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
+                assert !ast.getFlags().isUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
+                assert !group.hasEnclosedCaptureGroups();
+                Group wrapGroup = ast.createGroup();
+                Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
+                positionAssertionSeq.add(ast.createPositionAssertion(lookaround.isLookAheadAssertion() ? PositionAssertion.Type.DOLLAR : PositionAssertion.Type.CARET));
+                Sequence wrapSeq = wrapGroup.addSequence(ast);
+                wrapSeq.add(lookaround);
+                lookaround.setNegated(false);
+                cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
+                return Optional.of(wrapGroup);
+            }
+
+            // No optimization found.
+            return null;
         }
     }
 }

@@ -54,7 +54,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
@@ -124,7 +123,6 @@ public final class RegexASTBuilder {
     }
 
     public RegexAST popRootGroup(int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
-        optimizeLookAround();
         optimizeGroup();
         ast.getRoot().setEnclosedCaptureGroupsHigh(groupCount.getCount());
         ast.setRealGroupCount(numberOfCaptureGroups);
@@ -191,75 +189,6 @@ public final class RegexASTBuilder {
             curSequence = (Sequence) parent;
         }
         curGroup = curSequence.getParent();
-    }
-
-    public void optimizeLookAround() {
-        if (curTerm == null || !curTerm.isLookAroundAssertion()) {
-            return;
-        }
-        LookAroundAssertion lookaround = (LookAroundAssertion) curTerm;
-        Group group = lookaround.getGroup();
-        if (!group.isCapturing()) {
-            if ((group.isEmpty() || (group.size() == 1 && group.getFirstAlternative().isEmpty()))) {
-                if (lookaround.isNegated()) {
-                    // empty negative lookarounds never match
-                    replaceCurTermWithDeadNode();
-                } else {
-                    // empty positive lookarounds are no-ops
-                    removeCurTerm();
-                }
-            } else if (!lookaround.isNegated()) {
-                if (group.size() == 1 && group.getFirstAlternative().size() == 1 && group.getFirstAlternative().getFirstTerm().isPositionAssertion()) {
-                    // unwrap positive lookarounds containing only a position assertion
-                    removeCurTerm();
-                    PositionAssertion positionAssertion = (PositionAssertion) group.getFirstAlternative().getFirstTerm();
-                    ast.register(positionAssertion);
-                    addTerm(positionAssertion);
-                } else {
-                    int innerPositionAssertion = -1;
-                    for (int i = 0; i < group.size(); i++) {
-                        Sequence s = group.getAlternatives().get(i);
-                        if (s.size() == 1 && s.getFirstTerm().isPositionAssertion()) {
-                            innerPositionAssertion = i;
-                            break;
-                        }
-                    }
-                    // (?=...|$) -> (?:$|(?=...))
-                    if (innerPositionAssertion >= 0) {
-                        curSequence.removeLastTerm();
-                        Sequence removed = group.getAlternatives().remove(innerPositionAssertion);
-                        Group wrapGroup = ast.createGroup();
-                        wrapGroup.setEnclosedCaptureGroupsLow(group.getEnclosedCaptureGroupsLow());
-                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getEnclosedCaptureGroupsHigh());
-                        wrapGroup.add(removed);
-                        Sequence wrapSeq = wrapGroup.addSequence(ast);
-                        wrapSeq.add(lookaround);
-                        addTerm(wrapGroup);
-                    }
-                }
-            }
-        }
-        /*
-         * Convert single-character-class negative lookarounds to positive ones by the following
-         * expansion: {@code (?!x) -> (?:$|(?=[^x]))}. This simplifies things for the DFA generator.
-         */
-        if (lookaround.isNegated() && group.size() == 1 && group.getFirstAlternative().isSingleCharClass()) {
-            lookaround.setNegated(false);
-            CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
-            // we don't have to expand the inverse in unicode explode mode here, because the
-            // character set is guaranteed to be in BMP range, and its inverse will match all
-            // surrogates
-            assert !flags.isUnicode() || !source.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
-            assert !group.hasEnclosedCaptureGroups();
-            cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
-            curSequence.removeLastTerm();
-            Group wrapGroup = ast.createGroup();
-            Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
-            positionAssertionSeq.add(ast.createPositionAssertion(lookaround.isLookAheadAssertion() ? PositionAssertion.Type.DOLLAR : PositionAssertion.Type.CARET));
-            Sequence wrapSeq = wrapGroup.addSequence(ast);
-            wrapSeq.add(lookaround);
-            addTerm(wrapGroup);
-        }
     }
 
     public void addTerm(Term term) {
