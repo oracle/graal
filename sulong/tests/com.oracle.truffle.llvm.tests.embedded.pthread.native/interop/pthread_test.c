@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,22 @@
  */
 #include <pthread.h>
 
-pthread_t get_self() {
-    return pthread_self();
+pthread_t threads[3];
+
+pthread_t get_self(int i) {
+    pthread_t self = pthread_self();
+    threads[i] = self;
+    return self;
+}
+
+int check_different() {
+    int i, j;
+    for (i = 0; i < 3; i++) {
+        for (j = i + 1; j < 3; j++) {
+            if (threads[i] == threads[j]) {
+                return 0;
+            }
+        }
+    }
+    return 1;
 }

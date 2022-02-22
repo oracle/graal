@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,7 +60,7 @@ public class ThreadsInteropTest extends InteropTestBase {
         for (int i = 0; i < THREAD_COUNT; i++) {
             final int threadIdx = i;
             threads[threadIdx] = new Thread(() -> {
-                ret[threadIdx] = cpart.invokeMember("get_self");
+                ret[threadIdx] = cpart.invokeMember("get_self", threadIdx);
             });
             threads[threadIdx].start();
         }
@@ -72,5 +72,8 @@ public class ThreadsInteropTest extends InteropTestBase {
             }
         }
         assertDifferent(ret);
+
+        Value different = cpart.invokeMember("check_different");
+        Assert.assertEquals("different", 1, different.asInt());
     }
 }
