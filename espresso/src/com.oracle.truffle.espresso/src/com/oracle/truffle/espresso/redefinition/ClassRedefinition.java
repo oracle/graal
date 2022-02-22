@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -296,28 +297,8 @@ public final class ClassRedefinition {
     // changes
     private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
                     throws RedefintionNotSupportedException {
-        // handle enum constant changes
-        // currently, we only allow appending new enum constants
         if (oldKlass.getSuperKlass() == oldKlass.getMeta().java_lang_Enum) {
-            Field[] oldEnumFields = oldKlass.getDeclaredFields();
-            ParserField[] newEnumFields = newParserKlass.getFields();
-            for (int i = 0; i < oldEnumFields.length; i++) {
-                Field enumField = oldEnumFields[i];
-                if (enumField.getType() != oldKlass.getType()) {
-                    break;
-                } else {
-                    // old constant MUST be present in new class
-                    if (i >= newEnumFields.length) {
-                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
-                    }
-                    ParserField newEnumField = newEnumFields[i];
-                    if (newEnumField.getType() != oldKlass.getType()) {
-                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
-                    } else if (newEnumField.getName() != enumField.getName()) {
-                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
-                    }
-                }
-            }
+            detectInvalidEnumConstantChanges(newParserKlass, oldKlass);
         }
 
         ClassChange result = ClassChange.NO_CHANGE;
@@ -506,6 +487,36 @@ public final class ClassRedefinition {
         collectedChanges.addSuperInterfaces(newSuperInterfaces);
 
         return result;
+    }
+
+    private static void detectInvalidEnumConstantChanges(ParserKlass newParserKlass, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
+        // detect invalid enum constant changes
+        // currently, we only allow appending new enum constants
+        Field[] oldEnumFields = oldKlass.getDeclaredFields();
+        LinkedList<Symbol<Symbol.Name>> oldEnumConstants = new LinkedList<>();
+        for (Field oldEnumField : oldEnumFields) {
+            if (oldEnumField.getType() == oldKlass.getType()) {
+                oldEnumConstants.addLast(oldEnumField.getName());
+            }
+        }
+        LinkedList<Symbol<Symbol.Name>> newEnumConstants = new LinkedList<>();
+        ParserField[] newEnumFields = newParserKlass.getFields();
+        for (ParserField newEnumField : newEnumFields) {
+            if (newEnumField.getType() == oldKlass.getType()) {
+                newEnumConstants.addLast(newEnumField.getName());
+            }
+        }
+        // we don't currently allow removing enum constants
+        if (oldEnumConstants.size() > newEnumConstants.size()) {
+            throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+        }
+
+        // compare ordered lists, we don't allow reordering enum constants
+        for (int i = 0; i < oldEnumConstants.size(); i++) {
+            if (oldEnumConstants.get(i) != newEnumConstants.get(i)) {
+                throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+            }
+        }
     }
 
     private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
