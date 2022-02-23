@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -50,8 +51,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class NativeMethodNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
-    @Child InteropLibrary executeNative;
-    @CompilationFinal boolean throwsException;
+    @Child
+    InteropLibrary executeNative;
+    @CompilationFinal
+    boolean throwsException;
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
@@ -137,7 +140,14 @@ public final class NativeMethodNode extends EspressoMethodNode {
         maybeThrowAndClearPendingException(env);
         Symbol<Type> returnType = Signatures.returnType(getMethod().getParsedSignature());
         if (Types.isReference(returnType)) {
-            return env.getHandles().get(Math.toIntExact((long) result));
+            long addr;
+            if (result instanceof Long) {
+                addr = (Long) result;
+            } else {
+                assert result instanceof TruffleObject;
+                addr = NativeUtils.interopAsPointer((TruffleObject) result);
+            }
+            return env.getHandles().get(Math.toIntExact(addr));
         }
         assert !(returnType == Type._void) || result == StaticObject.NULL;
         return result;
