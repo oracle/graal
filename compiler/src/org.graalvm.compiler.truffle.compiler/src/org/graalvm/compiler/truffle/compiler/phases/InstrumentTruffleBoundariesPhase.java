@@ -25,14 +25,14 @@
 package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.options.OptionValues;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -66,17 +66,18 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
     private final boolean isInstrumentPerInlineSite;
 
-    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, boolean instrumentPerInlineSite) {
-        super(options, snippetReflection, instrumentation);
+    public InstrumentTruffleBoundariesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, boolean instrumentPerInlineSite) {
+        super(snippetReflection, instrumentation);
         isInstrumentPerInlineSite = instrumentPerInlineSite;
     }
 
     @Override
-    protected void instrumentGraph(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant) {
+    protected void instrumentGraph(StructuredGraph graph, PartialEvaluator.Request context, JavaConstant tableConstant) {
         TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+        MethodFilter methodFilter = methodFilter(context);
         for (Node n : graph.getNodes()) {
             if (n instanceof Invoke && runtime.isTruffleBoundary(((Invoke) n).callTarget().targetMethod())) {
-                Point p = getOrCreatePoint(n);
+                Point p = getOrCreatePoint(n, methodFilter);
                 if (p != null) {
                     insertCounter(graph, context, tableConstant, (FixedWithNextNode) n.predecessor(), p.slotIndex(0));
                 }

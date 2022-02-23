@@ -49,13 +49,13 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * This analysis will insert {@link VirtualFrameSetNode}s to change the type of uninitialized slots
  * whenever this is necessary to produce matching types at merges.
  */
-public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
+public final class FrameAccessVerificationPhase extends BasePhase<PartialEvaluator.Request> {
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
@@ -107,8 +107,6 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
         return (byte) (tag & MODE_MASK);
     }
 
-    private final CompilableTruffleAST compilable;
-
     private abstract static class Effect {
         final NewFrameNode frame;
         final AbstractEndNode insertBefore;
@@ -125,8 +123,11 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
 
     private final class DeoptEffect extends Effect {
 
-        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index) {
+        private final CompilableTruffleAST compilable;
+
+        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, CompilableTruffleAST compilable) {
             super(frame, insertBefore, index);
+            this.compilable = compilable;
         }
 
         @SuppressWarnings("try")
@@ -190,14 +191,10 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
 
     private final ArrayList<Effect> effects = new ArrayList<>();
 
-    public FrameAccessVerificationPhase(CompilableTruffleAST compilable) {
-        this.compilable = compilable;
-    }
-
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
+    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
         if (graph.getNodes(NewFrameNode.TYPE).isNotEmpty()) {
-            ReentrantNodeIterator.apply(new ReentrantIterator(), graph.start(), new State());
+            ReentrantNodeIterator.apply(new ReentrantIterator(context.compilable), graph.start(), new State());
             for (Effect effect : effects) {
                 effect.apply();
             }
@@ -263,6 +260,12 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
     }
 
     private final class ReentrantIterator extends NodeIteratorClosure<State> {
+
+        private final CompilableTruffleAST compilable;
+
+        ReentrantIterator(CompilableTruffleAST compilable) {
+            this.compilable = compilable;
+        }
 
         @Override
         protected State processNode(FixedNode node, State currentState) {
@@ -372,7 +375,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                             // match
                         } else {
                             // different definitive types at merge
-                            (i == 0 ? firstEndEffects : effects).add(new DeoptEffect(frame, merge.phiPredecessorAt(i), entryIndex));
+                            (i == 0 ? firstEndEffects : effects).add(new DeoptEffect(frame, merge.phiPredecessorAt(i), entryIndex, compilable));
                             entries[i] = withValue(definitiveType);
                         }
                     }

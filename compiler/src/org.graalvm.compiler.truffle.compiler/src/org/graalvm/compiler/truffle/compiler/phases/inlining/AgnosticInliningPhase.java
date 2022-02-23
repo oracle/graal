@@ -29,13 +29,12 @@ import java.util.Collections;
 import java.util.Objects;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.SingleRunSubphase;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders> {
+public final class AgnosticInliningPhase extends BasePhase<PartialEvaluator.Request> {
 
     private static final ArrayList<InliningPolicyProvider> POLICY_PROVIDERS;
 
@@ -50,12 +49,9 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
     }
 
     private final PartialEvaluator partialEvaluator;
-    private final PartialEvaluator.Request request;
-    private boolean rootIsLeaf;
 
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator) {
         this.partialEvaluator = partialEvaluator;
-        this.request = request;
     }
 
     private static InliningPolicyProvider chosenProvider(String name) {
@@ -67,7 +63,8 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
         throw new IllegalStateException("No inlining policy provider with provided name: " + name);
     }
 
-    private InliningPolicyProvider getInliningPolicyProvider(boolean firstTier) {
+    private static InliningPolicyProvider getInliningPolicyProvider(PartialEvaluator.Request request) {
+        boolean firstTier = request.isFirstTier();
         final String policy = request.options.get(firstTier ? PolyglotCompilerOptions.FirstTierInliningPolicy : PolyglotCompilerOptions.InliningPolicy);
         if (Objects.equals(policy, "")) {
             return POLICY_PROVIDERS.get(firstTier ? POLICY_PROVIDERS.size() - 1 : 0);
@@ -77,12 +74,12 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        final InliningPolicy policy = getInliningPolicyProvider(request.isFirstTier()).get(request.options, coreProviders);
+    protected void run(StructuredGraph graph, PartialEvaluator.Request request) {
+        final InliningPolicy policy = getInliningPolicyProvider(request).get(request.options, request.highTierContext);
         final CallTree tree = new CallTree(partialEvaluator, request, policy);
-        rootIsLeaf = tree.getRoot().getChildren().isEmpty();
+        request.setRootIsLeaf(tree.getRoot().getChildren().isEmpty());
         tree.dumpBasic("Before Inline");
-        if (optionsAllowInlining()) {
+        if (optionsAllowInlining(request)) {
             policy.run(tree);
             tree.dumpBasic("After Inline");
             tree.collectTargetsToDequeue(request.task.inliningData());
@@ -92,7 +89,7 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
         tree.trace();
     }
 
-    private boolean optionsAllowInlining() {
+    private static boolean optionsAllowInlining(PartialEvaluator.Request request) {
         return request.options.get(PolyglotCompilerOptions.Inlining);
     }
 
@@ -100,9 +97,5 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
     public boolean checkContract() {
         // inlining per definition increases graph size a lot
         return false;
-    }
-
-    public boolean rootIsLeaf() {
-        return rootIsLeaf;
     }
 }
