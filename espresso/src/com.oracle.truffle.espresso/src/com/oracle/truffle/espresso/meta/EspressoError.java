@@ -34,40 +34,43 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public final class EspressoError extends Error {
 
+    static final String UNREACHABLE_MESSAGE = "EspressoError.* host exception is reachable.\n" +
+                    "Throw it behind a @TruffleBoundary or deopt with CompilerDirectives.transferToInterpreterAndInvalidate();";
+
     private static final long serialVersionUID = 2625263796982958128L;
 
     public static RuntimeException unimplemented() {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("unimplemented");
     }
 
     public static RuntimeException unimplemented(String message) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("unimplemented: " + message);
     }
 
     public static RuntimeException fatal(String message) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("fatal: " + message);
     }
 
     public static RuntimeException shouldNotReachHere() {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("should not reach here");
     }
 
     public static RuntimeException shouldNotReachHere(String message) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("should not reach here: " + message);
     }
 
     public static RuntimeException shouldNotReachHere(String message, Throwable cause) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("should not reach here: " + message, cause);
     }
 
     public static RuntimeException shouldNotReachHere(Throwable cause) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("should not reach here", cause);
     }
 
