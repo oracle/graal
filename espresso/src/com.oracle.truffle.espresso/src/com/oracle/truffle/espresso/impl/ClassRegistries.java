@@ -131,7 +131,7 @@ public final class ClassRegistries {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = findLoadedClass(env, context.getTypes().getElementalType(type), classLoader);
+            Klass elemental = findLoadedClass(env, env.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
@@ -176,7 +176,7 @@ public final class ClassRegistries {
         }
         return klasses.toArray(new Klass[0]);
     }
-
+c
     @TruffleBoundary
     public Klass[] getAllLoadedClasses() {
         ArrayList<Klass> list = new ArrayList<>();
@@ -222,7 +222,7 @@ public final class ClassRegistries {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(env, context.getTypes().getElementalType(type), classLoader, protectionDomain);
+            Klass elemental = loadKlass(env, env.getTypes().getElementalType(type), classLoader, protectionDomain);
             if (elemental == null) {
                 return null;
             }

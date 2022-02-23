@@ -145,7 +145,7 @@ public interface ClassLoadingEnv {
 
         @Override
         public boolean isLoaderBootOrPlatform(StaticObject loader) {
-            Meta meta = context.getMeta();
+            Meta meta = getMeta();
             return StaticObject.isNull(loader) ||
                             (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
         }

@@ -208,11 +208,11 @@ public abstract class ClassRegistry {
 
     private final int loaderID;
 
-    private ModuleTable.ModuleEntry unnamed;
+    private ModuleEntry unnamed;
     private final PackageTable packages;
     private final ModuleTable modules;
 
-    public ModuleTable.ModuleEntry getUnnamedModule() {
+    public ModuleEntry getUnnamedModule() {
         return unnamed;
     }
 
