@@ -596,7 +596,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                     } else {
                         return builder -> {
                             AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
-                            builder.append(new AMD64BinaryConsumer.MemoryConstOp(arithmeticOp.getMIOpcode(size, true), size, addressValue, (int) valueCst, state(write)));
+                            builder.append(new AMD64BinaryConsumer.MemoryConstOp(arithmeticOp.getMIOpcode(size, NumUtil.isByte(valueCst)), size, addressValue, (int) valueCst, state(write)));
                             return null;
                         };
                     }
