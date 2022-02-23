@@ -582,7 +582,7 @@ public abstract class PartialEvaluator {
         }
         try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug); DebugContext.Scope pe = request.debug.scope("TrufflePartialEscape", request.graph)) {
             if (!request.options.get(IterativePartialEscape)) {
-                partialEscapePhase.apply(request.graph, request.highTierContext);
+                new PartialEscapePhase(false, canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
             } else {
                 new PartialEscapePhase(true, canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
             }
