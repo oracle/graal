@@ -165,18 +165,17 @@ else:
     lib_javavm_cp = '${GRAALVM_HOME}/lib/graalvm/lib-javavm.jar'
 
 
-espresso_library_config = mx_sdk_vm.LibraryConfig(
-    destination='lib/<lib:javavm>',
+espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
+    language='java',
     jar_distributions=['espresso:LIB_JAVAVM'],
     build_args=[
-        '--language:java',
-        '--tool:all',
-        '-H:+EnableSignalAPI',
+        '-H:-JNIExportSymbols',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
         '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
+        '--initialize-at-run-time=org.graalvm.launcher.AbstractLanguageLauncher',
     ],
-    home_finder=True,
+    main_class="com.oracle.truffle.espresso.launcher.EspressoLauncher",
 )
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
