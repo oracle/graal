@@ -44,6 +44,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -59,9 +60,9 @@ import jdk.vm.ci.meta.Value;
           commit    = "2920ce54874c404126d9fd6bfbebee5f3da27dae",
           sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on
-@Opcode("AMD64_ENCODE_ISO_ARRAY")
-public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64EncodeISOArrayOp> TYPE = LIRInstructionClass.create(AMD64EncodeISOArrayOp.class);
+@Opcode("AMD64_ENCODE_ARRAY")
+public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64EncodeArrayOp> TYPE = LIRInstructionClass.create(AMD64EncodeArrayOp.class);
 
     @Def({REG}) private Value resultValue;
     @Alive({REG}) private Value originSrcValue;
@@ -79,9 +80,9 @@ public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
 
     @Temp({REG}) private Value tempValue5;
 
-    private final boolean ascii;
+    private final StringEncoding encoding;
 
-    public AMD64EncodeISOArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, boolean ascii) {
+    public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, StringEncoding encoding) {
         super(TYPE);
 
         this.resultValue = result;
@@ -101,7 +102,8 @@ public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
 
         this.tempValue5 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
 
-        this.ascii = ascii;
+        this.encoding = encoding;
+        assert encoding == StringEncoding.ASCII || encoding == StringEncoding.ISO_8859_1;
     }
 
     private static boolean supportsSSE42(TargetDescription target) {
@@ -142,6 +144,7 @@ public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
         Register vectorTemp4 = asRegister(vectorTempValue4);
         Register temp5 = asRegister(tempValue5);
 
+        boolean ascii = encoding == StringEncoding.ASCII;
         int mask = ascii ? 0xff80ff80 : 0xff00ff00;
         int shortMask = ascii ? 0xff80 : 0xff00;
 

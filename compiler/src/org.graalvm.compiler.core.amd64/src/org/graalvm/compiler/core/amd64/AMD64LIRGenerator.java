@@ -96,7 +96,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
-import org.graalvm.compiler.lir.amd64.AMD64EncodeISOArrayOp;
+import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -642,9 +642,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitEncodeISOArray(Value src, Value dst, Value length, boolean ascii) {
+    public Variable emitEncodeArray(Value src, Value dst, Value length, StringEncoding encoding) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64EncodeISOArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), ascii));
+        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), encoding));
         return result;
     }
 

@@ -33,7 +33,7 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64EncodeISOArrayOp.supports;
+import static org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp.supports;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;

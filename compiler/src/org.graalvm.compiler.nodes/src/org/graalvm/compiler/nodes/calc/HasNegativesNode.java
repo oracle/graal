@@ -37,6 +37,10 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Intrinsification for {@code java.lang.StringCoding.hasNegatives}. It tests if a byte array
+ * contain a negative value.
+ */
 @NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
 public final class HasNegativesNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<HasNegativesNode> TYPE = NodeClass.create(HasNegativesNode.class);

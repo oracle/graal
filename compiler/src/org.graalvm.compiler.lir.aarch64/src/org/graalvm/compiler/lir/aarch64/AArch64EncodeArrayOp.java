@@ -43,6 +43,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -57,9 +58,9 @@ import jdk.vm.ci.meta.Value;
           commit    = "4616c13c2f1ced8a8bdeed81f0469523932e91b5",
           sha1      = "1cedae5438e352f0572eb8ffbe1dd379feeb8ba0")
 // @formatter:on
-@Opcode("AArch64_ENCODE_ISO_ARRAY")
-public final class AArch64EncodeISOArrayOp extends AArch64LIRInstruction {
-    public static final LIRInstructionClass<AArch64EncodeISOArrayOp> TYPE = LIRInstructionClass.create(AArch64EncodeISOArrayOp.class);
+@Opcode("AArch64_ENCODE_ARRAY")
+public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64EncodeArrayOp> TYPE = LIRInstructionClass.create(AArch64EncodeArrayOp.class);
 
     @Def({REG}) private Value resultValue;
     @Alive({REG}) private Value originSrcValue;
@@ -76,9 +77,9 @@ public final class AArch64EncodeISOArrayOp extends AArch64LIRInstruction {
     @Temp({REG}) private Value vectorTempValue4;
     @Temp({REG}) private Value vectorTempValue5;
 
-    private final boolean ascii;
+    private final StringEncoding encoding;
 
-    public AArch64EncodeISOArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, boolean ascii) {
+    public AArch64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, StringEncoding encoding) {
         super(TYPE);
 
         this.resultValue = result;
@@ -97,13 +98,16 @@ public final class AArch64EncodeISOArrayOp extends AArch64LIRInstruction {
         this.vectorTempValue4 = AArch64.v4.asValue(vectorKind);
         this.vectorTempValue5 = AArch64.v5.asValue(vectorKind);
 
-        this.ascii = ascii;
+        this.encoding = encoding;
+        assert encoding == StringEncoding.ASCII || encoding == StringEncoding.ISO_8859_1;
     }
 
     @Override
     protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         AArch64Move.move(AArch64Kind.QWORD, crb, masm, srcValue, originSrcValue);
         AArch64Move.move(AArch64Kind.QWORD, crb, masm, dstValue, originDstValue);
+
+        boolean ascii = encoding == StringEncoding.ASCII;
 
         Register src = asRegister(srcValue);
         Register dst = asRegister(dstValue);

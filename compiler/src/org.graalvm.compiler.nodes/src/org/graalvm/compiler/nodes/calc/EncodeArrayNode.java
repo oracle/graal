@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -37,28 +38,32 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+/**
+ * Intrinsification for {@code java.lang.StringCoding.implEncodeISOArray} and
+ * {@code java.lang.StringCoding.implEncodeAsciiArray}. It encodes the provided byte/char array with
+ * the specified encoding and stores the result into a distinct array.
+ */
 @NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-public final class EncodeISOArrayNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<EncodeISOArrayNode> TYPE = NodeClass.create(EncodeISOArrayNode.class);
+public final class EncodeArrayNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<EncodeArrayNode> TYPE = NodeClass.create(EncodeArrayNode.class);
 
     @Input protected ValueNode src;
     @Input protected ValueNode dst;
     @Input protected ValueNode len;
 
-    // Array is encoded in ASCII
-    private final boolean ascii;
+    private final StringEncoding encoding;
 
-    public EncodeISOArrayNode(ValueNode src, ValueNode dst, ValueNode len, boolean ascii) {
+    public EncodeArrayNode(ValueNode src, ValueNode dst, ValueNode len, StringEncoding encoding) {
         super(TYPE, StampFactory.forInteger(32, 0,
                         ((IntegerStamp) len.stamp(NodeView.DEFAULT)).upperBound()));
         this.src = src;
         this.dst = dst;
         this.len = len;
-        this.ascii = ascii;
+        this.encoding = encoding;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitEncodeISOArray(gen.operand(src), gen.operand(dst), gen.operand(len), ascii));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitEncodeArray(gen.operand(src), gen.operand(dst), gen.operand(len), encoding));
     }
 }

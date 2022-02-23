@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding.ASCII;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding.ISO_8859_1;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -45,7 +47,7 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
-import org.graalvm.compiler.nodes.calc.EncodeISOArrayNode;
+import org.graalvm.compiler.nodes.calc.EncodeArrayNode;
 import org.graalvm.compiler.nodes.calc.HasNegativesNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
@@ -517,7 +519,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
                 ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
 
-                b.addPush(JavaKind.Int, new EncodeISOArrayNode(src, dst, len, false));
+                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1));
                 return true;
             }
         });
@@ -558,7 +560,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
                 ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
 
-                b.addPush(JavaKind.Int, new EncodeISOArrayNode(src, dst, len, true));
+                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII));
                 return true;
             }
 
@@ -576,7 +578,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
                     ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
-                    b.addPush(JavaKind.Int, new EncodeISOArrayNode(src, dst, len, false));
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1));
                     return true;
                 }
             }
