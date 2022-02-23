@@ -22,10 +22,20 @@
  */
 package com.oracle.truffle.espresso.redefinition.plugins.enums;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbols;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.MethodHook;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
 
@@ -43,7 +53,59 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
     @Override
     public void postClassRedefinition(@SuppressWarnings("unused") ObjectKlass[] changedKlasses) {
         for (ObjectKlass objectKlass : toRerun) {
+            // existing enum constants will not be re-created because of
+            // loss in object identity, so we have to capture constructor
+            // arguments and re-run the constructor to re-initialize enum
+            // state if any
+            HashMap<Method, MethodHook> hooks = new HashMap<>(2);
+            for (Method method : objectKlass.getDeclaredMethods()) {
+                if (method.isConstructor()) {
+                    // add a method hook that will
+                    // fire when invoked from clinit
+                    MethodHook hook = new MethodHook() {
+                        @Override
+                        public Kind getKind() {
+                            return Kind.INDEFINITE;
+                        }
+                        @Override
+                        public boolean onMethodEnter(MethodRef methodRef, MethodVariable[] variables) {
+                            // OK, see if we have a pre-existing enum constant with the same name
+                            MethodVariable nameVar = variables[1];
+                            String enumName = objectKlass.getMeta().toHostString((StaticObject) nameVar.getValue());
+
+                            Symbol<Symbol.Name> name = objectKlass.getContext().getNames().getOrCreate(enumName);
+                            Field field = objectKlass.lookupField(name, objectKlass.getType());
+                            Object existingEnumConstant = field.get(objectKlass.getStatics());
+                            if (existingEnumConstant != StaticObject.NULL) {
+                                // OK, re-run the constructor on the existing object
+                                Object[] args = new Object[variables.length - 1];
+                                for (int i = 1; i < variables.length; i++) {
+                                    args[i - 1] = variables[i].getValue();
+                                }
+                                // avoid a recursive hook on the constructor call
+                                method.removeActiveHook(this);
+                                method.invokeDirect(existingEnumConstant, args);
+                                method.addMethodHook(this);
+                            }
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onMethodExit(MethodRef method, Object returnValue) {
+                            return false;
+                        }
+                    };
+                    hooks.put(method, hook);
+                    method.addMethodHook(hook);
+                }
+            }
             objectKlass.reRunClinit();
+            // remove method hooks
+            for (Map.Entry<Method, MethodHook> entry : hooks.entrySet()) {
+                Method method = entry.getKey();
+                MethodHook hook = entry.getValue();
+                method.removeActiveHook(hook);
+            }
         }
         toRerun.clear();
     }
