@@ -63,8 +63,10 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
     protected void initCallee() {
         if (callee == null) {
             callee = targetMethod.getTypeFlow();
-            // set the callee in the original invoke too
-            ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
+            if (originalInvoke != null) {
+                // set the callee in the original invoke too
+                ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
+            }
         }
     }
 

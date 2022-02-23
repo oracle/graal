@@ -43,13 +43,13 @@ final class ImplicitExceptionsFeature implements GraalFeature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
         for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
         }
         for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
         }
         if (SubstrateOptions.VerifyTypes.getValue()) {
-            access.getBigBang().addRootMethod((AnalysisMethod) NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR.findMethod(access.getMetaAccess()), true);
         }
     }
 

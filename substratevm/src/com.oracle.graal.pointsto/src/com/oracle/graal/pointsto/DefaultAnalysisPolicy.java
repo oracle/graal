@@ -306,7 +306,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             }
 
             /* Link the saturated invoke. */
-            AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source);
+            AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false);
             contextInsensitiveInvoke.addInvokeLocation(getSource());
 
             /*
@@ -340,7 +340,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         @Override
         public final Collection<AnalysisMethod> getCallees() {
             if (isSaturated()) {
-                return targetMethod.getContextInsensitiveInvoke().getCallees();
+                return targetMethod.getContextInsensitiveVirtualInvoke().getCallees();
             } else {
                 return super.getCallees();
             }
@@ -380,7 +380,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone() && !isSaturated();
+            assert (this.isClone() || this.isContextInsensitive()) && !isSaturated();
             /* The receiver state has changed. Process the invoke. */
 
             /*
