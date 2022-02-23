@@ -80,6 +80,7 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -264,8 +265,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         context.registerLiveThread(thread);
 
         // need to duplicate the thread local value for this thread.
-
         LLVMThreadLocalValue value = contextThreadLocal.get(thread);
+        List<CallTarget> globalInitializers = context.getThreadLocalGlobalInitializer();
+
         // call the calltarget added to the context from addGlobalInitializer in initializeglobals
 
 

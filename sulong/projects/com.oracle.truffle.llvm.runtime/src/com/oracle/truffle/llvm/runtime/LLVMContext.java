@@ -115,7 +115,7 @@ public final class LLVMContext {
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     private final List<Thread> allRunningThreads = new ArrayList<>();
-    private final List<CallTarget> tlGlobalInitializer = new ArrayList<>();
+    private final List<CallTarget> threadLocalGlobalInitializer = new ArrayList<>();
 
     @CompilationFinal private LLVMThreadingStack threadingStack;
     private Object[] mainArguments;     // effectively final after initialization
@@ -1035,14 +1035,18 @@ public final class LLVMContext {
         return allRunningThreads;
     }
 
-    public synchronized void addGlobalInitializer(CallTarget callTarget) {
-        assert !tlGlobalInitializer.contains(callTarget);
-        tlGlobalInitializer.add(callTarget);
+    public synchronized void addThreadLocalGlobalInitializer(CallTarget callTarget) {
+        assert !threadLocalGlobalInitializer.contains(callTarget);
+        threadLocalGlobalInitializer.add(callTarget);
     }
 
-    public synchronized void removeGlobalInitializer(CallTarget callTarget) {
-        tlGlobalInitializer.remove(callTarget);
-        assert !tlGlobalInitializer.contains(callTarget);
+    public synchronized List<CallTarget> getThreadLocalGlobalInitializer() {
+        return threadLocalGlobalInitializer;
+    }
+
+    public synchronized void removeThreadLocalGlobalInitializer(CallTarget callTarget) {
+        threadLocalGlobalInitializer.remove(callTarget);
+        assert !threadLocalGlobalInitializer.contains(callTarget);
     }
 
     @TruffleBoundary

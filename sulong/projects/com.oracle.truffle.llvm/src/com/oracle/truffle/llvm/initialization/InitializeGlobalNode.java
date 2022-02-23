@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -107,7 +106,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
 
             threadGlobalVarInit.call(frame, thread);
         }
-        context.addGlobalInitializer(threadGlobalVarInit.getCallTarget());
+        context.addThreadLocalGlobalInitializer(threadGlobalVarInit.getCallTarget());
     }
 
     private static LLVMPointer allocOrNull(LLVMAllocateNode allocNode) {
