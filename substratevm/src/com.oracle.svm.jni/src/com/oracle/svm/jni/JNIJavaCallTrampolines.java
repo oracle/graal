@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.jni;
 
+import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
@@ -75,15 +78,15 @@ public final class JNIJavaCallTrampolines {
         throw VMError.shouldNotReachHere();
     }
 
-    private native void varargsJavaCallTrampoline();
+    private native void varargsJavaCallTrampoline(JNIEnvironment jniEnvironment, JNIObjectHandle arg1, JNIMethodId jniMethodId);
 
-    private native void arrayJavaCallTrampoline();
+    private native void arrayJavaCallTrampoline(JNIEnvironment jniEnvironment, JNIObjectHandle arg1, JNIMethodId jniMethodId);
 
-    private native void valistJavaCallTrampoline();
+    private native void valistJavaCallTrampoline(JNIEnvironment jniEnvironment, JNIObjectHandle arg1, JNIMethodId jniMethodId);
 
-    private native void varargsNonvirtualJavaCallTrampoline();
+    private native void varargsNonvirtualJavaCallTrampoline(JNIEnvironment jniEnvironment, JNIObjectHandle arg1, JNIObjectHandle arg2, JNIMethodId jniMethodId);
 
-    private native void arrayNonvirtualJavaCallTrampoline();
+    private native void arrayNonvirtualJavaCallTrampoline(JNIEnvironment jniEnvironment, JNIObjectHandle arg1, JNIObjectHandle arg2, JNIMethodId jniMethodId);
 
-    private native void valistNonvirtualJavaCallTrampoline();
+    private native void valistNonvirtualJavaCallTrampoline(JNIEnvironment jniEnvironment, JNIObjectHandle arg1, JNIObjectHandle arg2, JNIMethodId jniMethodId);
 }

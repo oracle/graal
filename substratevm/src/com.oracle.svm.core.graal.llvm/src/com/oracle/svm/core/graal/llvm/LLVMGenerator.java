@@ -175,7 +175,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private final Map<Constant, String> constants = new HashMap<>();
 
-    LLVMGenerator(Providers providers, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int debugLevel) {
+    LLVMGenerator(Providers providers, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int debugLevel, boolean isJNITrampoline, boolean nonVirtual) {
         this.providers = providers;
         this.compilationResult = result;
         this.builder = new LLVMIRBuilder(method.format("%H.%n"));
@@ -191,7 +191,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.returnsEnum = returnType.isEnum();
         this.returnsCEnum = isCEnumType(returnType);
 
-        addMainFunction(method);
+        addMainFunction(method, isJNITrampoline, nonVirtual);
     }
 
     @Override
@@ -251,8 +251,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return isEntryPoint;
     }
 
-    private void addMainFunction(ResolvedJavaMethod method) {
-        builder.setMainFunction(functionName, getLLVMFunctionType(method, true));
+    private void addMainFunction(ResolvedJavaMethod method, boolean isJNITrampoline, boolean nonVirtual) {
+        builder.setMainFunction(functionName, getLLVMFunctionType(method, true, isJNITrampoline, nonVirtual));
         builder.setFunctionLinkage(LinkageType.External);
         builder.setFunctionAttribute(Attribute.NoInline);
         builder.setFunctionAttribute(Attribute.NoRedZone);
@@ -276,7 +276,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     LLVMValueRef getFunction(ResolvedJavaMethod method) {
-        LLVMTypeRef functionType = getLLVMFunctionType(method, false);
+        LLVMTypeRef functionType = getLLVMFunctionType(method, false, false, false);
         return builder.getFunction(getFunctionName(method), functionType);
     }
 
@@ -432,12 +432,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
     }
 
-    private LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method, boolean forMainFunction) {
-        return builder.functionType(getLLVMFunctionReturnType(method, forMainFunction), getLLVMFunctionArgTypes(method, forMainFunction));
+    private LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method, boolean forMainFunction, boolean isJNITrampoline, boolean nonVirtual) {
+        return builder.functionType(getLLVMFunctionReturnType(method, forMainFunction), getLLVMFunctionArgTypes(method, forMainFunction, isJNITrampoline, nonVirtual));
     }
 
     LLVMTypeRef getLLVMFunctionPointerType(ResolvedJavaMethod method) {
-        return builder.functionPointerType(getLLVMFunctionReturnType(method, false), getLLVMFunctionArgTypes(method, false));
+        return builder.functionPointerType(getLLVMFunctionReturnType(method, false), getLLVMFunctionArgTypes(method, false, false, false));
     }
 
     LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method, boolean forMainFunction) {
@@ -463,7 +463,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return LLVMIRBuilder.countElementTypes(returnType) == SpecialRegister.count();
     }
 
-    private LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
+    private LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction, boolean isJNITrampoline, boolean nonVirtual) {
         ResolvedJavaType receiver = method.hasReceiver() ? method.getDeclaringClass() : null;
         JavaType[] javaParameterTypes = method.getSignature().toParameterTypes(receiver);
         LLVMTypeRef[] parameterTypes = Arrays.stream(javaParameterTypes).map(type -> getLLVMStackType(getTypeKind(type.resolve(null), forMainFunction))).toArray(LLVMTypeRef[]::new);
@@ -475,6 +475,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             }
             System.arraycopy(parameterTypes, 0, newParameterTypes, SpecialRegister.count(), parameterTypes.length);
         }
+
         return newParameterTypes;
     }
 
@@ -1036,7 +1037,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         } else {
             LLVMValueRef methodBase = builder.getFunctionParam(builder.getFunctionParamsCount() - 1);
-            jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
+            jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
         }
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
         buildInlineJump(jumpAddress);
