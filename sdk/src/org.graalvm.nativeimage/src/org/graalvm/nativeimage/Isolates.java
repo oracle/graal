@@ -140,7 +140,7 @@ public final class Isolates {
             /**
              * Appends an isolate argument. The syntax for arguments is the same as the one that is
              * used on the command-line when starting Native Image (e.g., {@code
-             * -XX:+UseReferenceHandlerThread}). If the same argument is added multiple times, the
+             * -XX:+AutomaticReferenceHandling}). If the same argument is added multiple times, the
              * last specified value will be used.
              *
              * @since 22.1
