@@ -192,6 +192,7 @@ public final class JNIConfig {
     @SafeVarargs
     private final JNIHotSpotMarshaller<?> lookupHotSpotMarshallerImpl(Type type, Class<? extends Annotation>... annotationTypes) {
         for (Class<? extends Annotation> annotationType : annotationTypes) {
+            verifyAnnotation(annotationType);
             JNIHotSpotMarshaller<?> res = lookup(annotationHotSpotMarshallers, type, annotationType);
             if (res != null) {
                 return res;
@@ -203,6 +204,7 @@ public final class JNIConfig {
     @SafeVarargs
     private final JNINativeMarshaller<?> lookupNativeMarshallerImpl(Type type, Class<? extends Annotation>... annotationTypes) {
         for (Class<? extends Annotation> annotationType : annotationTypes) {
+            verifyAnnotation(annotationType);
             JNINativeMarshaller<?> res = lookup(annotationNativeMarshallers, type, annotationType);
             if (res != null) {
                 return res;
@@ -238,6 +240,13 @@ public final class JNIConfig {
 
     private static Class<?> arrayTypeFromComponentType(Class<?> componentType) {
         return Array.newInstance(componentType, 0).getClass();
+    }
+
+    private static void verifyAnnotation(Class<? extends Annotation> annotationType) {
+        if (annotationType.getAnnotation(MarshallerAnnotation.class) == null) {
+            throw new IllegalArgumentException(String.format("The %s in not a valid marshaller annotation. The marshaller annotation must be annotated by the %s meta-annotation.",
+                            annotationType.getSimpleName(), MarshallerAnnotation.class.getSimpleName()));
+        }
     }
 
     public static Builder newBuilder() {
@@ -408,6 +417,7 @@ public final class JNIConfig {
         }
 
         private static <T> void insert(Map<Class<? extends Annotation>, List<Pair<Class<?>, T>>> into, Class<?> type, Class<? extends Annotation> annotationType, T marshaller) {
+            verifyAnnotation(annotationType);
             List<Pair<Class<?>, T>> types = into.computeIfAbsent(annotationType, (k) -> new LinkedList<>());
             Pair<Class<?>, T> toInsert = Pair.create(type, marshaller);
             boolean inserted = false;

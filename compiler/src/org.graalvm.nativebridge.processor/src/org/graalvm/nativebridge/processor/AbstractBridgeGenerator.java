@@ -174,7 +174,8 @@ abstract class AbstractBridgeGenerator {
 
     final CodeBuilder overrideMethod(CodeBuilder builder, DefinitionData data, MethodData methodData) {
         for (AnnotationMirror mirror : methodData.element.getAnnotationMirrors()) {
-            if (Utilities.contains(data.copyAnnotations, mirror.getAnnotationType(), types)) {
+            if (!Utilities.contains(data.ignoreAnnotations, mirror.getAnnotationType(), types) &&
+                            !Utilities.contains(data.marshallerAnnotations, mirror.getAnnotationType(), types)) {
                 builder.lineStart().annotation(mirror.getAnnotationType(), null).lineEnd("");
             }
         }

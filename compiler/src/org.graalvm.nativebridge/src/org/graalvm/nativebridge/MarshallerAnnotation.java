@@ -22,27 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.common;
+package org.graalvm.nativebridge;
 
-import org.graalvm.nativebridge.AnnotationAction;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeIsolate;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.Service;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@AnnotationAction(value = TestAnnotation1.class, action = AnnotationAction.Action.IGNORE)
-@AnnotationAction(value = TestAnnotation2.class, action = AnnotationAction.Action.COPY)
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class AnnotationActionTest extends NativeObject implements Service {
-
-    AnnotationActionTest(NativeIsolate isolate, long handle) {
-        super(isolate, handle);
-    }
-
-    @Override
-    @TestAnnotation1
-    @TestAnnotation2
-    public abstract boolean execute();
+/**
+ * Meta-annotation that marks an annotation to be used for marshaller lookup. An annotation intended
+ * for {@link JNIConfig#lookupNativeMarshaller(Class, Class[]) marshaller lookup} must be annotated
+ * by this annotation.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface MarshallerAnnotation {
 }

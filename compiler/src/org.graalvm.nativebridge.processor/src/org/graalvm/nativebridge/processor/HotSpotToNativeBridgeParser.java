@@ -66,11 +66,12 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
     DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType,
                     Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
                     ExecutableElement customDispatchAccessor, ExecutableElement customReceiverAccessor, ExecutableElement exceptionHandler,
-                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToCopy) {
+                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToIgnore,
+                    Set<DeclaredType> annotationsForMarshallerLookup) {
         DeclaredType centryPointPredicate = (DeclaredType) getAnnotationValue(annotation, "include");
         return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, customDispatchAccessor, customReceiverAccessor, exceptionHandler,
                         endPointHandle,
-                        centryPointPredicate, jniConfig, annotationsToCopy);
+                        centryPointPredicate, jniConfig, annotationsToIgnore, annotationsForMarshallerLookup);
     }
 
     static HotSpotToNativeBridgeParser create(NativeBridgeProcessor processor) {
@@ -90,9 +91,10 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
         HotSpotToNativeDefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
                         List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor,
                         ExecutableElement receiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle,
-                        DeclaredType centryPointPredicate, DeclaredType jniConfig, Set<DeclaredType> copyAnnotations) {
+                        DeclaredType centryPointPredicate, DeclaredType jniConfig, Set<DeclaredType> ignoreAnnotations,
+                        Set<DeclaredType> marshallerAnnotations) {
             super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor,
-                            exceptionHandler, endPointHandle, jniConfig, copyAnnotations);
+                            exceptionHandler, endPointHandle, jniConfig, ignoreAnnotations, marshallerAnnotations);
             this.centryPointPredicate = centryPointPredicate;
         }
     }

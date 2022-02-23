@@ -75,7 +75,7 @@ abstract class AbstractBridgeParser {
     private final Configuration myConfiguration;
     private final Configuration otherConfiguration;
     private Set<DeclaredType> ignoreAnnotations;
-    private Set<DeclaredType> copyAnnotations;
+    private Set<DeclaredType> marshallerAnnotations;
     private boolean hasErrors;
 
     AbstractBridgeParser(NativeBridgeProcessor processor, AbstractTypeCache typeCache, Configuration myConfiguration, Configuration otherConfiguration) {
@@ -85,6 +85,11 @@ abstract class AbstractBridgeParser {
         this.typeCache = typeCache;
         this.myConfiguration = myConfiguration;
         this.otherConfiguration = otherConfiguration;
+        this.ignoreAnnotations = new HashSet<>();
+        Collections.addAll(this.ignoreAnnotations, typeCache.override, typeCache.suppressWarnings,
+                        typeCache.byReference, typeCache.customDispatchFactory, typeCache.customDispatchAccessor,
+                        typeCache.customReceiverAccessor, typeCache.exceptionHandler, typeCache.idempotent,
+                        typeCache.in, typeCache.out, typeCache.rawReference, typeCache.receiverMethod);
     }
 
     abstract List<TypeMirror> getExceptionHandlerTypes();
@@ -94,16 +99,15 @@ abstract class AbstractBridgeParser {
     DefinitionData createDefinitionData(DeclaredType annotatedType, @SuppressWarnings("unused") AnnotationMirror annotation,
                     DeclaredType serviceType, Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
                     ExecutableElement customDispatchAccessor, ExecutableElement customReceiverAccessor, ExecutableElement exceptionHandler,
-                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToCopy) {
+                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToIgnore,
+                    Set<DeclaredType> annotationsForMarshallerLookup) {
         return new DefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams,
-                        customDispatchAccessor, customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, annotationsToCopy);
+                        customDispatchAccessor, customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, annotationsToIgnore, annotationsForMarshallerLookup);
     }
 
     final DefinitionData parse(Element element) {
         hasErrors = false;
-        ignoreAnnotations = new HashSet<>();
-        copyAnnotations = new HashSet<>();
-        Collections.addAll(ignoreAnnotations, typeCache.override, typeCache.suppressWarnings, typeCache.idempotent);
+        marshallerAnnotations = new HashSet<>();
         AnnotationMirror handledAnnotation = processor.getAnnotation(element, myConfiguration.getHandledAnnotationType());
         checkAnnotatedType(element, handledAnnotation);
         if (hasErrors) {
@@ -119,7 +123,6 @@ abstract class AbstractBridgeParser {
             return null;
         }
 
-        readAnnotationActions(element);
         DeclaredType jniConfig = findJNIConfig(annotatedElement, handledAnnotation);
         // Use only declared methods for custom dispatch directives.
         List<ExecutableElement> methods = ElementFilter.methodsIn(annotatedElement.getEnclosedElements());
@@ -158,7 +161,7 @@ abstract class AbstractBridgeParser {
             return null;
         } else {
             DefinitionData definitionData = createDefinitionData(annotatedType, handledAnnotation, serviceType, toGenerate, constructorParams, customDispatchAccessor,
-                            customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, copyAnnotations);
+                            customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, ignoreAnnotations, marshallerAnnotations);
             assertNoExpectedErrors(definitionData);
             return definitionData;
         }
@@ -190,58 +193,6 @@ abstract class AbstractBridgeParser {
             }
         }
         return null;
-    }
-
-    private void readAnnotationActions(Element element) {
-        Set<DeclaredType> handledAnnotations = new HashSet<>(ignoreAnnotations);
-        for (AnnotationAction annotationAction : getAnnotationActions(element)) {
-            if (Utilities.contains(handledAnnotations, annotationAction.annotation, types)) {
-                String actionDisplayName;
-                if (Utilities.contains(copyAnnotations, annotationAction.annotation, types)) {
-                    actionDisplayName = "copied";
-                } else if (Utilities.contains(ignoreAnnotations, annotationAction.annotation, types)) {
-                    actionDisplayName = "ignored";
-                } else {
-                    actionDisplayName = "used for marshaller lookup";
-                }
-                CharSequence annotationSimpleName = annotationAction.annotation.asElement().getSimpleName();
-                emitError(element, annotationAction.source, "The annotation `%s` is already configured to be %s.%n" +
-                                "Only one action can be set for each annotation.%n" +
-                                "To fix this remove the repeating `%s` for `%s`.", annotationSimpleName, actionDisplayName,
-                                typeCache.annotationAction.asElement().getSimpleName(), annotationSimpleName);
-                continue;
-            }
-            handledAnnotations.add(annotationAction.annotation);
-            switch (annotationAction.action) {
-                case "IGNORE":
-                    ignoreAnnotations.add(annotationAction.annotation);
-                    break;
-                case "COPY":
-                    ignoreAnnotations.add(annotationAction.annotation);
-                    copyAnnotations.add(annotationAction.annotation);
-                    break;
-            }
-        }
-    }
-
-    private List<AnnotationAction> getAnnotationActions(Element element) {
-        List<AnnotationAction> result = new ArrayList<>();
-        AnnotationMirror annotationAction = processor.getAnnotation(element, typeCache.annotationAction);
-        if (annotationAction != null) {
-            result.add(AnnotationAction.create(annotationAction));
-        }
-        AnnotationMirror annotationActionRepeated = processor.getAnnotation(element, typeCache.getAnnotationActionRepeated);
-        if (annotationActionRepeated != null) {
-            Object values = getAnnotationValue(annotationActionRepeated, "value");
-            if (values instanceof List<?>) {
-                for (Object value : (List<?>) values) {
-                    if (value instanceof AnnotationValue) {
-                        result.add(AnnotationAction.create((AnnotationMirror) ((AnnotationValue) value).getValue()));
-                    }
-                }
-            }
-        }
-        return result;
     }
 
     private DeclaredType findJNIConfig(Element element, AnnotationMirror handledAnnotation) {
@@ -731,6 +682,7 @@ abstract class AbstractBridgeParser {
                 res = MarshallerData.RAW_REFERENCE;
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
+                annotations.stream().map(AnnotationMirror::getAnnotationType).forEach(marshallerAnnotations::add);
                 String marshallerFieldName = marshallerName(type, annotations);
                 res = MarshallerData.marshalled(type, marshallerFieldName, annotations);
             }
@@ -743,7 +695,7 @@ abstract class AbstractBridgeParser {
         List<AnnotationMirror> result = new ArrayList<>();
         for (AnnotationMirror mirror : annotationMirrors) {
             DeclaredType type = mirror.getAnnotationType();
-            if (!isIgnoredAnnotation(type, ignoredAnnotations)) {
+            if (!isIgnoredAnnotation(type, ignoredAnnotations) && processor.getAnnotation(type.asElement(), typeCache.marshallerAnnotation) != null) {
                 result.add(mirror);
             }
         }
@@ -1214,12 +1166,13 @@ abstract class AbstractBridgeParser {
         final ExecutableElement exceptionHandler;
         final VariableElement endPointHandle;
         final DeclaredType jniConfig;
-        final Set<DeclaredType> copyAnnotations;
+        final Set<DeclaredType> ignoreAnnotations;
+        final Set<DeclaredType> marshallerAnnotations;
 
         DefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
                         List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement customDispatchAccessor,
                         ExecutableElement customReceiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle,
-                        DeclaredType jniConfig, Set<DeclaredType> copyAnnotations) {
+                        DeclaredType jniConfig, Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
             this.annotatedType = annotatedType;
             this.annotatedTypeConstructorParams = annotatedTypeConstructorParams;
             this.serviceType = serviceType;
@@ -1229,7 +1182,8 @@ abstract class AbstractBridgeParser {
             this.exceptionHandler = exceptionHandler;
             this.endPointHandle = endPointHandle;
             this.jniConfig = jniConfig;
-            this.copyAnnotations = copyAnnotations;
+            this.ignoreAnnotations = ignoreAnnotations;
+            this.marshallerAnnotations = marshallerAnnotations;
         }
 
         Collection<MarshallerData> getAllCustomMarshallers() {
@@ -1263,8 +1217,6 @@ abstract class AbstractBridgeParser {
 
     abstract static class AbstractTypeCache {
 
-        final DeclaredType annotationAction;
-        final DeclaredType getAnnotationActionRepeated;
         final DeclaredType byReference;
         final DeclaredType clazz;
         final DeclaredType collections;
@@ -1298,6 +1250,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType jniNativeMarshaller;
         final DeclaredType jniUtil;
         final DeclaredType map;
+        final DeclaredType marshallerAnnotation;
         final DeclaredType nativeIsolate;
         final DeclaredType nativeObject;
         final DeclaredType nativeObjectHandles;
@@ -1314,8 +1267,6 @@ abstract class AbstractBridgeParser {
         final DeclaredType wordFactory;
 
         AbstractTypeCache(NativeBridgeProcessor processor) {
-            this.annotationAction = (DeclaredType) processor.getType("org.graalvm.nativebridge.AnnotationAction");
-            this.getAnnotationActionRepeated = (DeclaredType) processor.getType("org.graalvm.nativebridge.AnnotationActionRepeated");
             this.byReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.ByReference");
             this.clazz = (DeclaredType) processor.getType("java.lang.Class");
             this.collections = (DeclaredType) processor.getType("java.util.Collections");
@@ -1349,6 +1300,7 @@ abstract class AbstractBridgeParser {
             this.jniNativeMarshaller = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNINativeMarshaller");
             this.jniUtil = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIUtil");
             this.map = (DeclaredType) processor.getType("java.util.Map");
+            this.marshallerAnnotation = (DeclaredType) processor.getType("org.graalvm.nativebridge.MarshallerAnnotation");
             this.nativeIsolate = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolate");
             this.nativeObject = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObject");
             this.nativeObjectHandles = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObjectHandles");
@@ -1396,35 +1348,6 @@ abstract class AbstractBridgeParser {
 
         Iterable<List<? extends TypeMirror>> getHandleReferenceConstructorTypes() {
             return handleReferenceConstructorTypes;
-        }
-    }
-
-    private static final class AnnotationAction {
-        /**
-         * AnnotationMirror defining this AnnotationAction.
-         */
-        final AnnotationMirror source;
-
-        /**
-         * Annotation to which this action is applied.
-         */
-        final DeclaredType annotation;
-
-        /**
-         * Action defined by {@code org.graalvm.nativebridge.AnnotationAction.Action}.
-         */
-        final String action;
-
-        private AnnotationAction(AnnotationMirror source, DeclaredType annotation, String action) {
-            this.source = source;
-            this.annotation = annotation;
-            this.action = action;
-        }
-
-        static AnnotationAction create(AnnotationMirror annotation) {
-            DeclaredType value = (DeclaredType) getAnnotationValue(annotation, "value");
-            VariableElement action = (VariableElement) getAnnotationValue(annotation, "action");
-            return new AnnotationAction(annotation, value, action.getSimpleName().toString());
         }
     }
 }
