@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.jdk.ClassLoaderSupportFeatureJDK11OrLater;
 
 @AutomaticFeature
 public final class LinkAtBuildTimeFeature implements Feature {
@@ -73,15 +75,15 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private Map<URI, Module> uriModuleMap;
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(this));
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(ClassLoaderSupportFeatureJDK11OrLater.class);
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void afterRegistration(AfterRegistrationAccess access) {
         classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
 
-        var loader = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader();
+        var loader = ((FeatureImpl.AfterRegistrationAccessImpl) access).getImageClassLoader();
         uriModuleMap = ModuleFinder.of(loader.applicationModulePath().toArray(Path[]::new)).findAll().stream()
                         .filter(mRef -> mRef.location().isPresent())
                         .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> loader.findModule(mRef.descriptor().name()).get()));
@@ -95,6 +97,8 @@ public final class LinkAtBuildTimeFeature implements Feature {
         requireCompletePackageOrClass.put("jdk.internal.reflect", null);
 
         Options.LinkAtBuildTime.getValue().getValuesWithOrigins().forEach(this::extractOptionValue);
+
+        ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(this));
     }
 
     private void extractOptionValue(Pair<String, OptionOrigin> valueOrigin) {
