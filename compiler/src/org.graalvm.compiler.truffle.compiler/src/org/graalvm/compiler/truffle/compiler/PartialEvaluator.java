@@ -578,7 +578,7 @@ public abstract class PartialEvaluator {
             canonicalizer.apply(request.graph, request.highTierContext);
         }
         try (DebugCloseable a = TruffleFrameVerifyFrameTimer.start(request.debug)) {
-            frameAccessVerificationPhase.apply(request.graph, request);
+            new FrameAccessVerificationPhase().apply(request.graph, request);
         }
         try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug); DebugContext.Scope pe = request.debug.scope("TrufflePartialEscape", request.graph)) {
             if (!request.options.get(IterativePartialEscape)) {
