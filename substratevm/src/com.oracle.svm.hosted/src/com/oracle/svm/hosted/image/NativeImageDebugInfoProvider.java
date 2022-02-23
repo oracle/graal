@@ -270,7 +270,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
-        private Path fullFilePath;
+        private final Path fullFilePath;
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedType hostedType) {
@@ -285,12 +285,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @SuppressWarnings("try")
-        NativeImageDebugFileInfo(HostedMethod hostedMethod) {
-            ResolvedJavaType javaType = getDeclaringClass(hostedMethod, false);
-            HostedType hostedType = hostedMethod.getDeclaringClass();
-            Class<?> clazz = hostedType.getJavaClass();
+        NativeImageDebugFileInfo(ResolvedJavaMethod method) {
+            /*
+             * Note that this constructor allows for any ResolvedJavaMethod, not just a
+             * HostedMethod, because it needs to provide common behaviour for DebugMethodInfo,
+             * DebugCodeInfo and DebugLocationInfo records. The former two are derived from a
+             * HostedMethod while the latter may be derived from an arbitrary ResolvedJavaMethod.
+             */
+            ResolvedJavaType javaType;
+            if (method instanceof HostedMethod) {
+                javaType = getDeclaringClass((HostedMethod) method, false);
+            } else {
+                javaType = method.getDeclaringClass();
+            }
+            Class<?> clazz = null;
+            if (javaType instanceof OriginalClassProvider) {
+                clazz = ((OriginalClassProvider) javaType).getJavaClass();
+            }
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
+            try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", javaType)) {
                 fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
@@ -584,19 +597,19 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return Arrays.stream(hostedType.getInterfaces()).map(this::toJavaName);
         }
 
-        protected NativeImageDebugFieldInfo createDebugFieldInfo(HostedField field) {
+        private NativeImageDebugFieldInfo createDebugFieldInfo(HostedField field) {
             return new NativeImageDebugFieldInfo(field);
         }
 
-        protected NativeImageDebugFieldInfo createDebugStaticFieldInfo(ResolvedJavaField field) {
+        private NativeImageDebugFieldInfo createDebugStaticFieldInfo(ResolvedJavaField field) {
             return new NativeImageDebugFieldInfo((HostedField) field);
         }
 
-        protected NativeImageDebugMethodInfo createDebugMethodInfo(HostedMethod method) {
+        private NativeImageDebugMethodInfo createDebugMethodInfo(HostedMethod method) {
             return new NativeImageDebugMethodInfo(method);
         }
 
-        protected class NativeImageDebugFieldInfo extends NativeImageDebugFileInfo implements DebugFieldInfo {
+        private class NativeImageDebugFieldInfo extends NativeImageDebugFileInfo implements DebugFieldInfo {
             private final HostedField field;
 
             NativeImageDebugFieldInfo(HostedField field) {
@@ -655,99 +668,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        protected class NativeImageDebugMethodInfo extends NativeImageDebugFileInfo implements DebugMethodInfo {
-            private final HostedMethod hostedMethod;
-
+        private class NativeImageDebugMethodInfo extends NativeImageDebugHostedMethodInfo implements DebugMethodInfo {
             NativeImageDebugMethodInfo(HostedMethod hostedMethod) {
                 super(hostedMethod);
-                this.hostedMethod = hostedMethod;
-            }
-
-            @Override
-            public String name() {
-                String name = hostedMethod.format("%n");
-                if ("<init>".equals(name)) {
-                    name = getDeclaringClass(hostedMethod, true).toJavaName();
-                    if (name.indexOf('.') >= 0) {
-                        name = name.substring(name.lastIndexOf('.') + 1);
-                    }
-                    if (name.indexOf('$') >= 0) {
-                        name = name.substring(name.lastIndexOf('$') + 1);
-                    }
-                }
-                return name;
-            }
-
-            @Override
-            public String valueType() {
-                return toJavaName((HostedType) hostedMethod.getSignature().getReturnType(null));
-            }
-
-            @Override
-            public List<String> paramTypes() {
-                Signature signature = hostedMethod.getSignature();
-                int parameterCount = signature.getParameterCount(false);
-                List<String> paramTypes = new ArrayList<>(parameterCount);
-                for (int i = 0; i < parameterCount; i++) {
-                    paramTypes.add(toJavaName((HostedType) signature.getParameterType(i, null)));
-                }
-                return paramTypes;
-            }
-
-            @Override
-            public List<String> paramNames() {
-                /* Can only provide blank names for now. */
-                Signature signature = hostedMethod.getSignature();
-                int parameterCount = signature.getParameterCount(false);
-                List<String> paramNames = new ArrayList<>(parameterCount);
-                for (int i = 0; i < parameterCount; i++) {
-                    paramNames.add("");
-                }
-                return paramNames;
-            }
-
-            @Override
-            public String symbolNameForMethod() {
-                return NativeImage.localSymbolNameForMethod(hostedMethod);
-            }
-
-            @Override
-            public boolean isDeoptTarget() {
-                return hostedMethod.isDeoptTarget();
-            }
-
-            @Override
-            public boolean isConstructor() {
-                return hostedMethod.isConstructor();
-            }
-
-            @Override
-            public int modifiers() {
-                return getOriginalModifiers(hostedMethod);
-            }
-
-            @Override
-            public boolean isVirtual() {
-                return hostedMethod.hasVTableIndex();
-            }
-
-            @Override
-            public int vtableOffset() {
-                /*
-                 * TODO - provide correct offset, not index. In Graal, the vtable is appended after
-                 * the dynamicHub object, so can't just multiply by sizeof(pointer).
-                 */
-                return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
-            }
-
-            /**
-             * Returns true if this is an override virtual method. Used in Windows CodeView output.
-             *
-             * @return true if this is a virtual method and overrides an existing method.
-             */
-            @Override
-            public boolean isOverride() {
-                return allOverrides.contains(hostedMethod);
             }
         }
     }
@@ -878,17 +801,208 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
+    protected abstract class NativeImageDebugBaseMethodInfo extends NativeImageDebugFileInfo implements DebugMethodInfo {
+        protected final ResolvedJavaMethod method;
+
+        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod method) {
+            super(method);
+            this.method = method;
+        }
+
+        /**
+         * Return the unique type that owns this method.
+         * <p/>
+         * In the absence of substitutions the returned type result is simply the original JVMCI
+         * implementation type that declares the associated Java method. Identifying this type may
+         * involve unwrapping from Hosted universe to Analysis universe to the original JVMCI
+         * universe.
+         * <p/>
+         *
+         * In the case where the method itself is either an (annotated) substitution or declared by
+         * a class that is a (annotated) substitution then the link from substitution to original is
+         * also 'unwrapped' to arrive at the original type. In cases where a substituted method has
+         * no original the class of the substitution is used, for want of anything better.
+         * <p/>
+         *
+         * This unwrapping strategy avoids two possible ambiguities that would compromise use of the
+         * returned value as a unique 'owner'. Firstly, if the same method is ever presented via
+         * both its HostedMethod incarnation and its original ResolvedJavaMethod incarnation then
+         * ownership will always be signalled via the original type. This ensures that views of the
+         * method presented via the list of included HostedTypes and via the list of CompiledMethod
+         * objects and their embedded substructure (such as inline caller hierarchies) are correctly
+         * identified.
+         * <p/>
+         *
+         * Secondly, when a substituted method or method of a substituted class is presented it ends
+         * up being collated with methods of the original class rather than the class which actually
+         * defines it, avoiding an artificial split of methods that belong to the same underlying
+         * runtime type into two distinct types in the debuginfo model. As an example, this ensures
+         * that all methods of substitution class DynamicHub are collated with methods of class
+         * java.lang.Class, the latter being the type whose name gets written into the debug info
+         * and gets used to name the method in the debugger. Note that this still allows the
+         * method's line info to be associated with the correct file i.e. it does not compromise
+         * breaking and stepping through the code.
+         *
+         * @return the unique type that owns this method
+         */
+        @Override
+        public ResolvedJavaType ownerType() {
+            ResolvedJavaType result;
+            if (method instanceof HostedMethod) {
+                result = getDeclaringClass((HostedMethod) method, true);
+            } else {
+                result = method.getDeclaringClass();
+            }
+            while (result instanceof WrappedJavaType) {
+                result = ((WrappedJavaType) result).getWrapped();
+            }
+            return result;
+        }
+
+        @Override
+        public String name() {
+            ResolvedJavaMethod targetMethod = method;
+            while (targetMethod instanceof WrappedJavaMethod) {
+                targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
+            }
+            if (targetMethod instanceof SubstitutionMethod) {
+                targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
+            } else if (targetMethod instanceof CustomSubstitutionMethod) {
+                targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
+            }
+            String name = targetMethod.getName();
+            if (name.equals("<init>")) {
+                if (method instanceof HostedMethod) {
+                    name = getDeclaringClass((HostedMethod) method, true).toJavaName();
+                    if (name.indexOf('.') >= 0) {
+                        name = name.substring(name.lastIndexOf('.') + 1);
+                    }
+                    if (name.indexOf('$') >= 0) {
+                        name = name.substring(name.lastIndexOf('$') + 1);
+                    }
+                } else {
+                    name = targetMethod.format("%h");
+                    if (name.indexOf('$') >= 0) {
+                        name = name.substring(name.lastIndexOf('$') + 1);
+                    }
+                }
+            }
+            return name;
+        }
+
+        @Override
+        public String valueType() {
+            return toJavaName(method.getSignature().getReturnType(null));
+        }
+
+        @Override
+        public String symbolNameForMethod() {
+            return NativeImage.localSymbolNameForMethod(method);
+        }
+
+        @Override
+        public boolean isDeoptTarget() {
+            if (method instanceof HostedMethod) {
+                return ((HostedMethod) method).isDeoptTarget();
+            }
+            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+        }
+
+        @Override
+        public List<String> paramTypes() {
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            List<String> paramTypes = new ArrayList<>(parameterCount);
+            for (int i = 0; i < parameterCount; i++) {
+                JavaType parameterType = signature.getParameterType(i, null);
+                paramTypes.add(toJavaName(parameterType));
+            }
+            return paramTypes;
+        }
+
+        @Override
+        public List<String> paramNames() {
+            /* Can only provide blank names for now. */
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            List<String> paramNames = new ArrayList<>(parameterCount);
+            for (int i = 0; i < parameterCount; i++) {
+                paramNames.add("");
+            }
+            return paramNames;
+        }
+
+        @Override
+        public int modifiers() {
+            if (method instanceof HostedMethod) {
+                return getOriginalModifiers((HostedMethod) method);
+            }
+            return method.getModifiers();
+        }
+        @Override
+        public boolean isConstructor() {
+            return method.isConstructor();
+        }
+
+        @Override
+        public boolean isVirtual() {
+            return method instanceof HostedMethod && ((HostedMethod) method).hasVTableIndex();
+        }
+
+        @Override
+        public boolean isOverride() {
+            return method instanceof HostedMethod && allOverrides.contains(method);
+        }
+
+        @Override
+        public int vtableOffset() {
+            /* TODO - convert index to offset (+ sizeof DynamicHub) */
+            return isVirtual() ? ((HostedMethod) method).getVTableIndex() : -1;
+        }
+    }
+
+    protected abstract class NativeImageDebugHostedMethodInfo extends NativeImageDebugBaseMethodInfo {
+        protected final HostedMethod hostedMethod;
+
+        NativeImageDebugHostedMethodInfo(HostedMethod method) {
+            super(method);
+            this.hostedMethod = method;
+        }
+
+        @Override
+        public boolean isVirtual() {
+            return hostedMethod.hasVTableIndex();
+        }
+
+        @Override
+        public int vtableOffset() {
+            /*
+             * TODO - provide correct offset, not index. In Graal, the vtable is appended after
+             * the dynamicHub object, so can't just multiply by sizeof(pointer).
+             */
+            return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
+        }
+
+        /**
+         * Returns true if this is an override virtual method. Used in Windows CodeView output.
+         *
+         * @return true if this is a virtual method and overrides an existing method.
+         */
+        @Override
+        public boolean isOverride() {
+            return allOverrides.contains(hostedMethod);
+        }
+    }
+
     /**
      * Implementation of the DebugCodeInfo API interface that allows code info to be passed to an
      * ObjectFile when generation of debug info is enabled.
      */
-    private class NativeImageDebugCodeInfo extends NativeImageDebugFileInfo implements DebugCodeInfo {
-        private final HostedMethod hostedMethod;
+    private class NativeImageDebugCodeInfo extends NativeImageDebugHostedMethodInfo implements DebugCodeInfo {
         private final CompilationResult compilation;
 
         NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
             super(method);
-            this.hostedMethod = method;
             this.compilation = compilation;
         }
 
@@ -900,42 +1014,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
-        }
-
-        @Override
-        public ResolvedJavaType ownerType() {
-            return getDeclaringClass(hostedMethod, true);
-        }
-
-        @Override
-        public String name() {
-            ResolvedJavaMethod targetMethod = hostedMethod.getWrapped().getWrapped();
-            if (targetMethod instanceof SubstitutionMethod) {
-                targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-            } else if (targetMethod instanceof CustomSubstitutionMethod) {
-                targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
-            }
-            String name = targetMethod.getName();
-            if (name.equals("<init>")) {
-                name = getDeclaringClass(hostedMethod, true).toJavaName();
-                if (name.indexOf('.') >= 0) {
-                    name = name.substring(name.lastIndexOf('.') + 1);
-                }
-                if (name.indexOf('$') >= 0) {
-                    name = name.substring(name.lastIndexOf('$') + 1);
-                }
-            }
-            return name;
-        }
-
-        @Override
-        public String symbolNameForMethod() {
-            return NativeImage.localSymbolNameForMethod(hostedMethod);
-        }
-
-        @Override
-        public String valueType() {
-            return hostedMethod.format("%R");
         }
 
         @Override
@@ -1230,7 +1308,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * @return the new location info if it could not be merged or null to indicate that it was
          *         merged
          */
-        public NativeImageDebugLocationInfo tryMerge(NativeImageDebugLocationInfo newLeaf, Object[] args) {
+        private NativeImageDebugLocationInfo tryMerge(NativeImageDebugLocationInfo newLeaf, Object[] args) {
             // last leaf node added at this level is 3rd element of arg vector
             NativeImageDebugLocationInfo lastLeaf = (NativeImageDebugLocationInfo) args[LAST_LEAF_INFO];
 
@@ -1254,7 +1332,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * @param args the visitor argument vector used to pass parameters from one child visit to
          *            the next
          */
-        public void initMerge(NativeImageDebugLocationInfo lastLeaf, Object[] args) {
+        private void initMerge(NativeImageDebugLocationInfo lastLeaf, Object[] args) {
             args[LAST_LEAF_INFO] = lastLeaf;
         }
 
@@ -1265,7 +1343,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * @param args the visitor argument vector used to pass parameters from one child visit to
          *            the next
          */
-        public void invalidateMerge(Object[] args) {
+        private void invalidateMerge(Object[] args) {
             args[LAST_LEAF_INFO] = null;
         }
 
@@ -1297,82 +1375,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             return frameSizeChanges;
         }
-
-        @Override
-        public boolean isDeoptTarget() {
-            return hostedMethod.isDeoptTarget();
-        }
-
-        @Override
-        public List<String> paramTypes() {
-            Signature signature = hostedMethod.getSignature();
-            int parameterCount = signature.getParameterCount(false);
-            List<String> paramTypes = new ArrayList<>(parameterCount);
-            for (int i = 0; i < parameterCount; i++) {
-                JavaType parameterType = signature.getParameterType(i, null);
-                paramTypes.add(toJavaName(parameterType));
-            }
-            return paramTypes;
-        }
-
-        @Override
-        public List<String> paramNames() {
-            /* Can only provide blank names for now. */
-            Signature signature = hostedMethod.getSignature();
-            int parameterCount = signature.getParameterCount(false);
-            List<String> paramNames = new ArrayList<>(parameterCount);
-            for (int i = 0; i < parameterCount; i++) {
-                paramNames.add("");
-            }
-            return paramNames;
-        }
-
-        @Override
-        public int modifiers() {
-            return getOriginalModifiers(hostedMethod);
-        }
-
-        @Override
-        public boolean isConstructor() {
-            return hostedMethod.isConstructor();
-        }
-
-        @Override
-        public boolean isVirtual() {
-            return hostedMethod.hasVTableIndex();
-        }
-
-        @Override
-        public int vtableOffset() {
-            /*
-             * TODO - provide correct offset, not index. In Graal, the vtable is appended after the
-             * dynamicHub object.
-             */
-            return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
-        }
-
-        /**
-         * Returns true if this is an override virtual method. Used in Windows CodeView output.
-         *
-         * @return true if this is a virtual method and overrides an existing method.
-         */
-        @Override
-        public boolean isOverride() {
-            return allOverrides.contains(hostedMethod);
-        }
     }
 
     /**
      * Implementation of the DebugLocationInfo API interface that allows line number and local var
      * info to be passed to an ObjectFile when generation of debug info is enabled.
      */
-    private class NativeImageDebugLocationInfo implements DebugLocationInfo {
+    private class NativeImageDebugLocationInfo extends NativeImageDebugBaseMethodInfo implements DebugLocationInfo {
         private final int bci;
-        private final ResolvedJavaMethod method;
         private final int lo;
         private int hi;
-        private Path cachePath;
-        private Path fullFilePath;
         private DebugLocationInfo callersLocationInfo;
         private boolean isPrologueEnd;
         private List<DebugLocalInfo> localInfoList;
@@ -1386,14 +1398,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo, boolean isPrologueEnd) {
+            super(bcpos.getMethod());
             this.bci = bcpos.getBCI();
-            this.method = bcpos.getMethod();
             this.lo = lo;
             this.hi = hi;
-            this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
             this.callersLocationInfo = callersLocationInfo;
             this.isPrologueEnd = isPrologueEnd;
-            computeFullFilePath();
             this.localInfoList = initLocalInfoList(bcpos);
         }
 
@@ -1445,93 +1455,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String fileName() {
-            if (fullFilePath != null) {
-                Path fileName = fullFilePath.getFileName();
-                if (fileName != null) {
-                    return fileName.toString();
-                }
-            }
-            return null;
-        }
-
-        @Override
-        public Path filePath() {
-            if (fullFilePath != null) {
-                return fullFilePath.getParent();
-            }
-            return null;
-        }
-
-        @Override
-        public Path cachePath() {
-            return cachePath;
-        }
-
-        @Override
-        public ResolvedJavaType ownerType() {
-            ResolvedJavaType result;
-            if (method instanceof HostedMethod) {
-                result = getDeclaringClass((HostedMethod) method, true);
-            } else {
-                result = method.getDeclaringClass();
-            }
-            if (result instanceof WrappedJavaType) {
-                result = ((WrappedJavaType) result).getWrapped();
-            }
-            return result;
-        }
-
-        @Override
-        public String name() {
-            ResolvedJavaMethod targetMethod = method;
-            while (targetMethod instanceof WrappedJavaMethod) {
-                targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
-            }
-            if (targetMethod instanceof SubstitutionMethod) {
-                targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-            } else if (targetMethod instanceof CustomSubstitutionMethod) {
-                targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
-            }
-            String name = targetMethod.getName();
-            if (name.equals("<init>")) {
-                if (method instanceof HostedMethod) {
-                    name = getDeclaringClass((HostedMethod) method, true).toJavaName();
-                    if (name.indexOf('.') >= 0) {
-                        name = name.substring(name.lastIndexOf('.') + 1);
-                    }
-                    if (name.indexOf('$') >= 0) {
-                        name = name.substring(name.lastIndexOf('$') + 1);
-                    }
-                } else {
-                    name = targetMethod.format("%h");
-                    if (name.indexOf('$') >= 0) {
-                        name = name.substring(name.lastIndexOf('$') + 1);
-                    }
-                }
-            }
-            return name;
-        }
-
-        @Override
-        public String valueType() {
-            return method.format("%R");
-        }
-
-        @Override
-        public String symbolNameForMethod() {
-            return NativeImage.localSymbolNameForMethod(method);
-        }
-
-        @Override
-        public boolean isDeoptTarget() {
-            if (method instanceof HostedMethod) {
-                return ((HostedMethod) method).isDeoptTarget();
-            }
-            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
-        }
-
-        @Override
         public int addressLo() {
             return lo;
         }
@@ -1551,35 +1474,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public List<String> paramTypes() {
-            Signature signature = method.getSignature();
-            int parameterCount = signature.getParameterCount(false);
-            List<String> paramTypes = new ArrayList<>(parameterCount);
-            for (int i = 0; i < parameterCount; i++) {
-                JavaType parameterType = signature.getParameterType(i, null);
-                paramTypes.add(toJavaName(parameterType));
-            }
-            return paramTypes;
-        }
-
-        @Override
-        public List<String> paramNames() {
-            /* Can only provide blank names for now. */
-            Signature signature = method.getSignature();
-            int parameterCount = signature.getParameterCount(false);
-            List<String> paramNames = new ArrayList<>(parameterCount);
-            for (int i = 0; i < parameterCount; i++) {
-                paramNames.add("");
-            }
-            return paramNames;
-        }
-
-        @Override
-        public int modifiers() {
-            return method.getModifiers();
-        }
-
-        @Override
         public DebugLocationInfo getCaller() {
             return callersLocationInfo;
         }
@@ -1596,48 +1490,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             } else {
                 return Stream.empty();
             }
-        }
-
-        @SuppressWarnings("try")
-        private void computeFullFilePath() {
-            ResolvedJavaType declaringClass;
-            // if we have a HostedMethod then deal with substitutions
-            if (method instanceof HostedMethod) {
-                declaringClass = getDeclaringClass((HostedMethod) method, false);
-            } else {
-                declaringClass = method.getDeclaringClass();
-            }
-            Class<?> clazz = null;
-            if (declaringClass instanceof OriginalClassProvider) {
-                clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
-            }
-            SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
-                fullFilePath = sourceManager.findAndCacheSource(declaringClass, clazz, debugContext);
-            } catch (Throwable e) {
-                throw debugContext.handle(e);
-            }
-        }
-
-        @Override
-        public boolean isConstructor() {
-            return method.isConstructor();
-        }
-
-        @Override
-        public boolean isVirtual() {
-            return method instanceof HostedMethod && ((HostedMethod) method).hasVTableIndex();
-        }
-
-        @Override
-        public boolean isOverride() {
-            return method instanceof HostedMethod && allOverrides.contains(method);
-        }
-
-        @Override
-        public int vtableOffset() {
-            /* TODO - convert index to offset (+ sizeof DynamicHub) */
-            return isVirtual() ? ((HostedMethod) method).getVTableIndex() : -1;
         }
 
         public int depth() {

@@ -241,14 +241,39 @@ public interface DebugInfoProvider {
          * @return true if this method is an override of another method.
          */
         boolean isOverride();
+
+        /*
+         * Return the unique type that owns this method.
+         * <p/>
+         * 
+         * @return the unique type that owns this method
+         */
+        ResolvedJavaType ownerType();
     }
 
     /**
-     * Access details of a compiled method producing the code in a specific
+     * Access details of a compiled top level or inline method producing the code in a specific
      * {@link com.oracle.objectfile.debugentry.Range}.
      */
     interface DebugRangeInfo extends DebugMethodInfo {
-        ResolvedJavaType ownerType();
+
+        /**
+         * @return the lowest address containing code generated for an outer or inlined code segment
+         *         reported at this line represented as an offset into the code segment.
+         */
+        int addressLo();
+
+        /**
+         * @return the first address above the code generated for an outer or inlined code segment
+         *         reported at this line represented as an offset into the code segment.
+         */
+        int addressHi();
+
+        /**
+         * @return the line number for the outer or inlined segment.
+         */
+        int line();
+
     }
 
     /**
@@ -256,23 +281,6 @@ public interface DebugInfoProvider {
      */
     interface DebugCodeInfo extends DebugRangeInfo {
         void debugContext(Consumer<DebugContext> action);
-
-        /**
-         * @return the lowest address containing code generated for the method represented as an
-         *         offset into the code segment.
-         */
-        int addressLo();
-
-        /**
-         * @return the first address above the code generated for the method represented as an
-         *         offset into the code segment.
-         */
-        int addressHi();
-
-        /**
-         * @return the starting line number for the method.
-         */
-        int line();
 
         /**
          * @return a stream of records detailing source local var and line locations within the
@@ -316,23 +324,6 @@ public interface DebugInfoProvider {
      * number.
      */
     interface DebugLocationInfo extends DebugRangeInfo {
-        /**
-         * @return the lowest address containing code generated for an outer or inlined code segment
-         *         reported at this line represented as an offset into the code segment.
-         */
-        int addressLo();
-
-        /**
-         * @return the first address above the code generated for an outer or inlined code segment
-         *         reported at this line represented as an offset into the code segment.
-         */
-        int addressHi();
-
-        /**
-         * @return the line number for the outer or inlined segment.
-         */
-        int line();
-
         /**
          * @return the {@link DebugLocationInfo} of the nested inline caller-line
          */
