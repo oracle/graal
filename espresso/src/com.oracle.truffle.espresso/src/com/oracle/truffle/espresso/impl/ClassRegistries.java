@@ -176,7 +176,7 @@ public final class ClassRegistries {
         }
         return klasses.toArray(new Klass[0]);
     }
-c
+
     @TruffleBoundary
     public Klass[] getAllLoadedClasses() {
         ArrayList<Klass> list = new ArrayList<>();
