@@ -50,17 +50,20 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 
+/**
+ * All {@link CEntryPoint} methods in here can be directly called from a debugger.
+ */
 public class DebugHelper {
     static class PointerDebugHelper {
         @Uninterruptible(reason = "Called with a raw pointer.")
-        @CEntryPoint(name = "dbg_ptr_isInImageHeap", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_ptr_isInImageHeap", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isInImageHeap(@SuppressWarnings("unused") IsolateThread thread, Pointer ptr) {
             return Heap.getHeap().isInImageHeap(ptr);
         }
 
         @Uninterruptible(reason = "Called with a raw pointer.")
-        @CEntryPoint(name = "dbg_ptr_isObject", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_ptr_isObject", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptr) {
             ObjectHeader header = Heap.getHeap().getObjectHeader();
@@ -70,7 +73,7 @@ public class DebugHelper {
 
     static class HubDebugHelper {
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_getLayoutEncoding", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_getLayoutEncoding", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static int getLayoutEncoding(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -78,7 +81,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_getArrayElementSize", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_getArrayElementSize", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static int getArrayElementSize(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -86,7 +89,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_getArrayBaseOffset", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_getArrayBaseOffset", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static int getArrayBaseOffset(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -94,7 +97,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_isArray", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_isArray", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isArray(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -102,7 +105,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_isPrimitiveArray", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_isPrimitiveArray", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isPrimitiveArray(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -110,7 +113,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_isObjectArray", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_isObjectArray", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isObjectArray(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -118,7 +121,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_isInstance", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_isInstance", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isInstance(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -126,7 +129,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_hub_isReference", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_hub_isReference", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isReference(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
             DynamicHub hub = (DynamicHub) hubPtr.toObject();
@@ -136,7 +139,7 @@ public class DebugHelper {
 
     static class ObjectDebugHelper {
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_getHub", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_getHub", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static long getHub(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -144,7 +147,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_getObjectSize", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_getObjectSize", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static long getObjectSize(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -152,7 +155,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_getArrayElementSize", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_getArrayElementSize", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static int getArrayElementSize(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -161,7 +164,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_getArrayBaseOffset", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_getArrayBaseOffset", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static long getArrayBaseOffset(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -170,7 +173,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_isArray", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_isArray", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isArray(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -179,7 +182,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_isPrimitiveArray", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_isPrimitiveArray", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isPrimitiveArray(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -188,7 +191,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_isObjectArray", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_isObjectArray", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isObjectArray(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -197,7 +200,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_isInstance", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_isInstance", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isInstance(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -206,7 +209,7 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_isReference", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_isReference", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static boolean isReference(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -215,14 +218,14 @@ public class DebugHelper {
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_uncompress", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_uncompress", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static long uncompressObjectPointer(@SuppressWarnings("unused") IsolateThread thread, Pointer compressedPtr) {
             return Word.objectToUntrackedPointer(ReferenceAccess.singleton().uncompressReference(compressedPtr)).rawValue();
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
-        @CEntryPoint(name = "dbg_obj_compress", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_obj_compress", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static long compressObjectPointer(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
@@ -232,15 +235,7 @@ public class DebugHelper {
 
     static class StringDebugHelper {
         @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
-        @CEntryPoint(name = "dbg_string_print", include = IncludeDebugHelperMethods.class)
-        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
-        public static void printString(@SuppressWarnings("unused") IsolateThread thread, Pointer strPtr) {
-            String str = (String) strPtr.toObject();
-            Log.log().string(str).newline();
-        }
-
-        @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
-        @CEntryPoint(name = "dbg_string_length", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_string_length", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static int getStringLength(@SuppressWarnings("unused") IsolateThread thread, Pointer strPtr) {
             String str = (String) strPtr.toObject();
@@ -249,15 +244,38 @@ public class DebugHelper {
     }
 
     static class DiagnosticDebugHelper {
-        @Uninterruptible(reason = "Just to keep the verification happy.", calleeMustBe = false)
-        @CEntryPoint(name = "dbg_printFatalError", include = IncludeDebugHelperMethods.class)
+        @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
+        @CEntryPoint(name = "svm_dbg_print_hub", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
-        public static void printFatalError(@SuppressWarnings("unused") IsolateThread thread, Pointer sp, CodePointer ip) {
+        public static void printHub(@SuppressWarnings("unused") IsolateThread thread, Pointer hubPtr) {
+            DynamicHub hub = (DynamicHub) hubPtr.toObject();
+            Log.log().string(hub.getName()).newline();
+        }
+
+        @Uninterruptible(reason = "Called with a raw object pointer.")
+        @CEntryPoint(name = "svm_dbg_print_obj", include = IncludeDebugHelperMethods.class)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+        public static void printObject(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
+            SubstrateDiagnostics.printObjectInfo(Log.log(), objPtr);
+        }
+
+        @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
+        @CEntryPoint(name = "svm_dbg_print_string", include = IncludeDebugHelperMethods.class)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+        public static void printString(@SuppressWarnings("unused") IsolateThread thread, Pointer strPtr) {
+            String str = (String) strPtr.toObject();
+            Log.log().string(str).newline();
+        }
+
+        @Uninterruptible(reason = "Just to keep the verification happy.", calleeMustBe = false)
+        @CEntryPoint(name = "svm_dbg_print_fatalErrorDiagnostics", include = IncludeDebugHelperMethods.class)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+        public static void printFatalErrorDiagnostics(@SuppressWarnings("unused") IsolateThread thread, Pointer sp, CodePointer ip) {
             SubstrateDiagnostics.printFatalError(Log.log(), sp, ip, WordFactory.nullPointer(), false);
         }
 
         @Uninterruptible(reason = "Just to keep the verification happy.", calleeMustBe = false)
-        @CEntryPoint(name = "dbg_printLocationInfo", include = IncludeDebugHelperMethods.class)
+        @CEntryPoint(name = "svm_dbg_print_locationInfo", include = IncludeDebugHelperMethods.class)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
         public static void printLocationInfo(@SuppressWarnings("unused") IsolateThread thread, Pointer mem) {
             SubstrateDiagnostics.printLocationInfo(Log.log(), mem, true, true);
@@ -307,7 +325,6 @@ public class DebugHelper {
 
     private static class SetThreadAndHeapBasePrologue implements CEntryPointOptions.Prologue {
         @Uninterruptible(reason = "prologue")
-        @SuppressWarnings("unused")
         public static void enter(IsolateThread thread) {
             WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
             if (SubstrateOptions.SpawnIsolates.getValue()) {
@@ -316,14 +333,11 @@ public class DebugHelper {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static class IncludeDebugHelperMethods implements BooleanSupplier {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        IncludeDebugHelperMethods() {
-        }
-
         @Override
         public boolean getAsBoolean() {
-            return SubstrateOptions.IncludeDebugHelperMethods.getValue() || SubstrateOptions.optimizationLevel() == 0;
+            return SubstrateOptions.IncludeDebugHelperMethods.getValue();
         }
     }
 }
