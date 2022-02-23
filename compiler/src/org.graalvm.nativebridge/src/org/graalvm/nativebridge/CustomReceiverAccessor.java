@@ -24,25 +24,20 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Repeatable(AnnotationActionRepeated.class)
+/**
+ * Marks a method as a custom receiver accessor. In the class with a custom dispatch, the method is
+ * used to translate the API object to the receiver. The method annotated by
+ * {@link CustomReceiverAccessor} must be a non-private static method with a single parameter
+ * returning the receiver.
+ *
+ * @see CustomDispatchAccessor
+ */
 @Retention(RetentionPolicy.CLASS)
-@Target(ElementType.TYPE)
-public @interface AnnotationAction {
-
-    Class<? extends Annotation> value();
-
-    Action action() default Action.LOOKUP_MARSHALLER;
-
-    enum Action {
-        IGNORE,
-        COPY,
-        LOOKUP_MARSHALLER
-    }
+@Target(ElementType.METHOD)
+public @interface CustomReceiverAccessor {
 }

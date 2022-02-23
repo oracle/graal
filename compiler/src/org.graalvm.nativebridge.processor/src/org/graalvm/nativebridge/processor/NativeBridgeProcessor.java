@@ -26,7 +26,6 @@ package org.graalvm.nativebridge.processor;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
-import org.graalvm.nativebridge.processor.AbstractBridgeParser.ParseException;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
@@ -84,15 +83,14 @@ public final class NativeBridgeProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void parse(AbstractBridgeParser parser, Set<? extends Element> annotatedElements, List<DefinitionData> into) {
+    private static void parse(AbstractBridgeParser parser, Set<? extends Element> annotatedElements, List<DefinitionData> into) {
         for (Element element : annotatedElements) {
-            try {
-                DefinitionData data = parser.parse(element);
-                into.add(data);
-            } catch (ParseException parseException) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, parseException.getMessage(),
-                                parseException.getElement(), parseException.getAnnotation());
+            DefinitionData data = parser.parse(element);
+            if (data == null) {
+                // Parsing error
+                continue;
             }
+            into.add(data);
         }
     }
 }

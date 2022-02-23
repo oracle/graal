@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.hstonative;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.nativebridge.ExceptionHandler;
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
+import org.graalvm.nativebridge.NativeIsolate;
+import org.graalvm.nativebridge.NativeObject;
+import org.graalvm.nativebridge.processor.test.Service;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.TYPE)
-public @interface AnnotationActionRepeated {
-    AnnotationAction[] value();
+@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
+abstract class NativeExceptionHandlerTest extends NativeObject implements Service {
+
+    NativeExceptionHandlerTest(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
+    }
+
+    @ExceptionHandler
+    @SuppressWarnings("unused")
+    static boolean handleException(JNIEnv jniEnv, Throwable exception) {
+        return false;
+    }
 }

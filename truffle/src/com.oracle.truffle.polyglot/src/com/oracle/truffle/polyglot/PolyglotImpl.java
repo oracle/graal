@@ -103,7 +103,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
-    private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
+    private final PolyglotExecutionListenerDispatch executionListenerDispatch = new PolyglotExecutionListenerDispatch(this);
+    private final PolyglotExecutionEventDispatch executionEventDispatch = new PolyglotExecutionEventDispatch(this);
     final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
     final PolyglotContextDispatch contextDispatch = new PolyglotContextDispatch(this);
     private final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
@@ -194,8 +195,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     /**
      * Internal method do not use.
      */
-    AbstractManagementDispatch getManagementDispatch() {
+    AbstractExecutionListenerDispatch getExecutionListenerDispatch() {
         return executionListenerDispatch;
+    }
+
+    /**
+     * Internal method do not use.
+     */
+    AbstractExecutionEventDispatch getExecutionEventDispatch() {
+        return executionEventDispatch;
     }
 
     /**
