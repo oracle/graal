@@ -107,7 +107,9 @@ class EspressoReferenceDrainer implements ContextAccess {
                 throw EspressoError.shouldNotReachHere();
             }
         }
-        hostToGuestReferenceDrainThread.setName("Reference Drain");
+        if (hostToGuestReferenceDrainThread != null) {
+            hostToGuestReferenceDrainThread.setName("Reference Drain");
+        }
     }
 
     void startReferenceDrain() {
