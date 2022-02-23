@@ -1,13 +1,8 @@
 ## Native bridge annotation processor
 
-The native bridge annotation processor generates code to simplify making calls between code executing in two disjoint JVM runtimes (e.g. Native Image and HotSpot) using a JNI interface. The processor can bridge interfaces, classes, and classes with custom dispatch.
-The supported data types are Java primitive types, `String`, arrays of primitive types, and foreign reference types. Custom types are supported using marshallers registered in the `JNIConfig.Builder`.
+The native bridge annotation processor generates code to simplify making calls between code executing in two disjoint JVM runtimes (e.g. Native Image and HotSpot) by generating stubs for calling foreign methods using a JNI interface. The processor can bridge interfaces, classes, and classes with custom dispatch. A single stub can bridge either a single class or a single interface. The supported data types are Java primitive types, `String`, arrays of primitive types, and foreign reference types. Custom types are supported using marshallers registered in the `JNIConfig.Builder`. The processor processes the [@GenerateHotSpotToNativeBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateHotSpotToNativeBridge.java) and [@GenerateNativeToHotSpotBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToHotSpotBridge.java) annotations.
 
-### Code generation
-
-The processor processes the [@GenerateHotSpotToNativeBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateHotSpotToNativeBridge.java) and [@GenerateNativeToHotSpotBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToHotSpotBridge.java) annotations. In a single stub, the processor can bridge either a single class or a single interface.
-
-#### Bridging an interface
+### Bridging an interface
 
 In the following example, we generate both HotSpot to Native Image and Native Image to HotSpot bridges for a `Calculator` interface.
 
@@ -30,7 +25,9 @@ abstract class NativeCalculator extends NativeObject implements Calculator {
 }
 ```
 
-More information on the `jniConfig` and `ExampleJNIConfig` can be found in the [JNIConfig](#JNIConfig) section. The annotation processor generates class `NativeCalculatorGen` with a static factory method `createHotSpotToNative(NativeIsolate isolate, long handle)`. The method creates an instance of `NativeCalculator` that forwards `add` and `sub` methods from the HotSpot VM to an object in the native image heap.
+The annotation processor generates class `NativeCalculatorGen` with a static factory method `createHotSpotToNative(NativeIsolate isolate, long handle)`. The method creates an instance of `NativeCalculator` that forwards `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+
+To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
 ```java
 long isolateThreadId = ExampleJNIConfig.createIsolate();
@@ -57,7 +54,7 @@ abstract class HSCalculator extends HSObject implements Calculator {
 
 The annotation processor generates class `HSCalculatorGen` with a static factory method `createNativeToHotSpot(JNIEnv jniEnv, JObject handle)`. The method creates an instance of `HSCalculator` that forwards `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
 
-#### Bridging a class
+### Bridging a class
 
 When it's not possible to use an interface to define operations to bridge the annotation processor also supports base classes. This can be useful if you need to bridge an existing JDK or library type. For classes, all public non-static non-final non-native methods which are not inherited from `java.lang.Object` are bridged. In the following example, we generate bridges for the `Calculator` class.
 
@@ -83,7 +80,9 @@ abstract class NativeCalculator extends Calculator {
 }
 ```
 
-More information on the `jniConfig` and `ExampleJNIConfig` can be found in the [JNIConfig](#JNIConfig) section. The annotation processor generates class `NativeCalculatorGen` with a static `createHotSpotToNative(NativeIsolate isolate, long handle)` factory method creating a `NativeCalculator` instance forwarding `add` and `sub` methods from the HotSpot VM to an object in the native image heap.
+The annotation processor generates class `NativeCalculatorGen` with a static `createHotSpotToNative(NativeIsolate isolate, long handle)` factory method creating a `NativeCalculator` instance forwarding `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+
+To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
 ```java
 long isolateThreadId = ExampleJNIConfig.createIsolate();
@@ -111,7 +110,7 @@ abstract class HSCalculator extends Calculator {
 
 The annotation processor generates class `HSCalculatorGen` with a static `createNativeToHotSpot(HSObject delegate, JNIEnv jniEnv)` factory method creating an `HSCalculator` instance forwarding `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
 
-#### Bridging a class with a custom dispatch
+### Bridging a class with a custom dispatch
 
 Classes with a custom dispatch are final classes with a `receiver` and `dispatch` fields delegating all the operations to the `dispatch` instance. The `dispatch` methods take the `receiver` as the first parameter. The following example shows a `Language` class with a custom dispatch.
 
@@ -174,7 +173,9 @@ abstract class NativeLanguageDispatch extends AbstractLanguageDispatch {
 }
 ```
 
-More information on the `jniConfig` and `ExampleJNIConfig` can be found in the [JNIConfig](#JNIConfig) section. The annotation processor generates class `NativeLanguageDispatchGen` with a static `createHotSpotToNative()` factory method creating a `NativeLanguageDispatch` instance forwarding methods from the HotSpot VM to an object in the native image heap.
+The annotation processor generates class `NativeLanguageDispatchGen` with a static `createHotSpotToNative()` factory method creating a `NativeLanguageDispatch` instance forwarding methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+
+To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
 ```java
 long isolateThreadId = ExampleJNIConfig.createIsolate();
@@ -185,7 +186,7 @@ Language language = NativeLanguageDispatch.createLanguage(new NativeObject(isola
 language.getName();
 ```
 
-#### Excludes
+### Excluding methods from generation
 
 Sometimes it's necessary to exclude a method from being bridged. This can be done by overriding a method in the annotated class and making it `final`. The following example excludes `sub` method from being bridged.
 
@@ -274,6 +275,14 @@ To marshall the `Compilation` as a foreign object reference, annotate the use of
 
 ```java
 @GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
+abstract class NativeCompilation extends NativeObject implements Compilation {
+
+    NativeCompilation(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
+    }
+}
+
+@GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
 abstract class NativeCompiler extends NativeObject implements Compiler {
 
     NativeCompiler(NativeIsolate isolate, long handle) {
@@ -341,12 +350,10 @@ final class ExampleJNIConfig {
 
     private static JNIConfig createJNIConfig() {
         JNIConfig.Builder builder = JNIConfig.newBuilder();
-        if (!ImageInfo.inImageCode()) {
-            builder.setAttachThreadAction(ExampleJNIConfig::attachThread);
-            builder.setDetachThreadAction(ExampleJNIConfig::detachThread);
-            builder.setShutDownIsolateAction(ExampleJNIConfig::tearDownIsolate);
-            builder.setReleaseNativeObjectAction(ExampleJNIConfig::releaseHandle);
-        }
+        builder.setAttachThreadAction(ExampleJNIConfig::attachThread);
+        builder.setDetachThreadAction(ExampleJNIConfig::detachThread);
+        builder.setShutDownIsolateAction(ExampleJNIConfig::tearDownIsolate);
+        builder.setReleaseNativeObjectAction(ExampleJNIConfig::releaseHandle);
         builder.registerMarshaller(Complex.class, new ComplexMarshaller());
         return builder.build();
     }
