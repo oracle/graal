@@ -188,12 +188,6 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute //
-    @SuppressWarnings({"unused"})
-    Object getClassLoadingLock(String className) {
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.getClassLoadingLock(String)");
-    }
-
-    @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
         if (name == null) {
