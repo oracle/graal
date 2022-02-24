@@ -105,23 +105,36 @@ public final class ModuleLayerFeature implements Feature {
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
+    public void duringSetup(DuringSetupAccess access) {
+        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
         moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
         moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
-        moduleLayerFeatureUtils = new ModuleLayerFeatureUtils();
+        moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
+        Set<String> baseModules = ModuleLayer.boot().modules()
+                .stream()
+                .map(Module::getName)
+                .collect(Collectors.toSet());
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules, Set.of());
+        BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+        access.registerObjectReplacer(this::replaceHostedModules);
+    }
+
+    private Object replaceHostedModules(Object source) {
+        if (source instanceof Module) {
+            Module module = (Module) source;
+            if (module.isNamed()) {
+                return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module.getName(), module.getDescriptor());
+            } else {
+                return moduleLayerFeatureUtils.getAllUnnamedModule();
+            }
+        }
+        return source;
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        Set<String> baseModules = ModuleLayer.boot().modules()
-                        .stream()
-                        .map(Module::getName)
-                        .collect(Collectors.toSet());
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules, Set.of());
-        BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
     }
 
     @Override
@@ -214,7 +227,7 @@ public final class ModuleLayerFeature implements Feature {
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
-            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer);
             for (Module syntheticModule : syntheticModules) {
                 nameToModule.putIfAbsent(syntheticModule.getName(), syntheticModule);
                 moduleLayerFeatureUtils.patchModuleLayerField(syntheticModule, runtimeBootLayer);
@@ -373,11 +386,15 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private static final class ModuleLayerFeatureUtils {
+        private final Map<String, Module> nameToModuleLookup;
+        private final ImageClassLoader imageClassLoader;
+
         private final Module allUnnamedModule;
         private final Set<Module> allUnnamedModuleSet;
         private final Module everyoneModule;
         private final Set<Module> everyoneSet;
         private final Constructor<Module> moduleConstructor;
+        private final Field moduleDescriptorField;
         private final Field moduleLayerField;
         private final Field moduleLoaderField;
         private final Field moduleReadsField;
@@ -385,7 +402,9 @@ public final class ModuleLayerFeature implements Feature {
         private final Field moduleExportedPackagesField;
         private final Method moduleFindModuleMethod;
 
-        ModuleLayerFeatureUtils() {
+        ModuleLayerFeatureUtils(ImageClassLoader cl) {
+            nameToModuleLookup = new HashMap<>();
+            imageClassLoader = cl;
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
                 ModuleSupport.openModuleByClass(Module.class, ModuleLayerFeature.class);
@@ -399,11 +418,13 @@ public final class ModuleLayerFeature implements Feature {
                 allUnnamedModuleField.setAccessible(true);
                 allUnnamedModule = (Module) allUnnamedModuleField.get(null);
 
+                moduleDescriptorField = findFieldByName(moduleClassFields, "descriptor");
                 moduleLayerField = findFieldByName(moduleClassFields, "layer");
                 moduleLoaderField = findFieldByName(moduleClassFields, "loader");
                 moduleReadsField = findFieldByName(moduleClassFields, "reads");
                 moduleOpenPackagesField = findFieldByName(moduleClassFields, "openPackages");
                 moduleExportedPackagesField = findFieldByName(moduleClassFields, "exportedPackages");
+                moduleDescriptorField.setAccessible(true);
                 moduleLayerField.setAccessible(true);
                 moduleLoaderField.setAccessible(true);
                 moduleReadsField.setAccessible(true);
@@ -424,6 +445,28 @@ public final class ModuleLayerFeature implements Feature {
             return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().orElseThrow(VMError::shouldNotReachHere);
         }
 
+        static boolean isModuleSynthetic(Module m) {
+            return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
+        }
+
+        public Module getOrCreateRuntimeModuleForHostedModule(String hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
+            if (nameToModuleLookup.containsKey(hostedModule)) {
+                return nameToModuleLookup.get(hostedModule);
+            } else {
+                Module runtimeModule;
+                try {
+                    runtimeModule = moduleConstructor.newInstance(imageClassLoader.getClassLoader(), runtimeModuleDescriptor);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+                    throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
+                }
+                nameToModuleLookup.put(hostedModule, runtimeModule);
+                return runtimeModule;
+            }
+        }
+
+        public Module getAllUnnamedModule() {
+            return allUnnamedModule;
+        }
         /**
          * This method creates Module instances that will populate the runtime boot module layer of
          * the image. This implementation is copy-pasted from Module#defineModules(Configuration,
@@ -431,9 +474,10 @@ public final class ModuleLayerFeature implements Feature {
          * and removal of VM state updates (otherwise we would be re-defining modules to the host
          * VM).
          */
-        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer, ClassLoader cl)
+        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer)
                         throws IllegalAccessException, InvocationTargetException, InstantiationException {
             Configuration cf = runtimeBootLayer.configuration();
+
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
             Map<String, Module> nameToModule = new HashMap<>(cap);
@@ -446,7 +490,10 @@ public final class ModuleLayerFeature implements Feature {
                 ModuleReference mref = resolvedModule.reference();
                 ModuleDescriptor descriptor = mref.descriptor();
                 String name = descriptor.name();
-                Module m = moduleConstructor.newInstance(cl, descriptor);
+                Module m = getOrCreateRuntimeModuleForHostedModule(name, descriptor);
+                if (!descriptor.equals(m.getDescriptor())) {
+                    moduleDescriptorField.set(m, descriptor);
+                }
                 patchModuleLayerField(m, runtimeBootLayer);
                 nameToModule.put(name, m);
             }
