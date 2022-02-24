@@ -6,7 +6,7 @@ local devkits = common_json.devkits;
 
 {
   verify_name(build): build + {
-    expected_prefix:: std.join('-', build.targets) + '-vm',
+    expected_prefix:: std.join('-', [target for target in build.targets if target != "mach5"]) + '-vm',
     expected_suffix:: build.os + '-' + build.arch,
     assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
     assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
