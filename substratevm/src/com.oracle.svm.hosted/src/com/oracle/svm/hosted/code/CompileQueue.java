@@ -62,6 +62,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -294,7 +295,14 @@ public class CompileQueue {
         }
     }
 
-    public class CompileTask implements DebugContextRunnable {
+    private interface Task extends DebugContextRunnable {
+        @Override
+        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return new DebugContext.Builder(options, factories).description(getDescription()).build();
+        }
+    }
+
+    public class CompileTask implements Task {
 
         public final HostedMethod method;
         protected final CompileReason reason;
@@ -325,7 +333,7 @@ public class CompileQueue {
         }
     }
 
-    protected class TrivialInlineTask implements DebugContextRunnable {
+    protected class TrivialInlineTask implements Task {
 
         private final HostedMethod method;
         private final Description description;
@@ -346,7 +354,7 @@ public class CompileQueue {
         }
     }
 
-    public class ParseTask implements DebugContextRunnable {
+    public class ParseTask implements Task {
 
         protected final CompileReason reason;
         private final HostedMethod method;
