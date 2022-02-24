@@ -78,7 +78,7 @@ public class ConfigurationVerifier {
         String configurationPath = System.getProperty(CONFIG_PATH_PROPERTY);
         ConfigurationFileCollection configurationFileCollection = new ConfigurationFileCollection();
         configurationFileCollection.addDirectory(Paths.get(configurationPath));
-        return new ConfigurationSet(configurationFileCollection, e -> e);
+        return configurationFileCollection.loadConfigurationSet(e -> e, null, null);
     }
 
     private static ConfigurationSet loadExpectedConfig() throws Exception {
@@ -95,7 +95,7 @@ public class ConfigurationVerifier {
                 throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
             }
         });
-        return new ConfigurationSet(configurationFileCollection, e -> e);
+        return configurationFileCollection.loadConfigurationSet(e -> e, null, null);
     }
 
 }

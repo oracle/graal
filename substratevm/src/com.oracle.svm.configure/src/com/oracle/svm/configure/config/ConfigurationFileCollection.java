@@ -152,6 +152,13 @@ public class ConfigurationFileCollection {
         return serializationConfiguration;
     }
 
+    public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, Path[] predefinedConfigClassDestinationDirs,
+                    Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
+        return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadJniConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
+                        loadSerializationConfig(exceptionHandler),
+                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler));
+    }
+
     private static TypeConfiguration loadTypeConfig(Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
         TypeConfiguration configuration = new TypeConfiguration();
         loadConfig(uris, new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(configuration)), exceptionHandler);

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.trace;
+package com.oracle.svm.agent.configwithorigins;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.trace.TraceProcessor;
 
-public class ClassLoadingProcessor extends AbstractProcessor {
+public class ConfigurationWithOriginsWriter extends ConfigurationWithOriginsTracer implements TracingResultWriter {
+
+    public static final String CONFIG_WITH_ORIGINS_SUFFIX = "-origins.json";
+
+    public ConfigurationWithOriginsWriter(TraceProcessor processor, MethodInfoRecordKeeper methodInfoRecordKeeper) {
+        super(processor, methodInfoRecordKeeper);
+    }
 
     @Override
-    void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
-        boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
-        if (invalidResult) {
-            return;
-        }
+    public boolean supportsPeriodicTraceWriting() {
+        return false;
+    }
 
-        String function = (String) entry.get("function");
-        List<?> args = (List<?>) entry.get("args");
-        if ("onClassFileLoadHook".equals(function)) {
-            expectSize(args, 2);
-            String nameInfo = (String) args.get(0);
-            byte[] classData = asBinary(args.get(1));
-            configurationSet.getPredefinedClassesConfiguration().add(nameInfo, classData);
-        }
+    @Override
+    public boolean supportsOnUnloadTraceWriting() {
+        return true;
+    }
+
+    @Override
+    public List<Path> writeToDirectory(Path directoryPath) throws IOException {
+        return ConfigurationSet.writeConfiguration(configFile -> directoryPath.resolve(configFile.getFileName(CONFIG_WITH_ORIGINS_SUFFIX)),
+                        configFile -> new ConfigurationWithOrigins(rootNode, configFile));
     }
 }

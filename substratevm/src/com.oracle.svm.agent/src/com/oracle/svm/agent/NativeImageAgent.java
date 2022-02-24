@@ -40,7 +40,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -57,10 +56,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsResultWriter;
+import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsWriter;
 import com.oracle.svm.agent.configwithorigins.MethodInfoRecordKeeper;
 import com.oracle.svm.agent.ignoredconfig.AgentMetaInfProcessor;
-import com.oracle.svm.agent.predicatedconfig.ConditionalConfigurationWriter;
+import com.oracle.svm.agent.conditionalconfig.ConditionalConfigurationWriter;
 import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.stackaccess.OnDemandJavaStackAccess;
@@ -70,6 +69,7 @@ import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.config.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
+import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
@@ -130,8 +130,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean experimentalOmitClasspathConfig = false;
         boolean build = false;
         boolean configurationWithOrigins = false;
-        Set<String> conditionalConfigurationUserCodePackagePrefixes = new HashSet<>();
-        Set<Pattern> conditionalConfigurationClassNameExcludePatterns = new HashSet<>();
+        Set<String> conditionalConfigUserPackagePrefixes = new HashSet<>();
+        Set<Pattern> conditionalConfigClassNameExcludePatterns = new HashSet<>();
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
         boolean trackReflectionMetadata = true;
@@ -203,12 +203,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.equals("experimental-configuration-with-origins")) {
                 configurationWithOrigins = true;
-            } else if (token.startsWith("experimental-conditional-configuration-for-packages=")) {
-                String userPackagePrefixes = getTokenValue(token);
-                Collections.addAll(conditionalConfigurationUserCodePackagePrefixes, userPackagePrefixes.split(","));
-            } else if (token.startsWith("conditional-configuration-class-name-exclude-patterns=")) {
+            } else if (token.startsWith("experimental-conditional-config-for-package=")) {
+                String userPackagePrefix = getTokenValue(token);
+                conditionalConfigUserPackagePrefixes.add(userPackagePrefix);
+            } else if (token.startsWith("conditional-config-class-name-exclude-pattern=")) {
                 String classNamePattern = getTokenValue(token);
-                Arrays.stream(classNamePattern.split(",")).map(Pattern::compile).forEach(conditionalConfigurationClassNameExcludePatterns::add);
+                conditionalConfigClassNameExcludePatterns.add(Pattern.compile(classNamePattern));
             } else if (token.equals("track-reflection-metadata")) {
                 trackReflectionMetadata = true;
             } else if (token.startsWith("track-reflection-metadata=")) {
@@ -223,7 +223,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             inform("no output/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
         }
 
-        if (configurationWithOrigins && !conditionalConfigurationUserCodePackagePrefixes.isEmpty()) {
+        if (configurationWithOrigins && !conditionalConfigUserPackagePrefixes.isEmpty()) {
             return error(5, "The agent can only be used in either the configuration with origins mode or the predefined classes mode.");
         }
 
@@ -258,7 +258,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
-        boolean shouldTraceOriginInformation = configurationWithOrigins || !conditionalConfigurationUserCodePackagePrefixes.isEmpty();
+        boolean shouldTraceOriginInformation = configurationWithOrigins || !conditionalConfigUserPackagePrefixes.isEmpty();
         final MethodInfoRecordKeeper recordKeeper = new MethodInfoRecordKeeper(shouldTraceOriginInformation);
         final Supplier<InterceptedState> interceptedStateSupplier = shouldTraceOriginInformation ? EagerlyLoadedJavaStackAccess.stackAccessSupplier()
                         : OnDemandJavaStackAccess.stackAccessSupplier();
@@ -291,26 +291,25 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     ignoreConfigFromClasspath(jvmti, omittedConfigs);
                 }
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
-                TraceProcessor omittedConfigProcessor = null;
+                TraceProcessor processor = new TraceProcessor(advisor);
+                ConfigurationSet omittedConfiguration = new ConfigurationSet();
                 Predicate<String> shouldExcludeClassesWithHash = null;
                 if (!omittedConfigs.isEmpty()) {
                     Function<IOException, Exception> ignore = e -> {
                         warn("Failed to load omitted config: " + e);
                         return null;
                     };
-                    omittedConfigProcessor = new TraceProcessor(advisor, omittedConfigs.loadJniConfig(ignore), omittedConfigs.loadReflectConfig(ignore),
-                                    omittedConfigs.loadProxyConfig(ignore), omittedConfigs.loadResourceConfig(ignore), omittedConfigs.loadSerializationConfig(ignore),
-                                    omittedConfigs.loadPredefinedClassesConfig(null, null, ignore), null);
-                    shouldExcludeClassesWithHash = omittedConfigProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
+                    omittedConfiguration = omittedConfigs.loadConfigurationSet(ignore, null, null);
+                    shouldExcludeClassesWithHash = omittedConfiguration.getPredefinedClassesConfiguration()::containsClassWithHash;
                 }
 
                 if (configurationWithOrigins) {
-                    ConfigurationWithOriginsResultWriter writer = new ConfigurationWithOriginsResultWriter(advisor, recordKeeper);
+                    ConfigurationWithOriginsWriter writer = new ConfigurationWithOriginsWriter(processor, recordKeeper);
                     tracer = writer;
                     tracingResultWriter = writer;
-                } else if (!conditionalConfigurationUserCodePackagePrefixes.isEmpty()) {
-                    ConditionalConfigurationPredicate filter = new ConditionalConfigurationPredicate(conditionalConfigurationClassNameExcludePatterns);
-                    ConditionalConfigurationWriter writer = new ConditionalConfigurationWriter(advisor, recordKeeper, conditionalConfigurationUserCodePackagePrefixes, filter);
+                } else if (!conditionalConfigUserPackagePrefixes.isEmpty()) {
+                    ConditionalConfigurationPredicate filter = new ConditionalConfigurationPredicate(conditionalConfigClassNameExcludePatterns);
+                    ConditionalConfigurationWriter writer = new ConditionalConfigurationWriter(processor, recordKeeper, conditionalConfigUserPackagePrefixes, filter);
                     tracer = writer;
                     tracingResultWriter = writer;
                 } else {
@@ -325,10 +324,9 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         }
                         return e; // rethrow
                     };
-                    TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
-                                    mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
-                                    mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestDirs, shouldExcludeClassesWithHash, handler), omittedConfigProcessor);
-                    ConfigurationResultWriter writer = new ConfigurationResultWriter(processor);
+
+                    ConfigurationSet configuration = mergeConfigs.loadConfigurationSet(handler, predefinedClassDestDirs, shouldExcludeClassesWithHash);
+                    ConfigurationResultWriter writer = new ConfigurationResultWriter(processor, configuration, omittedConfiguration);
                     tracer = writer;
                     tracingResultWriter = writer;
                 }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.predicatedconfig;
+package com.oracle.svm.agent.conditionalconfig;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -37,10 +37,11 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsResultWriter;
-import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsResultWriterBase;
+import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsTracer;
+import com.oracle.svm.agent.configwithorigins.MethodCallNode;
 import com.oracle.svm.agent.configwithorigins.MethodInfo;
 import com.oracle.svm.agent.configwithorigins.MethodInfoRecordKeeper;
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.config.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
@@ -48,9 +49,7 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.configure.trace.AccessAdvisor;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.trace.TraceProcessor;
 
 /**
  * Outputs configuration augmented with reachability conditions.
@@ -58,40 +57,35 @@ import com.oracle.svm.core.configure.ConfigurationFile;
  * This writer leverages the configuration origin information to deduce conditions for the
  * configuration. See {@link #createConditionalConfiguration()}
  */
-public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResultWriterBase {
+public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTracer implements TracingResultWriter {
     private final Set<String> applicationPackagePrefixes;
     private ConfigurationSet configurationContainer = new ConfigurationSet();
     private final ConditionalConfigurationPredicate filter;
 
-    public ConditionalConfigurationWriter(AccessAdvisor advisor, MethodInfoRecordKeeper methodInfoRecordKeeper, Set<String> applicationPackagePrefixes, ConditionalConfigurationPredicate filter) {
-        super(advisor, methodInfoRecordKeeper);
+    public ConditionalConfigurationWriter(TraceProcessor processor, MethodInfoRecordKeeper methodInfoRecordKeeper, Set<String> applicationPackagePrefixes, ConditionalConfigurationPredicate filter) {
+        super(processor, methodInfoRecordKeeper);
         this.applicationPackagePrefixes = applicationPackagePrefixes;
         this.filter = filter;
     }
 
-    private Map<MethodInfo, List<CallNodeWithConfig>> mapMethodsToCallNodes() {
+    private Map<MethodInfo, List<MethodCallNode>> mapMethodsToCallNodes() {
         /* Create a map that maps each method to the call nodes of that method in the call graph. */
-        Map<MethodInfo, List<CallNodeWithConfig>> methodCallNodes = new HashMap<>();
-        Map<MethodCallNode, List<CallNodeWithConfig>> children = new HashMap<>();
+        Map<MethodInfo, List<MethodCallNode>> methodCallNodes = new HashMap<>();
+        ConfigurationSet emptyConfigurationSet = new ConfigurationSet();
         rootNode.visitPostOrder(node -> {
-            List<CallNodeWithConfig> callNodes = methodCallNodes.computeIfAbsent(node.methodInfo, info -> new ArrayList<>());
-            ConfigurationSet configurationContainer = node.processor == null ? new ConfigurationSet() : new ConfigurationSet(node.processor);
-            CallNodeWithConfig newNode = new CallNodeWithConfig(node, configurationContainer);
-            callNodes.add(newNode);
-
-            List<CallNodeWithConfig> parentNodes = children.computeIfAbsent(node.parent, parent -> new ArrayList<>());
-            parentNodes.add(newNode);
-            if (children.containsKey(node)) {
-                for (CallNodeWithConfig callNodeWithConfig : children.get(node)) {
-                    callNodeWithConfig.parent = newNode;
-                }
+            if (node.configuration == null) {
+                node.configuration = emptyConfigurationSet;
             }
+            List<MethodCallNode> callNodes = methodCallNodes.computeIfAbsent(node.methodInfo, info -> new ArrayList<>());
+            callNodes.add(node);
         });
 
         return methodCallNodes;
     }
 
-    private Set<MethodInfo> maybePropagateConfiguration(List<CallNodeWithConfig> callNodes) {
+    /* This code is only ever executed by one thread. */
+    @SuppressWarnings("NonAtomicOperationOnVolatileField")
+    private Set<MethodInfo> maybePropagateConfiguration(List<MethodCallNode> callNodes) {
         /*
          * Iterate over a given method's call nodes and try to find the common config across all
          * calls of that method. Then, for each call node of the given method: 1. Set the common
@@ -114,8 +108,8 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
          */
         List<ConfigurationSet> newNodeConfiguration = new ArrayList<>();
         boolean hasNonEmptyNode = false;
-        for (CallNodeWithConfig node : callNodes) {
-            ConfigurationSet callParentConfig = node.configurationSet.copyAndSubtract(commonConfig);
+        for (MethodCallNode node : callNodes) {
+            ConfigurationSet callParentConfig = node.configuration.copyAndSubtract(commonConfig);
             if (!callParentConfig.isEmpty()) {
                 hasNonEmptyNode = true;
             }
@@ -129,58 +123,53 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
 
         Set<MethodInfo> affectedNodes = new HashSet<>();
         for (int i = 0; i < callNodes.size(); i++) {
-            CallNodeWithConfig node = callNodes.get(i);
+            MethodCallNode node = callNodes.get(i);
             ConfigurationSet uniqueNodeConfig = newNodeConfiguration.get(i);
-            node.configurationSet = new ConfigurationSet(commonConfig);
-            node.parent.configurationSet = node.parent.configurationSet.copyAndMerge(uniqueNodeConfig);
-            affectedNodes.add(node.parent.node.methodInfo);
+            node.configuration = new ConfigurationSet(commonConfig);
+            node.parent.configuration = node.parent.configuration.copyAndMerge(uniqueNodeConfig);
+            affectedNodes.add(node.parent.methodInfo);
         }
 
         return affectedNodes;
     }
 
-    private ConfigurationSet findCommonConfigurationForMethod(List<CallNodeWithConfig> callNodes) {
+    private ConfigurationSet findCommonConfigurationForMethod(List<MethodCallNode> callNodes) {
         ConfigurationSet config = null;
-        for (CallNodeWithConfig node : callNodes) {
+        for (MethodCallNode node : callNodes) {
             if (config == null) {
-                config = node.configurationSet;
+                config = node.configuration;
             } else {
-                config = config.copyAndintersectWith(node.configurationSet);
+                config = config.copyAndIntersectWith(node.configuration);
             }
         }
         return config;
     }
 
-    @Override
-    protected void beforeWritingConfig() {
-        createConditionalConfiguration();
-    }
-
     private void createConditionalConfiguration() {
-        Map<MethodInfo, List<CallNodeWithConfig>> methodCallNodes = mapMethodsToCallNodes();
+        Map<MethodInfo, List<MethodCallNode>> methodCallNodes = mapMethodsToCallNodes();
 
         propagateConfiguration(methodCallNodes);
 
         deduceConditionalConfiguration(methodCallNodes);
     }
 
-    private void deduceConditionalConfiguration(Map<MethodInfo, List<CallNodeWithConfig>> methodCallNodes) {
+    private void deduceConditionalConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
         /*
          * Once the configuration has been propagated, iterate over all call nodes and use each call
          * node as the condition for that call node's config.
          */
-        CallNodeWithConfig rootNode = methodCallNodes.remove(null).get(0);
+        MethodCallNode rootNode = methodCallNodes.remove(null).get(0);
 
-        for (List<CallNodeWithConfig> value : methodCallNodes.values()) {
-            for (CallNodeWithConfig node : value) {
-                String className = node.node.methodInfo.getJavaDeclaringClassName();
+        for (List<MethodCallNode> value : methodCallNodes.values()) {
+            for (MethodCallNode node : value) {
+                String className = node.methodInfo.getJavaDeclaringClassName();
                 ConfigurationCondition condition = ConfigurationCondition.create(className);
 
-                addConfigurationWithCondition(node.configurationSet, condition);
+                addConfigurationWithCondition(node.configuration, condition);
             }
         }
 
-        addConfigurationWithCondition(rootNode.configurationSet, ConfigurationCondition.alwaysTrue());
+        addConfigurationWithCondition(rootNode.configuration, ConfigurationCondition.alwaysTrue());
 
         filterConfiguration();
     }
@@ -209,7 +198,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
         configurationContainer = configurationContainer.filter(filter);
     }
 
-    private void propagateConfiguration(Map<MethodInfo, List<CallNodeWithConfig>> methodCallNodes) {
+    private void propagateConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
         /*
          * Iteratively propagate configuration from children to parent calls until an iteration
          * doesn't produce any changes.
@@ -218,7 +207,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
         Set<MethodInfo> methodsToHandle = methodCallNodes.keySet();
         while (methodsToHandle.size() != 0) {
             Set<MethodInfo> nextIterationMethodsToHandle = new HashSet<>();
-            for (List<CallNodeWithConfig> callNodes : methodCallNodes.values()) {
+            for (List<MethodCallNode> callNodes : methodCallNodes.values()) {
                 Set<MethodInfo> affectedMethods = maybePropagateConfiguration(callNodes);
                 nextIterationMethodsToHandle.addAll(affectedMethods);
             }
@@ -226,14 +215,10 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
         }
     }
 
-    @Override
-    protected String getConfigFileSuffix() {
-        return ConfigurationFile.DEFAULT_FILE_NAME_SUFFIX;
-    }
-
     private boolean methodOriginatesFromApplicationPackage(MethodInfo methodInfo) {
         return applicationPackagePrefixes.stream().anyMatch(prefix -> methodInfo.getJavaDeclaringClassName().startsWith(prefix));
     }
+
     @Override
     protected MethodInfo[] filterStackTrace(MethodInfo[] stackTrace) {
         /* Keep only the classes from the selected package names on the stack trace. */
@@ -258,32 +243,17 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
     }
 
     @Override
-    protected void writeConfig(JsonWriter writer, ConfigurationFile configurationFile) throws IOException {
-        configurationContainer.getConfiguration(configurationFile).printJson(writer);
-    }
-
-    protected void writeOriginConfig(JsonWriter writer, ConfigurationFile configurationFile) throws IOException {
-        ConfigurationWithOriginsResultWriter.writeJson(rootNode, writer, configurationFile);
+    public boolean supportsPeriodicTraceWriting() {
+        return false;
     }
 
     @Override
     public List<Path> writeToDirectory(Path directoryPath) throws IOException {
-        List<Path> writtenPaths = new ArrayList<>();
-        writtenPaths.addAll(super.writeToDirectory(directoryPath));
-        writtenPaths.addAll(
-                        writeToDirectory(directoryPath, this::writeOriginConfig, configurationFile -> configurationFile.getFileName(ConfigurationWithOriginsResultWriter.CONFIG_WITH_ORIGINS_SUFFIX)));
-        return writtenPaths;
-    }
-
-    private static class CallNodeWithConfig {
-        protected final MethodCallNode node;
-        protected CallNodeWithConfig parent;
-        protected ConfigurationSet configurationSet;
-
-        CallNodeWithConfig(MethodCallNode node, ConfigurationSet configurationSet) {
-            this.node = node;
-            this.parent = null;
-            this.configurationSet = configurationSet;
-        }
+        List<Path> writtenFiles;
+        writtenFiles = ConfigurationSet.writeConfiguration(configurationFile -> directoryPath.resolve(configurationFile.getFileName("-origins.txt")),
+                        configurationFile -> new HumanReadableConfigurationWithOrigins(rootNode, configurationFile));
+        createConditionalConfiguration();
+        writtenFiles.addAll(configurationContainer.writeConfiguration(configurationFile -> directoryPath.resolve(configurationFile.getFileName())));
+        return writtenFiles;
     }
 }

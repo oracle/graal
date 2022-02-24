@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.configure.config.ConfigurationSet;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
@@ -263,31 +264,19 @@ public class ConfigurationTool {
             callersFilter.removeRedundantNodes();
         }
 
-        AccessAdvisor advisor = new AccessAdvisor();
-        advisor.setHeuristicsEnabled(builtinHeuristicFilter);
-        if (callersFilter != null) {
-            advisor.setCallerFilterTree(callersFilter);
-        }
-        TraceProcessor p;
-        TraceProcessor omittedInputTraceProcessor;
+        ConfigurationSet configurationSet;
+        ConfigurationSet omittedConfigurationSet;
+
         try {
-            omittedInputTraceProcessor = new TraceProcessor(advisor, omittedInputSet.loadJniConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadReflectConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadProxyConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), omittedInputSet.loadResourceConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadSerializationConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), omittedInputSet.loadPredefinedClassesConfig(null, null, ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            null);
+            omittedConfigurationSet = omittedInputSet.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null);
             List<Path> predefinedClassDestDirs = new ArrayList<>();
             for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
                 Path subdir = Files.createDirectories(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
                 subdir = Files.createDirectories(subdir);
                 predefinedClassDestDirs.add(subdir);
             }
-            Predicate<String> shouldExcludeClassesWithHash = omittedInputTraceProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
-            p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            inputSet.loadProxyConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            inputSet.loadSerializationConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash, ConfigurationFileCollection.FAIL_ON_EXCEPTION),
-                            omittedInputTraceProcessor);
+            Predicate<String> shouldExcludeClassesWithHash = omittedConfigurationSet.getPredefinedClassesConfiguration()::containsClassWithHash;
+            configurationSet = inputSet.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash);
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -296,9 +285,19 @@ public class ConfigurationTool {
         if (traceInputs.isEmpty() && inputSet.isEmpty()) {
             throw new UsageException("No inputs specified.");
         }
-        for (URI uri : traceInputs) {
-            try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {
-                p.process(reader);
+
+        if (!traceInputs.isEmpty()) {
+            AccessAdvisor advisor = new AccessAdvisor();
+            advisor.setHeuristicsEnabled(builtinHeuristicFilter);
+            if (callersFilter != null) {
+                advisor.setCallerFilterTree(callersFilter);
+            }
+
+            TraceProcessor processor = new TraceProcessor(advisor);
+            for (URI uri : traceInputs) {
+                try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {
+                    processor.process(reader, configurationSet);
+                }
             }
         }
 
@@ -307,32 +306,32 @@ public class ConfigurationTool {
         }
         for (URI uri : outputSet.getReflectConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getReflectionConfiguration().printJson(writer);
+                configurationSet.getReflectionConfiguration().printJson(writer);
             }
         }
         for (URI uri : outputSet.getJniConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getJniConfiguration().printJson(writer);
+                configurationSet.getJniConfiguration().printJson(writer);
             }
         }
         for (URI uri : outputSet.getProxyConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getProxyConfiguration().printJson(writer);
+                configurationSet.getProxyConfiguration().printJson(writer);
             }
         }
         for (URI uri : outputSet.getResourceConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getResourceConfiguration().printJson(writer);
+                configurationSet.getResourceConfiguration().printJson(writer);
             }
         }
         for (URI uri : outputSet.getSerializationConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getSerializationConfiguration().printJson(writer);
+                configurationSet.getSerializationConfiguration().printJson(writer);
             }
         }
         for (URI uri : outputSet.getPredefinedClassesConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getPredefinedClassesConfiguration().printJson(writer);
+                configurationSet.getPredefinedClassesConfiguration().printJson(writer);
             }
         }
     }

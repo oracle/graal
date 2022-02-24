@@ -77,4 +77,9 @@ public class MethodInfo {
     public int hashCode() {
         return Objects.hash(name, signature, declaringClass);
     }
+
+    @Override
+    public String toString() {
+        return getJavaDeclaringClassName() + "#" + getJavaMethodNameAndSignature();
+    }
 }

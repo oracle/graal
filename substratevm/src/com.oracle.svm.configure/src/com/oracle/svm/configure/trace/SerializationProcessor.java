@@ -28,26 +28,21 @@ package com.oracle.svm.configure.trace;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.configure.config.SerializationConfiguration;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.configure.config.SerializationConfiguration;
+import com.oracle.svm.configure.config.ConfigurationSet;
 
 public class SerializationProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
-    private final SerializationConfiguration serializationConfiguration;
 
-    public SerializationProcessor(AccessAdvisor advisor, SerializationConfiguration serializationConfiguration) {
+    public SerializationProcessor(AccessAdvisor advisor) {
         this.advisor = advisor;
-        this.serializationConfiguration = serializationConfiguration;
-    }
-
-    public SerializationConfiguration getSerializationConfiguration() {
-        return serializationConfiguration;
     }
 
     @Override
-    void processEntry(Map<String, ?> entry) {
+    void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
@@ -55,6 +50,7 @@ public class SerializationProcessor extends AbstractProcessor {
         }
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
+        SerializationConfiguration serializationConfiguration = configurationSet.getSerializationConfiguration();
         if ("ObjectStreamClass.<init>".equals(function)) {
             expectSize(args, 2);
 

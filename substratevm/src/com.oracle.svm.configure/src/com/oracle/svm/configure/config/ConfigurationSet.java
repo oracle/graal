@@ -26,11 +26,13 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 
@@ -47,7 +49,7 @@ public class ConfigurationSet {
     private final SerializationConfiguration serializationConfiguration;
     private final PredefinedClassesConfiguration predefinedClassesConfiguration;
 
-    private ConfigurationSet(TypeConfiguration reflectionConfiguration, TypeConfiguration jniConfiguration, ResourceConfiguration resourceConfiguration, ProxyConfiguration proxyConfiguration,
+    public ConfigurationSet(TypeConfiguration reflectionConfiguration, TypeConfiguration jniConfiguration, ResourceConfiguration resourceConfiguration, ProxyConfiguration proxyConfiguration,
                     SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration) {
         this.reflectionConfiguration = reflectionConfiguration;
         this.jniConfiguration = jniConfiguration;
@@ -57,21 +59,9 @@ public class ConfigurationSet {
         this.predefinedClassesConfiguration = predefinedClassesConfiguration;
     }
 
-    public ConfigurationSet(TraceProcessor processor) {
-        this(processor.getReflectionConfiguration(), processor.getJniConfiguration(), processor.getResourceConfiguration(), processor.getProxyConfiguration(),
-                        processor.getSerializationConfiguration(), processor.getPredefinedClassesConfiguration());
-    }
-
-    public ConfigurationSet(ConfigurationFileCollection configurationFileCollection, Function<IOException, Exception> exceptionHandler) throws Exception {
-        this(configurationFileCollection.loadReflectConfig(exceptionHandler), configurationFileCollection.loadJniConfig(exceptionHandler),
-                        configurationFileCollection.loadResourceConfig(exceptionHandler), configurationFileCollection.loadProxyConfig(exceptionHandler),
-                        configurationFileCollection.loadSerializationConfig(exceptionHandler), configurationFileCollection.loadPredefinedClassesConfig(new Path[0], null, exceptionHandler));
-    }
-
     public ConfigurationSet(ConfigurationSet other) {
-        this(new TypeConfiguration(other.reflectionConfiguration), new TypeConfiguration(other.jniConfiguration), new ResourceConfiguration(other.resourceConfiguration),
-                        new ProxyConfiguration(other.proxyConfiguration), new SerializationConfiguration(other.serializationConfiguration),
-                        new PredefinedClassesConfiguration(other.predefinedClassesConfiguration));
+        this(other.reflectionConfiguration.copy(), other.jniConfiguration.copy(), other.resourceConfiguration.copy(), other.proxyConfiguration.copy(), other.serializationConfiguration.copy(),
+                        other.predefinedClassesConfiguration.copy());
     }
 
     public ConfigurationSet() {
@@ -97,7 +87,7 @@ public class ConfigurationSet {
         return mutate(other, ConfigurationBase::copyAndSubtract);
     }
 
-    public ConfigurationSet copyAndintersectWith(ConfigurationSet other) {
+    public ConfigurationSet copyAndIntersectWith(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndIntersect);
     }
 
@@ -154,9 +144,27 @@ public class ConfigurationSet {
         }
     }
 
+    public static List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver, Function<ConfigurationFile, ConfigurationBase<?, ?>> configSupplier) throws IOException {
+        List<Path> writtenFiles = new ArrayList<>();
+        for (ConfigurationFile configFile : ConfigurationFile.values()) {
+            if (configFile.canBeGeneratedByAgent()) {
+                Path path = configFilePathResolver.apply(configFile);
+                writtenFiles.add(path);
+                JsonWriter writer = new JsonWriter(path);
+                configSupplier.apply(configFile).printJson(writer);
+                writer.newline();
+                writer.close();
+            }
+        }
+        return writtenFiles;
+    }
+
+    public List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver) throws IOException {
+        return writeConfiguration(configFilePathResolver, this::getConfiguration);
+    }
+
     public boolean isEmpty() {
         return reflectionConfiguration.isEmpty() && jniConfiguration.isEmpty() && resourceConfiguration.isEmpty() && proxyConfiguration.isEmpty() && serializationConfiguration.isEmpty() &&
                         predefinedClassesConfiguration.isEmpty();
     }
-
 }
