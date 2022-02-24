@@ -58,6 +58,7 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -68,16 +69,18 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
- * Implements the parsing and translating of Ruby regular expressions to ECMAScript regular
- * expressions.
- *
- * @see RegexFlavorProcessor
+ * Implements the parsing and validation of Ruby regular expressions.
  */
-public final class RubyFlavorProcessor implements RegexFlavorProcessor {
+public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     /**
      * Characters that are considered special in ECMAScript regexes. To match these characters, they
@@ -401,10 +404,17 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * in sequence can case-unfold to a single codepoint.
      */
     private final IntArrayBuffer codepointsBuffer = new IntArrayBuffer();
+    /**
+     * Necessary for the {@link RegexParserGlobals} reference for {@link JSRegexParser}.
+     */
+    private final RegexLanguage language;
+    private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RubyFlavorProcessor(RegexSource source) {
+    private RubyRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+        this.language = language;
         this.inSource = source;
+        this.compilationBuffer = compilationBuffer;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
         this.position = 0;
@@ -421,10 +431,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         this.lastTermOutPosition = -1;
     }
 
-    @Override
-    public int getNumberOfCaptureGroups() {
-        // include capture group 0
-        return numberOfCaptureGroups + 1;
+    public static RegexValidator createValidator(RegexSource source) throws RegexSyntaxException {
+        return new RubyRegexParser(null, source, null);
+    }
+
+    public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+        return new RubyRegexParser(language, source, compilationBuffer);
     }
 
     @Override
@@ -437,24 +449,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         return globalFlags;
     }
 
-    @Override
-    public boolean isUnicodePattern() {
-        // We always return true; see the comment in #toECMAScriptRegex.
-        return true;
-    }
-
     @TruffleBoundary
     @Override
     public void validate() throws RegexSyntaxException {
         silent = true;
-        parse();
+        run();
     }
 
-    @TruffleBoundary
-    @Override
-    public RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException {
+    private RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException {
         silent = false;
-        parse();
+        run();
         // When translating to ECMAScript, we always the dotAll and unicode flags. The dotAll flag
         // lets us use . when translating Ruby's . in multiline mode. The unicode flag lets us use
         // some of the ECMAScript regex escape sequences which are restricted to Unicode regexes.
@@ -462,6 +466,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         // contain a lot of ambiguous syntactic constructions for backwards compatibility).
         String outFlags = globalFlags.isSticky() || startsWithBeginningAnchor ? "suy" : "su";
         return new RegexSource(outPattern.toString(), outFlags, inSource.getOptions(), inSource.getSource());
+    }
+
+    @Override
+    @TruffleBoundary
+    public RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException {
+        RegexSource ecmascriptSource = toECMAScriptRegex();
+        JSRegexParser ecmascriptParser = new JSRegexParser(language, ecmascriptSource, compilationBuffer, inSource);
+        return ecmascriptParser.parse();
     }
 
     private RubyFlags getLocalFlags() {
@@ -761,7 +773,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     // The parser
 
-    private void parse() {
+    private void run() {
         scanForCaptureGroups();
 
         flagsStack.push(globalFlags);
@@ -1023,10 +1035,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         return false;
                     } else {
                         // lower bound
-                        getMany(RubyFlavorProcessor::isDecDigit);
+                        getMany(RubyRegexParser::isDecDigit);
                         // upper bound
                         if (match(",")) {
-                            getMany(RubyFlavorProcessor::isDecDigit);
+                            getMany(RubyRegexParser::isDecDigit);
                         }
                         if (!match("}")) {
                             return false;
@@ -1313,7 +1325,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         int restorePosition = position;
         if (curChar() >= '1' && curChar() <= '9') {
             // Joni only considers backreferences numbered <= 1000.
-            String number = getUpTo(4, RubyFlavorProcessor::isDecDigit);
+            String number = getUpTo(4, RubyRegexParser::isDecDigit);
             int groupNumber = Integer.parseInt(number);
             if (groupNumber > 1000) {
                 position = restorePosition;
@@ -1364,7 +1376,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
             }
             int sign = match("-") ? -1 : 1;
-            groupName = getMany(RubyFlavorProcessor::isDecDigit);
+            groupName = getMany(RubyRegexParser::isDecDigit);
             try {
                 groupNumber = sign * Integer.parseInt(groupName);
                 if (groupNumber < 0) {
@@ -1408,7 +1420,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
         if (allowLevels && (curChar() == '+' || curChar() == '-')) {
             advance(); // consume sign
-            String level = getMany(RubyFlavorProcessor::isDecDigit);
+            String level = getMany(RubyRegexParser::isDecDigit);
             if (level.isEmpty()) {
                 throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
             }
@@ -1527,7 +1539,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         if (match("u{")) {
             getMany(c -> ASCII_POSIX_CHAR_CLASSES.get("space").contains(c));
             while (!match("}")) {
-                String code = getMany(RubyFlavorProcessor::isHexDigit);
+                String code = getMany(RubyRegexParser::isHexDigit);
                 try {
                     int codePoint = Integer.parseInt(code, 16);
                     if (codePoint > 0x10FFFF) {
@@ -1633,7 +1645,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         switch (curChar()) {
             case 'x': {
                 advance();
-                String code = getUpTo(2, RubyFlavorProcessor::isHexDigit);
+                String code = getUpTo(2, RubyRegexParser::isHexDigit);
                 int byteValue = Integer.parseInt(code, 16);
                 if (byteValue > 0x7F) {
                     // This is a non-ASCII byte escape. The escaped character might be part of a
@@ -1652,10 +1664,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 advance();
                 String code;
                 if (match("{")) {
-                    code = getMany(RubyFlavorProcessor::isHexDigit);
+                    code = getMany(RubyRegexParser::isHexDigit);
                     mustMatch("}");
                 } else {
-                    code = getUpTo(4, RubyFlavorProcessor::isHexDigit);
+                    code = getUpTo(4, RubyRegexParser::isHexDigit);
                     if (code.length() < 4) {
                         throw syntaxErrorAt(RbErrorMessages.incompleteEscape(code), beginPos);
                     }
@@ -1678,7 +1690,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             case '5':
             case '6':
             case '7': {
-                String code = getUpTo(3, RubyFlavorProcessor::isOctDigit);
+                String code = getUpTo(3, RubyRegexParser::isOctDigit);
                 int codePoint = Integer.parseInt(code, 8);
                 if (codePoint > 0xFF) {
                     throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos);
@@ -2052,12 +2064,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
                 boolean canBeNonGreedy = true;
-                String lower = getMany(RubyFlavorProcessor::isDecDigit);
+                String lower = getMany(RubyRegexParser::isDecDigit);
                 if (!lower.isEmpty()) {
                     lowerBound = Optional.of(new BigInteger(lower));
                 }
                 if (match(",")) {
-                    String upper = getMany(RubyFlavorProcessor::isDecDigit);
+                    String upper = getMany(RubyRegexParser::isDecDigit);
                     if (!upper.isEmpty()) {
                         upperBound = Optional.of(new BigInteger(upper));
                     }

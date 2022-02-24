@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -86,8 +85,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
-    private int realGroupCount;
-    private Map<String, Integer> namedCaptureGroups;
     private EconomicSet<Integer> referencedGroups = EconomicSet.create();
     private RegexASTNode[] nodes;
     /**
@@ -136,14 +133,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return source.getEncoding();
     }
 
-    public void setNamedCaptureGroups(Map<String, Integer> namedCaptureGroups) {
-        this.namedCaptureGroups = namedCaptureGroups;
-    }
-
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return namedCaptureGroups;
-    }
-
     public Group getRoot() {
         return root;
     }
@@ -177,14 +166,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
-    }
-
-    public int getRealGroupCount() {
-        return realGroupCount;
-    }
-
-    public void setRealGroupCount(int realGroupCount) {
-        this.realGroupCount = realGroupCount;
     }
 
     public Counter getQuantifierCount() {

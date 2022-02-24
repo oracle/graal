@@ -70,7 +70,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisit
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Map;
 
 public final class RegexASTBuilder {
 
@@ -131,11 +130,15 @@ public final class RegexASTBuilder {
         }
     }
 
-    public RegexAST popRootGroup(int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
+    /**
+     * This is the build method of this Builder. As such, it should be the last method you call on
+     * an {@link RegexASTBuilder} instance.
+     * 
+     * @return the generated AST
+     */
+    public RegexAST popRootGroup() {
         optimizeGroup();
         ast.getRoot().setEnclosedCaptureGroupsHigh(groupCount.getCount());
-        ast.setRealGroupCount(numberOfCaptureGroups);
-        ast.setNamedCaptureGroups(namedCaptureGroups);
         return ast;
     }
 

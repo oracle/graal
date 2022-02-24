@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,172 +40,37 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexFlags;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
-import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.errors.ErrorMessages;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
-import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
-public final class RegexParser {
+import java.util.Map;
 
-    private final RegexParserGlobals globals;
-    private final RegexSource source;
-    private final RegexFlags flags;
-    private final RegexLexer lexer;
-    private final RegexASTBuilder astBuilder;
+public interface RegexParser {
 
-    @TruffleBoundary
-    public RegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        this.globals = language.parserGlobals;
-        this.source = source;
-        this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new RegexLexer(source, flags);
-        this.astBuilder = new RegexASTBuilder(language, source, flags, compilationBuffer);
-    }
+    /**
+     * Runs the parser and produces an AST.
+     *
+     * @throws RegexSyntaxException when the pattern or the flags are not well-formed
+     * @throws UnsupportedRegexException when the pattern cannot be translated to an equivalent
+     *             ECMAScript pattern
+     */
+    RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException;
 
-    public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
-        return new RegexParser(language, new RegexSource(pattern, "", RegexOptions.DEFAULT, null), new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false).getRoot();
-    }
+    /**
+     * Returns a {@link TruffleObject} representing the compilation flags which were set for the
+     * regular expression. The returned object responds to 'READ' messages on names which correspond
+     * to the names of the flags as used in the language from which the flavor originates. This
+     * method has to be called after calling {@link #parse}.
+     */
+    AbstractRegexObject getFlags();
 
-    public RegexFlags getFlags() {
-        return flags;
-    }
-
-    @TruffleBoundary
-    public RegexAST parse() throws RegexSyntaxException {
-        return parse(true);
-    }
-
-    private RegexAST parse(boolean rootCapture) throws RegexSyntaxException {
-        astBuilder.pushRootGroup(rootCapture);
-        Token token = null;
-        Token.Kind prevKind;
-        while (lexer.hasNext()) {
-            prevKind = token == null ? null : token.kind;
-            token = lexer.next();
-            if (!source.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry() && token.kind != Token.Kind.quantifier && astBuilder.getCurTerm() != null &&
-                            astBuilder.getCurTerm().isBackReference() && astBuilder.getCurTerm().asBackReference().isNestedOrForwardReference() &&
-                            !isNestedInLookBehindAssertion(astBuilder.getCurTerm())) {
-                // In JavaScript, nested backreferences are dropped as no-ops.
-                // However, in Python and Ruby, they are valid, since the contents of capture groups
-                // are not cleared when re-entering a loop.
-                astBuilder.removeCurTerm();
-            }
-            switch (token.kind) {
-                case caret:
-                    if (prevKind != Token.Kind.caret) {
-                        if (flags.isMultiline()) {
-                            astBuilder.addCopy(token, globals.multiLineCaretSubstitution);
-                        } else {
-                            astBuilder.addPositionAssertion(token);
-                        }
-                    }
-                    break;
-                case dollar:
-                    if (prevKind != Token.Kind.dollar) {
-                        if (flags.isMultiline()) {
-                            astBuilder.addCopy(token, globals.multiLineDollarSubsitution);
-                        } else {
-                            astBuilder.addPositionAssertion(token);
-                        }
-                    }
-                    break;
-                case wordBoundary:
-                    if (prevKind == Token.Kind.wordBoundary) {
-                        // ignore
-                        break;
-                    } else if (prevKind == Token.Kind.nonWordBoundary) {
-                        astBuilder.replaceCurTermWithDeadNode();
-                        break;
-                    }
-                    if (flags.isUnicode() && flags.isIgnoreCase()) {
-                        astBuilder.addCopy(token, globals.unicodeIgnoreCaseWordBoundarySubstitution);
-                    } else {
-                        astBuilder.addCopy(token, globals.wordBoundarySubstituion);
-                    }
-                    break;
-                case nonWordBoundary:
-                    if (prevKind == Token.Kind.nonWordBoundary) {
-                        // ignore
-                        break;
-                    } else if (prevKind == Token.Kind.wordBoundary) {
-                        astBuilder.replaceCurTermWithDeadNode();
-                        break;
-                    }
-                    if (flags.isUnicode() && flags.isIgnoreCase()) {
-                        astBuilder.addCopy(token, globals.unicodeIgnoreCaseNonWordBoundarySubsitution);
-                    } else {
-                        astBuilder.addCopy(token, globals.nonWordBoundarySubstitution);
-                    }
-                    break;
-                case backReference:
-                    astBuilder.addBackReference((Token.BackReference) token);
-                    break;
-                case quantifier:
-                    if (astBuilder.getCurTerm() == null) {
-                        throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-                    }
-                    if (flags.isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
-                        throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
-                    }
-                    if (astBuilder.getCurTerm().isLookBehindAssertion()) {
-                        throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
-                    }
-                    astBuilder.addQuantifier((Token.Quantifier) token);
-                    break;
-                case alternation:
-                    astBuilder.addSequence();
-                    break;
-                case captureGroupBegin:
-                    astBuilder.pushCaptureGroup(token);
-                    break;
-                case nonCaptureGroupBegin:
-                    astBuilder.pushGroup(token);
-                    break;
-                case lookAheadAssertionBegin:
-                    astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
-                    break;
-                case lookBehindAssertionBegin:
-                    astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
-                    break;
-                case groupEnd:
-                    if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
-                    }
-                    astBuilder.popGroup(token);
-                    break;
-                case charClass:
-                    astBuilder.addCharClass((Token.CharacterClass) token);
-                    break;
-            }
-        }
-        if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
-        }
-        return astBuilder.popRootGroup(lexer.numberOfCaptureGroups(), lexer.getNamedCaptureGroups());
-    }
-
-    private static boolean isNestedInLookBehindAssertion(Term t) {
-        RegexASTSubtreeRootNode parent = t.getSubTreeParent();
-        while (parent.isLookAroundAssertion()) {
-            if (parent.isLookBehindAssertion()) {
-                return true;
-            }
-            parent = parent.getParent().getSubTreeParent();
-        }
-        return false;
-    }
-
-    private RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition());
-    }
+    /**
+     * Returns a map from the names of capture groups to their indices. If the regular expression
+     * had no named capture groups, returns null. This method has to be called after calling
+     * {@link #parse}.
+     */
+    Map<String, Integer> getNamedCaptureGroups();
 }

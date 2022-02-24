@@ -56,7 +56,7 @@ import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
-import com.oracle.truffle.regex.RegexOptions;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -66,20 +66,23 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
- * Implements the parsing and translating of Python regular expressions to ECMAScript regular
- * expressions.
+ * Implements the parsing and validation of Python regular expressions.
  * <p>
  * The implementation strives to be as close as possible to the behavior of the regex parser that
  * ships with Python 3.7, down to the wording of the error messages.
- *
- * @see RegexFlavorProcessor
  */
-public final class PythonFlavorProcessor implements RegexFlavorProcessor {
+public final class PythonRegexParser implements RegexValidator, RegexParser {
 
     /**
      * Characters that are considered special in ECMAScript regexes. To match these characters, they
@@ -329,13 +332,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * quantifiers.
      */
     private TermCategory lastTerm;
-
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
     private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
+    /**
+     * Necessary for the {@link RegexParserGlobals} reference for {@link JSRegexParser}.
+     */
+    private final RegexLanguage language;
+    private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
+    private PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, PythonREMode mode) throws RegexSyntaxException {
+        this.language = language;
         this.inSource = source;
+        this.compilationBuffer = compilationBuffer;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
         this.mode = mode == PythonREMode.None ? PythonREMode.fromEncoding(source.getEncoding()) : mode;
@@ -350,10 +359,12 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         this.lastTerm = TermCategory.None;
     }
 
-    @Override
-    public int getNumberOfCaptureGroups() {
-        // include capture group 0
-        return groups + 1;
+    public static RegexValidator createValidator(RegexSource source, PythonREMode mode) throws RegexSyntaxException {
+        return new PythonRegexParser(null, source, null, mode);
+    }
+
+    public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, PythonREMode mode) throws RegexSyntaxException {
+        return new PythonRegexParser(language, source, compilationBuffer, mode);
     }
 
     @Override
@@ -366,24 +377,16 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         return getGlobalFlags();
     }
 
-    @Override
-    public boolean isUnicodePattern() {
-        // We always return true; see the comment in #toECMAScriptRegex.
-        return true;
-    }
-
     @TruffleBoundary
     @Override
     public void validate() throws RegexSyntaxException {
         silent = true;
-        parse();
+        run();
     }
 
-    @TruffleBoundary
-    @Override
-    public RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException {
+    private RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException {
         silent = false;
-        parse();
+        run();
         // When translating to ECMAScript, we always the dotAll and unicode flags. The dotAll flag
         // lets us translate Python's dotAll . directly. The unicode flag lets us use some of the
         // ECMAScript regex escape sequences which are restricted to Unicode regexes. It also lets
@@ -401,8 +404,15 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         }
         boolean sticky = inSource.getOptions().getPythonMethod() == PythonMethod.match || inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch || getGlobalFlags().isSticky();
         String outFlags = sticky ? "suy" : "su";
-        RegexOptions outOptions = inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16).withoutPythonMethod();
-        return new RegexSource(outPattern.toString(), outFlags, outOptions, inSource.getSource());
+        return new RegexSource(outPattern.toString(), outFlags, inSource.getOptions(), inSource.getSource());
+    }
+
+    @Override
+    @TruffleBoundary
+    public RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException {
+        RegexSource ecmascriptSource = toECMAScriptRegex();
+        JSRegexParser ecmascriptParser = new JSRegexParser(language, ecmascriptSource, compilationBuffer, inSource);
+        return ecmascriptParser.parse();
     }
 
     private PythonFlags getLocalFlags() {
@@ -694,7 +704,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     // The parser
 
-    private void parse() {
+    private void run() {
         PythonFlags startFlags;
 
         // The pattern can contain inline switches for global flags. However, these inline switches
@@ -988,7 +998,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         if (curChar() >= '1' && curChar() <= '9') {
             // if there are three octal digits following a backslash,
             // always treat that as an octal escape
-            String octalEscape = getUpTo(3, PythonFlavorProcessor::isOctDigit);
+            String octalEscape = getUpTo(3, PythonRegexParser::isOctDigit);
             if (octalEscape.length() == 3) {
                 int codePoint = Integer.parseInt(octalEscape, 8);
                 if (codePoint > 0377) {
@@ -999,7 +1009,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             } else {
                 retreat(octalEscape.length());
             }
-            String number = getUpTo(2, PythonFlavorProcessor::isDecDigit);
+            String number = getUpTo(2, PythonRegexParser::isDecDigit);
             int groupNumber = Integer.parseInt(number);
             if (groupNumber > groups) {
                 throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(number), number.length());
@@ -1078,7 +1088,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             case '\\':
                 return '\\';
             case 'x': {
-                String code = getUpTo(2, PythonFlavorProcessor::isHexDigit);
+                String code = getUpTo(2, PythonRegexParser::isHexDigit);
                 if (code.length() < 2) {
                     throw syntaxErrorAtRel(PyErrorMessages.incompleteEscapeX(code), 2 + code.length());
                 }
@@ -1101,7 +1111,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
-                    String code = getUpTo(escapeLength, PythonFlavorProcessor::isHexDigit);
+                    String code = getUpTo(escapeLength, PythonRegexParser::isHexDigit);
                     if (code.length() < escapeLength) {
                         throw syntaxErrorAtRel(PyErrorMessages.incompleteEscapeU(escapeLead, code), 2 + code.length());
                     }
@@ -1135,7 +1145,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             default:
                 if (isOctDigit(ch)) {
                     retreat();
-                    String code = getUpTo(3, PythonFlavorProcessor::isOctDigit);
+                    String code = getUpTo(3, PythonRegexParser::isOctDigit);
                     int codePoint = Integer.parseInt(code, 8);
                     if (codePoint > 0377) {
                         throw syntaxErrorAtRel(PyErrorMessages.invalidOctalEscape(code), 1 + code.length());
@@ -1266,12 +1276,12 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
-                String lower = getMany(PythonFlavorProcessor::isDecDigit);
+                String lower = getMany(PythonRegexParser::isDecDigit);
                 if (!lower.isEmpty()) {
                     lowerBound = Optional.of(new BigInteger(lower));
                 }
                 if (match(",")) {
-                    String upper = getMany(PythonFlavorProcessor::isDecDigit);
+                    String upper = getMany(PythonRegexParser::isDecDigit);
                     if (!upper.isEmpty()) {
                         upperBound = Optional.of(new BigInteger(upper));
                     }
