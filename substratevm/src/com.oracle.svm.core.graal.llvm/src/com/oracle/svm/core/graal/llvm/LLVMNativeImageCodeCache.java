@@ -132,6 +132,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
+    @Override
     public void llvmStrip(DebugContext debug, String inputPath) {
         List<String> args = new ArrayList<>();
         args.add("--remove-section=.llvm_stackmaps");
