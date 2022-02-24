@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.lang.reflect.Array;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -80,10 +79,17 @@ public class StaticObject implements TruffleObject, Cloneable {
         this.klass = klass;
     }
 
-    @ExplodeLoop
     private void initInstanceFields(ObjectKlass thisKlass) {
         checkNotForeign();
-        CompilerAsserts.partialEvaluationConstant(thisKlass);
+        if (CompilerDirectives.isPartialEvaluationConstant(thisKlass)) {
+            initLoop(thisKlass);
+        } else {
+            initLoopNoExplode(thisKlass);
+        }
+    }
+
+    @ExplodeLoop
+    private void initLoop(ObjectKlass thisKlass) {
         for (Field f : thisKlass.getFieldTable()) {
             assert !f.isStatic();
             if (!f.isHidden() && !f.isRemoved()) {
@@ -94,10 +100,41 @@ public class StaticObject implements TruffleObject, Cloneable {
         }
     }
 
-    @ExplodeLoop
+    private void initLoopNoExplode(ObjectKlass thisKlass) {
+        for (Field f : thisKlass.getFieldTable()) {
+            assert !f.isStatic();
+            if (!f.isHidden() && !f.isRemoved()) {
+                if (f.getKind() == JavaKind.Object) {
+                    f.setObject(this, StaticObject.NULL);
+                }
+            }
+        }
+    }
+
     private void initInitialStaticFields(ObjectKlass thisKlass) {
         checkNotForeign();
-        CompilerAsserts.partialEvaluationConstant(thisKlass);
+        if (CompilerDirectives.isPartialEvaluationConstant(thisKlass)) {
+            staticInitLoop(thisKlass);
+        } else {
+            staticInitLoopNoExplode(thisKlass);
+        }
+    }
+
+    @ExplodeLoop
+    private void staticInitLoop(ObjectKlass thisKlass) {
+        for (Field f : thisKlass.getInitialStaticFields()) {
+            assert f.isStatic();
+            if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
+                if (f.isHidden()) { // extension field
+                    f.setHiddenObject(this, StaticObject.NULL);
+                } else {
+                    f.setObject(this, StaticObject.NULL);
+                }
+            }
+        }
+    }
+
+    private void staticInitLoopNoExplode(ObjectKlass thisKlass) {
         for (Field f : thisKlass.getInitialStaticFields()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
@@ -129,9 +166,10 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
             klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
         }
-        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
         // Will be overriden if necessary, but should be initialized to non-host null.
         klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
+        // Final hidden field assignment
+        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
         return trackAllocation(klass, newObj);
     }
 
