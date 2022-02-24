@@ -132,6 +132,19 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
+    public void llvmStrip(DebugContext debug, String inputPath) {
+        List<String> args = new ArrayList<>();
+        args.add("--remove-section=.llvm_stackmaps");
+        args.add(inputPath);
+
+        try {
+            LLVMToolchain.runLLVMCommand("llvm-strip", basePath, args);
+        } catch (RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("Removing stackmaps failed for " + inputPath + ": " + e.getStatus() + "\nCommand: llvm-strip " + String.join(" ", args));
+        }
+    }
+
     private void writeBitcode(BatchExecutor executor) {
         methodIndex = new HostedMethod[compilations.size()];
         AtomicInteger num = new AtomicInteger(-1);

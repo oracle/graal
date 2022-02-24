@@ -107,6 +107,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
+    @Override
+    public void llvmStrip(DebugContext debug, String inputPath) {
+        // No need to execute llvm-strip
+    }
+
     /**
      * Patch references from code to other code and constant data. Generate relocation information
      * in the process. More patching can be done, and correspondingly fewer relocation records
