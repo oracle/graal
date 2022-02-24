@@ -85,7 +85,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
-    private EconomicSet<Integer> referencedGroups = EconomicSet.create();
+    private final EconomicSet<Integer> referencedGroups = EconomicSet.create();
     private RegexASTNode[] nodes;
     /**
      * AST as parsed from the expression.

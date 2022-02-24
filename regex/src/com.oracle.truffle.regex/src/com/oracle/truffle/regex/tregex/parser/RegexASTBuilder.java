@@ -71,6 +71,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
+/**
+ * This class is used to generate regex ASTs. The provided methods append nodes to the AST `
+ */
 public final class RegexASTBuilder {
 
     private final RegexParserGlobals globals;
@@ -100,29 +103,53 @@ public final class RegexASTBuilder {
         this.compilationBuffer = compilationBuffer;
     }
 
+    /**
+     * Returns the current {@link Group}. Any new {@link Term}s will be added to its last
+     * {@link Sequence} (the one returned by {@link #curSequence}).
+     */
     public Group getCurGroup() {
         return curGroup;
     }
 
+    /**
+     * Returns the current {@link Sequence} into which new {@link Term}s will be added.
+     */
     public Sequence getCurSequence() {
         return curSequence;
     }
 
+    /**
+     * Returns the last {@link Term} inserted into the current {@link Sequence}. This will be
+     * {@code null} if a new {@link Sequence} or {@link Group} was just started.
+     */
     public Term getCurTerm() {
         return curTerm;
     }
 
+    /**
+     * Indicates whether the builder is currently in the root group or in some nested group.
+     * 
+     * @return {@code true} if the builder is in the root group
+     */
     public boolean curGroupIsRoot() {
         return curGroup == ast.getRoot();
     }
 
+    /**
+     * This should be called first after creating a new {@link RegexASTBuilder}. This will create
+     * and enter the root capture group (group number 0).
+     */
     public void pushRootGroup() {
         pushRootGroup(true);
     }
 
+    /**
+     * Like {@link #pushRootGroup()}, but allows creating a non-capturing root group. This is useful
+     * for building intermediate ASTs that are then pasted into other ASTs.
+     */
     public void pushRootGroup(boolean rootCapture) {
         RegexASTRootNode rootParent = ast.createRootNode();
-        ast.setRoot(pushGroup(null, false, rootCapture, rootParent));
+        ast.setRoot(pushGroup(null, rootCapture, rootParent));
         if (options.isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(ast.getRoot(),
@@ -142,34 +169,63 @@ public final class RegexASTBuilder {
         return ast;
     }
 
+    /**
+     * Creates and enters a new non-capturing group. This call should be paired with a call to
+     * {@link #popGroup}.
+     * 
+     * @param token a {@link Token} whose source section should be included in the group's source
+     *            sections, or {@code null} if none
+     */
     public void pushGroup(Token token) {
-        pushGroup(token, true, false, null);
+        pushGroup(token, false, null);
     }
 
+    /**
+     * Creates and enters a new capture group. This call should be paired with a call to
+     * {@link #popGroup}.
+     * 
+     * @param token a {@link Token} whose source section should be included in the group's source
+     *            sections, or {@code null} if none
+     */
     public void pushCaptureGroup(Token token) {
-        pushGroup(token, true, true, null);
+        pushGroup(token, true, null);
     }
 
-    public void pushLookBehindAssertion(Token token, boolean negate) {
-        LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
-        ast.addSourceSection(lookBehind, token);
-        addTerm(lookBehind);
-        pushGroup(token, false, false, lookBehind);
-    }
-
+    /**
+     * Creates and enters a new look-ahead assertion. This call should be paired with a call to
+     * {@link #popGroup}.
+     * 
+     * @param token a {@link Token} whose source section should be included in the assertion's
+     *            source sections, or {@code null} if none
+     * @param negate {@code true} if the look-ahead assertion is to be negative
+     */
     public void pushLookAheadAssertion(Token token, boolean negate) {
         LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
         ast.addSourceSection(lookAhead, token);
         addTerm(lookAhead);
-        pushGroup(token, false, false, lookAhead);
+        pushGroup(token, false, lookAhead);
     }
 
-    private Group pushGroup(Token token, boolean addToSeq, boolean capture, RegexASTSubtreeRootNode parent) {
+    /**
+     * Creates and enters a new look-behind assertion. This call should be paired with a call to
+     * {@link #popGroup}.
+     * 
+     * @param token a {@link Token} whose source section should be included in the assertion's
+     *            source sections, or {@code null} if none
+     * @param negate {@code true} if the look-behind assertion is to be negative
+     */
+    public void pushLookBehindAssertion(Token token, boolean negate) {
+        LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
+        ast.addSourceSection(lookBehind, token);
+        addTerm(lookBehind);
+        pushGroup(token, false, lookBehind);
+    }
+
+    private Group pushGroup(Token token, boolean capture, RegexASTSubtreeRootNode parent) {
         Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
         if (parent != null) {
             parent.setGroup(group);
-        }
-        if (addToSeq) {
+        } else {
             addTerm(group);
         }
         ast.addSourceSection(group, token);
@@ -179,6 +235,15 @@ public final class RegexASTBuilder {
         return group;
     }
 
+    /**
+     * Close and leave the current group. This should be paired either with
+     * {@link #pushGroup(Token)}, {@link #pushCaptureGroup(Token)},
+     * {@link #pushLookAheadAssertion(Token, boolean)} or
+     * {@link #pushLookBehindAssertion(Token, boolean)}.
+     * 
+     * @param token a {@link Token} whose source section should be included in the group's or
+     *            assertion's source sections, or {@code null} if none
+     */
     public void popGroup(Token token) {
         if (tryMergeSingleCharClassAlternations()) {
             curGroup.removeLastSequence();
@@ -202,7 +267,8 @@ public final class RegexASTBuilder {
     }
 
     /**
-     * Adds a new {@link Sequence} to the current {@link Group}.
+     * Adds a new {@link Sequence} to the current {@link Group}. In a parser, you would call this
+     * method after encountering the vertical bar operator.
      */
     public void addSequence() {
         if (!tryMergeSingleCharClassAlternations()) {
@@ -211,11 +277,19 @@ public final class RegexASTBuilder {
         }
     }
 
-    public void addTerm(Term term) {
+    private void addTerm(Term term) {
         curSequence.add(term);
         curTerm = term;
     }
 
+    /**
+     * Adds a new {@link CharacterClass} to the current {@link Sequence}.
+     * 
+     * @param token aside from the source sections, the token most importantly contains the set of
+     *            code points to be included in the character class and a flag indicating whether it
+     *            corresponds to a single character in the regex (i.e. a literal or an escaped
+     *            character)
+     */
     public void addCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = token.getCodePointSet();
         if (flags.isUnicode()) {
@@ -347,6 +421,12 @@ public final class RegexASTBuilder {
         return group;
     }
 
+    /**
+     * Adds a new {@link BackReference} to the current {@link Sequence}.
+     * 
+     * @param token aside from the source sections, this contains the number of the group being
+     *            referenced
+     */
     public void addBackReference(Token.BackReference token) {
         BackReference backReference = ast.createBackReference(token.getGroupNr());
         ast.addSourceSection(backReference, token);
@@ -375,6 +455,12 @@ public final class RegexASTBuilder {
         }
     }
 
+    /**
+     * Adds a new {@link PositionAssertion} to the current {@link Sequence}.
+     * 
+     * @param token aside from the source sections, the kind of this token indicates whether this is
+     *            the {@code ^} assertion or the {@code $} assertion
+     */
     public void addPositionAssertion(Token token) {
         PositionAssertion.Type type;
         if (token.kind == Token.Kind.caret) {
@@ -389,6 +475,12 @@ public final class RegexASTBuilder {
         addTerm(positionAssertion);
     }
 
+    /**
+     * Adds a quantifier to the current {@link Term}.
+     * 
+     * @param quantifier this token contains a specification of the quantifier's semantics, along
+     *            with the source section data
+     */
     public void addQuantifier(Token.Quantifier quantifier) {
         assert curTerm == curSequence.getLastTerm();
         if (quantifier.getMin() == -1) {
@@ -458,6 +550,13 @@ public final class RegexASTBuilder {
         properties.setQuantifiers();
     }
 
+    /**
+     * Adds a copy of {@code sourceGroup} to the current {@link Sequence}.
+     * 
+     * @param token a token indicating which source sections should be attributed to the copied
+     *            group
+     * @param sourceGroup the {@link Group} to be copied
+     */
     public void addCopy(Token token, Group sourceGroup) {
         Group copy = sourceGroup.copyRecursive(ast, compilationBuffer);
         if (options.isDumpAutomataWithSourceSections()) {
@@ -466,12 +565,18 @@ public final class RegexASTBuilder {
         addTerm(copy);
     }
 
+    /**
+     * Removes the current {@link Term} from the current {@link Sequence}.
+     */
     public void removeCurTerm() {
         ast.getNodeCount().dec(countVisitor.count(curSequence.getLastTerm()));
         curSequence.removeLastTerm();
         curTerm = curSequence.isEmpty() ? null : curSequence.getLastTerm();
     }
 
+    /**
+     * Replaces the current {@link Term} with a dead node, making the current {@link Sequence} dead.
+     */
     public void replaceCurTermWithDeadNode() {
         removeCurTerm();
         addTerm(createCharClass(CodePointSet.getEmpty(), null));
