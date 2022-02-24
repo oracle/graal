@@ -51,10 +51,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class NativeMethodNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
-    @Child
-    InteropLibrary executeNative;
-    @CompilationFinal
-    boolean throwsException;
+    @Child InteropLibrary executeNative;
+    @CompilationFinal boolean throwsException;
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 

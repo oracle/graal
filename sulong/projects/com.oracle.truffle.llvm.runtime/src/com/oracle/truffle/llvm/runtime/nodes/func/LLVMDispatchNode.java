@@ -347,23 +347,23 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @Specialization(guards = {"foreigns.isForeign(receiver)", "interopLibrary.isExecutable(foreignFunction)"})
     @GenerateAOT.Exclude
     protected Object doForeignExecutable(Object receiver, Object[] arguments,
-                               @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
-                               @CachedLibrary(limit = "3") NativeTypeLibrary natives,
-                               @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
-                               @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
-                               @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") NativeTypeLibrary natives,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
+                    @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
+                    @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
         return lookupDispatchForeignNode.execute(foreignFunction, natives.getNativeType(receiver), arguments);
     }
 
     @Specialization(guards = {"foreigns.isForeign(receiver)", "!interopLibrary.isExecutable(foreignFunction)",
-            "interopLibrary.isPointer(foreignFunction)"})
+                    "interopLibrary.isPointer(foreignFunction)"})
     @GenerateAOT.Exclude
     protected Object doForeignPointer(@SuppressWarnings("unused") Object receiver, Object[] arguments,
-                               @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
-                               @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
-                               @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
-                               @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode,
-                               @Cached BranchProfile exception) {
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
+                    @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
+                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode,
+                    @Cached BranchProfile exception) {
         try {
             return dispatchNode.executeDispatch(LLVMNativePointer.create(interopLibrary.asPointer(foreignFunction)), arguments);
         } catch (UnsupportedMessageException | IllegalStateException e) {
