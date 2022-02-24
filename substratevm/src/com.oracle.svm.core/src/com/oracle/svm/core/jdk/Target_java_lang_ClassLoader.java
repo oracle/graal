@@ -404,7 +404,7 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
      */
 
     @Delete
-    private native boolean load0(String name, boolean isBuiltin);
+    private native boolean load0(String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete
     private native long findEntry(String name);
