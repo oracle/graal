@@ -1276,10 +1276,9 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += ['--language:' + image_config.language, '--tool:all']
 
             if isinstance(image_config, mx_sdk.LanguageLibraryConfig):
-                build_args += [
-                    '-Dorg.graalvm.launcher.class=' + image_config.main_class,
-                    '-H:+EnableSignalAPI',
-                ]
+                build_args += ['-H:+EnableSignalAPI']
+                if image_config.main_class:
+                    build_args += ['-Dorg.graalvm.launcher.class=' + image_config.main_class]
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
@@ -1293,7 +1292,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
                 build_args += [
                     '--install-exit-handlers',
-                    '-H:+AllowVMInspection'
+                    '-H:+AllowVMInspection',
                 ]
 
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):

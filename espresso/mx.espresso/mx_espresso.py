@@ -173,9 +173,7 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
         '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
-        '--initialize-at-run-time=org.graalvm.launcher.AbstractLanguageLauncher',
     ],
-    main_class="com.oracle.truffle.espresso.launcher.EspressoLauncher",
 )
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
