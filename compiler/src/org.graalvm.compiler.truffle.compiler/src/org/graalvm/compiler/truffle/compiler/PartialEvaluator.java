@@ -68,6 +68,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -125,12 +126,6 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 public abstract class PartialEvaluator {
 
     private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in the graph-decoding of partial evaluation.");
-    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis").doc("Time spent in the escape-analysis in Truffle tier.");
-    private static final TimerKey TruffleFrameVerifyFrameTimer = DebugContext.timer("PartialEvaluation-VerifyFrame").doc("Time spent in frame access verification in Truffle tier.");
-    private static final TimerKey TruffleTransformPhiTimer = DebugContext.timer("PartialEvaluation-TransformPhi").doc("Time spent in phi processing in Truffle tier.");
-    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination").doc("Time spent in conditional elimination in Truffle tier.");
-    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer").doc("Time spent in the canonicalizer in the Truffle tier.");
-    private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard").doc("Time spent in converting deoptimize to guard in Truffle tier.");
 
     protected final TruffleCompilerConfiguration config;
     protected final Providers providers;
@@ -165,16 +160,12 @@ public abstract class PartialEvaluator {
     protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
 
     // Phases
-    private final CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
     private final VerifyFrameDoesNotEscapePhase verifyFrameDoesNotEscapePhase = new VerifyFrameDoesNotEscapePhase();
-    private final ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
-    private final ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(false);
-    private final FrameAccessVerificationPhase frameAccessVerificationPhase = new FrameAccessVerificationPhase();
-    private final AgnosticInliningPhase inliningPhase = new AgnosticInliningPhase(this);
     // Effectively final, lazily initialized in #initialize
     private InstrumentBranchesPhase instrumentBranchesPhase;
     private InstrumentTruffleBoundariesPhase instrumentTruffleBoundariesPhase;
-    private PartialEscapePhase partialEscapePhase;
+    private TruffleSuite truffleSuite;
+    private AgnosticInliningPhase inliningPhase;
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
@@ -215,9 +206,13 @@ public abstract class PartialEvaluator {
         if (instrumentationCfg.instrumentBoundaries) {
             instrumentTruffleBoundariesPhase = new InstrumentTruffleBoundariesPhase(snippetReflection, getInstrumentation(), instrumentationCfg.instrumentBoundariesPerInlineSite);
         }
-        partialEscapePhase = new PartialEscapePhase(options.get(IterativePartialEscape), canonicalizer,
-                        // Unsure about this part
-                        TruffleCompilerRuntime.getRuntime().getGraalOptions(org.graalvm.compiler.options.OptionValues.class));
+        truffleSuite = newTruffleSuite(options.get(IterativePartialEscape));
+        inliningPhase = new AgnosticInliningPhase(this, truffleSuite);
+    }
+
+    // Hook for SVM
+    protected TruffleSuite newTruffleSuite(boolean iterativePartialEscape) {
+        return new TruffleSuite(iterativePartialEscape);
     }
 
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
@@ -317,7 +312,7 @@ public abstract class PartialEvaluator {
         return callInlined;
     }
 
-    public final class Request {
+    public final class Request extends HighTierContext {
         public final OptionValues options;
         public final DebugContext debug;
         public final CompilableTruffleAST compilable;
@@ -325,11 +320,11 @@ public abstract class PartialEvaluator {
         public final SpeculationLog log;
         public final CancellableTruffleCompilationTask task;
         public final StructuredGraph graph;
-        public final HighTierContext highTierContext;
         boolean rootIsLeaf;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
                         CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
+            super(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
             Objects.requireNonNull(options);
             Objects.requireNonNull(debug);
             Objects.requireNonNull(compilable);
@@ -354,7 +349,6 @@ public abstract class PartialEvaluator {
             this.graph = builder.build();
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getValidRootAssumptionConstant()));
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
-            highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
         }
 
         public boolean isFirstTier() {
@@ -565,32 +559,36 @@ public abstract class PartialEvaluator {
         decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
     }
 
-    @SuppressWarnings("try")
-    public void truffleTier(Request request) {
-        try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
-            convertDeoptimizeToGuardPhase.apply(request.graph, request.highTierContext);
+    public static class TruffleSuite extends PhaseSuite<PartialEvaluator.Request> {
+        public TruffleSuite(boolean iterativePartialEscape) {
+            appendPhase(new ConvertDeoptimizeToGuardPhase());
+            appendPhase(new InlineReplacementsPhase());
+            appendPhase(new ConditionalEliminationPhase(false));
+            CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+            appendPhase(canonicalizerPhase);
+            appendPhase(new FrameAccessVerificationPhase());
+            appendPhase(new PartialEscapePhase(iterativePartialEscape, canonicalizerPhase,
+                            // Unsure about this part
+                            TruffleCompilerRuntime.getRuntime().getGraalOptions(org.graalvm.compiler.options.OptionValues.class)));
+           appendPhase(new PhiTransformPhase(canonicalizerPhase));
         }
-        inlineReplacements(request);
-        try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
-            conditionalEliminationPhase.apply(request.graph, request.highTierContext);
-        }
-        try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
-            canonicalizer.apply(request.graph, request.highTierContext);
-        }
-        try (DebugCloseable a = TruffleFrameVerifyFrameTimer.start(request.debug)) {
-            frameAccessVerificationPhase.apply(request.graph, request);
-        }
-        try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug); DebugContext.Scope pe = request.debug.scope("TrufflePartialEscape", request.graph)) {
-            if (!request.options.get(IterativePartialEscape)) {
-                partialEscapePhase.apply(request.graph, request.highTierContext);
-            } else {
-                new PartialEscapePhase(true, canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
+    }
+
+    public static class InlineReplacementsPhase extends BasePhase<PartialEvaluator.Request> {
+
+        @Override
+        protected void run(StructuredGraph graph, Request context) {
+            for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                if (!methodCallTargetNode.invokeKind().isDirect()) {
+                    continue;
+                }
+                StructuredGraph inlineGraph = context.getProviders().getReplacements().getInlineSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
+                                methodCallTargetNode.invoke().getInlineControl(), graph.trackNodeSourcePosition(), methodCallTargetNode.asNode().getNodeSourcePosition(),
+                                graph.allowAssumptions(), context.debug.getOptions());
+                if (inlineGraph != null) {
+                    InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
+                }
             }
-        } catch (Throwable t) {
-            request.debug.handle(t);
-        }
-        try (DebugCloseable a = TruffleTransformPhiTimer.start(request.debug)) {
-            new PhiTransformPhase(canonicalizer).apply(request.graph, request.highTierContext);
         }
     }
 
@@ -672,7 +670,7 @@ public abstract class PartialEvaluator {
                 // has finalized the graph.
                 // On the other hand, if there are no calls (root is a leaf) we can skip the truffle
                 // tier because there are no finalization points.
-                truffleTier(request);
+                truffleSuite.apply(request.graph, request);
             }
         }
     }

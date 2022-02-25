@@ -53,9 +53,11 @@ final class GraphManager {
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
     private final PartialEvaluator.Request rootRequest;
+    private final PartialEvaluator.TruffleSuite truffleSuite;
 
-    GraphManager(PartialEvaluator partialEvaluator, PartialEvaluator.Request rootRequest) {
+    GraphManager(PartialEvaluator partialEvaluator, PartialEvaluator.TruffleSuite truffleSuite, PartialEvaluator.Request rootRequest) {
         this.partialEvaluator = partialEvaluator;
+        this.truffleSuite = truffleSuite;
         this.rootRequest = rootRequest;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
     }
@@ -68,7 +70,7 @@ final class GraphManager {
             request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
             StructuredGraph graphAfterPE = copyGraphForDebugDump(request);
-            partialEvaluator.truffleTier(request);
+            truffleSuite.apply(request.graph, request);
             entry = new Entry(request.graph, plugin, graphAfterPE);
             irCache.put(truffleAST, entry);
         }
@@ -94,7 +96,7 @@ final class GraphManager {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootRequest);
-        partialEvaluator.truffleTier(rootRequest);
+        truffleSuite.apply(rootRequest.graph, rootRequest);
         return new Entry(rootRequest.graph, plugin, graphAfterPE);
     }
 

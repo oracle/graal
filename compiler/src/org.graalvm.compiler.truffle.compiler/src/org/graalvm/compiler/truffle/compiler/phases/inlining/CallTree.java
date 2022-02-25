@@ -42,11 +42,11 @@ public final class CallTree extends Graph {
     int frontierSize;
     private int nextId = 0;
 
-    CallTree(PartialEvaluator partialEvaluator, PartialEvaluator.Request request, InliningPolicy policy) {
+    CallTree(PartialEvaluator partialEvaluator, PartialEvaluator.TruffleSuite truffleSuite, PartialEvaluator.Request request, InliningPolicy policy) {
         super(request.graph.getOptions(), request.debug);
         this.policy = policy;
         this.request = request;
-        this.graphManager = new GraphManager(partialEvaluator, request);
+        this.graphManager = new GraphManager(partialEvaluator, truffleSuite, request);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(this, request);
     }

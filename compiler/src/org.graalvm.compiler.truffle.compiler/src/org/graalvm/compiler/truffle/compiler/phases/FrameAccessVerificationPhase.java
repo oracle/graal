@@ -218,7 +218,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<PartialEvaluat
             return newState;
         }
 
-        private void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
+        private static void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
             for (Map.Entry<NewFrameNode, byte[]> entry : from.entrySet()) {
                 to.put(entry.getKey(), entry.getValue().clone());
             }

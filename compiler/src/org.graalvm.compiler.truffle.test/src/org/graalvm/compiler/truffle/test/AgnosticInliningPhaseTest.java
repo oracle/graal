@@ -86,7 +86,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                                 return false;
                             }
                         }));
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator);
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, new PartialEvaluator.TruffleSuite(false));
         agnosticInliningPhase.apply(request.graph, request);
         return request.graph;
     }

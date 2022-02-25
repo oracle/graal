@@ -49,9 +49,11 @@ public final class AgnosticInliningPhase extends BasePhase<PartialEvaluator.Requ
     }
 
     private final PartialEvaluator partialEvaluator;
+    private final PartialEvaluator.TruffleSuite truffleSuite;
 
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator) {
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.TruffleSuite truffleSuite) {
         this.partialEvaluator = partialEvaluator;
+        this.truffleSuite = truffleSuite;
     }
 
     private static InliningPolicyProvider chosenProvider(String name) {
@@ -75,8 +77,8 @@ public final class AgnosticInliningPhase extends BasePhase<PartialEvaluator.Requ
 
     @Override
     protected void run(StructuredGraph graph, PartialEvaluator.Request request) {
-        final InliningPolicy policy = getInliningPolicyProvider(request).get(request.options, request.highTierContext);
-        final CallTree tree = new CallTree(partialEvaluator, request, policy);
+        final InliningPolicy policy = getInliningPolicyProvider(request).get(request.options, request);
+        final CallTree tree = new CallTree(partialEvaluator, truffleSuite, request, policy);
         request.setRootIsLeaf(tree.getRoot().getChildren().isEmpty());
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining(request)) {

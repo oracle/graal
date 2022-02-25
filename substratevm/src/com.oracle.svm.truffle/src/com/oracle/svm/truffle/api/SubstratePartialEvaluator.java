@@ -73,6 +73,11 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
+    protected TruffleSuite newTruffleSuite(boolean iterativePartialEscape) {
+        return new SubstrateTruffleSuite(iterativePartialEscape);
+    }
+
+    @Override
     protected StructuredGraph.Builder customizeStructuredGraphBuilder(StructuredGraph.Builder builder) {
         /*
          * Substrate VM does not need a complete list of methods that were inlined during
@@ -80,13 +85,6 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
          * part of the image heap.
          */
         return super.customizeStructuredGraphBuilder(builder).recordInlinedMethods(false);
-    }
-
-    @Override
-    public void truffleTier(Request request) {
-        super.truffleTier(request);
-        new DeadStoreRemovalPhase().apply(request.graph);
-        new TruffleBoundaryPhase().apply(request.graph);
     }
 
     @Override
@@ -108,5 +106,14 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     @Override
     protected NodePlugin[] createNodePlugins(Plugins plugins) {
         return null;
+    }
+
+    private static class SubstrateTruffleSuite extends TruffleSuite {
+
+        SubstrateTruffleSuite(boolean iterativePartialEscape) {
+            super(iterativePartialEscape);
+            appendPhase(new DeadStoreRemovalPhase());
+            appendPhase(new TruffleBoundaryPhase());
+        }
     }
 }

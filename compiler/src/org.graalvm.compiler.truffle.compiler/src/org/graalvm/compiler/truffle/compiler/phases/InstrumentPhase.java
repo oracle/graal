@@ -109,7 +109,7 @@ public abstract class InstrumentPhase extends BasePhase<PartialEvaluator.Request
     protected static void insertCounter(StructuredGraph graph, PartialEvaluator.Request context, JavaConstant tableConstant,
                     FixedWithNextNode targetNode, int slotIndex) {
         assert (tableConstant != null);
-        TypeReference typeRef = TypeReference.createExactTrusted(context.highTierContext.getMetaAccess().lookupJavaType(tableConstant));
+        TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
         ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.object(typeRef, true)));
         ConstantNode rawIndex = graph.unique(ConstantNode.forInt(slotIndex));
         LoadIndexedNode load = graph.add(new LoadIndexedNode(null, table, rawIndex, null, JavaKind.Long));
