@@ -501,10 +501,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 speculationLog.collectFailedSpeculations();
             }
 
-            try (DebugCloseable a = PartialEvaluationTime.start(debug);
-                            DebugCloseable c = PartialEvaluationMemUse.start(debug);
-                            PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable),
-                                            compilationId, speculationLog, task)) {
+            try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
+                PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                                compilationId, speculationLog, task);
                 graph = partialEvaluator.evaluate(request);
                 if (statistics != null) {
                     statistics.afterPartialEvaluation(request.compilable, request.graph);

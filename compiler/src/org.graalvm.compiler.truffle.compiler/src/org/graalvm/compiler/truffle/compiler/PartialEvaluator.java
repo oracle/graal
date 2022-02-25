@@ -345,7 +345,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    public final class Request implements AutoCloseable {
+    public final class Request {
         public final OptionValues options;
         public final DebugContext debug;
         public final CompilableTruffleAST compilable;
@@ -354,7 +354,6 @@ public abstract class PartialEvaluator {
         public final CancellableTruffleCompilationTask task;
         public final StructuredGraph graph;
         final HighTierContext highTierContext;
-        private final Graph.NodeEventScope graphSizeLimitScope;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
                         CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
@@ -383,16 +382,10 @@ public abstract class PartialEvaluator {
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getValidRootAssumptionConstant()));
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
             this.highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
-            this.graphSizeLimitScope = graph.trackNodeEvents(new GraphSizeListener(options, graph));
         }
 
         public boolean isFirstTier() {
             return task.isFirstTier();
-        }
-
-        @Override
-        public void close() {
-            graphSizeLimitScope.close();
         }
     }
 
@@ -400,7 +393,7 @@ public abstract class PartialEvaluator {
     public final StructuredGraph evaluate(Request request) {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options)) {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
-                            Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
+                            Indent indent = request.debug.logAndIndent("evaluate %s", request.graph)) {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
                 applyInstrumentationPhases(request);
@@ -587,6 +580,7 @@ public abstract class PartialEvaluator {
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
     }
 
+    @SuppressWarnings("try")
     public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         (ReplacementsImpl) providers.getReplacements(),
@@ -600,7 +594,9 @@ public abstract class PartialEvaluator {
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(request.task.inliningData()),
                         graphCache);
-        decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+        try (Graph.NodeEventScope graphSizeLimitScope = request.graph.trackNodeEvents(new GraphSizeListener(request.options, request.graph))) {
+            decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+        }
     }
 
     @SuppressWarnings("try")

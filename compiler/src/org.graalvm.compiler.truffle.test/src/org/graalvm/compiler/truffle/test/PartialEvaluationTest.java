@@ -246,10 +246,10 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 compilable.prepareForAOT();
             }
             final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
-            try (PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
                             compilationId, speculationLog,
                             new TruffleCompilerImpl.CancellableTruffleCompilationTask(newTask()));
-                            Graph.NodeEventScope nes = nodeEventListener == null ? null : request.graph.trackNodeEvents(nodeEventListener)) {
+            try (Graph.NodeEventScope nes = nodeEventListener == null ? null : request.graph.trackNodeEvents(nodeEventListener)) {
                 return partialEvaluator.evaluate(request);
             }
         } catch (Throwable e) {
