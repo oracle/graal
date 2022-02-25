@@ -327,23 +327,32 @@ public final class OptionType<T> {
     @SuppressWarnings("unchecked")
     private static <T> OptionType<T> defaultEnumType(Class<T> clazz) {
         return new OptionType<>(clazz.getSimpleName(), new Function<String, T>() {
+
+            final Map<String, Enum<?>> validValues = new HashMap<>();
+
+            {
+                Class<? extends Enum<?>> enumType = (Class<? extends Enum<?>>) clazz;
+                for (Enum<?> constant : enumType.getEnumConstants()) {
+                    validValues.put(constant.toString(), constant);
+                }
+            }
+
             @SuppressWarnings("rawtypes")
             public T apply(String t) {
                 Class<? extends Enum> enumType = (Class<? extends Enum>) clazz;
-                try {
-                    if (t != null) {
-                        return (T) Enum.valueOf(enumType, t);
+                if (t != null) {
+                    Enum value = validValues.get(t);
+                    if (value != null) {
+                        return (T) value;
                     }
-                    // fallthrough to failed
-                } catch (IllegalArgumentException e) {
-                    // fallthrough to failed
                 }
+                // fallthrough to failed
                 StringBuilder b = new StringBuilder();
                 String sep = "";
                 for (Enum constant : enumType.getEnumConstants()) {
                     b.append(sep);
                     b.append('\'');
-                    b.append(constant.name());
+                    b.append(constant.toString());
                     b.append('\'');
                     sep = ", ";
                 }

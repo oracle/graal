@@ -192,6 +192,21 @@ public class EngineAPITest {
         engine.close();
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testFailedEnumConvert() {
+        EngineAPITestLanguage.EnumOption.getType().convert("foo");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testFailedEnumConvertUppercase() {
+        EngineAPITestLanguage.EnumOption.getType().convert("ONE");
+    }
+
+    @Test()
+    public void testEnumConvert() {
+        Assert.assertEquals(EngineAPITestLanguage.OptionEnum.ONE, EngineAPITestLanguage.EnumOption.getType().convert("one"));
+    }
+
     @Test
     public void testStableOption() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
