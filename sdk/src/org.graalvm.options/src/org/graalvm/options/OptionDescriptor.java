@@ -152,7 +152,9 @@ public final class OptionDescriptor {
      * @since 22.1
      */
     public String getUsageSyntax() {
-        if (!usageSyntax.isEmpty()) {
+        // Empty string is considered a 'not set' value, everything else, including null, is fair
+        // game
+        if (usageSyntax == null || !usageSyntax.isEmpty()) {
             return usageSyntax;
         }
         if (!key.getType().isDefaultType()) {
