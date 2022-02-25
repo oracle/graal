@@ -146,7 +146,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
      * Either we process a loop twice until a fix point or we compute the killed locations inside a
      * loop and process them further, we are mostly interested in memory reads here
      */
-    static class GVNVisitor implements ControlFlowGraph.RecursiveVisitor<ValueMap> {
+    protected static class GVNVisitor implements ControlFlowGraph.RecursiveVisitor<ValueMap> {
         final StructuredGraph graph;
         final ControlFlowGraph cfg;
         final LoopsData ld;
@@ -154,7 +154,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
         final BlockMap<ValueMap> blockMaps;
         final boolean considerLICM;
 
-        GVNVisitor(ControlFlowGraph cfg, LoopsData ld) {
+        public GVNVisitor(ControlFlowGraph cfg, LoopsData ld) {
             this.cfg = cfg;
             this.ld = ld;
             this.graph = cfg.graph;
@@ -262,7 +262,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
             return blockMap;
         }
 
-        private static void killLoopLocations(LocationSet thisLoopKilledLocations, ValueMap blockMap) {
+        public static void killLoopLocations(LocationSet thisLoopKilledLocations, ValueMap blockMap) {
             if (thisLoopKilledLocations != null) {
                 /*
                  * Each location identity killed inside the loop prohibits a folding to the outer
@@ -363,7 +363,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
      * {@link AnchoringNode} nodes used to mark an anchor, i.e., a place for floating usages above
      * which they must not float
      */
-    private static boolean canGVN(Node n) {
+    public static boolean canGVN(Node n) {
         return !MemoryKill.isMemoryKill(n) && (n instanceof MemoryAccess || n instanceof FixedGuardNode || n instanceof FixedBinaryNode) && !(n instanceof ControlFlowAnchored) &&
                         !(n instanceof AnchoringNode) &&
                         !(n instanceof NodeWithIdentity);
@@ -374,7 +374,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
      * invariant based on its inputs (data fields of the node including indirect loop variant
      * dependencies like the memory graph are checked by the caller).
      */
-    private static boolean tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
+    public static boolean tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
         if (nodeCanBeLifted(n, loop, liftedNodes)) {
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "Before LICM of node %s", n);
             loop.loopBegin().getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: LICM on node %s", n);
@@ -427,14 +427,14 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
         return canLICM;
     }
 
-    private static boolean inputIsLoopInvariant(Node input, LoopEx loop, NodeBitMap liftedNodes) {
+    public static boolean inputIsLoopInvariant(Node input, LoopEx loop, NodeBitMap liftedNodes) {
         if (input == null) {
             return true;
         }
         return !loop.whole().contains(input) || liftedNodes.contains(input);
     }
 
-    private static boolean loopKillsLocation(LocationSet thisLoopKilledLocations, LocationIdentity loc) {
+    public static boolean loopKillsLocation(LocationSet thisLoopKilledLocations, LocationIdentity loc) {
         if (thisLoopKilledLocations == null) {
             return false;
         }
@@ -454,7 +454,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
      * motion (this is done in mid tier on the real memory graph. Thus, we can only perform a
      * limited amount of LICM for code unconditionally executed inside a loop that is invariant).
      */
-    static final class ValueMap {
+    public static final class ValueMap {
         private static final int INITIAL_SIZE = 4;
 
         /**
@@ -471,7 +471,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
         private int deleted;
         private final LocationSet kills;
 
-        private ValueMap() {
+        public ValueMap() {
             this.entries = new Node[INITIAL_SIZE];
             this.kills = new LocationSet();
         }
