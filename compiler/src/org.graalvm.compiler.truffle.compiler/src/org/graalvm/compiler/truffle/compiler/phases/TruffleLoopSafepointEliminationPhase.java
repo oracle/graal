@@ -78,6 +78,11 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
         return false;
     }
 
+    @Override
+    protected boolean allowGuestSafepoints() {
+        return true;
+    }
+
     private boolean isTruffleCall(Invoke call) {
         CallTargetNode target = call.callTarget();
         if (target == null) {
