@@ -4959,7 +4959,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     // Insn: KTESTD k1, k2
-
     public final void ktestd(Register src1, Register src2) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, src1) && inRC(MASK, src2);
@@ -4970,7 +4969,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     // Insn: KTESTQ k1, k2
-
     public final void ktestq(Register src1, Register src2) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, src1) && inRC(MASK, src2);
@@ -4997,7 +4995,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     // Insn: VPMOVZXBW zmm1, m256
-
     public final void evpmovzxbw(Register dst, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, dst);
@@ -5018,7 +5015,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VMOVDQU16 zmm1 {k1}{z}, zmm2/m512
     // -----
     // Insn: VMOVDQU16 zmm1, m512
-
     public final void evmovdqu16(Register dst, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, dst);
@@ -5029,7 +5025,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     // Insn: VMOVDQU16 zmm1, k1:z, m512
-
     public final void evmovdqu16(Register dst, Register mask, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, dst) && inRC(MASK, mask);
@@ -5042,7 +5037,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VMOVDQU16 zmm2/m512 {k1}{z}, zmm1
     // -----
     // Insn: VMOVDQU16 m512, zmm1
-
     public final void evmovdqu16(AMD64Address dst, Register src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, src);
@@ -5053,7 +5047,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     // Insn: VMOVDQU16 m512, k1, zmm1
-
     public final void evmovdqu16(AMD64Address dst, Register mask, Register src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, mask) && inRC(XMM, src);
@@ -5066,7 +5059,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPBROADCASTW zmm1 {k1}{z}, reg
     // -----
     // Insn: VPBROADCASTW zmm1, reg
-
     public final void evpbroadcastw(Register dst, Register src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, dst) && inRC(CPU, src);
@@ -5079,7 +5071,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
     // -----
     // Insn: VPCMPUW k1, zmm2, zmm3, imm8
-
     public final void evpcmpuw(Register kdst, Register nds, Register src, int vcc) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, kdst) && inRC(XMM, nds) && inRC(XMM, src);
@@ -5093,7 +5084,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
     // -----
     // Insn: VPCMPUW k1, k2, zmm2, zmm3, imm8
-
     public final void evpcmpuw(Register kdst, Register mask, Register nds, Register src, int vcc) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, kdst) && inRC(MASK, mask);
@@ -5108,7 +5098,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
     // -----
     // Insn: VPCMPQTB k1, zmm2, m512
-
     public final void evpcmpgtb(Register kdst, Register nds, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, kdst);
@@ -5122,7 +5111,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
     // -----
     // Insn: VPCMPQTB k1, k2, zmm2, m512
-
     public final void evpcmpgtb(Register kdst, Register mask, Register nds, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, kdst) && inRC(MASK, mask);
@@ -5136,7 +5124,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPMOVWB ymm1/m256 {k1}{z}, zmm2
     // -----
     // Insn: VPMOVWB m256, zmm2
-
     public final void evpmovwb(AMD64Address dst, Register src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, src);
@@ -5147,7 +5134,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     // Insn: VPMOVWB m256, k1, zmm2
-
     public final void evpmovwb(AMD64Address dst, Register mask, Register src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, mask) && inRC(XMM, src);
@@ -5160,7 +5146,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPMOVZXBW zmm1 {k1}{z}, ymm2/m256
     // -----
     // Insn: VPMOVZXBW zmm1, k1, m256
-
     public final void evpmovzxbw(Register dst, Register mask, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, mask) && inRC(XMM, dst);

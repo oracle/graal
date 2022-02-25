@@ -67,6 +67,7 @@ public class HotSpotObjectSizeTest extends HotSpotGraalCompilerTest {
      * {@code Premain-class}, and then launch any program with {@code -javaagent} pointing to the
      * jar.
      */
+    @SuppressWarnings("unused")
     public static void premain(String agentArgs, Instrumentation inst) {
         System.out.println(inst.getObjectSize(new Object()));
         System.out.println(inst.getObjectSize(new String()));

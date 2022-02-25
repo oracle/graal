@@ -473,6 +473,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+        // This intrinsic is guarded in Java by a check that componentType must be a primitive type
         r.register(new InvocationPlugin("allocateUninitializedArray0", Receiver.class, Class.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentType, ValueNode length) {

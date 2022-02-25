@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding.ASCII;
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding.ISO_8859_1;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;

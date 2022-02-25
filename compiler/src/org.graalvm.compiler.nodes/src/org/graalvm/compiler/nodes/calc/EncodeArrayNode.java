@@ -30,7 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -51,19 +51,19 @@ public final class EncodeArrayNode extends FixedWithNextNode implements LIRLower
     @Input protected ValueNode dst;
     @Input protected ValueNode len;
 
-    private final StringEncoding encoding;
+    private final CharsetName charset;
 
-    public EncodeArrayNode(ValueNode src, ValueNode dst, ValueNode len, StringEncoding encoding) {
+    public EncodeArrayNode(ValueNode src, ValueNode dst, ValueNode len, CharsetName charset) {
         super(TYPE, StampFactory.forInteger(32, 0,
                         ((IntegerStamp) len.stamp(NodeView.DEFAULT)).upperBound()));
         this.src = src;
         this.dst = dst;
         this.len = len;
-        this.encoding = encoding;
+        this.charset = charset;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitEncodeArray(gen.operand(src), gen.operand(dst), gen.operand(len), encoding));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitEncodeArray(gen.operand(src), gen.operand(dst), gen.operand(len), charset));
     }
 }

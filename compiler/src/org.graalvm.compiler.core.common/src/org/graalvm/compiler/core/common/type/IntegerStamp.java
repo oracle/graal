@@ -637,6 +637,13 @@ public final class IntegerStamp extends PrimitiveStamp {
         return result < CodeUtil.minValue(bits) || result > CodeUtil.maxValue(bits);
     }
 
+    /**
+     * Returns if {@code stamp} can overflow when applying negation. It effectively tests if
+     * {@code stamp}'s value range contains the minimal value of an N-bits integer, where N is the
+     * width in bits of the values described by {@code stamp}.
+     *
+     * @see Math#negateExact
+     */
     public static boolean negateCanOverflow(IntegerStamp stamp) {
         return stamp.lowerBound() == CodeUtil.minValue(stamp.getBits());
     }

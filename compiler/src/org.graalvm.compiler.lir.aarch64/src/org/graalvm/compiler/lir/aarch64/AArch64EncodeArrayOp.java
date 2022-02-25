@@ -43,7 +43,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -77,9 +77,9 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
     @Temp({REG}) private Value vectorTempValue4;
     @Temp({REG}) private Value vectorTempValue5;
 
-    private final StringEncoding encoding;
+    private final CharsetName charset;
 
-    public AArch64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, StringEncoding encoding) {
+    public AArch64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
         super(TYPE);
 
         this.resultValue = result;
@@ -98,8 +98,8 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
         this.vectorTempValue4 = AArch64.v4.asValue(vectorKind);
         this.vectorTempValue5 = AArch64.v5.asValue(vectorKind);
 
-        this.encoding = encoding;
-        assert encoding == StringEncoding.ASCII || encoding == StringEncoding.ISO_8859_1;
+        this.charset = charset;
+        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1;
     }
 
     @Override
@@ -107,7 +107,7 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
         AArch64Move.move(AArch64Kind.QWORD, crb, masm, srcValue, originSrcValue);
         AArch64Move.move(AArch64Kind.QWORD, crb, masm, dstValue, originDstValue);
 
-        boolean ascii = encoding == StringEncoding.ASCII;
+        boolean ascii = charset == CharsetName.ASCII;
 
         Register src = asRegister(srcValue);
         Register dst = asRegister(dstValue);

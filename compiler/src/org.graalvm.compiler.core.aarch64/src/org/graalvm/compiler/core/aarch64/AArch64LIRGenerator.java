@@ -552,9 +552,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitEncodeArray(Value src, Value dst, Value length, StringEncoding encoding) {
+    public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), encoding));
+        append(new AArch64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
         return result;
     }
 

@@ -642,9 +642,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitEncodeArray(Value src, Value dst, Value length, StringEncoding encoding) {
+    public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), encoding));
+        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
         return result;
     }
 

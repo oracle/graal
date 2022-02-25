@@ -267,13 +267,13 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
     }
 
-    enum StringEncoding {
+    enum CharsetName {
         ASCII,
         ISO_8859_1
     }
 
     @SuppressWarnings("unused")
-    default Variable emitEncodeArray(Value src, Value dst, Value length, StringEncoding encoding) {
+    default Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

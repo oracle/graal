@@ -44,7 +44,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool.StringEncoding;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -80,9 +80,9 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
 
     @Temp({REG}) private Value tempValue5;
 
-    private final StringEncoding encoding;
+    private final CharsetName charset;
 
-    public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, StringEncoding encoding) {
+    public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
         super(TYPE);
 
         this.resultValue = result;
@@ -102,8 +102,8 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
 
         this.tempValue5 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
 
-        this.encoding = encoding;
-        assert encoding == StringEncoding.ASCII || encoding == StringEncoding.ISO_8859_1;
+        this.charset = charset;
+        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1;
     }
 
     private static boolean supportsSSE42(TargetDescription target) {
@@ -144,7 +144,7 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
         Register vectorTemp4 = asRegister(vectorTempValue4);
         Register temp5 = asRegister(tempValue5);
 
-        boolean ascii = encoding == StringEncoding.ASCII;
+        boolean ascii = charset == CharsetName.ASCII;
         int mask = ascii ? 0xff80ff80 : 0xff00ff00;
         int shortMask = ascii ? 0xff80 : 0xff00;
 
