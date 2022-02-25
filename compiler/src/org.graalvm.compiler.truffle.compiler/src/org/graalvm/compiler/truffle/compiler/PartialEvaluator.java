@@ -317,7 +317,6 @@ public abstract class PartialEvaluator {
             if (shouldCheck(nodeCount)) {
                 lastNodeCount = nodeCount;
                 lastComputedSize = NodeCostUtil.computeGraphSize(graph);
-                System.out.println("@@ Checking " + lastComputedSize);
                 if (lastComputedSize > graphSizeLimit) {
                     throw new GraphTooBigBailoutException("Graph too big to safely compile. Node count: " + nodeCount + ". Graph Size: " + lastComputedSize + ". Limit: " + graphSizeLimit + ".");
                 }
@@ -331,13 +330,6 @@ public abstract class PartialEvaluator {
             if (currentNodeCount * NODE_SIZE_ESTIMATE < graphSizeLimit) {
                 return false;
             }
-            int budgetLeft = graphSizeLimit - lastComputedSize;
-            if (budgetLeft < 0) {
-                // This should never happen since if lastComputedSize is >= graphSizeLimit we would
-                // have
-                // bailed out already. Including the check for completeness.
-                return true;
-            }
             // Don't bother checking if the graph didn't actually grow since the last time we
             // checked
             int newNodes = currentNodeCount - lastNodeCount;
@@ -346,13 +338,11 @@ public abstract class PartialEvaluator {
             }
             // Assume all new nodes have a size of NODE_SIZE_ESTIMATE and don't bother checking if
             // the graph size is not over the limit under this assumption
-            int worstCaseSize = newNodes * NODE_SIZE_ESTIMATE;
-            if (worstCaseSize <= budgetLeft) {
+            if (lastComputedSize + newNodes * NODE_SIZE_ESTIMATE < graphSizeLimit) {
                 return false;
             }
             return true;
         }
-
     }
 
     public final class Request implements AutoCloseable {
