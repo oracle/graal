@@ -37,12 +37,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ValueType
-@ExportLibrary(value = DynamicDispatchLibrary.class, useForAOT = true)
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMTimeZoneValue implements TruffleObject {
     private final ZoneId zoneId;
 
@@ -54,30 +53,18 @@ public final class LLVMTimeZoneValue implements TruffleObject {
         return new LLVMTimeZoneValue(ZoneId.of(zone));
     }
 
-    public ZoneId getZoneId() {
-        return zoneId;
-    }
-
     @TruffleBoundary
     public String getId() {
         return zoneId.getId();
     }
 
     @ExportMessage
-    static Class<?> dispatch(@SuppressWarnings("unused") LLVMTimeZoneValue receiver) {
-        return LLVMTimeZoneValueLibrary.class;
+    public ZoneId asTimeZone() {
+        return zoneId;
     }
 
-    @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMTimeZoneValue.class)
-    public abstract static class LLVMTimeZoneValueLibrary {
-        @ExportMessage
-        public static ZoneId asTimeZone(LLVMTimeZoneValue receiver) {
-            return receiver.getZoneId();
-        }
-
-        @ExportMessage
-        public static boolean isTimeZone(@SuppressWarnings("unused") LLVMTimeZoneValue receiver) {
-            return true;
-        }
+    @ExportMessage
+    public static boolean isTimeZone(@SuppressWarnings("unused") LLVMTimeZoneValue receiver) {
+        return true;
     }
 }

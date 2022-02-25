@@ -40,13 +40,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsTimeZoneNode;
 
 @ValueType
-@ExportLibrary(value = DynamicDispatchLibrary.class, useForAOT = true)
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMInstantValue implements TruffleObject {
     private final Instant instant;
 
@@ -58,64 +57,40 @@ public final class LLVMInstantValue implements TruffleObject {
         return new LLVMInstantValue(Instant.ofEpochSecond(epochSecond));
     }
 
+    @ExportMessage
     @TruffleBoundary
     public LocalDate asDate() throws DateTimeException {
-        return LocalDate.ofInstant(instant, asTimeZone());
-    }
-
-    @TruffleBoundary
-    public LocalTime asTime() {
-        return LocalTime.ofInstant(instant, asTimeZone());
-    }
-
-    public static ZoneId asTimeZone() {
-        return LLVMPolyglotAsTimeZoneNode.UTC;
-    }
-
-    public Instant asInstant() {
-        return instant;
+        return LocalDate.ofInstant(instant, LLVMInstantValue.asTimeZone(this));
     }
 
     @ExportMessage
-    static Class<?> dispatch(@SuppressWarnings("unused") LLVMInstantValue receiver) {
-        return LLVMInstantValueLibrary.class;
+    public static boolean isDate(@SuppressWarnings("unused") LLVMInstantValue instant) {
+        return true;
     }
 
-    @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMInstantValue.class)
-    public abstract static class LLVMInstantValueLibrary {
-        @ExportMessage
-        public static LocalDate asDate(LLVMInstantValue receiver) throws DateTimeException {
-            return receiver.asDate();
-        }
+    @ExportMessage
+    @TruffleBoundary
+    public LocalTime asTime() {
+        return LocalTime.ofInstant(instant, LLVMInstantValue.asTimeZone(this));
+    }
 
-        @ExportMessage
-        public static boolean isDate(@SuppressWarnings("unused") LLVMInstantValue receiver) {
-            return true;
-        }
+    @ExportMessage
+    public static boolean isTime(@SuppressWarnings("unused") LLVMInstantValue instant) {
+        return true;
+    }
 
-        @ExportMessage
-        public static LocalTime asTime(LLVMInstantValue receiver) {
-            return receiver.asTime();
-        }
+    @ExportMessage
+    public static ZoneId asTimeZone(@SuppressWarnings("unused") LLVMInstantValue instant) {
+        return LLVMPolyglotAsTimeZoneNode.UTC;
+    }
 
-        @ExportMessage
-        public static boolean isTime(@SuppressWarnings("unused") LLVMInstantValue receiver) {
-            return true;
-        }
+    @ExportMessage
+    public static boolean isTimeZone(@SuppressWarnings("unused") LLVMInstantValue instant) {
+        return true;
+    }
 
-        @ExportMessage
-        public static ZoneId asTimeZone(@SuppressWarnings("unused") LLVMInstantValue receiver) {
-            return LLVMInstantValue.asTimeZone();
-        }
-
-        @ExportMessage
-        public static boolean isTimeZone(@SuppressWarnings("unused") LLVMInstantValue receiver) {
-            return true;
-        }
-
-        @ExportMessage
-        public static Instant asInstant(LLVMInstantValue receiver) {
-            return receiver.asInstant();
-        }
+    @ExportMessage
+    public Instant asInstant() {
+        return instant;
     }
 }

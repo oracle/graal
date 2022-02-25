@@ -154,15 +154,17 @@ public abstract class LLVMPolyglotAsDateTimeNode extends LLVMNode {
 
         @Specialization(guards = "isTimeInfoPointer(receiver)")
         protected LocalTime timeInfoAsTime(LLVMPointer receiver,
-                        @Cached LLVMForeignGetMemberPointerNode getElementPointer,
+                        @Cached LLVMForeignGetMemberPointerNode getElementPointerHour,
+                        @Cached LLVMForeignGetMemberPointerNode getElementPointerMin,
+                        @Cached LLVMForeignGetMemberPointerNode getElementPointerSec,
                         @Cached LLVMI32OffsetLoadNode loadInt,
                         @Cached BranchProfile exception) throws UnsupportedMessageException {
             try {
                 TimeInfo ti = (TimeInfo) receiver.getExportType();
                 Struct struct = ti.getStruct();
-                LLVMPointer hourPtr = getElementPointer.execute(struct, receiver, "tm_hour");
-                LLVMPointer minPtr = getElementPointer.execute(struct, receiver, "tm_min");
-                LLVMPointer secPtr = getElementPointer.execute(struct, receiver, "tm_sec");
+                LLVMPointer hourPtr = getElementPointerHour.execute(struct, receiver, "tm_hour");
+                LLVMPointer minPtr = getElementPointerMin.execute(struct, receiver, "tm_min");
+                LLVMPointer secPtr = getElementPointerSec.execute(struct, receiver, "tm_sec");
                 return ofHourMinSec(loadInt.executeWithTarget(hourPtr, 0),
                                 loadInt.executeWithTarget(minPtr, 0),
                                 loadInt.executeWithTarget(secPtr, 0));

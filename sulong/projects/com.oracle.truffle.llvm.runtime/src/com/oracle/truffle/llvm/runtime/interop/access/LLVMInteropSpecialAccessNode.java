@@ -53,20 +53,16 @@ public abstract class LLVMInteropSpecialAccessNode extends LLVMNode {
 
     protected SpecialStructAccessor notNullOrException(SpecialStruct type, long offset, SpecialStructAccessor accessor) {
         if (accessor == null) {
-            throw new LLVMPolyglotException(this, "The type '%s' has no node at offset %d.", type.toDisplayString(isAdoptable()), offset);
+            throw new LLVMPolyglotException(this, "The type '%s' has no node at offset %d.", type.toDisplayString(false), offset);
         }
         return accessor;
-    }
-
-    boolean matchesCache(SpecialStruct type, long offset, SpecialStruct cachedType, long cachedOffset) {
-        return type == cachedType && offset == cachedOffset;
     }
 
     protected Object doAccess(Object foreign, ForeignToLLVMType accessType, SpecialStruct type, long offset, SpecialStructAccessor accessor, ToLLVM toLLVM, BranchProfile exception1,
                     BranchProfile exception2, BranchProfile exception3, InteropLibrary interop) {
         if (accessor == null) {
             exception1.enter();
-            throw new LLVMPolyglotException(this, "The type '%s' has no node at offset %d.", type.toDisplayString(isAdoptable()), offset);
+            throw new LLVMPolyglotException(this, "The type '%s' has no node at offset %d.", type.toDisplayString(false), offset);
         }
         if (accessor.type instanceof LLVMInteropType.Value) {
             try {
@@ -86,13 +82,13 @@ public abstract class LLVMInteropSpecialAccessNode extends LLVMNode {
         return type.findAccessor(offset);
     }
 
-    @Specialization(guards = "matchesCache(type, offset, cachedType, cachedOffset)")
+    @Specialization(guards = {"type == cachedType", "offset == cachedOffset"})
     @GenerateAOT.Exclude
     public Object doSpecialized(Object foreign, ForeignToLLVMType accessType,
                     @SuppressWarnings("unused") SpecialStruct type, @SuppressWarnings("unused") long offset,
                     @Cached("type") SpecialStruct cachedType,
                     @Cached("offset") long cachedOffset,
-                    @Cached("findAccessor(type, offset)") SpecialStructAccessor accessor,
+                    @Cached("findAccessor(cachedType, cachedOffset)") SpecialStructAccessor accessor,
                     @Cached ToLLVM toLLVM,
                     @Cached BranchProfile exception1,
                     @Cached BranchProfile exception2,
