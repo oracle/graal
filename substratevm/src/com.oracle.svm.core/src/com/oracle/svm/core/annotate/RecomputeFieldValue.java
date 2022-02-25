@@ -61,6 +61,11 @@ public @interface RecomputeFieldValue {
          */
         NewInstance,
         /**
+         * The object field is set to a instance of {@link #declClass} created by calling the
+         * default constructor when the target field value is not null.
+         */
+        NewInstanceWhenNotNull,
+        /**
          * The field is set to the value assigned to the {@link Alias} field.
          */
         FromAlias,
