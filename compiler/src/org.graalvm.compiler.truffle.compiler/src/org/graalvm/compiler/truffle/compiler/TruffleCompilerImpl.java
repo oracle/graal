@@ -43,6 +43,7 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -471,64 +472,41 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         return local;
     }
 
-    /**
-     * Compiles a Truffle AST. If compilation succeeds, the AST will have compiled code associated
-     * with it that can be executed instead of interpreting the AST.
-     *
-     * @param options the values of {@link PolyglotCompilerOptions}.
-     * @param compilable representation of the AST to be compiled
-     * @param compilationId identifier to be used for the compilation
-     * @param task an object that holds information about the compilation process itself (e.g. which
-     *            tier, was the compilation canceled)
-     * @param listener
-     */
-    @SuppressWarnings("try")
+    // Used for tests and should be removed
     public void compileAST(org.graalvm.options.OptionValues options,
                     DebugContext debug,
                     final CompilableTruffleAST compilable,
                     CompilationIdentifier compilationId,
                     CancellableTruffleCompilationTask task,
                     TruffleCompilerListener listener) {
-        final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
+        compileAST(new TruffleCompilationWrapper(options, getDebugOutputDirectory(), Collections.emptyMap(), compilable, task, compilationId, listener), debug);
+    }
+
+    /**
+     * Compiles a Truffle AST. If compilation succeeds, the AST will have compiled code associated
+     * with it that can be executed instead of interpreting the AST.
+     */
+    @SuppressWarnings("try")
+    private void compileAST(TruffleCompilationWrapper wrapper, DebugContext debug) {
+        final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), wrapper.compilationId, new TruffleDebugJavaMethod(wrapper.compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
-
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
-            PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(task.isFirstTier() ? config.firstTier() : config.lastTier());
-
-            ExpansionStatistics statistics = getExpansionHistogram(options);
-            SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
-            if (speculationLog != null) {
-                speculationLog.collectFailedSpeculations();
-            }
-
-            try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
-                PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable),
-                                compilationId, speculationLog, task);
-                graph = partialEvaluator.evaluate(request);
-                if (statistics != null) {
-                    statistics.afterPartialEvaluation(request.compilable, request.graph);
-                }
-            }
-
-            // Check if the task has been cancelled
-            if (task.isCancelled()) {
+            ExpansionStatistics statistics = getExpansionHistogram(wrapper.options);
+            graph = truffleTier(wrapper, debug, statistics);
+            if (wrapper.task.isCancelled()) {
                 return;
-            }
-            if (statistics != null) {
-                statistics.afterTruffleTier(compilable, graph);
-            }
-            if (listener != null) {
-                listener.onTruffleTierFinished(compilable, task.inliningData(), new GraphInfoImpl(graph));
             }
             // The Truffle compiler owns the last 2 characters of the compilation name, and uses
             // them to encode the compilation tier, so escaping the target name is not necessary.
-            String compilationName = compilable.toString() + (task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
-            CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, compilable, asCompilationRequest(compilationId), listener, task);
+            String compilationName = wrapper.compilable.toString() + (wrapper.task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
+            PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(wrapper.task.isFirstTier() ? config.firstTier() : config.lastTier());
+            CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, wrapper.compilable, asCompilationRequest(wrapper.compilationId), wrapper.listener,
+                            wrapper.task);
             if (statistics != null) {
-                statistics.afterLowTier(compilable, graph);
+                statistics.afterLowTier(wrapper.compilable, graph);
             }
-            if (listener != null) {
-                listener.onSuccess(compilable, task.inliningData(), new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
+            if (wrapper.listener != null) {
+                wrapper.listener.onSuccess(wrapper.compilable, wrapper.task.inliningData(), new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), wrapper.task.tier());
             }
 
             // Partial evaluation and installation are included in
@@ -540,13 +518,35 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
-            if (listener != null) {
+            if (wrapper.listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
                 boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-                listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier());
+                wrapper.listener.onFailure(wrapper.compilable, t.toString(), bailout != null, permanentBailout, wrapper.task.tier());
             }
             throw t;
         }
+    }
+
+    @SuppressWarnings("try")
+    private StructuredGraph truffleTier(TruffleCompilationWrapper wrapper, DebugContext debug, ExpansionStatistics statistics) {
+        SpeculationLog speculationLog = wrapper.compilable.getCompilationSpeculationLog();
+        if (speculationLog != null) {
+            speculationLog.collectFailedSpeculations();
+        }
+        StructuredGraph graph;
+        try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
+            // SpeculationLog can be read from wrapper.compilable, but I'm not sure of the machinery
+            // around it
+            PartialEvaluator.Request request = partialEvaluator.new Request(wrapper, debug, speculationLog);
+            graph = partialEvaluator.evaluate(request);
+        }
+        if (statistics != null) {
+            statistics.afterTruffleTier(wrapper.compilable, graph);
+        }
+        if (wrapper.listener != null) {
+            wrapper.listener.onTruffleTierFinished(wrapper.compilable, wrapper.task.inliningData(), new GraphInfoImpl(graph));
+        }
+        return graph;
     }
 
     /**
@@ -653,13 +653,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     /**
      * Wrapper for performing a Truffle compilation that can retry upon failure.
      */
-    private final class TruffleCompilationWrapper extends CompilationWrapper<Void> {
-        private final CompilableTruffleAST compilable;
-        private final CancellableTruffleCompilationTask task;
-        private final TruffleCompilerListener listener;
-        private final CompilationIdentifier compilationId;
-        private final org.graalvm.options.OptionValues options;
-        private boolean silent;
+    final class TruffleCompilationWrapper extends CompilationWrapper<Void> {
+        final CompilableTruffleAST compilable;
+        final CancellableTruffleCompilationTask task;
+        final TruffleCompilerListener listener;
+        final CompilationIdentifier compilationId;
+        final org.graalvm.options.OptionValues options;
+        boolean silent;
 
         private TruffleCompilationWrapper(
                         org.graalvm.options.OptionValues options,
@@ -715,7 +715,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         protected Void performCompilation(DebugContext debug) {
-            compileAST(options, debug, compilable, compilationId, task, listener);
+            compileAST(this, debug);
             return null;
         }
 

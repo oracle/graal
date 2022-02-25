@@ -316,7 +316,7 @@ public abstract class PartialEvaluator {
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
                         CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
-            super(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
+            super(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
             Objects.requireNonNull(options);
             Objects.requireNonNull(debug);
             Objects.requireNonNull(compilable);
@@ -341,6 +341,10 @@ public abstract class PartialEvaluator {
             this.graph = builder.build();
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getValidRootAssumptionConstant()));
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
+        }
+
+        public Request(TruffleCompilerImpl.TruffleCompilationWrapper wrapper, DebugContext debug, SpeculationLog speculationLog) {
+            this(wrapper.options, debug, wrapper.compilable, PartialEvaluator.this.rootForCallTarget(wrapper.compilable), wrapper.compilationId, speculationLog, wrapper.task);
         }
 
         public boolean isFirstTier() {
