@@ -299,16 +299,15 @@ public abstract class PartialEvaluator {
     }
 
     private static final class GraphSizeListener extends Graph.NodeEventListener {
+        static final int NODE_SIZE_ESTIMATE = 8;
 
-        private final int nodeLimit;
+        private int lastComputedSize;
+        private int lastNodeCount;
+        private final int graphSizeLimit;
         private final StructuredGraph graph;
-        private final int noCheckLimit;
-        private final int slowCheckLimit;
 
         private GraphSizeListener(OptionValues options, StructuredGraph graph) {
-            this.nodeLimit = options.get(MaximumGraalGraphSize);
-            this.noCheckLimit = nodeLimit / 2;
-            this.slowCheckLimit = (3 * nodeLimit) / 4;
+            this.graphSizeLimit = options.get(MaximumGraalGraphSize);
             this.graph = graph;
         }
 
@@ -316,25 +315,44 @@ public abstract class PartialEvaluator {
         public void nodeAdded(Node node) {
             int nodeCount = graph.getNodeCount();
             if (shouldCheck(nodeCount)) {
-                int graphSize = NodeCostUtil.computeGraphSize(graph);
-                if (graphSize > nodeLimit) {
-                    throw new GraphTooBigBailoutException("Graph too big to safely compile. Node count: " + nodeCount + ". Graph Size: " + graphSize + ". Limit: " + nodeLimit);
+                lastNodeCount = nodeCount;
+                lastComputedSize = NodeCostUtil.computeGraphSize(graph);
+                System.out.println("@@ Checking " + lastComputedSize);
+                if (lastComputedSize > graphSizeLimit) {
+                    throw new GraphTooBigBailoutException("Graph too big to safely compile. Node count: " + nodeCount + ". Graph Size: " + lastComputedSize + ". Limit: " + graphSizeLimit + ".");
                 }
             }
         }
 
-        private boolean shouldCheck(int nodeCount) {
-            if (nodeCount < noCheckLimit) {
+        public boolean shouldCheck(int currentNodeCount) {
+            // Don't bother checking small graphs, i.e. assume every node has a fixed size of
+            // NODE_SIZE_ESTIMATE and if the graph size under this assumption is not over the limit
+            // assume it's fine.
+            if (currentNodeCount * NODE_SIZE_ESTIMATE < graphSizeLimit) {
                 return false;
             }
-            if (nodeCount < slowCheckLimit) {
-                return (nodeCount - noCheckLimit) % 10_000 == 0;
+            int budgetLeft = graphSizeLimit - lastComputedSize;
+            if (budgetLeft < 0) {
+                // This should never happen since if lastComputedSize is >= graphSizeLimit we would
+                // have
+                // bailed out already. Including the check for completeness.
+                return true;
             }
-            if (nodeCount < nodeLimit) {
-                return (nodeCount - slowCheckLimit) % 1_000 == 0;
+            // Don't bother checking if the graph didn't actually grow since the last time we
+            // checked
+            int newNodes = currentNodeCount - lastNodeCount;
+            if (newNodes < 0) {
+                return false;
             }
-            return (nodeCount - nodeLimit) % 100 == 0;
+            // Assume all new nodes have a size of NODE_SIZE_ESTIMATE and don't bother checking if
+            // the graph size is not over the limit under this assumption
+            int worstCaseSize = newNodes * NODE_SIZE_ESTIMATE;
+            if (worstCaseSize <= budgetLeft) {
+                return false;
+            }
+            return true;
         }
+
     }
 
     public final class Request implements AutoCloseable {
