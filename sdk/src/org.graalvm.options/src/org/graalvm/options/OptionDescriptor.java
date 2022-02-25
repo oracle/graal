@@ -335,7 +335,6 @@ public final class OptionDescriptor {
          * @since 22.1
          */
         public Builder usageSyntax(@SuppressWarnings("hiding") String usageSyntax) {
-            Objects.requireNonNull(usageSyntax);
             this.usageSyntax = usageSyntax;
             return this;
         }
