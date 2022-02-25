@@ -955,7 +955,7 @@ public class CompileQueue {
      * i.e., the field order, is only decided after static analysis. Therefore, we need to fix up
      * all the nodes that implicitly use the field index.
      */
-    private void transplantEscapeAnalysisState(StructuredGraph graph) {
+    protected void transplantEscapeAnalysisState(StructuredGraph graph) {
         for (CommitAllocationNode node : graph.getNodes().filter(CommitAllocationNode.class)) {
             List<ValueNode> values = node.getValues();
             List<ValueNode> aValues = new ArrayList<>(values);
