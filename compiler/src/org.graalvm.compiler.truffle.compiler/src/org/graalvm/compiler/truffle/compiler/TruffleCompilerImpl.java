@@ -491,8 +491,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), wrapper.compilationId, new TruffleDebugJavaMethod(wrapper.compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
-            ExpansionStatistics statistics = getExpansionHistogram(wrapper.options);
-            graph = truffleTier(wrapper, debug, statistics);
+            graph = truffleTier(wrapper, debug);
             if (wrapper.task.isCancelled()) {
                 return;
             }
@@ -502,8 +501,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(wrapper.task.isFirstTier() ? config.firstTier() : config.lastTier());
             CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, wrapper.compilable, asCompilationRequest(wrapper.compilationId), wrapper.listener,
                             wrapper.task);
-            if (statistics != null) {
-                statistics.afterLowTier(wrapper.compilable, graph);
+            if (wrapper.statistics != null) {
+                wrapper.statistics.afterLowTier(wrapper.compilable, graph);
             }
             if (wrapper.listener != null) {
                 wrapper.listener.onSuccess(wrapper.compilable, wrapper.task.inliningData(), new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), wrapper.task.tier());
@@ -528,7 +527,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph truffleTier(TruffleCompilationWrapper wrapper, DebugContext debug, ExpansionStatistics statistics) {
+    private StructuredGraph truffleTier(TruffleCompilationWrapper wrapper, DebugContext debug) {
         SpeculationLog speculationLog = wrapper.compilable.getCompilationSpeculationLog();
         if (speculationLog != null) {
             speculationLog.collectFailedSpeculations();
@@ -540,8 +539,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             PartialEvaluator.Request request = partialEvaluator.new Request(wrapper, debug, speculationLog);
             graph = partialEvaluator.evaluate(request);
         }
-        if (statistics != null) {
-            statistics.afterTruffleTier(wrapper.compilable, graph);
+        if (wrapper.statistics != null) {
+            wrapper.statistics.afterTruffleTier(wrapper.compilable, graph);
         }
         if (wrapper.listener != null) {
             wrapper.listener.onTruffleTierFinished(wrapper.compilable, wrapper.task.inliningData(), new GraphInfoImpl(graph));
@@ -659,6 +658,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         final TruffleCompilerListener listener;
         final CompilationIdentifier compilationId;
         final org.graalvm.options.OptionValues options;
+        final ExpansionStatistics statistics;
         boolean silent;
 
         private TruffleCompilationWrapper(
@@ -675,6 +675,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             this.task = task;
             this.listener = listener;
             this.compilationId = compilationId;
+            this.statistics = getExpansionHistogram(options);
         }
 
         @Override
