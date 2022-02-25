@@ -734,7 +734,7 @@ final class TStringInternalNodes {
 
     static int indexOfFixedWidth(AbstractTruffleString a, Object arrayA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
                     TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-        if (!TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
+        if (fromIndex == toIndex || !TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
             return -1;
         }
         return indexOfNode.execute(a, arrayA, codepoint, fromIndex, toIndex);
@@ -742,48 +742,10 @@ final class TStringInternalNodes {
 
     static int lastIndexOfFixedWidth(AbstractTruffleString a, Object arrayA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
                     TStringOpsNodes.RawLastIndexOfCodePointNode indexOfNode) {
-        if (!TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
+        if (fromIndex == toIndex || !TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
             return -1;
         }
         return indexOfNode.execute(a, arrayA, codepoint, fromIndex, toIndex);
-    }
-
-    static int indexOf08BitUTF8(Node location, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex) {
-        assert a.stride() == 0;
-        assert codepoint > 0x7f;
-        byte[] encoded = Encodings.utf8Encode(codepoint);
-        assert encoded.length > 1;
-        if (encoded.length > a.length()) {
-            return -1;
-        }
-        TruffleString b = TruffleString.createFromByteArray(encoded, encoded.length, 0, Encodings.getUTF8(), 1, TSCodeRange.getValidMultiByte());
-        return TStringOps.indexOfStringWithOrMaskWithStride(location, a, arrayA, 0, b, encoded, 0, fromIndex, toIndex, null);
-    }
-
-    static int indexOf16BitUTF16(Node location, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex) {
-        assert a.stride() == 1;
-        assert codepoint > 0xffff;
-        return TStringOps.indexOf2ConsecutiveWithStride(
-                        location, a, arrayA, 1, fromIndex, toIndex, Character.highSurrogate(codepoint), Character.lowSurrogate(codepoint));
-    }
-
-    static int lastIndexOf08BitUTF8(Node location, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex) {
-        assert a.stride() == 0;
-        assert codepoint > 0x7f;
-        byte[] encoded = Encodings.utf8Encode(codepoint);
-        assert encoded.length > 1;
-        if (encoded.length > a.length()) {
-            return -1;
-        }
-        TruffleString b = TruffleString.createFromByteArray(encoded, encoded.length, 0, Encodings.getUTF8(), 1, TSCodeRange.getValidMultiByte());
-        return TStringOps.lastIndexOfStringWithOrMaskWithStride(location, a, arrayA, 0, b, encoded, 0, fromIndex, toIndex, null);
-    }
-
-    static int lastIndexOf16BitUTF16(Node location, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex) {
-        assert a.stride() == 1;
-        assert codepoint > 0xffff;
-        return TStringOps.lastIndexOf2ConsecutiveWithOrMaskWithStride(
-                        location, a, arrayA, 1, fromIndex, toIndex, Character.highSurrogate(codepoint), Character.lowSurrogate(codepoint), 0, 0);
     }
 
     @ImportStatic(TStringGuards.class)
@@ -820,19 +782,30 @@ final class TStringInternalNodes {
         @Specialization(guards = {"isUTF8(a)", "!isFixedWidth(codeRangeA)"})
         int utf8Variable(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int codepoint, int fromIndex, int toIndex) {
             assert isStride0(a);
-            if (codepoint <= 0x7f) {
+            int encodedSize = Encodings.utf8EncodedSize(codepoint);
+            if (encodedSize > toIndex - fromIndex) {
+                return -1;
+            }
+            if (encodedSize == 1) {
                 return TStringOps.indexOfCodePointWithStride(this, a, arrayA, 0, fromIndex, toIndex, codepoint);
             }
-            return indexOf08BitUTF8(this, a, arrayA, codepoint, fromIndex, toIndex);
+            byte[] encoded = Encodings.utf8EncodeNonAscii(codepoint, encodedSize);
+            TruffleString b = TruffleString.createFromByteArray(encoded, encoded.length, 0, Encodings.getUTF8(), 1, TSCodeRange.getValidMultiByte());
+            return TStringOps.indexOfStringWithOrMaskWithStride(this, a, arrayA, 0, b, encoded, 0, fromIndex, toIndex, null);
         }
 
         @Specialization(guards = {"isUTF16(a)", "!isFixedWidth(codeRangeA)"})
         int utf16Variable(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int codepoint, int fromIndex, int toIndex) {
             assert isStride1(a);
-            if (codepoint <= 0xffff) {
+            int encodedSize = Encodings.utf16EncodedSize(codepoint);
+            if (encodedSize > toIndex - fromIndex) {
+                return -1;
+            }
+            if (encodedSize == 1) {
                 return TStringOps.indexOfCodePointWithStride(this, a, arrayA, 1, fromIndex, toIndex, codepoint);
             }
-            return indexOf16BitUTF16(this, a, arrayA, codepoint, fromIndex, toIndex);
+            return TStringOps.indexOf2ConsecutiveWithStride(
+                            this, a, arrayA, 1, fromIndex, toIndex, Character.highSurrogate(codepoint), Character.lowSurrogate(codepoint));
         }
 
         @Specialization(guards = {"isUnsupportedEncoding(a)", "!isFixedWidth(codeRangeA)"})
@@ -886,19 +859,31 @@ final class TStringInternalNodes {
         @Specialization(guards = {"isUTF8(a)", "!isFixedWidth(codeRangeA)"})
         int utf8Variable(AbstractTruffleString a, Object arrayA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
                         @Cached @Shared("lastIndexOfNode") TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
-            if (codepoint <= 0x7f) {
+            int encodedSize = Encodings.utf8EncodedSize(codepoint);
+            if (encodedSize > fromIndex - toIndex) {
+                return -1;
+            }
+            if (encodedSize == 1) {
                 return lastIndexOfFixedWidth(a, arrayA, codeRangeA, codepoint, fromIndex, toIndex, lastIndexOfNode);
             }
-            return lastIndexOf08BitUTF8(this, a, arrayA, codepoint, fromIndex, toIndex);
+            byte[] encoded = Encodings.utf8EncodeNonAscii(codepoint, encodedSize);
+            TruffleString b = TruffleString.createFromByteArray(encoded, encoded.length, 0, Encodings.getUTF8(), 1, TSCodeRange.getValidMultiByte());
+            return TStringOps.lastIndexOfStringWithOrMaskWithStride(this, a, arrayA, 0, b, encoded, 0, fromIndex, toIndex, null);
         }
 
         @Specialization(guards = {"isUTF16(a)", "!isFixedWidth(codeRangeA)"})
         int utf16Variable(AbstractTruffleString a, Object arrayA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
                         @Cached @Shared("lastIndexOfNode") TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
-            if (codepoint <= 0xffff) {
+            assert isStride1(a);
+            int encodedSize = Encodings.utf16EncodedSize(codepoint);
+            if (encodedSize > fromIndex - toIndex) {
+                return -1;
+            }
+            if (encodedSize == 1) {
                 return lastIndexOfFixedWidth(a, arrayA, codeRangeA, codepoint, fromIndex, toIndex, lastIndexOfNode);
             }
-            return lastIndexOf16BitUTF16(this, a, arrayA, codepoint, fromIndex, toIndex);
+            return TStringOps.lastIndexOf2ConsecutiveWithOrMaskWithStride(
+                            this, a, arrayA, 1, fromIndex, toIndex, Character.highSurrogate(codepoint), Character.lowSurrogate(codepoint), 0, 0);
         }
 
         @Specialization(guards = {"isUnsupportedEncoding(a)", "!isFixedWidth(codeRangeA)"})
@@ -1114,7 +1099,7 @@ final class TStringInternalNodes {
                         AbstractTruffleString a, Object arrayA, int codeRangeA,
                         AbstractTruffleString b, Object arrayB, int codeRangeB, int fromIndex, int toIndex,
                         @Cached RawIndexOfStringNode indexOfStringNode) {
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, null);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, toIndex - fromIndex, GetCodePointLengthNode.getUncached());
             return indexOfStringNode.execute(a, arrayA, b, arrayB, fromIndex, toIndex, null);
         }
 
@@ -1124,7 +1109,7 @@ final class TStringInternalNodes {
                         AbstractTruffleString b, Object arrayB, int codeRangeB, int fromIndex, int toIndex,
                         @Cached TruffleStringIterator.NextNode nextNodeA,
                         @Cached TruffleStringIterator.NextNode nextNodeB) {
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, null);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, toIndex - fromIndex, GetCodePointLengthNode.getUncached());
             TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA);
             TruffleStringIterator bIt = AbstractTruffleString.forwardIterator(b, arrayB, codeRangeB);
             return TruffleStringIterator.indexOfString(this, aIt, bIt, fromIndex, toIndex, nextNodeA, nextNodeB);
@@ -1142,7 +1127,7 @@ final class TStringInternalNodes {
                         AbstractTruffleString a, Object arrayA, int codeRangeA,
                         AbstractTruffleString b, Object arrayB, int codeRangeB, int fromIndex, int toIndex, byte[] mask,
                         @Cached TStringOpsNodes.RawIndexOfStringNode indexOfStringNode) {
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, mask);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, mask, toIndex - fromIndex);
             return indexOfStringNode.execute(a, arrayA, b, arrayB, fromIndex, toIndex, mask);
         }
 
@@ -1153,7 +1138,7 @@ final class TStringInternalNodes {
                         @Cached TruffleStringIterator.NextNode nextNodeA,
                         @Cached TruffleStringIterator.NextNode nextNodeB) {
             assert mask == null;
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, mask);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, mask, toIndex - fromIndex);
             TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA);
             TruffleStringIterator bIt = AbstractTruffleString.forwardIterator(b, arrayB, codeRangeB);
             return TruffleStringIterator.byteIndexOfString(this, aIt, bIt, fromIndex, toIndex, nextNodeA, nextNodeB);
@@ -1171,7 +1156,7 @@ final class TStringInternalNodes {
                         AbstractTruffleString a, Object arrayA, int codeRangeA,
                         AbstractTruffleString b, Object arrayB, int codeRangeB, int fromIndex, int toIndex,
                         @Cached RawLastIndexOfStringNode indexOfStringNode) {
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, null);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, fromIndex - toIndex, GetCodePointLengthNode.getUncached());
             return indexOfStringNode.execute(a, arrayA, b, arrayB, fromIndex, toIndex, null);
         }
 
@@ -1182,7 +1167,7 @@ final class TStringInternalNodes {
                         @Cached TruffleStringIterator.NextNode nextNodeA,
                         @Cached TruffleStringIterator.PreviousNode prevNodeA,
                         @Cached TruffleStringIterator.PreviousNode prevNodeB) {
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, null);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, fromIndex - toIndex, GetCodePointLengthNode.getUncached());
             TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA);
             TruffleStringIterator bIt = AbstractTruffleString.backwardIterator(b, arrayB, codeRangeB);
             return TruffleStringIterator.lastIndexOfString(this, aIt, bIt, fromIndex, toIndex, nextNodeA, prevNodeA, prevNodeB);
@@ -1200,7 +1185,7 @@ final class TStringInternalNodes {
                         AbstractTruffleString a, Object arrayA, int codeRangeA,
                         AbstractTruffleString b, Object arrayB, int codeRangeB, int fromIndex, int toIndex, byte[] mask,
                         @Cached TStringOpsNodes.RawLastIndexOfStringNode indexOfStringNode) {
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, mask);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, mask, fromIndex - toIndex);
             return indexOfStringNode.execute(a, arrayA, b, arrayB, fromIndex, toIndex, mask);
         }
 
@@ -1212,7 +1197,7 @@ final class TStringInternalNodes {
                         @Cached TruffleStringIterator.PreviousNode prevNodeA,
                         @Cached TruffleStringIterator.PreviousNode prevNodeB) {
             assert mask == null;
-            assert !b.isEmpty() && !indexOfCannotMatch(a, codeRangeA, b, codeRangeB, mask);
+            assert !b.isEmpty() && !indexOfCannotMatch(codeRangeA, b, codeRangeB, mask, fromIndex - toIndex);
             TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA);
             TruffleStringIterator bIt = AbstractTruffleString.backwardIterator(b, arrayB, codeRangeB);
             return TruffleStringIterator.lastByteIndexOfString(this, aIt, bIt, fromIndex, toIndex, nextNodeA, prevNodeA, prevNodeB);
