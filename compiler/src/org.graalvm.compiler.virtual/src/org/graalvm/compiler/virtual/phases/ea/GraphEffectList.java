@@ -236,7 +236,7 @@ public final class GraphEffectList extends EffectList {
                     WithExceptionNode withExceptionNode = (WithExceptionNode) node;
                     AbstractBeginNode next = withExceptionNode.next();
                     GraphUtil.unlinkAndKillExceptionEdge(withExceptionNode);
-                    if (next.hasNoUsages() && next instanceof MemoryKill) {
+                    if (next.hasNoUsages() && MemoryKill.isMemoryKill(next)) {
                         // This is a killing begin which is no longer needed.
                         graph.replaceFixedWithFixed(next, graph.add(new BeginNode()));
                     }

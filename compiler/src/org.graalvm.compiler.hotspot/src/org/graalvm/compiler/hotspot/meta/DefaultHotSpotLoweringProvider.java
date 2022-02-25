@@ -367,7 +367,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof OSRStartNode) {
             lowerOSRStartNode((OSRStartNode) n);
         } else if (n instanceof BytecodeExceptionNode) {
-            lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+                lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
+            }
         } else if (n instanceof InstanceOfNode) {
             InstanceOfNode instanceOfNode = (InstanceOfNode) n;
             if (graph.getGuardsStage().areDeoptsFixed()) {

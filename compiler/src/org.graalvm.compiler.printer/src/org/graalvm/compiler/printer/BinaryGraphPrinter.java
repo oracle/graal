@@ -65,6 +65,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.util.JavaConstantFormattable;
@@ -296,10 +297,10 @@ public class BinaryGraphPrinter implements
             props.put("category", "floating");
         }
 
-        if (node instanceof SingleMemoryKill) {
+        if (MemoryKill.isSingleMemoryKill(node)) {
             props.put("killedLocationIdentity", ((SingleMemoryKill) node).getKilledLocationIdentity());
         }
-        if (node instanceof MultiMemoryKill) {
+        if (MemoryKill.isMultiMemoryKill(node)) {
             props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
         }
 

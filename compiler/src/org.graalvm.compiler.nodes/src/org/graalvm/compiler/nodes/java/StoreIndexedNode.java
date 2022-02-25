@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -57,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The {@code StoreIndexedNode} represents a write to an array element.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable, Canonicalizable {
+public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable, Canonicalizable, SingleMemoryKill {
 
     public static final NodeClass<StoreIndexedNode> TYPE = NodeClass.create(StoreIndexedNode.class);
 
@@ -79,6 +80,11 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
     }
 
     @Override

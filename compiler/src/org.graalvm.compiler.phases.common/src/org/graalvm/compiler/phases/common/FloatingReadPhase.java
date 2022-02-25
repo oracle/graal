@@ -48,9 +48,9 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
-import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
@@ -62,10 +62,10 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatableAccessNode;
+import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
@@ -173,13 +173,14 @@ public class FloatingReadPhase extends Phase {
     }
 
     protected void processNode(FixedNode node, EconomicSet<LocationIdentity> currentState) {
-        if (node instanceof SingleMemoryKill) {
+        if (MemoryKill.isSingleMemoryKill(node)) {
             processIdentity(currentState, ((SingleMemoryKill) node).getKilledLocationIdentity());
-        } else if (node instanceof MultiMemoryKill) {
+        } else if (MemoryKill.isMemoryKill(node)) {
             for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
                 processIdentity(currentState, identity);
             }
         }
+
     }
 
     private static void processIdentity(EconomicSet<LocationIdentity> currentState, LocationIdentity identity) {
@@ -259,7 +260,7 @@ public class FloatingReadPhase extends Phase {
     private static boolean memoryTiersAligned(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
             if (n instanceof MemoryAccess && !(n instanceof FloatableMemoryAccess)) {
-                if (!(n instanceof MemoryKill)) {
+                if (!MemoryKill.isMemoryKill(n)) {
                     throw GraalError.shouldNotReachHere(
                                     String.format("Node %s is a memory access but not a floatable one, it should have been a memory kill or be removed after the first lowering", n));
                 }
@@ -311,7 +312,7 @@ public class FloatingReadPhase extends Phase {
     }
 
     public static boolean nodeOfMemoryType(Node node) {
-        return !(node instanceof MemoryKill) || (node instanceof SingleMemoryKill ^ node instanceof MultiMemoryKill);
+        return !(MemoryKill.isMemoryKill(node)) || (MemoryKill.isSingleMemoryKill(node) ^ MemoryKill.isMultiMemoryKill(node));
     }
 
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
@@ -360,9 +361,9 @@ public class FloatingReadPhase extends Phase {
             if (createFloatingReads && node instanceof FloatableAccessNode) {
                 processFloatable((FloatableAccessNode) node, state);
             }
-            if (node instanceof SingleMemoryKill) {
+            if (MemoryKill.isSingleMemoryKill(node)) {
                 processCheckpoint((SingleMemoryKill) node, state);
-            } else if (node instanceof MultiMemoryKill) {
+            } else if (MemoryKill.isMultiMemoryKill(node)) {
                 processCheckpoint((MultiMemoryKill) node, state);
             }
             assert nodeOfMemoryType(node) : node;

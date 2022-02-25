@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.graph.MemoryKillMarker;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.word.LocationIdentity;
@@ -47,4 +48,17 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
     default boolean actuallyKills() {
         return true;
     }
+
+    static boolean isMemoryKill(Node n) {
+        return n instanceof MemoryKill && ((MemoryKill) n).actuallyKills();
+    }
+
+    static boolean isSingleMemoryKill(Node n) {
+        return isMemoryKill(n) && n instanceof SingleMemoryKill;
+    }
+
+    static boolean isMultiMemoryKill(Node n) {
+        return isMemoryKill(n) && n instanceof MultiMemoryKill;
+    }
+
 }

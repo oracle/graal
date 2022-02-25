@@ -104,7 +104,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return getLocationIdentity();
+        return ordersMemoryAccesses() ? LocationIdentity.ANY_LOCATION : getLocationIdentity();
     }
 
     @Override

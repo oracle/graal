@@ -95,8 +95,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     @Override
     protected boolean processNode(Node node, ReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         boolean deleted = false;
-        if (node instanceof MemoryKill && ((MemoryKill) node).actuallyKills()) {
-            if (node instanceof SingleMemoryKill) {
+        if (MemoryKill.isMemoryKill(node)) {
+            if (MemoryKill.isSingleMemoryKill(node)) {
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof StoreFieldNode)) {
                     if (node instanceof WriteNode || node instanceof StoreFieldNode) {
@@ -125,7 +125,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     } else if (node instanceof RawStoreNode) {
                         RawStoreNode write = (RawStoreNode) node;
                         ValueNode object = GraphUtil.unproxify(write.object());
-                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getKilledLocationIdentity(), write.accessKind());
+                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(),
+                                        write.getKilledLocationIdentity(), write.accessKind());
                         ValueNode cachedValue = state.getCacheEntry(identifier);
                         ValueNode value = getScalarAlias(write.value());
                         if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
@@ -138,7 +139,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 } else {
                     killReadCacheByIdentity(state, identity);
                 }
-            } else if (node instanceof MultiMemoryKill) {
+            } else if (MemoryKill.isMultiMemoryKill(node)) {
                 for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
                     killReadCacheByIdentity(state, identity);
                 }
@@ -151,13 +152,15 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     if (node instanceof RawLoadNode) {
                         RawLoadNode load = (RawLoadNode) node;
                         ValueNode object = GraphUtil.unproxify(load.object());
-                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity(), load.accessKind());
+                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(),
+                                        load.getLocationIdentity(), load.accessKind());
                         ValueNode cachedValue = state.getCacheEntry(identifier);
                         if (cachedValue != null && areValuesReplaceable(load, cachedValue, considerGuards)) {
                             if (load.accessKind() == JavaKind.Boolean) {
                                 // perform boolean coercion
                                 LogicNode cmp = IntegerEqualsNode.create(cachedValue, ConstantNode.forInt(0), NodeView.DEFAULT);
-                                ValueNode boolValue = ConditionalNode.create(cmp, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT);
+                                ValueNode boolValue = ConditionalNode.create(cmp, ConstantNode.forBoolean(false),
+                                                ConstantNode.forBoolean(true), NodeView.DEFAULT);
                                 effects.ensureFloatingAdded(boolValue);
                                 cachedValue = boolValue;
                             }
@@ -185,14 +188,13 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             ValueNode access = (ValueNode) node;
                             LoadCacheEntry identifier = new LoadCacheEntry(object, location);
                             ValueNode cachedValue = state.getCacheEntry(identifier);
-                            if (node instanceof LoadFieldNode) {
-                                if (cachedValue != null && areValuesReplaceable(access, cachedValue, considerGuards)) {
-                                    effects.replaceAtUsages(access, cachedValue, (FixedNode) access);
-                                    addScalarAlias(access, cachedValue);
-                                    deleted = true;
-                                } else {
-                                    state.addCacheEntry(identifier, access);
-                                }
+
+                            if (cachedValue != null && areValuesReplaceable(access, cachedValue, considerGuards)) {
+                                effects.replaceAtUsages(access, cachedValue, (FixedNode) access);
+                                addScalarAlias(access, cachedValue);
+                                deleted = true;
+                            } else {
+                                state.addCacheEntry(identifier, access);
                             }
                         }
                     }
