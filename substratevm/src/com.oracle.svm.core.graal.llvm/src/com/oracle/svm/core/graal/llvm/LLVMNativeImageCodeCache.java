@@ -134,7 +134,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void llvmCleanupStackMaps(DebugContext debug, String inputPath) {
         List<String> args = new ArrayList<>();
-        args.add("--remove-section=.llvm_stackmaps");
+        args.add("--remove-section=" + SectionName.LLVM_STACKMAPS.getFormatDependentName(ObjectFile.getNativeFormat()));
         args.add(inputPath);
 
         try {
