@@ -215,7 +215,7 @@ public abstract class PartialEvaluator {
         if (instrumentationCfg.instrumentBoundaries) {
             instrumentTruffleBoundariesPhase = new InstrumentTruffleBoundariesPhase(snippetReflection, getInstrumentation(), instrumentationCfg.instrumentBoundariesPerInlineSite);
         }
-        partialEscapePhase = new PartialEscapePhase(false, canonicalizer,
+        partialEscapePhase = new PartialEscapePhase(options.get(IterativePartialEscape), canonicalizer,
                         // Unsure about this part
                         TruffleCompilerRuntime.getRuntime().getGraalOptions(org.graalvm.compiler.options.OptionValues.class));
     }
@@ -578,11 +578,11 @@ public abstract class PartialEvaluator {
             canonicalizer.apply(request.graph, request.highTierContext);
         }
         try (DebugCloseable a = TruffleFrameVerifyFrameTimer.start(request.debug)) {
-            new FrameAccessVerificationPhase().apply(request.graph, request);
+            frameAccessVerificationPhase.apply(request.graph, request);
         }
         try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug); DebugContext.Scope pe = request.debug.scope("TrufflePartialEscape", request.graph)) {
             if (!request.options.get(IterativePartialEscape)) {
-                new PartialEscapePhase(false, canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
+                partialEscapePhase.apply(request.graph, request.highTierContext);
             } else {
                 new PartialEscapePhase(true, canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
             }

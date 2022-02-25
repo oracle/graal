@@ -189,26 +189,30 @@ public final class FrameAccessVerificationPhase extends BasePhase<PartialEvaluat
         }
     }
 
-    private final ArrayList<Effect> effects = new ArrayList<>();
-
     @Override
     protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
         if (graph.getNodes(NewFrameNode.TYPE).isNotEmpty()) {
-            ReentrantNodeIterator.apply(new ReentrantIterator(context.compilable), graph.start(), new State());
+            ArrayList<Effect> effects = new ArrayList<>();
+            ReentrantNodeIterator.apply(new ReentrantIterator(context.compilable, effects), graph.start(), new State(effects));
             for (Effect effect : effects) {
                 effect.apply();
             }
         }
     }
 
-    private final class State implements Cloneable {
+    private static final class State implements Cloneable {
 
         private final HashMap<NewFrameNode, byte[]> states = new HashMap<>();
         private final HashMap<NewFrameNode, byte[]> indexedStates = new HashMap<>();
+        private final ArrayList<Effect> effects;
+
+        State(ArrayList<Effect> effects) {
+            this.effects = effects;
+        }
 
         @Override
         public State clone() {
-            State newState = new State();
+            State newState = new State(effects);
             copy(states, newState.states);
             copy(indexedStates, newState.indexedStates);
             return newState;
@@ -262,9 +266,11 @@ public final class FrameAccessVerificationPhase extends BasePhase<PartialEvaluat
     private final class ReentrantIterator extends NodeIteratorClosure<State> {
 
         private final CompilableTruffleAST compilable;
+        private final ArrayList<Effect> effects;
 
-        ReentrantIterator(CompilableTruffleAST compilable) {
+        ReentrantIterator(CompilableTruffleAST compilable, ArrayList<Effect> effects) {
             this.compilable = compilable;
+            this.effects = effects;
         }
 
         @Override
