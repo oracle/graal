@@ -21,20 +21,18 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.threads;
+package com.oracle.truffle.espresso.jni;
 
-public enum State {
-    NEW(0),
-    RUNNABLE(0x0004 /* JVMTI_THREAD_STATE_RUNNABLE */),
-    BLOCKED(0x0400 /* JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER */),
-    WAITING(0x0010 /* JVMTI_THREAD_STATE_WAITING_INDEFINITELY */),
-    TIMED_WAITING(0x0020 /* JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT */),
-    TERMINATED(0x0002 /* JVMTI_THREAD_STATE_TERMINATED */),
-    IN_NATIVE(0x400000 /* JVMTI_THREAD_STATE_IN_NATIVE */);
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    public final int value;
-
-    State(int value) {
-        this.value = value;
-    }
+/**
+ * Annotate a native env method implementation with this annotation to prevent safepoint on
+ * invocation.
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.METHOD, ElementType.TYPE})
+public @interface NoSafepoint {
 }

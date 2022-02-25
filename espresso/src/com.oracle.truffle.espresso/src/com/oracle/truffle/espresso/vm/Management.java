@@ -307,7 +307,7 @@ public final class Management extends NativeEnv {
                 getInterpreterToVM().setArrayObject(StaticObject.NULL, i, infoArray);
             } else {
 
-                int threadStatus = meta.java_lang_Thread_threadStatus.getInt(thread);
+                int threadStatus = meta.getThreadAccess().getState(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
                 int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
@@ -318,7 +318,7 @@ public final class Management extends NativeEnv {
                     }
                     Thread hostOwner = StaticObject.isNull(lockObj)
                                     ? null
-                                    : lockObj.getLock().getOwnerThread();
+                                    : lockObj.getLock(getContext()).getOwnerThread();
                     if (hostOwner != null && hostOwner.isAlive()) {
                         lockOwner = getContext().getGuestThreadFromHost(hostOwner);
                         if (lockOwner == null) {

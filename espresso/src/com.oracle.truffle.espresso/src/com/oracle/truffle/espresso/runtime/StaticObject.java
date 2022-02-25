@@ -34,6 +34,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.BlockingSupport;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -60,7 +62,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create();
+    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create(BlockingSupport.UNINTERRUPTIBLE);
 
     private final Klass klass; // != PrimitiveKlass
 
@@ -273,9 +275,11 @@ public class StaticObject implements TruffleObject, Cloneable {
      * The returned {@link EspressoLock} instance supports the same usages as do the {@link Object}
      * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
      * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
+     *
+     * @param context
      */
     @SuppressFBWarnings(value = "DC", justification = "Implementations of EspressoLock have only final and volatile fields")
-    public final EspressoLock getLock() {
+    public final EspressoLock getLock(EspressoContext context) {
         checkNotForeign();
         if (isNull(this)) {
             CompilerDirectives.transferToInterpreter();
@@ -286,7 +290,7 @@ public class StaticObject implements TruffleObject, Cloneable {
             synchronized (this) {
                 l = lockOrForeignMarker;
                 if (l == null) {
-                    lockOrForeignMarker = l = EspressoLock.create();
+                    lockOrForeignMarker = l = EspressoLock.create(context.getBlockingSupport());
                 }
             }
         }

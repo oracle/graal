@@ -21,20 +21,18 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.threads;
+package com.oracle.truffle.espresso.blocking;
 
-public enum State {
-    NEW(0),
-    RUNNABLE(0x0004 /* JVMTI_THREAD_STATE_RUNNABLE */),
-    BLOCKED(0x0400 /* JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER */),
-    WAITING(0x0010 /* JVMTI_THREAD_STATE_WAITING_INDEFINITELY */),
-    TIMED_WAITING(0x0020 /* JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT */),
-    TERMINATED(0x0002 /* JVMTI_THREAD_STATE_TERMINATED */),
-    IN_NATIVE(0x400000 /* JVMTI_THREAD_STATE_IN_NATIVE */);
+/**
+ * Holds the same role as a {@link InterruptedException}, but for guest interruptions. This
+ * exception should be handled immediately once it gets out of this package.
+ */
+public class GuestInterruptedException extends Exception {
+    private static final long serialVersionUID = -3471443492081741698L;
 
-    public final int value;
-
-    State(int value) {
-        this.value = value;
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable fillInStackTrace() {
+        return this;
     }
 }
