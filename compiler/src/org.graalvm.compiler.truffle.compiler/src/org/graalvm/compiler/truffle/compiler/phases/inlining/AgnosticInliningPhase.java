@@ -30,6 +30,7 @@ import java.util.Objects;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleSuite;
@@ -80,7 +81,6 @@ public final class AgnosticInliningPhase extends BasePhase<PartialEvaluator.Requ
     protected void run(StructuredGraph graph, PartialEvaluator.Request request) {
         final InliningPolicy policy = getInliningPolicyProvider(request).get(request.options, request);
         final CallTree tree = new CallTree(partialEvaluator, truffleSuite, request, policy);
-        request.setRootIsLeaf(tree.getRoot().getChildren().isEmpty());
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining(request)) {
             policy.run(tree);
@@ -88,8 +88,20 @@ public final class AgnosticInliningPhase extends BasePhase<PartialEvaluator.Requ
             tree.collectTargetsToDequeue(request.task.inliningData());
             tree.updateTracingInfo(request.task.inliningData());
         }
+        if (!tree.getRoot().getChildren().isEmpty()) {
+            /*
+             * If we've seen a truffle call in the graph, even if we have not inlined any
+             * call target, we need to run the truffle tier phases again after the PE
+             * inlining phase has finalized the graph. On the other hand, if there are no
+             * calls (root is a leaf) we can skip the truffle tier because there are no
+             * finalization points.
+             */
+            truffleSuite.apply(graph, request);
+        }
         tree.finalizeGraph();
         tree.trace();
+        graph.maybeCompress();
+        assert GraphOrder.assertSchedulableGraph(graph) : "PE result must be schedulable in order to apply subsequent phases";
     }
 
     private static boolean optionsAllowInlining(PartialEvaluator.Request request) {

@@ -312,7 +312,6 @@ public abstract class PartialEvaluator {
         public final SpeculationLog log;
         public final CancellableTruffleCompilationTask task;
         public final StructuredGraph graph;
-        boolean rootIsLeaf;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
                         CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
@@ -350,10 +349,6 @@ public abstract class PartialEvaluator {
         public boolean isFirstTier() {
             return task.isFirstTier();
         }
-
-        public void setRootIsLeaf(boolean rootIsLeaf) {
-            this.rootIsLeaf = rootIsLeaf;
-        }
     }
 
     @SuppressWarnings("try")
@@ -361,9 +356,7 @@ public abstract class PartialEvaluator {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options);
                         DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                         Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-            inliningGraphPE(request);
-            request.graph.maybeCompress();
-            assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
+            inliningPhase.apply(request.graph, request);
             applyInstrumentationPhases(request);
             handler.reportPerformanceWarnings(request.compilable, request.graph);
             if (request.task.isCancelled()) {
@@ -607,21 +600,6 @@ public abstract class PartialEvaluator {
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, tierProviders, config.architecture());
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
-    }
-
-    @SuppressWarnings({"unused", "try"})
-    private void inliningGraphPE(Request request) {
-        try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
-            inliningPhase.apply(request.graph, request);
-            if (!request.rootIsLeaf) {
-                // If we've seen a truffle call in the graph, even if we have not inlined any call
-                // target, we need to run the truffle tier phases again after the PE inlining phase
-                // has finalized the graph.
-                // On the other hand, if there are no calls (root is a leaf) we can skip the truffle
-                // tier because there are no finalization points.
-                truffleSuite.apply(request.graph, request);
-            }
-        }
     }
 
     protected void applyInstrumentationPhases(Request request) {
