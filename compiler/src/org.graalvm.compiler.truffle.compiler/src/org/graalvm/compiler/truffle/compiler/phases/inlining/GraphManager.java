@@ -42,6 +42,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleSuite;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -53,9 +54,9 @@ final class GraphManager {
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
     private final PartialEvaluator.Request rootRequest;
-    private final PartialEvaluator.TruffleSuite truffleSuite;
+    private final TruffleSuite truffleSuite;
 
-    GraphManager(PartialEvaluator partialEvaluator, PartialEvaluator.TruffleSuite truffleSuite, PartialEvaluator.Request rootRequest) {
+    GraphManager(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite, PartialEvaluator.Request rootRequest) {
         this.partialEvaluator = partialEvaluator;
         this.truffleSuite = truffleSuite;
         this.rootRequest = rootRequest;

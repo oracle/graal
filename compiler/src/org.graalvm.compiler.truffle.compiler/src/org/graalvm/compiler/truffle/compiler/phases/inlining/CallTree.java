@@ -29,6 +29,7 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleSuite;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class CallTree extends Graph {
@@ -42,7 +43,7 @@ public final class CallTree extends Graph {
     int frontierSize;
     private int nextId = 0;
 
-    CallTree(PartialEvaluator partialEvaluator, PartialEvaluator.TruffleSuite truffleSuite, PartialEvaluator.Request request, InliningPolicy policy) {
+    CallTree(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite, PartialEvaluator.Request request, InliningPolicy policy) {
         super(request.graph.getOptions(), request.debug);
         this.policy = policy;
         this.request = request;

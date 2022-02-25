@@ -47,7 +47,6 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -68,12 +67,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
@@ -94,17 +89,14 @@ import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
-import org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
-import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleOptions;
@@ -416,20 +408,6 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private void inlineReplacements(Request request) {
-        for (MethodCallTargetNode methodCallTargetNode : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
-            if (!methodCallTargetNode.invokeKind().isDirect()) {
-                continue;
-            }
-            StructuredGraph inlineGraph = providers.getReplacements().getInlineSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
-                            methodCallTargetNode.invoke().getInlineControl(), request.graph.trackNodeSourcePosition(), methodCallTargetNode.asNode().getNodeSourcePosition(),
-                            request.graph.allowAssumptions(), request.debug.getOptions());
-            if (inlineGraph != null) {
-                InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
-            }
-        }
-    }
-
     /**
      * Hook for subclasses: customize the StructuredGraph.
      */
@@ -557,39 +535,6 @@ public abstract class PartialEvaluator {
                         new TruffleSourceLanguagePositionProvider(request.task.inliningData()),
                         graphCache);
         decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
-    }
-
-    public static class TruffleSuite extends PhaseSuite<PartialEvaluator.Request> {
-        public TruffleSuite(boolean iterativePartialEscape) {
-            appendPhase(new ConvertDeoptimizeToGuardPhase());
-            appendPhase(new InlineReplacementsPhase());
-            appendPhase(new ConditionalEliminationPhase(false));
-            CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
-            appendPhase(canonicalizerPhase);
-            appendPhase(new FrameAccessVerificationPhase());
-            appendPhase(new PartialEscapePhase(iterativePartialEscape, canonicalizerPhase,
-                            // Unsure about this part
-                            TruffleCompilerRuntime.getRuntime().getGraalOptions(org.graalvm.compiler.options.OptionValues.class)));
-           appendPhase(new PhiTransformPhase(canonicalizerPhase));
-        }
-    }
-
-    public static class InlineReplacementsPhase extends BasePhase<PartialEvaluator.Request> {
-
-        @Override
-        protected void run(StructuredGraph graph, Request context) {
-            for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                if (!methodCallTargetNode.invokeKind().isDirect()) {
-                    continue;
-                }
-                StructuredGraph inlineGraph = context.getProviders().getReplacements().getInlineSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
-                                methodCallTargetNode.invoke().getInlineControl(), graph.trackNodeSourcePosition(), methodCallTargetNode.asNode().getNodeSourcePosition(),
-                                graph.allowAssumptions(), context.debug.getOptions());
-                if (inlineGraph != null) {
-                    InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
-                }
-            }
-        }
     }
 
     /**

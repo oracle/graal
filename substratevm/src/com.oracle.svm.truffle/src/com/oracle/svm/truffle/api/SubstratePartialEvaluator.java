@@ -43,10 +43,9 @@ import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKe
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
+import org.graalvm.compiler.truffle.compiler.TruffleSuite;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -108,12 +107,4 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
         return null;
     }
 
-    private static class SubstrateTruffleSuite extends TruffleSuite {
-
-        SubstrateTruffleSuite(boolean iterativePartialEscape) {
-            super(iterativePartialEscape);
-            appendPhase(new DeadStoreRemovalPhase());
-            appendPhase(new TruffleBoundaryPhase());
-        }
-    }
 }
