@@ -31,6 +31,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Indicates a condition in Espresso related code that should never occur during normal operation.
+ * 
+ * These methods cannot be reachable for compilation, they must be called behind a
+ * {@link TruffleBoundary} or after an
+ * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidating deopt}.
  */
 public final class EspressoError extends Error {
 
