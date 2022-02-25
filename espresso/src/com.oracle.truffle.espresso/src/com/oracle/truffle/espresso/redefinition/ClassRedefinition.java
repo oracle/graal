@@ -508,13 +508,13 @@ public final class ClassRedefinition {
         }
         // we don't currently allow removing enum constants
         if (oldEnumConstants.size() > newEnumConstants.size()) {
-            throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+            throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
         }
 
         // compare ordered lists, we don't allow reordering enum constants
         for (int i = 0; i < oldEnumConstants.size(); i++) {
             if (oldEnumConstants.get(i) != newEnumConstants.get(i)) {
-                throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
             }
         }
     }
