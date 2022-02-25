@@ -355,7 +355,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
-    private static final DebugCounter[] BYTECODE_HISTOGRAM;
 
     private static final byte TRIVIAL_UNINITIALIZED = -1;
     private static final byte TRIVIAL_NO = 0;
@@ -364,10 +363,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
     static {
-        BYTECODE_HISTOGRAM = new DebugCounter[0xFF];
-        for (int bc = 0; bc <= SLIM_QUICK; ++bc) {
-            BYTECODE_HISTOGRAM[bc] = DebugCounter.create(Bytecodes.nameOf(bc));
-        }
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
@@ -799,8 +794,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
         loop: while (true) {
             final int curOpcode = bs.opcode(curBCI);
-            // EXECUTED_BYTECODES_COUNT.inc();
-            // BYTECODE_HISTOGRAM[ bs.currentBC(curBCI) ].inc();
+            EXECUTED_BYTECODES_COUNT.inc();
             try {
                 CompilerAsserts.partialEvaluationConstant(top);
                 CompilerAsserts.partialEvaluationConstant(curBCI);
