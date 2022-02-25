@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.coff.PEFile;
+import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
+
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source;
@@ -184,6 +186,8 @@ public final class BinaryParser {
                     // PE/COFF File does not contain an .llvmbc section
                     return null;
                 }
+                libraries.addAll(peFile.getImportLibraries());
+                locator = new WindowsLibraryLocator(source);
                 return parseBitcode(peBcSection.getData(), source);
             default:
                 return null;
