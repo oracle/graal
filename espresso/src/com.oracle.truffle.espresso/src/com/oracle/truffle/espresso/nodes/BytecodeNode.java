@@ -787,7 +787,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         if (instrument != null && !skipEntryInstrumentation) {
             instrument.notifyEntry(frame, this);
         }
-        livenessAnalysis.onStart(frame);
+        // startBCI is not 0 when we executeBodyFromBCI during OSR; in that case we don't execute
+        // the method from the beginning hence onStart is not applicable
+        if (startBCI == 0) {
+            livenessAnalysis.onStart(frame);
+        }
 
         loop: while (true) {
             final int curOpcode = bs.opcode(curBCI);
