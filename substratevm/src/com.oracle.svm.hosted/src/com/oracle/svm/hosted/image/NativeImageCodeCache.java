@@ -149,8 +149,6 @@ public abstract class NativeImageCodeCache {
 
     public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
 
-    public abstract void llvmStrip(DebugContext debug, String inputPath);
-
     public void layoutConstants() {
         for (CompilationResult compilation : compilations.values()) {
             for (DataSection.Data data : compilation.getDataSection()) {

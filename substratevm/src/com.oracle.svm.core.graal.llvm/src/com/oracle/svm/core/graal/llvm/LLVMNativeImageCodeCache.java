@@ -132,17 +132,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    @Override
-    public void llvmStrip(DebugContext debug, String inputPath) {
+    private void llvmCleanupStackMaps(DebugContext debug, String inputPath) {
         List<String> args = new ArrayList<>();
         args.add("--remove-section=.llvm_stackmaps");
         args.add(inputPath);
 
         try {
-            LLVMToolchain.runLLVMCommand("llvm-strip", basePath, args);
+            LLVMToolchain.runLLVMCommand("llvm-objcopy", basePath, args);
         } catch (RunFailureException e) {
             debug.log("%s", e.getOutput());
-            throw new GraalError("Removing stackmaps failed for " + inputPath + ": " + e.getStatus() + "\nCommand: llvm-strip " + String.join(" ", args));
+            throw new GraalError("Removing stack maps failed for " + inputPath + ": " + e.getStatus() + "\nCommand: llvm-objcopy " + String.join(" ", args));
         }
     }
 
@@ -219,6 +218,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         compilations.forEach((method, compilation) -> compilationsByStart.put(method.getCodeAddressOffset(), compilation));
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
+
+        llvmCleanupStackMaps(debug, getLinkedFilename());
 
         HostedMethod firstMethod = (HostedMethod) getFirstCompilation().getMethods()[0];
         buildRuntimeMetadata(new MethodPointer(firstMethod), WordFactory.signed(textSectionInfo.getCodeSize()));

@@ -697,8 +697,6 @@ public class NativeImageGenerator {
 
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
-
-                codeCache.llvmStrip(debug, generatedFiles(HostedOptionValues.singleton()).resolve(imageName).toString());
             }
             reporter.printCreationEnd(image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
                             codeCache.getCompilations().size(), image.getDebugInfoSize());
