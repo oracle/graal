@@ -177,7 +177,6 @@ public final class LLVMContext {
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
-    protected boolean cleanupDone;
     private State contextState;
     private final LLVMLanguage language;
 
@@ -513,20 +512,12 @@ public final class LLVMContext {
      * cancelling only the internal clean-up code is executed from within
      * {@link LLVMContext#finalizeContext} (within a safepoint critical section) as no guest code is
      * allowed to be executed.
-     *
-     * After the clean-up is done, the {@link LLVMContext#cleanupDone} flag is set to true, which is
-     * checked in {@link LLVMContext#finalizeContext}, which follows the exitContext notification,
-     * preventing so this method from being called again.
      */
     private void cleanUpNoGuestCode() {
-        assert !cleanupDone;
-
         if (language.getFreeGlobalBlocks() != null) {
             // free the space allocated for non-pointer globals
             language.getFreeGlobalBlocks().call();
         }
-
-        cleanupDone = true;
     }
 
     /**
@@ -560,24 +551,19 @@ public final class LLVMContext {
 
     void exitContext(LLVMFunction sulongDisposeContext) {
         cleanUpGuestCode(sulongDisposeContext);
-        cleanUpNoGuestCode();
     }
 
     void finalizeContext() {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
 
-        if (!cleanupDone) {
-            assert env.getContext().isCancelling();
-            TruffleSafepoint sp = TruffleSafepoint.getCurrent();
-            boolean prev = sp.setAllowActions(false);
-            try {
-                cleanUpNoGuestCode();
-            } finally {
-                sp.setAllowActions(prev);
-            }
+        TruffleSafepoint sp = TruffleSafepoint.getCurrent();
+        boolean prev = sp.setAllowActions(false);
+        try {
+            cleanUpNoGuestCode();
+        } finally {
+            sp.setAllowActions(prev);
         }
-
     }
 
     public Object getFreeReadOnlyGlobalsBlockFunction() {
