@@ -186,7 +186,7 @@ public final class LoopEndNode extends AbstractEndNode {
 
     @Override
     public NodeSize estimatedNodeSize() {
-        if (loopBegin() == null) {
+        if (!(loopBegin instanceof LoopBeginNode) || loopBegin() == null) {
             return SIZE_UNKNOWN;
         }
         if (canSafepoint()) {

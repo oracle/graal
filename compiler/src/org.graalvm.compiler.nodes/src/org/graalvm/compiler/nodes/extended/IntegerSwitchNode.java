@@ -148,7 +148,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     @Override
     public int keyCount() {
-        return keys.length;
+        return keys == null ? 0 : keys.length;
     }
 
     @Override
