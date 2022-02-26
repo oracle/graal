@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,7 +28,44 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <pthread.h>
+#include <stdio.h>
+#include <graalvm/llvm/polyglot.h>
 
-pthread_t get_self() {
-    return pthread_self();
+pthread_t threads[3];
+
+pthread_t get_self(int i) {
+    pthread_t self = pthread_self();
+    threads[i] = self;
+    return self;
+}
+
+int check_different() {
+    int i, j;
+    for (i = 0; i < 3; i++) {
+        for (j = i + 1; j < 3; j++) {
+            if (threads[i] == threads[j]) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+char buffer[10240];
+
+FILE *open_buffer() {
+    return fmemopen(buffer, sizeof(buffer), "w");
+}
+
+void concurrent_put(FILE *f, int id) {
+    for (int i = 0; i < 20; i++) {
+        fprintf(f, "thread %d %d\n", id, i);
+    }
+}
+
+void *finalize_buffer(FILE *f) {
+    int length = ftell(f);
+    fclose(f);
+
+    return polyglot_from_string_n(buffer, length, "ASCII");
 }
