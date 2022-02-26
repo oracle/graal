@@ -447,18 +447,7 @@ public abstract class PointsToAnalysis implements BigBang {
             }
         }
 
-        postTask(new DebugContextRunnable() {
-            @Override
-            public void run(DebugContext ignore) {
-                methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext(), null);
-            }
-
-            @Override
-            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                assert opts == getOptions();
-                return DebugContext.disabled(opts);
-            }
-        });
+        postTask(ignore -> methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext(), null));
 
         return aMethod;
     }
@@ -594,12 +583,6 @@ public abstract class PointsToAnalysis implements BigBang {
             @Override
             public TypeFlow<?> getTypeFlow() {
                 return operation;
-            }
-
-            @Override
-            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                assert opts == getOptions();
-                return DebugContext.disabled(opts);
             }
         });
     }

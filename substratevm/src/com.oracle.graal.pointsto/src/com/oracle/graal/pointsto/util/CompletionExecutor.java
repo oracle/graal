@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.LongAdder;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
-import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -125,11 +124,11 @@ public class CompletionExecutor {
         /**
          * Gets a {@link DebugContext} the executor will use for this task.
          *
-         * A task can override this and return {@link DebugContext#disabled} to avoid the cost of
-         * creating a {@link DebugContext} if one is not needed.
+         * {@link DebugContext#disabled} is used by default to avoid the cost of creating a
+         * {@link DebugContext}, so the task should override this if one is needed.
          */
-        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
-            return new Builder(options, factories).description(getDescription()).build();
+        default DebugContext getDebug(@SuppressWarnings("unused") OptionValues options, @SuppressWarnings("unused") List<DebugHandlersFactory> factories) {
+            return DebugContext.disabled(null);
         }
     }
 
