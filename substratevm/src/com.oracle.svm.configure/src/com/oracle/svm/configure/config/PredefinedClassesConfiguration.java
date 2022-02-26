@@ -52,7 +52,6 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
     }
 
     public void add(String nameInfo, byte[] classData) {
-        ensureDestinationDirsExist();
         String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
         if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
             return;
@@ -75,7 +74,6 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
             return;
         }
         if (classDestinationDirs != null) {
-            ensureDestinationDirsExist();
             Path localBaseDir;
             try {
                 localBaseDir = Path.of(baseUri);
@@ -103,22 +101,6 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
         }
         ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(nameInfo, hash);
         classes.put(hash, clazz);
-    }
-
-    private void ensureDestinationDirsExist() {
-        if (classDestinationDirs != null) {
-            for (Path dir : classDestinationDirs) {
-                if (!Files.isDirectory(dir)) {
-                    try {
-                        Files.createDirectory(dir);
-                    } catch (IOException e) {
-                        if (!Files.isDirectory(dir)) { // potential race
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     private static String getFileName(String hash) {

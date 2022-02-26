@@ -37,6 +37,7 @@ public enum ConfigurationFile {
     private final String fileName;
     private final boolean canAgentGenerate;
 
+    public static final String LOCK_FILE_NAME = ".lock";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
 

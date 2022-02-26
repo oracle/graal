@@ -27,15 +27,19 @@ package com.oracle.svm.agent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileTime;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
@@ -89,6 +93,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private TracingResultWriter tracingResultWriter;
 
     private Path configOutputDirPath;
+    private Path configOutputLockFilePath;
+    private FileTime expectedConfigModifiedBefore;
 
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
@@ -244,9 +250,24 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 return usage(1, "can only once specify exactly one of trace-output=, config-output-dir= or config-merge-dir=.");
             }
             try {
-                configOutputDirPath = Paths.get(configOutputDir);
-                if (!Files.exists(configOutputDirPath)) {
-                    Files.createDirectories(configOutputDirPath);
+                configOutputDirPath = Files.createDirectories(Path.of(configOutputDir));
+                configOutputLockFilePath = configOutputDirPath.resolve(ConfigurationFile.LOCK_FILE_NAME);
+                try {
+                    Files.writeString(configOutputLockFilePath, Long.toString(ProcessProperties.getProcessID()),
+                                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                } catch (FileAlreadyExistsException e) {
+                    String process;
+                    try {
+                        process = Files.readString(configOutputLockFilePath).stripTrailing();
+                    } catch (Exception ignored) {
+                        process = "(unknown)";
+                    }
+                    return error(2, "Output directory '" + configOutputDirPath + "' is locked by process " + process + ", " +
+                                    "which means another agent instance is already writing to this directory. " +
+                                    "Only one agent instance can safely write to a specific target directory at the same time. " +
+                                    "Unless file '" + ConfigurationFile.LOCK_FILE_NAME + "' is a leftover from an earlier process that terminated abruptly, it is unsafe to delete it. " +
+                                    "For running multiple processes with agents at the same time to create a single configuration, read Agent.md " +
+                                    "or https://www.graalvm.org/reference-manual/native-image/Agent/ on how to use the native-image-configure tool.");
                 }
                 if (experimentalOmitClasspathConfig) {
                     ignoreConfigFromClasspath(jvmti, omittedConfigs);
@@ -265,12 +286,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     shouldExcludeClassesWithHash = omittedConfigProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
                 }
 
-                Path[] predefinedClassDestinationDirs = {configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR)};
                 if (configurationWithOrigins) {
                     ConfigurationWithOriginsResultWriter writer = new ConfigurationWithOriginsResultWriter(advisor, recordKeeper);
                     tracer = writer;
                     tracingResultWriter = writer;
                 } else {
+                    Path[] predefinedClassDestDirs = {Files.createDirectories(configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR))};
                     Function<IOException, Exception> handler = e -> {
                         if (e instanceof NoSuchFileException) {
                             warn("file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
@@ -283,11 +304,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     };
                     TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                     mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
-                                    mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, shouldExcludeClassesWithHash, handler), omittedConfigProcessor);
+                                    mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestDirs, shouldExcludeClassesWithHash, handler), omittedConfigProcessor);
                     ConfigurationResultWriter writer = new ConfigurationResultWriter(processor);
                     tracer = writer;
                     tracingResultWriter = writer;
                 }
+                expectedConfigModifiedBefore = getMostRecentlyModified(configOutputDirPath, getMostRecentlyModified(configOutputLockFilePath, null));
             } catch (Throwable t) {
                 return error(2, t.toString());
             }
@@ -342,7 +364,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private static <T> T usage(T result, String message) {
         inform(message);
         inform("Example usage: -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/");
-        inform("For details, please read BuildConfiguration.md or https://www.graalvm.org/reference-manual/native-image/BuildConfiguration/");
+        inform("For details, please read Agent.md or https://www.graalvm.org/reference-manual/native-image/Agent/");
         return result;
     }
 
@@ -505,19 +527,38 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private static final int MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES = 5;
     private static int currentFailuresWritingConfigs = 0;
+    private static int currentFailuresModifiedTargetDirectory = 0;
 
     private void writeConfigurationFiles() {
+        Path tempDirectory = null;
         try {
-            final Path tempDirectory = configOutputDirPath.toFile().exists()
-                            ? Files.createTempDirectory(configOutputDirPath, "tempConfig-")
-                            : Files.createTempDirectory("tempConfig-");
-            List<Path> writtenFilePaths = tracingResultWriter.writeToDirectory(tempDirectory);
+            FileTime mostRecent = getMostRecentlyModified(configOutputDirPath, expectedConfigModifiedBefore);
 
-            for (Path writtenFilePath : writtenFilePaths) {
-                Path fileName = tempDirectory.relativize(writtenFilePath);
-                Path target = configOutputDirPath.resolve(fileName);
-                tryAtomicMove(writtenFilePath, target);
+            // Write files first before failing any modification checks
+            tempDirectory = Files.createTempDirectory(configOutputDirPath, transformPath("agent-pid{pid}-{datetime}.tmp"));
+            List<Path> tempFilePaths = tracingResultWriter.writeToDirectory(tempDirectory);
+
+            if (!Files.exists(configOutputLockFilePath)) {
+                throw unexpectedlyModified(configOutputLockFilePath);
             }
+            expectUnmodified(configOutputLockFilePath);
+            if (!mostRecent.equals(expectedConfigModifiedBefore)) {
+                throw unexpectedlyModified(configOutputDirPath);
+            }
+
+            Path[] targetFilePaths = new Path[tempFilePaths.size()];
+            for (int i = 0; i < tempFilePaths.size(); i++) {
+                Path fileName = tempDirectory.relativize(tempFilePaths.get(i));
+                targetFilePaths[i] = configOutputDirPath.resolve(fileName);
+                expectUnmodified(targetFilePaths[i]);
+            }
+
+            for (int i = 0; i < tempFilePaths.size(); i++) {
+                tryAtomicMove(tempFilePaths.get(i), targetFilePaths[i]);
+                mostRecent = getMostRecentlyModified(targetFilePaths[i], mostRecent);
+            }
+            mostRecent = getMostRecentlyModified(configOutputDirPath, mostRecent);
+            expectedConfigModifiedBefore = mostRecent;
 
             /*
              * Note that sidecar files may be written directly to the final output directory, such
@@ -527,8 +568,39 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
             compulsoryDelete(tempDirectory);
         } catch (IOException e) {
-            warnUpToLimit(currentFailuresWritingConfigs++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES, "Error when writing configuration files: " + e.toString());
+            warnUpToLimit(currentFailuresWritingConfigs++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES, "Error when writing configuration files: " + e);
+        } catch (ConcurrentModificationException e) {
+            warnUpToLimit(currentFailuresModifiedTargetDirectory++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES,
+                            "file or directory '" + e.getMessage() + "' has been modified by another process. " +
+                                            "All output files remain in the temporary directory '" + configOutputDirPath.resolve("..").relativize(tempDirectory) + "'. " +
+                                            "Ensure that only one agent instance and no other processes are writing to the output directory '" + configOutputDirPath + "' at the same time. " +
+                                            "For running multiple processes with agents at the same time to create a single configuration, read Agent.md " +
+                                            "or https://www.graalvm.org/reference-manual/native-image/Agent/ on how to use the native-image-configure tool.");
         }
+    }
+
+    private void expectUnmodified(Path path) {
+        try {
+            if (Files.getLastModifiedTime(path).compareTo(expectedConfigModifiedBefore) > 0) {
+                throw unexpectedlyModified(path);
+            }
+        } catch (IOException ignored) {
+            // best effort
+        }
+    }
+
+    private static ConcurrentModificationException unexpectedlyModified(Path path) {
+        throw new ConcurrentModificationException(path.getFileName().toString());
+    }
+
+    private static FileTime getMostRecentlyModified(Path path, FileTime other) {
+        FileTime modified;
+        try {
+            modified = Files.getLastModifiedTime(path);
+        } catch (IOException ignored) {
+            return other; // best effort
+        }
+        return (other == null || other.compareTo(modified) < 0) ? modified : other;
     }
 
     private static void compulsoryDelete(Path pathToDelete) {
@@ -559,7 +631,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {
             warnUpToLimit(currentFailuresAtomicMove++, MAX_FAILURES_ATOMIC_MOVE,
-                            String.format("Could not move temporary configuration profile from (%s) to (%s) atomically. " +
+                            String.format("Could not move temporary configuration profile from '%s' to '%s' atomically. " +
                                             "This might result in inconsistencies.", source.toAbsolutePath(), target.toAbsolutePath()));
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -585,6 +657,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             if (tracingResultWriter.supportsOnUnloadTraceWriting()) {
                 if (configOutputDirPath != null) {
                     writeConfigurationFiles();
+                    compulsoryDelete(configOutputLockFilePath);
+                    configOutputLockFilePath = null;
                     configOutputDirPath = null;
                 }
             }
