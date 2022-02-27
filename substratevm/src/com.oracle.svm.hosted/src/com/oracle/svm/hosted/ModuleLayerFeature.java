@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,11 +54,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
@@ -70,7 +68,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * <ul>
  * <li>synthesizes the runtime boot module layer</li>
  * <li>replicates build-time module relations at runtime</li>
- * <li>patches dynamic hubs of every class with new module instances</li>
+ * <li>replaces references to hosted modules with runtime modules</li>
  * </ul>
  * <p>
  * This feature synthesizes the runtime boot module layer by using type reachability information. If
@@ -91,7 +89,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * </p>
  * <p>
  * Because the result of this feature is dependant on the analysis results, and because this feature
- * will add reachable object(s) as it's result, it is necessary to perform the logic during the
+ * will add reachable object(s) as its result, it is necessary to perform the logic during the
  * analysis, for lack of a better option (even though only the last analysis cycle is sufficient,
  * but that cannot be known in advance).
  * </p>
@@ -112,9 +110,9 @@ public final class ModuleLayerFeature implements Feature {
         moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
         Set<String> baseModules = ModuleLayer.boot().modules()
-                .stream()
-                .map(Module::getName)
-                .collect(Collectors.toSet());
+                        .stream()
+                        .map(Module::getName)
+                        .collect(Collectors.toSet());
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules, Set.of());
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
         access.registerObjectReplacer(this::replaceHostedModules);
@@ -183,29 +181,6 @@ public final class ModuleLayerFeature implements Feature {
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
-        patchDynamicHubs(universe.getTypes(), accessImpl.bb.getHostVM(), runtimeBootLayer);
-    }
-
-    /*
-     * Updates module fields of all DynamicHubs with appropriate synthesized module instances
-     */
-    private static void patchDynamicHubs(List<AnalysisType> types, SVMHost host, ModuleLayer runtimeBootLayer) {
-        for (AnalysisType type : types) {
-            if (!type.isReachable() || type.isArray()) {
-                continue;
-            }
-            Class<?> clazz = type.getJavaClass();
-            if (!clazz.getModule().isNamed()) {
-                continue;
-            }
-            DynamicHub hub = host.dynamicHub(type);
-            String moduleName = clazz.getModule().getName();
-            Optional<Module> module = runtimeBootLayer.findModule(moduleName);
-            if (module.isEmpty()) {
-                throw VMError.shouldNotReachHere("Runtime boot module layer failed to include reachable module: " + moduleName);
-            }
-            hub.setModule(module.get());
-        }
     }
 
     /*
@@ -477,7 +452,6 @@ public final class ModuleLayerFeature implements Feature {
         Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer)
                         throws IllegalAccessException, InvocationTargetException, InstantiationException {
             Configuration cf = runtimeBootLayer.configuration();
-
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
             Map<String, Module> nameToModule = new HashMap<>(cap);
