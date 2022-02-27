@@ -41,7 +41,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TimerKey;
@@ -64,13 +63,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
@@ -86,12 +81,14 @@ import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
-import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
+import org.graalvm.compiler.truffle.compiler.phases.InliningAcrossTruffleBoundaryPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
+import org.graalvm.compiler.truffle.compiler.phases.MaterializeFramesPhase;
+import org.graalvm.compiler.truffle.compiler.phases.NeverPartOfCompilationPhase;
+import org.graalvm.compiler.truffle.compiler.phases.SetIdentityForValueTypesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
@@ -153,6 +150,10 @@ public abstract class PartialEvaluator {
 
     // Phases
     private final VerifyFrameDoesNotEscapePhase verifyFrameDoesNotEscapePhase = new VerifyFrameDoesNotEscapePhase();
+    private final NeverPartOfCompilationPhase neverPartOfCompilationPhase = new NeverPartOfCompilationPhase();
+    private final MaterializeFramesPhase materializeFramesPhase = new MaterializeFramesPhase();
+    private final SetIdentityForValueTypesPhase setIdentityForValueTypes = new SetIdentityForValueTypesPhase();
+    private final InliningAcrossTruffleBoundaryPhase inliningAcrossTruffleBoundaryPhase = new InliningAcrossTruffleBoundaryPhase();
     // Effectively final, lazily initialized in #initialize
     private InstrumentBranchesPhase instrumentBranchesPhase;
     private InstrumentTruffleBoundariesPhase instrumentTruffleBoundariesPhase;
@@ -363,45 +364,16 @@ public abstract class PartialEvaluator {
                 return null;
             }
             verifyFrameDoesNotEscapePhase.apply(request.graph, false);
-            NeverPartOfCompilationNode.verifyNotFoundIn(request.graph);
-            materializeFrames(request.graph);
-            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            setIdentityForValueTypes(request, rt);
-            handleInliningAcrossTruffleBoundary(request, rt);
+            neverPartOfCompilationPhase.apply(request.graph);
+            materializeFramesPhase.apply(request.graph);
+            setIdentityForValueTypes.apply(request.graph);
+            if (!request.options.get(InlineAcrossTruffleBoundary)) {
+                // Do not inline across Truffle boundaries.
+                inliningAcrossTruffleBoundaryPhase.apply(request.graph);
+            }
             return request.graph;
         } catch (Throwable e) {
             throw request.debug.handle(e);
-        }
-    }
-
-    private static void handleInliningAcrossTruffleBoundary(Request request, TruffleCompilerRuntime rt) {
-        if (!request.options.get(InlineAcrossTruffleBoundary)) {
-            // Do not inline across Truffle boundaries.
-            for (MethodCallTargetNode mct : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
-                InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
-                if (!inlineKind.allowsInlining()) {
-                    mct.invoke().setUseForInlining(false);
-                }
-            }
-        }
-    }
-
-    private static void setIdentityForValueTypes(Request request, TruffleCompilerRuntime rt) {
-        for (VirtualObjectNode virtualObjectNode : request.graph.getNodes(VirtualObjectNode.TYPE)) {
-            if (virtualObjectNode instanceof VirtualInstanceNode) {
-                VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
-                ResolvedJavaType type = virtualInstanceNode.type();
-                if (rt.isValueType(type)) {
-                    virtualInstanceNode.setIdentity(false);
-                }
-            }
-        }
-    }
-
-    private static void materializeFrames(StructuredGraph graph) {
-        for (AllowMaterializeNode materializeNode : graph.getNodes(AllowMaterializeNode.TYPE).snapshot()) {
-            materializeNode.replaceAtUsages(materializeNode.getFrame());
-            graph.removeFixed(materializeNode);
         }
     }
 
