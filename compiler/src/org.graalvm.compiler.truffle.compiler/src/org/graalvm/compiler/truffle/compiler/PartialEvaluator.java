@@ -43,7 +43,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -87,6 +86,7 @@ import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
 import org.graalvm.compiler.truffle.compiler.phases.MaterializeFramesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.NeverPartOfCompilationPhase;
+import org.graalvm.compiler.truffle.compiler.phases.ReportPerformanceWarningsPhase;
 import org.graalvm.compiler.truffle.compiler.phases.SetIdentityForValueTypesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
@@ -112,8 +112,6 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * Class performing the partial evaluation starting from the root node of an AST.
  */
 public abstract class PartialEvaluator {
-
-    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in the graph-decoding of partial evaluation.");
 
     protected final TruffleCompilerConfiguration config;
     protected final Providers providers;
@@ -153,6 +151,7 @@ public abstract class PartialEvaluator {
     private final MaterializeFramesPhase materializeFramesPhase = new MaterializeFramesPhase();
     private final SetIdentityForValueTypesPhase setIdentityForValueTypes = new SetIdentityForValueTypesPhase();
     private final InliningAcrossTruffleBoundaryPhase inliningAcrossTruffleBoundaryPhase = new InliningAcrossTruffleBoundaryPhase();
+    private final ReportPerformanceWarningsPhase reportPerformanceWarnings = new ReportPerformanceWarningsPhase();
     // Effectively final, lazily initialized in #initialize
     private TruffleSuite truffleSuite;
     private AgnosticInliningPhase inliningPhase;
@@ -311,9 +310,10 @@ public abstract class PartialEvaluator {
         public final SpeculationLog log;
         public final CancellableTruffleCompilationTask task;
         public final StructuredGraph graph;
+        public final PerformanceInformationHandler handler;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
-                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
+                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task, PerformanceInformationHandler handler) {
             super(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
             Objects.requireNonNull(options);
             Objects.requireNonNull(debug);
@@ -339,10 +339,11 @@ public abstract class PartialEvaluator {
             this.graph = builder.build();
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getValidRootAssumptionConstant()));
             this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
+            this.handler = handler;
         }
 
-        public Request(TruffleCompilerImpl.TruffleCompilationWrapper wrapper, DebugContext debug, SpeculationLog speculationLog) {
-            this(wrapper.options, debug, wrapper.compilable, PartialEvaluator.this.rootForCallTarget(wrapper.compilable), wrapper.compilationId, speculationLog, wrapper.task);
+        public Request(TruffleCompilerImpl.TruffleCompilationWrapper wrapper, DebugContext debug, SpeculationLog speculationLog, PerformanceInformationHandler handler) {
+            this(wrapper.options, debug, wrapper.compilable, PartialEvaluator.this.rootForCallTarget(wrapper.compilable), wrapper.compilationId, speculationLog, wrapper.task, handler);
         }
 
         public boolean isFirstTier() {
@@ -352,12 +353,11 @@ public abstract class PartialEvaluator {
 
     @SuppressWarnings("try")
     public final StructuredGraph evaluate(Request request) {
-        try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options);
-                        DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
+        try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                         Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
             inliningPhase.apply(request.graph, request);
             instrumentationSuite.apply(request.graph, request);
-            handler.reportPerformanceWarnings(request.compilable, request.graph);
+            reportPerformanceWarnings.apply(request.graph, request);
             verifyFrameDoesNotEscapePhase.apply(request.graph, request);
             neverPartOfCompilationPhase.apply(request.graph, request);
             materializeFramesPhase.apply(request.graph, request);

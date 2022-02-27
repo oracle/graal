@@ -86,7 +86,8 @@ final class GraphManager {
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
                         rootRequest.compilationId,
                         rootRequest.log,
-                        rootRequest.task);
+                        rootRequest.task,
+                        rootRequest.handler);
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {

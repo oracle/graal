@@ -533,10 +533,12 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             speculationLog.collectFailedSpeculations();
         }
         StructuredGraph graph;
-        try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
+        try (DebugCloseable a = PartialEvaluationTime.start(debug);
+                        DebugCloseable c = PartialEvaluationMemUse.start(debug);
+                        PerformanceInformationHandler handler = PerformanceInformationHandler.install(wrapper.options)) {
             // SpeculationLog can be read from wrapper.compilable, but I'm not sure of the machinery
             // around it
-            PartialEvaluator.Request request = partialEvaluator.new Request(wrapper, debug, speculationLog);
+            PartialEvaluator.Request request = partialEvaluator.new Request(wrapper, debug, speculationLog, handler);
             graph = partialEvaluator.evaluate(request);
         }
         if (wrapper.statistics != null) {
