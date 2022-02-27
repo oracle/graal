@@ -122,6 +122,9 @@ public final class ModuleLayerFeature implements Feature {
         if (source instanceof Module) {
             Module module = (Module) source;
             if (module.isNamed()) {
+                if (ModuleLayerFeatureUtils.isModuleSynthetic(module)) {
+                    return module;
+                }
                 return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module.getName(), module.getDescriptor());
             } else {
                 return moduleLayerFeatureUtils.getAllUnnamedModule();
