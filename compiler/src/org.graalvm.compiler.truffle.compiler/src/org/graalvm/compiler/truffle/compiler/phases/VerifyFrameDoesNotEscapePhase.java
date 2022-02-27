@@ -28,17 +28,20 @@ import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 
 /**
  * Compiler phase for verifying that the Truffle virtual frame does not escape and can therefore be
  * escape analyzed.
  */
-public class VerifyFrameDoesNotEscapePhase extends Phase {
-
+public class VerifyFrameDoesNotEscapePhase extends BasePhase<PartialEvaluator.Request> {
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+        if (context.task.isCancelled()) {
+            return;
+        }
         for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.TYPE)) {
             for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
                 if (callTarget.invoke() != null) {
@@ -49,5 +52,6 @@ public class VerifyFrameDoesNotEscapePhase extends Phase {
                 }
             }
         }
+
     }
 }

@@ -25,13 +25,16 @@
 package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 
-public final class MaterializeFramesPhase extends Phase {
-
+public final class MaterializeFramesPhase extends BasePhase<PartialEvaluator.Request> {
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+        if (context.task.isCancelled()) {
+            return;
+        }
         for (AllowMaterializeNode materializeNode : graph.getNodes(AllowMaterializeNode.TYPE).snapshot()) {
             materializeNode.replaceAtUsages(materializeNode.getFrame());
             graph.removeFixed(materializeNode);

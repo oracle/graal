@@ -27,13 +27,16 @@ package org.graalvm.compiler.truffle.compiler.phases;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 
-public final class NeverPartOfCompilationPhase extends Phase {
-
+public final class NeverPartOfCompilationPhase extends BasePhase<PartialEvaluator.Request> {
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+        if (context.task.isCancelled()) {
+            return;
+        }
         for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
             final NeverPartOfCompilationException neverPartOfCompilationException = new NeverPartOfCompilationException(neverPartOfCompilationNode.getMessage());
             neverPartOfCompilationException.setStackTrace(GraphUtil.approxSourceStackTraceElement(neverPartOfCompilationNode));

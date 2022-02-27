@@ -358,16 +358,13 @@ public abstract class PartialEvaluator {
             inliningPhase.apply(request.graph, request);
             instrumentationSuite.apply(request.graph, request);
             handler.reportPerformanceWarnings(request.compilable, request.graph);
-            if (request.task.isCancelled()) {
-                return null;
-            }
-            verifyFrameDoesNotEscapePhase.apply(request.graph, false);
-            neverPartOfCompilationPhase.apply(request.graph);
-            materializeFramesPhase.apply(request.graph);
-            setIdentityForValueTypes.apply(request.graph);
+            verifyFrameDoesNotEscapePhase.apply(request.graph, request);
+            neverPartOfCompilationPhase.apply(request.graph, request);
+            materializeFramesPhase.apply(request.graph, request);
+            setIdentityForValueTypes.apply(request.graph, request);
             if (!request.options.get(InlineAcrossTruffleBoundary)) {
                 // Do not inline across Truffle boundaries.
-                inliningAcrossTruffleBoundaryPhase.apply(request.graph);
+                inliningAcrossTruffleBoundaryPhase.apply(request.graph, request);
             }
             return request.graph;
         } catch (Throwable e) {
