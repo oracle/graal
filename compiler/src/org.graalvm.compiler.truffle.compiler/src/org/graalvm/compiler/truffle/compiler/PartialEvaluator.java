@@ -83,9 +83,8 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruf
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InliningAcrossTruffleBoundaryPhase;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
 import org.graalvm.compiler.truffle.compiler.phases.MaterializeFramesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.NeverPartOfCompilationPhase;
 import org.graalvm.compiler.truffle.compiler.phases.SetIdentityForValueTypesPhase;
@@ -119,7 +118,7 @@ public abstract class PartialEvaluator {
     protected final TruffleCompilerConfiguration config;
     protected final Providers providers;
     protected final Architecture architecture;
-    private final SnippetReflectionProvider snippetReflection;
+    protected final SnippetReflectionProvider snippetReflection;
     final ResolvedJavaMethod callDirectMethod;
     protected final ResolvedJavaMethod callInlined;
     final ResolvedJavaMethod callIndirectMethod;
@@ -137,7 +136,7 @@ public abstract class PartialEvaluator {
      * {@link #initialize(org.graalvm.options.OptionValues)} method before the first compilation.
      * These options are not engine aware.
      */
-    volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
+    protected volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
     /**
      * The instrumentation object is used by the Truffle instrumentation to count executions. The
      * value is lazily initialized the first time it is requested because it depends on the Truffle
@@ -155,10 +154,9 @@ public abstract class PartialEvaluator {
     private final SetIdentityForValueTypesPhase setIdentityForValueTypes = new SetIdentityForValueTypesPhase();
     private final InliningAcrossTruffleBoundaryPhase inliningAcrossTruffleBoundaryPhase = new InliningAcrossTruffleBoundaryPhase();
     // Effectively final, lazily initialized in #initialize
-    private InstrumentBranchesPhase instrumentBranchesPhase;
-    private InstrumentTruffleBoundariesPhase instrumentTruffleBoundariesPhase;
     private TruffleSuite truffleSuite;
     private AgnosticInliningPhase inliningPhase;
+    private InstrumentationSuite instrumentationSuite;
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
@@ -193,14 +191,14 @@ public abstract class PartialEvaluator {
                         (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
-        if (instrumentationCfg.instrumentBranches) {
-            instrumentBranchesPhase = new InstrumentBranchesPhase(snippetReflection, getInstrumentation(), instrumentationCfg.instrumentBranchesPerInlineSite);
-        }
-        if (instrumentationCfg.instrumentBoundaries) {
-            instrumentTruffleBoundariesPhase = new InstrumentTruffleBoundariesPhase(snippetReflection, getInstrumentation(), instrumentationCfg.instrumentBoundariesPerInlineSite);
-        }
+        instrumentationSuite = newInstrumentationSuite();
         truffleSuite = newTruffleSuite(options.get(IterativePartialEscape));
         inliningPhase = new AgnosticInliningPhase(this, truffleSuite);
+    }
+
+    // Hook for SVM
+    protected InstrumentationSuite newInstrumentationSuite() {
+        return new InstrumentationSuite(this.instrumentationCfg, this.snippetReflection, getInstrumentation());
     }
 
     // Hook for SVM
@@ -358,7 +356,7 @@ public abstract class PartialEvaluator {
                         DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                         Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
             inliningPhase.apply(request.graph, request);
-            applyInstrumentationPhases(request);
+            instrumentationSuite.apply(request.graph, request);
             handler.reportPerformanceWarnings(request.compilable, request.graph);
             if (request.task.isCancelled()) {
                 return null;
@@ -572,16 +570,6 @@ public abstract class PartialEvaluator {
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, tierProviders, config.architecture());
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
-    }
-
-    protected void applyInstrumentationPhases(Request request) {
-        InstrumentPhase.InstrumentationConfiguration cfg = instrumentationCfg;
-        if (cfg.instrumentBranches) {
-            instrumentBranchesPhase.apply(request.graph, request);
-        }
-        if (cfg.instrumentBoundaries) {
-            instrumentTruffleBoundariesPhase.apply(request.graph, request);
-        }
     }
 
     private static final SpeculationReasonGroup TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS = new SpeculationReasonGroup("TruffleBoundaryWithoutException", ResolvedJavaMethod.class);
