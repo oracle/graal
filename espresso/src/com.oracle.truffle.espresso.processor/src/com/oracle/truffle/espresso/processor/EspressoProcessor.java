@@ -667,7 +667,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         if (helper.hasMetaInjection || helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
-        if (helper.hasMetaInjection) {
+        if (helper.hasMetaInjection && !helper.isNodeTarget()) {
             expectedImports.add(IMPORT_META);
         }
         expectedImports.add(IMPORT_COLLECT);
