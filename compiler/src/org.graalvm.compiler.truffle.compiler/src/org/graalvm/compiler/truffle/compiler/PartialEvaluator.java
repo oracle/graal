@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
@@ -81,15 +80,9 @@ import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
-import org.graalvm.compiler.truffle.compiler.phases.InliningAcrossTruffleBoundaryPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
-import org.graalvm.compiler.truffle.compiler.phases.MaterializeFramesPhase;
-import org.graalvm.compiler.truffle.compiler.phases.NeverPartOfCompilationPhase;
-import org.graalvm.compiler.truffle.compiler.phases.ReportPerformanceWarningsPhase;
-import org.graalvm.compiler.truffle.compiler.phases.SetIdentityForValueTypesPhase;
-import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
-import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -145,17 +138,7 @@ public abstract class PartialEvaluator {
 
     protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
 
-    // Phases
-    private final VerifyFrameDoesNotEscapePhase verifyFrameDoesNotEscapePhase = new VerifyFrameDoesNotEscapePhase();
-    private final NeverPartOfCompilationPhase neverPartOfCompilationPhase = new NeverPartOfCompilationPhase();
-    private final MaterializeFramesPhase materializeFramesPhase = new MaterializeFramesPhase();
-    private final SetIdentityForValueTypesPhase setIdentityForValueTypes = new SetIdentityForValueTypesPhase();
-    private final InliningAcrossTruffleBoundaryPhase inliningAcrossTruffleBoundaryPhase = new InliningAcrossTruffleBoundaryPhase();
-    private final ReportPerformanceWarningsPhase reportPerformanceWarnings = new ReportPerformanceWarningsPhase();
-    // Effectively final, lazily initialized in #initialize
-    private TruffleSuite truffleSuite;
-    private AgnosticInliningPhase inliningPhase;
-    private InstrumentationSuite instrumentationSuite;
+    private TruffleTier truffleTier;
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
@@ -190,19 +173,14 @@ public abstract class PartialEvaluator {
                         (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
-        instrumentationSuite = newInstrumentationSuite();
-        truffleSuite = newTruffleSuite(options.get(IterativePartialEscape));
-        inliningPhase = new AgnosticInliningPhase(this, truffleSuite);
+        truffleTier = newTruffleTier(options);
     }
 
     // Hook for SVM
-    protected InstrumentationSuite newInstrumentationSuite() {
-        return new InstrumentationSuite(this.instrumentationCfg, this.snippetReflection, getInstrumentation());
-    }
-
-    // Hook for SVM
-    protected TruffleSuite newTruffleSuite(boolean iterativePartialEscape) {
-        return new TruffleSuite(iterativePartialEscape);
+    protected TruffleTier newTruffleTier(OptionValues options) {
+        return new TruffleTier(options, this,
+                        new InstrumentationSuite(instrumentationCfg, snippetReflection, getInstrumentation()),
+                        new TruffleSuite(options.get(IterativePartialEscape)));
     }
 
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
@@ -213,7 +191,7 @@ public abstract class PartialEvaluator {
      * Gets the instrumentation manager associated with this compiler, creating it first if
      * necessary. Each compiler instance has its own instrumentation manager.
      */
-    private InstrumentPhase.Instrumentation getInstrumentation() {
+    protected InstrumentPhase.Instrumentation getInstrumentation() {
         if (instrumentation == null) {
             synchronized (this) {
                 if (instrumentation == null) {
@@ -355,17 +333,7 @@ public abstract class PartialEvaluator {
     public final StructuredGraph evaluate(Request request) {
         try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                         Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-            inliningPhase.apply(request.graph, request);
-            instrumentationSuite.apply(request.graph, request);
-            reportPerformanceWarnings.apply(request.graph, request);
-            verifyFrameDoesNotEscapePhase.apply(request.graph, request);
-            neverPartOfCompilationPhase.apply(request.graph, request);
-            materializeFramesPhase.apply(request.graph, request);
-            setIdentityForValueTypes.apply(request.graph, request);
-            if (!request.options.get(InlineAcrossTruffleBoundary)) {
-                // Do not inline across Truffle boundaries.
-                inliningAcrossTruffleBoundaryPhase.apply(request.graph, request);
-            }
+            truffleTier.apply(request.graph, request);
             return request.graph;
         } catch (Throwable e) {
             throw request.debug.handle(e);

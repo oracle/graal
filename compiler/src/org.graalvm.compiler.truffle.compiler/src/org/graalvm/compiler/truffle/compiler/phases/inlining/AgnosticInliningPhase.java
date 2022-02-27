@@ -90,11 +90,10 @@ public final class AgnosticInliningPhase extends BasePhase<PartialEvaluator.Requ
         }
         if (!tree.getRoot().getChildren().isEmpty()) {
             /*
-             * If we've seen a truffle call in the graph, even if we have not inlined any
-             * call target, we need to run the truffle tier phases again after the PE
-             * inlining phase has finalized the graph. On the other hand, if there are no
-             * calls (root is a leaf) we can skip the truffle tier because there are no
-             * finalization points.
+             * If we've seen a truffle call in the graph, even if we have not inlined any call
+             * target, we need to run the truffle tier phases again after the PE inlining phase has
+             * finalized the graph. On the other hand, if there are no calls (root is a leaf) we can
+             * skip the truffle tier because there are no finalization points.
              */
             truffleSuite.apply(graph, request);
         }

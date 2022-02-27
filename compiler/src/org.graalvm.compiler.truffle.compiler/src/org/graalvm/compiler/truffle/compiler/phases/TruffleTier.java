@@ -24,24 +24,26 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 
-public final class InliningAcrossTruffleBoundaryPhase extends BasePhase<PartialEvaluator.Request> {
-    @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
-        if (context.task.isCancelled()) {
-            return;
-        }
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-        for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            TruffleCompilerRuntime.InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
-            if (!inlineKind.allowsInlining()) {
-                mct.invoke().setUseForInlining(false);
-            }
+import org.graalvm.compiler.core.phases.BaseTier;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
+import org.graalvm.options.OptionValues;
+
+public class TruffleTier extends BaseTier<PartialEvaluator.Request> {
+
+    public TruffleTier(OptionValues options, PartialEvaluator partialEvaluator, InstrumentationSuite instrumentationSuite, TruffleSuite truffleSuite) {
+        appendPhase(new AgnosticInliningPhase(partialEvaluator, truffleSuite));
+        appendPhase(instrumentationSuite);
+        appendPhase(new ReportPerformanceWarningsPhase());
+        appendPhase(new VerifyFrameDoesNotEscapePhase());
+        appendPhase(new NeverPartOfCompilationPhase());
+        appendPhase(new MaterializeFramesPhase());
+        appendPhase(new SetIdentityForValueTypesPhase());
+        if (!options.get(InlineAcrossTruffleBoundary)) {
+            appendPhase(new InliningAcrossTruffleBoundaryPhase());
         }
     }
 }
