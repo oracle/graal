@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,19 +26,36 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.type.TypeResult;
 import com.oracle.svm.common.util.ClassUtils;
 
 public class StandaloneAnalysisClassLoader extends URLClassLoader {
+    private List<String> analysisClassPath;
+    private List<String> analysisModulePath;
 
-    public StandaloneAnalysisClassLoader(URL[] urls, ClassLoader parent) {
-        super(urls, parent);
+    public StandaloneAnalysisClassLoader(List<String> classPath, List<String> modulePath, ClassLoader parent) {
+        super(pathToUrl(classPath, modulePath), parent);
+        analysisClassPath = classPath;
+        analysisModulePath = modulePath;
+    }
+
+    public List<String> getClassPath() {
+        return analysisClassPath;
+    }
+
+    public List<String> getModulePath() {
+        return analysisModulePath;
     }
 
     public Class<?> defineClassFromOtherClassLoader(Class<?> clazz) {
@@ -68,5 +85,18 @@ public class StandaloneAnalysisClassLoader extends URLClassLoader {
         } catch (ClassNotFoundException | LinkageError ex) {
             return TypeResult.forException(name, ex);
         }
+    }
+
+    private static URL[] pathToUrl(List<String> classPath, List<String> modulePath) {
+        List<URL> urls = new ArrayList<>();
+        Stream.concat(classPath.stream(), modulePath.stream())
+                        .forEach(cp -> {
+                            try {
+                                urls.add(new File(cp).toURI().toURL());
+                            } catch (MalformedURLException e) {
+                                e.printStackTrace();
+                            }
+                        });
+        return urls.toArray(new URL[0]);
     }
 }
