@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -85,7 +84,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
-    private final EconomicSet<Integer> referencedGroups = EconomicSet.create();
+    private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
     private RegexASTNode[] nodes;
     /**
      * AST as parsed from the expression.
@@ -278,12 +277,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public BackReference createBackReference(int groupNumber) {
-        referencedGroups.add(groupNumber);
+        referencedGroups.set(groupNumber);
         return register(new BackReference(groupNumber));
     }
 
     public boolean isGroupReferenced(int groupNumber) {
-        return referencedGroups.contains(groupNumber);
+        return referencedGroups.get(groupNumber);
     }
 
     public CharacterClass createCharacterClass(CodePointSet matcherBuilder) {
