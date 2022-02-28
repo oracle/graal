@@ -28,12 +28,16 @@ import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationAction.None;
+import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.STUB_INDEX_OF_1_BYTE;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -212,7 +216,7 @@ public class StandardGraphBuilderPlugins {
         registerPlatformSpecificUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks,
                         new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object});
         registerEdgesPlugins(metaAccess, plugins);
-        registerGraalDirectivesPlugins(plugins);
+        registerGraalDirectivesPlugins(plugins, snippetReflection);
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins, replacements);
         registerJFRThrowablePlugins(plugins, replacements);
@@ -1402,55 +1406,63 @@ public class StandardGraphBuilderPlugins {
 
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
 
-    private static void registerGraalDirectivesPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, GraalDirectives.class);
-        r.register0("deoptimize", new InvocationPlugin() {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
+    static class DeoptimizePlugin implements InvocationPlugin {
+        private final SnippetReflectionProvider snippetReflection;
+        private final DeoptimizationAction action;
+        private final DeoptimizationReason reason;
+        private final Boolean withSpeculation;
 
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
-                return true;
-            }
-        });
+        DeoptimizePlugin(SnippetReflectionProvider snippetReflection, DeoptimizationAction action, DeoptimizationReason reason, Boolean withSpeculation) {
+            this.snippetReflection = snippetReflection;
+            this.action = action;
+            this.reason = reason;
+            this.withSpeculation = withSpeculation;
+        }
 
-        r.register0("deoptimizeAndInvalidate", new InvocationPlugin() {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
 
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
-                return true;
-            }
-        });
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            add(b, action, reason, withSpeculation);
+            return true;
+        }
 
-        r.register0("deoptimizeAndInvalidateWithSpeculation", new InvocationPlugin() {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode actionValue, ValueNode reasonValue, ValueNode withSpeculationValue) {
+            DeoptimizationAction deoptAction = asConstant(DeoptimizationAction.class, actionValue);
+            DeoptimizationReason deoptReason = asConstant(DeoptimizationReason.class, reasonValue);
+            boolean speculation = ((JavaConstant) Objects.requireNonNull(withSpeculationValue.asConstant(), withSpeculationValue + " must be a non-null compile time constant")).asInt() != 0;
+            add(b, deoptAction, deoptReason, speculation);
+            return true;
+        }
 
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimizeAndInvalidateWithSpeculation`");
+        private <T> T asConstant(Class<T> type, ValueNode value) {
+            return Objects.requireNonNull(snippetReflection.asObject(type, (JavaConstant) value.asConstant()), value + " must be a non-null compile time constant");
+        }
+
+        static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
+            Speculation speculation = SpeculationLog.NO_SPECULATION;
+            if (withSpeculation) {
+                GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimize with speculation`");
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
-                SpeculationReason reason = DIRECTIVE_SPECULATIONS.createSpeculationReason(pos);
-                Speculation speculation;
-                if (b.getGraph().getSpeculationLog().maySpeculate(reason)) {
-                    speculation = b.getGraph().getSpeculationLog().speculate(reason);
-                } else {
-                    speculation = SpeculationLog.NO_SPECULATION;
+                SpeculationReason speculationReason = DIRECTIVE_SPECULATIONS.createSpeculationReason(pos);
+                if (b.getGraph().getSpeculationLog().maySpeculate(speculationReason)) {
+                    speculation = b.getGraph().getSpeculationLog().speculate(speculationReason);
                 }
-                b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter, speculation));
-                return true;
             }
-        });
+            b.add(new DeoptimizeNode(action, reason, speculation));
+        }
+    }
+
+    private static void registerGraalDirectivesPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
+        Registration r = new Registration(plugins, GraalDirectives.class);
+        r.register0("deoptimize", new DeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false));
+        r.register0("deoptimizeAndInvalidate", new DeoptimizePlugin(snippetReflection, InvalidateReprofile, TransferToInterpreter, false));
+        r.register3("deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, boolean.class,
+                        new DeoptimizePlugin(snippetReflection, null, null, null));
 
         r.register0("inCompiledCode", new InvocationPlugin() {
             @Override
