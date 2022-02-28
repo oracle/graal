@@ -73,7 +73,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 /**
- * This class is used to generate regex ASTs. The provided methods append nodes to the AST `
+ * This class is used to generate regex ASTs. The provided methods append nodes to the AST.
  */
 public final class RegexASTBuilder {
 
