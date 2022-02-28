@@ -66,6 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,6 +80,7 @@ public final class RegexASTBuilder {
     private final RegexParserGlobals globals;
     private final RegexFlags flags;
     private final RegexOptions options;
+    private final Encoding encoding;
     private final RegexAST ast;
     private final RegexProperties properties;
     private final Counter.ThresholdCounter groupCount;
@@ -95,6 +97,7 @@ public final class RegexASTBuilder {
         this.globals = language.parserGlobals;
         this.flags = flags;
         this.options = source.getOptions();
+        this.encoding = source.getEncoding();
         this.ast = new RegexAST(language, source, flags);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -311,13 +314,13 @@ public final class RegexASTBuilder {
      *            character)
      */
     public void addCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
+        CodePointSet codePointSet = pruneCharClass(token.getCodePointSet());
         if (flags.isUnicode()) {
             if (codePointSet.matchesNothing()) {
                 // We need this branch because a Group with no alternatives is invalid
                 addTerm(createCharClass(CodePointSet.getEmpty(), token));
             } else {
-                addTerm(translateUnicodeCharClass(token));
+                addTerm(translateUnicodeCharClass(codePointSet, token));
             }
         } else {
             addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
@@ -330,6 +333,10 @@ public final class RegexASTBuilder {
 
     public void addCharClass(CodePointSet charSet) {
         addCharClass(charSet, charSet.matchesSingleChar());
+    }
+
+    private CodePointSet pruneCharClass(CodePointSet cps) {
+        return encoding.getFullSet().createIntersection(cps, compilationBuffer);
     }
 
     private CharacterClass createCharClass(CodePointSet charSet, Token token) {
@@ -345,9 +352,8 @@ public final class RegexASTBuilder {
         return characterClass;
     }
 
-    private Term translateUnicodeCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
-        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
+    private Term translateUnicodeCharClass(CodePointSet codePointSet, Token.CharacterClass token) {
+        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(codePointSet)) {
             return createCharClass(codePointSet, token, token.wasSingleChar());
         }
         Group group = ast.createGroup();
