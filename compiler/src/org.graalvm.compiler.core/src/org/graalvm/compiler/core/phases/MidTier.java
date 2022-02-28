@@ -87,6 +87,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         if (SpeculativeGuardMovement.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new SpeculativeGuardMovementPhase()));
         }
+
         appendPhase(new GuardLoweringPhase());
 
         if (SpectrePHTBarriers.getValue(options) == GuardTargets || SpectrePHTBarriers.getValue(options) == NonDeoptGuardTargets) {

@@ -104,6 +104,17 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         this.inverted = inverted;
     }
 
+    public boolean isTransitiveParentOrSelf(Loop<?> potentialParent) {
+        Loop<?> p = this;
+        while (p != null) {
+            if (p == potentialParent) {
+                return true;
+            }
+            p = p.getParent();
+        }
+        return false;
+    }
+
     /**
      * Returns the loop exits.
      *

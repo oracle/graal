@@ -29,6 +29,7 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.EarlyGlobalValueNumbering;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.FixedNodeRelativeFrequencyCache;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -206,6 +208,9 @@ public class InlineableGraph implements Inlineable {
 
             canonicalizer.apply(newGraph, context);
 
+            if (GraalOptions.EarlyGVN.getValue(newGraph.getOptions())) {
+                new EarlyGlobalValueNumbering().apply(newGraph, context);
+            }
             return newGraph;
         } catch (Throwable e) {
             throw debug.handle(e);

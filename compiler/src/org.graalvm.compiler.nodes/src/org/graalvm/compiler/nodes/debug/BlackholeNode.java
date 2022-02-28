@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -36,7 +37,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
+public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable, NodeWithIdentity {
 
     public static final NodeClass<BlackholeNode> TYPE = NodeClass.create(BlackholeNode.class);
     @Input ValueNode value;
