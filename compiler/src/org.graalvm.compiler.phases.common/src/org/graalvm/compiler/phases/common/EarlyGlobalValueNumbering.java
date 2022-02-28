@@ -75,7 +75,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<HighTierContext> {
         ValueMap valueMap;
         final EconomicMap<LoopEx, EconomicSet<LocationIdentity>> killedLoopLocations;
 
-        public GVNVisitor(ControlFlowGraph cfg, LoopsData ld) {
+        GVNVisitor(ControlFlowGraph cfg, LoopsData ld) {
             this.cfg = cfg;
             this.ld = ld;
             this.graph = cfg.graph;
@@ -102,6 +102,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<HighTierContext> {
             return oldMap;
         }
 
+        @SuppressWarnings("unused")
         private void procesNode(FixedWithNextNode cur, Block b) {
             Loop<Block> hirLoop = b.getLoop();
             EconomicSet<LocationIdentity> thisLoopKilledLocations = hirLoop == null ? null : killedLoopLocations.get(ld.loop(hirLoop));
@@ -111,6 +112,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<HighTierContext> {
             }
 
             if (cur instanceof MemoryAccess) {
+                MemoryAccess access = (MemoryAccess) cur;
             }
 
         }
@@ -120,6 +122,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<HighTierContext> {
             valueMap = oldMap;
         }
 
+        @SuppressWarnings("unused")
         public boolean nodeIsLoopInvariant(Block loopBegin, Block current) {
             return false;
         }
@@ -178,9 +181,9 @@ public class EarlyGlobalValueNumbering extends BasePhase<HighTierContext> {
      * Loop invariant code motion: This phase will not perform speculative loop invariant code
      * motion (this is done in mid tier on the real memory graph. Thus, we can only perform GVN
      */
-    static class ValueMap {
+    static final class ValueMap {
 
-        public ValueMap copy() {
+        ValueMap copy() {
             ValueMap other = new ValueMap();
             other.entries.putAll(entries);
             return other;

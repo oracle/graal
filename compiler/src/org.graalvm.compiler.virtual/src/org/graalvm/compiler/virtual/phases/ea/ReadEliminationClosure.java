@@ -98,7 +98,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         if (MemoryKill.isMemoryKill(node)) {
             if (MemoryKill.isSingleMemoryKill(node)) {
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
-                if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof StoreFieldNode)) {
+                if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof RawStoreNode)) {
                     if (node instanceof WriteNode || node instanceof StoreFieldNode) {
                         ValueNode value = null;
                         ValueNode object = null;
