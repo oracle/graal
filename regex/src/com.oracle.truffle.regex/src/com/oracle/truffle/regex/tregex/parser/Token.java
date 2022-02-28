@@ -119,7 +119,7 @@ public class Token implements JsonConvertible {
         return GROUP_END;
     }
 
-    public static Token createBackReference(int groupNr) {
+    public static BackReference createBackReference(int groupNr) {
         return new BackReference(groupNr);
     }
 
@@ -127,11 +127,11 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy);
     }
 
-    public static Token createCharClass(CodePointSet codePointSet) {
+    public static CharacterClass createCharClass(CodePointSet codePointSet) {
         return new CharacterClass(codePointSet, false);
     }
 
-    public static Token createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
+    public static CharacterClass createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
         return new CharacterClass(codePointSet, wasSingleChar);
     }
 

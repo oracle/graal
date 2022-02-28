@@ -180,6 +180,10 @@ public final class RegexASTBuilder {
         pushGroup(token, false, null);
     }
 
+    public void pushGroup() {
+        pushGroup(null);
+    }
+
     /**
      * Creates and enters a new capture group. This call should be paired with a call to
      * {@link #popGroup}.
@@ -189,6 +193,10 @@ public final class RegexASTBuilder {
      */
     public void pushCaptureGroup(Token token) {
         pushGroup(token, true, null);
+    }
+
+    public void pushCaptureGroup() {
+        pushCaptureGroup(null);
     }
 
     /**
@@ -206,6 +214,10 @@ public final class RegexASTBuilder {
         pushGroup(token, false, lookAhead);
     }
 
+    public void pushLookAheadAssertion(boolean negate) {
+        pushLookAheadAssertion(null, negate);
+    }
+
     /**
      * Creates and enters a new look-behind assertion. This call should be paired with a call to
      * {@link #popGroup}.
@@ -221,6 +233,10 @@ public final class RegexASTBuilder {
         pushGroup(token, false, lookBehind);
     }
 
+    public void pushLookBehindAssertion(boolean negate) {
+        pushLookBehindAssertion(null, negate);
+    }
+
     private Group pushGroup(Token token, boolean capture, RegexASTSubtreeRootNode parent) {
         Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
         if (parent != null) {
@@ -231,7 +247,7 @@ public final class RegexASTBuilder {
         ast.addSourceSection(group, token);
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        addSequence();
+        nextSequence();
         return group;
     }
 
@@ -266,11 +282,15 @@ public final class RegexASTBuilder {
         curGroup = curSequence.getParent();
     }
 
+    public void popGroup() {
+        popGroup(null);
+    }
+
     /**
      * Adds a new {@link Sequence} to the current {@link Group}. In a parser, you would call this
      * method after encountering the vertical bar operator.
      */
-    public void addSequence() {
+    public void nextSequence() {
         if (!tryMergeSingleCharClassAlternations()) {
             curSequence = curGroup.addSequence(ast);
             curTerm = null;
@@ -302,6 +322,14 @@ public final class RegexASTBuilder {
         } else {
             addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
         }
+    }
+
+    public void addCharClass(CodePointSet charSet, boolean wasSingleChar) {
+        addCharClass(Token.createCharClass(charSet, wasSingleChar));
+    }
+
+    public void addCharClass(CodePointSet charSet) {
+        addCharClass(charSet, charSet.matchesSingleChar());
     }
 
     private CharacterClass createCharClass(CodePointSet charSet, Token token) {
@@ -438,6 +466,10 @@ public final class RegexASTBuilder {
         }
     }
 
+    public void addBackReference(int groupNumber) {
+        addBackReference(Token.createBackReference(groupNumber));
+    }
+
     private static boolean isNestedBackReference(BackReference backReference) {
         RegexASTNode parent = backReference.getParent().getParent();
         while (true) {
@@ -473,6 +505,14 @@ public final class RegexASTBuilder {
         PositionAssertion positionAssertion = ast.createPositionAssertion(type);
         ast.addSourceSection(positionAssertion, token);
         addTerm(positionAssertion);
+    }
+
+    public void addCaret() {
+        addPositionAssertion(Token.createCaret());
+    }
+
+    public void addDollar() {
+        addPositionAssertion(Token.createDollar());
     }
 
     /**
@@ -575,11 +615,31 @@ public final class RegexASTBuilder {
     }
 
     /**
-     * Replaces the current {@link Term} with a dead node, making the current {@link Sequence} dead.
+     * Adds a dead node (an empty character class) to the current {@link Sequence}.
+     */
+    public void addDeadNode() {
+        addTerm(createCharClass(CodePointSet.getEmpty(), null));
+    }
+
+    /**
+     * Replaces the current {@link Term} with a dead node.
      */
     public void replaceCurTermWithDeadNode() {
         removeCurTerm();
-        addTerm(createCharClass(CodePointSet.getEmpty(), null));
+        addDeadNode();
+    }
+
+    /**
+     * Wraps the current {@link Term} in a non-capturing group. This can be useful when putting
+     * quantifiers on terms which are not {@link QuantifiableTerm}s or when trying to add multiple
+     * quantifiers onto the same term.
+     */
+    public void wrapCurTermInGroup() {
+        Term wrappedTerm = curTerm;
+        curSequence.removeLastTerm();
+        pushGroup();
+        addTerm(wrappedTerm);
+        popGroup();
     }
 
     /* optimizations */

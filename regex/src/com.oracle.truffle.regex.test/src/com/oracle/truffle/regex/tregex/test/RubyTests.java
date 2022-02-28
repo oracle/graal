@@ -48,7 +48,7 @@ public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby";
+        return "Flavor=Ruby,Encoding=UTF-16";
     }
 
     void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {

@@ -76,6 +76,10 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
         this.value = value;
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     @TruffleBoundary
     public static RegexFlags parseFlags(RegexSource source) throws RegexSyntaxException {
         String flagsStr = source.getFlags();
@@ -223,5 +227,91 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     @Override
     public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "TRegexJSFlags{flags=" + toString() + '}';
+    }
+
+    public static final class Builder {
+
+        private int value;
+
+        private Builder() {
+        }
+
+        public Builder ignoreCase(boolean enabled) {
+            updateFlag(enabled, IGNORE_CASE);
+            return this;
+        }
+
+        public Builder multiline(boolean enabled) {
+            updateFlag(enabled, MULTILINE);
+            return this;
+        }
+
+        public Builder sticky(boolean enabled) {
+            updateFlag(enabled, STICKY);
+            return this;
+        }
+
+        public Builder global(boolean enabled) {
+            updateFlag(enabled, GLOBAL);
+            return this;
+        }
+
+        public Builder unicode(boolean enabled) {
+            updateFlag(enabled, UNICODE);
+            return this;
+        }
+
+        public Builder dotAll(boolean enabled) {
+            updateFlag(enabled, DOT_ALL);
+            return this;
+        }
+
+        public Builder hasIndices(boolean enabled) {
+            updateFlag(enabled, HAS_INDICES);
+            return this;
+        }
+
+        @TruffleBoundary
+        public RegexFlags build() {
+            return new RegexFlags(generateSource(), this.value);
+        }
+
+        private void updateFlag(boolean enabled, int bitMask) {
+            if (enabled) {
+                this.value |= bitMask;
+            } else {
+                this.value &= ~bitMask;
+            }
+        }
+
+        private boolean isSet(int flag) {
+            return (value & flag) != NONE;
+        }
+
+        private String generateSource() {
+            StringBuilder sb = new StringBuilder(7);
+            if (isSet(IGNORE_CASE)) {
+                sb.append("i");
+            }
+            if (isSet(MULTILINE)) {
+                sb.append("m");
+            }
+            if (isSet(STICKY)) {
+                sb.append("y");
+            }
+            if (isSet(GLOBAL)) {
+                sb.append("g");
+            }
+            if (isSet(UNICODE)) {
+                sb.append("u");
+            }
+            if (isSet(DOT_ALL)) {
+                sb.append("s");
+            }
+            if (isSet(HAS_INDICES)) {
+                sb.append("d");
+            }
+            return sb.toString();
+        }
     }
 }

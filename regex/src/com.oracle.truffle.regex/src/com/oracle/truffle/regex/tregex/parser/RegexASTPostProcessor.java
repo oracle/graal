@@ -213,7 +213,7 @@ public class RegexASTPostProcessor {
                 Group group = ast.createGroup();
                 curSequence.add(group);
                 curGroup = group;
-                addSequence();
+                nextSequence();
             }
 
             private void popGroup() {
@@ -222,7 +222,7 @@ public class RegexASTPostProcessor {
                 curGroup = curSequence.getParent();
             }
 
-            private void addSequence() {
+            private void nextSequence() {
                 curSequence = curGroup.addSequence(ast);
                 curTerm = null;
             }
@@ -256,11 +256,11 @@ public class RegexASTPostProcessor {
                 }
                 if (quantifier.isGreedy()) {
                     createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
-                    addSequence();
+                    nextSequence();
                     curSequence.setExpandedQuantifier(true);
                 } else {
                     curSequence.setExpandedQuantifier(true);
-                    addSequence();
+                    nextSequence();
                     createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
                 }
                 popGroup();

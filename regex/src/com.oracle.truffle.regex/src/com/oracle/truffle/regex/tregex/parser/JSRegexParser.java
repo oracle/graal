@@ -180,7 +180,7 @@ public final class JSRegexParser implements RegexParser {
                     astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
-                    astBuilder.addSequence();
+                    astBuilder.nextSequence();
                     break;
                 case captureGroupBegin:
                     astBuilder.pushCaptureGroup(token);
