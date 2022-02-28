@@ -1262,8 +1262,10 @@ public final class Target_sun_misc_Unsafe {
      */
     @Throws(InstantiationException.class)
     @Substitution(hasReceiver = true)
-    public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz) {
-        return InterpreterToVM.newObject(clazz.getMirrorKlass(), false);
+    @TruffleBoundary
+    public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
+                    @Inject Meta meta) {
+        return InterpreterToVM.newObject(clazz.getMirrorKlass(meta), false);
     }
 
     /**
