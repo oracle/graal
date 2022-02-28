@@ -250,8 +250,9 @@ class NativeImageBenchmarkMixin(object):
         else:
             return None
 
-    def skip_build_assertions(self, _):
-        return False
+    def build_assertions(self, benchmark, is_gate):
+        # We are skipping build assertions when a benchmark is not a part of a gate.
+        return ['-J-ea', '-J-esa'] if is_gate else []
 
 
 def measureTimeToFirstResponse(bmSuite):
