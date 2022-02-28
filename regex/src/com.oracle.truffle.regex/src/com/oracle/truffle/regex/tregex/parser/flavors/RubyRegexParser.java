@@ -95,6 +95,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     // This is the same as above but restricted to ASCII.
     private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
 
+    // The [\n\r] CodePointSet.
+    private static final CodePointSet NEWLINE_RETURN = CodePointSet.create('\n', '\n', '\r', '\r');
+
+    // CodePointSet constants used for expanding the \R escape sequence.
+    private static final CodePointSet UNICODE_LINE_BREAKS = CodePointSet.create(0x0a, 0x0c, 0x85, 0x85, 0x2028, 0x2029);
+    private static final CodePointSet ASCII_LINE_BREAKS = CodePointSet.create(0x0a, 0x0c);
+
     static {
         CodePointSet asciiRange = CodePointSet.create(0x00, 0x7F);
         CodePointSet nonAsciiRange = CodePointSet.create(0x80, Character.MAX_CODE_POINT);
@@ -1161,7 +1168,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 addDollar(); // $
                 nextSequence(); // |
                 pushLookAheadAssertion(false); // (?=
-                addCharClass(CodePointSet.create('\n', '\n', '\r', '\r')); // [\r\n]
+                addCharClass(NEWLINE_RETURN); // [\r\n]
                 addDollar(); // $
                 popGroup(); // )
                 popGroup(); // )
@@ -1500,7 +1507,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             advance();
             // When matching \x0d, we check that it is not followed by \x0a to emulate the
             // atomic group in the original Ruby expansion: (?>\x0d\x0a|[\x0a-\x0d\x85\u2028\u2029])
-            CodePointSet lineBreaks = inSource.getEncoding().isUnicode() ? CodePointSet.create(0x0a, 0x0c, 0x85, 0x85, 0x2028, 0x2029) : CodePointSet.create(0x0a, 0x0c);
+            CodePointSet lineBreaks = inSource.getEncoding().isUnicode() ? UNICODE_LINE_BREAKS : ASCII_LINE_BREAKS;
             // (?:\x0d\x0a|\x0d(?!\x0a)|[\x0a-\x0c\x85\u2028\u2029])
             pushGroup(); // (?:
             addChar(0x0d); // \x0d
