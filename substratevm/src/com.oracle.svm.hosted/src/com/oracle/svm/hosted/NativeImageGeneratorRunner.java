@@ -424,7 +424,7 @@ public class NativeImageGeneratorRunner {
                 wasSuccessfulBuild = true;
             } finally {
                 if (!wasSuccessfulBuild) {
-                    reporter.printInitializeEnd();
+                    reporter.printUnsuccessfulInitializeEnd();
                 }
             }
         } catch (InterruptImageBuilding e) {
