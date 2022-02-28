@@ -116,6 +116,10 @@ public class NoTagSamplingTest {
     public static class NoTagLanguage extends ProxyLanguage {
         static final String ID = "NoTagSamplingTest_NoTagLanguage";
 
+        public NoTagLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return newTarget();

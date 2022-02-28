@@ -287,7 +287,7 @@ public abstract class TruffleLanguage<C> {
          * @return identifier of your language
          * @since 0.8 or earlier
          */
-        String name();
+        String name() default "";
 
         /**
          * Unique name of your language implementation.

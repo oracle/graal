@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,22 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.tck.tests;
+package com.oracle.truffle.api.test.common;
 
-import org.junit.Assume;
+import com.oracle.truffle.api.TruffleLanguage;
 
-public class TruffleTestAssumptions {
-    private static final boolean spawnIsolate = "true".equals(System.getProperty("polyglot.engine.SpawnIsolate"));
+public class TestUtils {
 
-    public static void assumeWeakEncapsulation() {
-        Assume.assumeFalse(spawnIsolate);
+    public static String getDefaultLanguageId(Class<? extends TruffleLanguage<?>> clazz) {
+        return clazz.getName().replaceAll("[.$]", "_").toLowerCase();
     }
 
-    public static boolean isWeakEncapsulation() {
-        return !spawnIsolate;
-    }
-
-    public static boolean isStrongEncapsulation() {
-        return spawnIsolate;
-    }
 }
