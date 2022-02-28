@@ -28,6 +28,7 @@ package com.oracle.svm.configure.trace;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.config.SerializationConfiguration;
@@ -61,7 +62,21 @@ public class SerializationProcessor extends AbstractProcessor {
                 return;
             }
 
-            serializationConfiguration.registerWithTargetConstructorClass(condition, (String) args.get(0), (String) args.get(1));
+            String className = (String) args.get(0);
+
+            if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                serializationConfiguration.registerLambdaCapturingClass(condition, className);
+            } else {
+                serializationConfiguration.registerWithTargetConstructorClass(condition, className, (String) args.get(1));
+            }
+        } else if ("SerializedLambda.readResolve".equals(function)) {
+            expectSize(args, 1);
+
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
+                return;
+            }
+
+            serializationConfiguration.registerLambdaCapturingClass(condition, (String) args.get(0));
         }
     }
 }
