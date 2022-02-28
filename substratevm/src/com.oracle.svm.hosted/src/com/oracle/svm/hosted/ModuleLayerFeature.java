@@ -122,9 +122,6 @@ public final class ModuleLayerFeature implements Feature {
         if (source instanceof Module) {
             Module module = (Module) source;
             if (module.isNamed()) {
-                if (ModuleLayerFeatureUtils.isModuleSynthetic(module)) {
-                    return module;
-                }
                 return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module.getName(), module.getDescriptor());
             } else {
                 return moduleLayerFeatureUtils.getAllUnnamedModule();
@@ -207,8 +204,9 @@ public final class ModuleLayerFeature implements Feature {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer);
             for (Module syntheticModule : syntheticModules) {
-                nameToModule.putIfAbsent(syntheticModule.getName(), syntheticModule);
-                moduleLayerFeatureUtils.patchModuleLayerField(syntheticModule, runtimeBootLayer);
+                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule.getName(), syntheticModule.getDescriptor());
+                nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
+                moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeBootLayer);
             }
             patchRuntimeBootLayer(runtimeBootLayer, nameToModule);
             return runtimeBootLayer;
