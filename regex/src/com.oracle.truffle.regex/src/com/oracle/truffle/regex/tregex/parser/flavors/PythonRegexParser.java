@@ -396,13 +396,11 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
         // actually want to match on the individual code points of the Unicode string. In 'bytes'
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
-        // TODO: Passing in the sticky flag should be deprecated in favor of using the PythonMethod
-        // option. After the sticky flag is no longer used, support for it should be removed.
         if (inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
             outPattern.insert(0, "(?:");
             outPattern.append(")$");
         }
-        boolean sticky = inSource.getOptions().getPythonMethod() == PythonMethod.match || inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch || getGlobalFlags().isSticky();
+        boolean sticky = inSource.getOptions().getPythonMethod() == PythonMethod.match || inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch;
         String outFlags = sticky ? "suy" : "su";
         return new RegexSource(outPattern.toString(), outFlags, inSource.getOptions(), inSource.getSource());
     }
