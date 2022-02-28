@@ -107,7 +107,7 @@ public class NFINativeAccess implements NativeAccess {
         // @formatter:on
     }
 
-    protected String nfiStringSignature(NativeSignature nativeSignature, boolean fromJava) {
+    protected String nfiStringSignature(NativeSignature nativeSignature, @SuppressWarnings("unused") boolean fromJava) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('(');
         boolean isFirst = true;
