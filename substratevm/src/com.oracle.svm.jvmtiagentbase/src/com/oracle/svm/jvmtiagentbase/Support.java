@@ -158,6 +158,10 @@ public final class Support {
         return CTypeConversion.toCString(s);
     }
 
+    public static boolean isSerializable(JNIEnvironment env, JNIObjectHandle serializeTargetClass) {
+        return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, JvmtiAgentBase.singleton().handles().javaIoSerializable);
+    }
+
     public static JNIObjectHandle getCallerClass(int depth) {
         return getMethodDeclaringClass(getCallerMethod(depth));
     }
