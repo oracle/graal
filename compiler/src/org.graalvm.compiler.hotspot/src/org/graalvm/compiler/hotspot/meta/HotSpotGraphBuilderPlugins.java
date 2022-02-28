@@ -473,25 +473,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        // This intrinsic is guarded in Java by a check that componentType must be a primitive type
-        r.register(new InvocationPlugin("allocateUninitializedArray0", Receiver.class, Class.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentType, ValueNode length) {
-                /* Emits a null-check for the otherwise unused receiver. */
-                unsafe.get();
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    // If (componentType == null) then deopt
-                    ValueNode nonNullComponentType = b.nullCheckedValue(componentType);
-                    // Read Class.array_klass
-                    ValueNode arrayClass = helper.loadArrayKlass(nonNullComponentType);
-                    // Take the fallback path is the array klass is null
-                    helper.doFallbackIf(IsNullNode.create(arrayClass), GraalDirectives.UNLIKELY_PROBABILITY);
-                    // Otherwise perform the array allocation
-                    helper.emitFinalReturn(JavaKind.Object, new DynamicNewArrayNode(nonNullComponentType, length, false));
-                }
-                return true;
-            }
-        });
     }
 
     private static void registerSystemPlugins(InvocationPlugins plugins) {

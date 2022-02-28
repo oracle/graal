@@ -138,6 +138,7 @@ import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
@@ -480,6 +481,22 @@ public class StandardGraphBuilderPlugins {
         supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
         registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndSet", new String[]{""}, supportedJavaKinds);
         registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{""}, supportedJavaKinds);
+
+        r.register(new InvocationPlugin("allocateUninitializedArray0", Receiver.class, Class.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentType, ValueNode length) {
+                // we only intrinsify if the componentType is a compile-time constant.
+                if (componentType.isConstant()) {
+                    ResolvedJavaType constantComponentType = b.getConstantReflection().asJavaType(componentType.asConstant());
+                    if (constantComponentType.isPrimitive() && constantComponentType.getJavaKind() != JavaKind.Void) {
+                        unsafe.get();
+                        b.addPush(JavaKind.Object, new NewArrayNode(constantComponentType, length, false));
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
     }
 
     private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders,

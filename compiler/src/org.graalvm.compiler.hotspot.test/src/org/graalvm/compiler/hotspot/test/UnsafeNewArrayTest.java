@@ -43,6 +43,13 @@ public class UnsafeNewArrayTest extends GraalCompilerTest {
         return INTERNAL_UNSAFE.allocateUninitializedArray(klass, length);
     }
 
+    private Object[] argsToBind;
+
+    @Override
+    protected Object[] getArgumentToBind() {
+        return argsToBind;
+    }
+
     @Test
     public void testNewArray() throws InvalidInstalledCodeException {
         Class<?>[] classesToTest = new Class<?>[]{
@@ -57,11 +64,12 @@ public class UnsafeNewArrayTest extends GraalCompilerTest {
                         void.class,
                         UnsafeNewArrayTest.class
         };
-        int[] lengthToTest = new int[]{-1, 0, 42};
+        int[] lengthToTest = new int[]{0, 42, -1};
 
         for (Class<?> klass : classesToTest) {
+            argsToBind = new Object[]{klass, NO_BIND};
+            InstalledCode code = getCode(getResolvedJavaMethod("newArray"), null, true);
             for (int length : lengthToTest) {
-                InstalledCode code = getCode(getResolvedJavaMethod("newArray"));
                 try {
                     Object array = code.executeVarargs(klass, length);
                     if (klass == void.class) {
