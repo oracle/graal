@@ -66,7 +66,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
                     InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
-        return new SubstratePEGraphDecoder(architecture, context.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
+        return new SubstratePEGraphDecoder(config.architecture(), context.graph, config.lastTier().providers().copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins,
+                        inlineInvokePlugins,
                         parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider,
                         specialCallTargetCache, invocationPluginsCache);
     }
@@ -92,7 +93,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders) {
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins();
         registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
-        peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, providers, config.architecture());
+        peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, config.lastTier().providers(), config.architecture());
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
     }

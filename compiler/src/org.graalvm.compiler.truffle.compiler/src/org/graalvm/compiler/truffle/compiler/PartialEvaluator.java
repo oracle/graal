@@ -35,7 +35,6 @@ import java.net.URI;
 import java.nio.Buffer;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
@@ -78,7 +77,6 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleOptions;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -93,10 +91,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  */
 public abstract class PartialEvaluator {
 
-    protected final TruffleCompilerConfiguration config;
-    protected final Providers providers;
-    protected final Architecture architecture;
-    public final SnippetReflectionProvider snippetReflection;
+    public final TruffleCompilerConfiguration config;
     final ResolvedJavaMethod callDirectMethod;
     protected final ResolvedJavaMethod callInlined;
     final ResolvedJavaMethod callIndirectMethod;
@@ -111,8 +106,8 @@ public abstract class PartialEvaluator {
 
     /**
      * Holds instrumentation options initialized in
-     * {@link #initialize(org.graalvm.options.OptionValues)} method before the first compilation.
-     * These options are not engine aware.
+     * {@link #initialize(OptionValues, GraphBuilderConfiguration)} method before the first
+     * compilation. These options are not engine aware.
      */
     public volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
     /**
@@ -127,13 +122,10 @@ public abstract class PartialEvaluator {
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
-        this.providers = config.lastTier().providers();
-        this.architecture = config.architecture();
-        this.snippetReflection = config.snippetReflection();
         this.knownTruffleTypes = knownFields;
 
         TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-        final MetaAccessProvider metaAccess = providers.getMetaAccess();
+        final MetaAccessProvider metaAccess = this.config.lastTier().providers().getMetaAccess();
         ResolvedJavaType type = runtime.resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
         ResolvedJavaMethod[] methods = type.getDeclaredMethods();
         this.callDirectMethod = findRequiredMethod(type, methods, "callDirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
@@ -146,7 +138,7 @@ public abstract class PartialEvaluator {
         this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
-        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
+        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(this.config.lastTier().providers().getConstantFieldProvider(), this.config.lastTier().providers().getMetaAccess());
     }
 
     protected void initialize(OptionValues options) {
@@ -210,7 +202,7 @@ public abstract class PartialEvaluator {
     }
 
     public Providers getProviders() {
-        return providers;
+        return config.lastTier().providers();
     }
 
     /**
@@ -295,7 +287,7 @@ public abstract class PartialEvaluator {
         public FloatingNode interceptParameter(GraphBuilderTool b, int index, StampPair stamp) {
             if (index == 0) {
                 JavaConstant c = compilable.asJavaConstant();
-                return ConstantNode.forConstant(c, providers.getMetaAccess());
+                return ConstantNode.forConstant(c, config.lastTier().providers().getMetaAccess());
             }
             return null;
         }
@@ -350,7 +342,7 @@ public abstract class PartialEvaluator {
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();
-        ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
+        ReplacementsImpl replacements = (ReplacementsImpl) config.lastTier().providers().getReplacements();
         plugins.clearInlineInvokePlugins();
         plugins.appendInlineInvokePlugin(replacements);
         plugins.appendInlineInvokePlugin(new ParsingInlineInvokePlugin(this, replacements, parsingInvocationPlugins, loopExplosionPlugin));
@@ -362,8 +354,8 @@ public abstract class PartialEvaluator {
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
                         method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
-        Providers compilationUnitProviders = providers.copyWith(compilationLocalConstantProvider);
-        return new CachingPEGraphDecoder(architecture, context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
+        Providers compilationUnitProviders = config.lastTier().providers().copyWith(compilationLocalConstantProvider);
+        return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
@@ -371,7 +363,7 @@ public abstract class PartialEvaluator {
 
     public void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
-                        (ReplacementsImpl) providers.getReplacements(),
+                        (ReplacementsImpl) config.lastTier().providers().getReplacements(),
                         new NodeLimitControlPlugin(context.options.get(MaximumGraalNodeCount)),
                         inlineInvokePlugin
         };
@@ -391,7 +383,7 @@ public abstract class PartialEvaluator {
      * because the encoded graphs for the partial evaluator are shared between these compilation
      * tiers.
      */
-    protected GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration graphBuilderConfig, boolean canDelayIntrinsification) {
+    private GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration graphBuilderConfig, boolean canDelayIntrinsification) {
         GraphBuilderConfiguration newConfig = graphBuilderConfig.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
@@ -401,7 +393,7 @@ public abstract class PartialEvaluator {
 
     protected void appendParsingNodePlugins(Plugins plugins) {
         if (JavaVersionUtil.JAVA_SPEC >= 16) {
-            ResolvedJavaType memorySegmentProxyType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "jdk.internal.access.foreign.MemorySegmentProxy");
+            ResolvedJavaType memorySegmentProxyType = TruffleCompilerRuntime.getRuntime().resolveType(config.lastTier().providers().getMetaAccess(), "jdk.internal.access.foreign.MemorySegmentProxy");
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods()) {
                 if (m.getName().equals("scope")) {
                     appendMemorySegmentProxyScopePlugin(plugins, m);
@@ -435,9 +427,9 @@ public abstract class PartialEvaluator {
     }
 
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, providers, knownTruffleTypes);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, config.lastTier().providers(), knownTruffleTypes);
         for (GraphBuilderInvocationPluginProvider p : GraalServices.load(GraphBuilderInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(providers, architecture, invocationPlugins, canDelayIntrinsification);
+            p.registerInvocationPlugins(config.lastTier().providers(), config.architecture(), invocationPlugins, canDelayIntrinsification);
         }
     }
 
