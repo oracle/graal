@@ -10,7 +10,7 @@ public abstract class OperationsBuilder {
         if (statistics == null) {
             return;
         }
-        executable.createPointer();
+        // executable.createPointer();
     }
 
     public void setCollectStatistics(boolean statistics) {

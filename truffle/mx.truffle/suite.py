@@ -285,7 +285,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.polyglot"],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
     
@@ -299,7 +299,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
       "jacoco" : "exclude",
