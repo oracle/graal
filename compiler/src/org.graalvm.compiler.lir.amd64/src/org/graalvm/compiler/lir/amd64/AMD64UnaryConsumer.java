@@ -57,5 +57,9 @@ public class AMD64UnaryConsumer {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             opcode.emit(masm, size, value.toAddress());
         }
+
+        public AMD64MOp getOpcode() {
+            return opcode;
+        }
     }
 }

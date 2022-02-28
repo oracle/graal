@@ -581,32 +581,34 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult emitMemoryConsumer(WriteNode write, AMD64Assembler.AMD64BinaryArithmetic arithmeticOp, ReadNode read, ValueNode value) {
-        OperandSize size = getMemorySize(write);
-        if (!size.isXmmType() && write.getAddress() == read.getAddress()) {
-            if (value.isJavaConstant()) {
-                long valueCst = value.asJavaConstant().asLong();
-                if (NumUtil.isInt(valueCst)) {
-                    AMD64Assembler.AMD64MOp mop = AMD64ArithmeticLIRGenerator.getMOp(arithmeticOp, (int) valueCst);
-                    if (mop != null) {
-                        return builder -> {
-                            AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
-                            builder.append(new AMD64UnaryConsumer.MemoryOp(mop, size, addressValue));
-                            return null;
-                        };
-                    } else {
-                        return builder -> {
-                            AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
-                            builder.append(new AMD64BinaryConsumer.MemoryConstOp(arithmeticOp.getMIOpcode(size, NumUtil.isByte(valueCst)), size, addressValue, (int) valueCst, state(write)));
-                            return null;
-                        };
+        if (getMemoryKind(write).isInteger() && !write.canDeoptimize() && !read.canDeoptimize()) {
+            OperandSize size = getMemorySize(write);
+            if (write.getAddress() == read.getAddress()) {
+                if (value.isJavaConstant()) {
+                    long valueCst = value.asJavaConstant().asLong();
+                    if (NumUtil.isInt(valueCst)) {
+                        AMD64Assembler.AMD64MOp mop = AMD64ArithmeticLIRGenerator.getMOp(arithmeticOp, (int) valueCst);
+                        if (mop != null) {
+                            return builder -> {
+                                AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
+                                builder.append(new AMD64UnaryConsumer.MemoryOp(mop, size, addressValue));
+                                return null;
+                            };
+                        } else {
+                            return builder -> {
+                                AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
+                                builder.append(new AMD64BinaryConsumer.MemoryConstOp(arithmeticOp.getMIOpcode(size, NumUtil.isByte(valueCst)), size, addressValue, (int) valueCst, state(write)));
+                                return null;
+                            };
+                        }
                     }
                 }
+                return builder -> {
+                    AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
+                    builder.append(new AMD64BinaryConsumer.MemoryMROp(arithmeticOp.getMROpcode(size), size, addressValue, builder.getLIRGeneratorTool().asAllocatable(operand(value)), state(write)));
+                    return null;
+                };
             }
-            return builder -> {
-                AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
-                builder.append(new AMD64BinaryConsumer.MemoryMROp(arithmeticOp.getMROpcode(size), size, addressValue, builder.getLIRGeneratorTool().asAllocatable(operand(value)), state(write)));
-                return null;
-            };
         }
         return null;
     }
