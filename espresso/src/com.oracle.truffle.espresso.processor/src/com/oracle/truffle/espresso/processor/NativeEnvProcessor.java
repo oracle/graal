@@ -511,11 +511,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                         .withOverrideAnnotation() //
                         .withReturnType("String") //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .addBodyLine("try {") //
-                        .addIndentedBodyLine(1, "return \"", helper.getImplAnnotation().getSimpleName(), "\";") //
-                        .addBodyLine("} catch (Exception e) {") //
-                        .addIndentedBodyLine(1, "return null;") //
-                        .addBodyLine("}");
+                        .addBodyLine("return \"", helper.getImplAnnotation().getSimpleName(), "\";");
         classBuilder.withMethod(generatedBy);
 
         return classBuilder;
