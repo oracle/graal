@@ -61,4 +61,14 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
         return isMemoryKill(n) && n instanceof MultiMemoryKill;
     }
 
+    static SingleMemoryKill asSingleMemoryKill(Node n) {
+        assert isSingleMemoryKill(n);
+        return (SingleMemoryKill) n;
+    }
+
+    static MultiMemoryKill asMultiMemoryKill(Node n) {
+        assert isMultiMemoryKill(n);
+        return (MultiMemoryKill) n;
+    }
+
 }
