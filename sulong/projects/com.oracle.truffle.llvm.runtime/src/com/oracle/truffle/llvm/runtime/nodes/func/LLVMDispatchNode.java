@@ -444,7 +444,6 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     return toLLVMNode.executeWithTarget(ret);
                 }
             } catch (InteropException e) {
-                System.err.println("Native function: " + function + ", class:" + function.getClass());
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
