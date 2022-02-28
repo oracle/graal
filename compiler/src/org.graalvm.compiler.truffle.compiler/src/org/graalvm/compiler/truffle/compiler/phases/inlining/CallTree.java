@@ -30,6 +30,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class CallTree extends Graph {
@@ -37,19 +38,19 @@ public final class CallTree extends Graph {
     private final InliningPolicy policy;
     private final GraphManager graphManager;
     private final CallNode root;
-    private final PartialEvaluator.Request request;
+    private final TruffleTierContext context;
     int expanded = 1;
     int inlined = 1;
     int frontierSize;
     private int nextId = 0;
 
-    CallTree(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite, PartialEvaluator.Request request, InliningPolicy policy) {
-        super(request.graph.getOptions(), request.debug);
+    CallTree(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite, TruffleTierContext context, InliningPolicy policy) {
+        super(context.graph.getOptions(), context.debug);
         this.policy = policy;
-        this.request = request;
-        this.graphManager = new GraphManager(partialEvaluator, truffleSuite, request);
+        this.context = context;
+        this.graphManager = new GraphManager(partialEvaluator, truffleSuite, context);
         // Should be kept as the last call in the constructor, as this is an argument.
-        this.root = CallNode.makeRoot(this, request);
+        this.root = CallNode.makeRoot(this, context);
     }
 
     int nextId() {
@@ -77,8 +78,8 @@ public final class CallTree extends Graph {
     }
 
     void trace() {
-        Boolean details = request.options.get(PolyglotCompilerOptions.TraceInliningDetails);
-        if (request.options.get(PolyglotCompilerOptions.TraceInlining) || details) {
+        Boolean details = context.options.get(PolyglotCompilerOptions.TraceInliningDetails);
+        if (context.options.get(PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(root.getDirectCallTarget(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
             traceRecursive(runtime, root, details, 0);
@@ -130,14 +131,14 @@ public final class CallTree extends Graph {
     }
 
     private boolean loggingInlinedTargets() {
-        return request.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
-                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+        return context.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || context.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        context.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 
     private boolean tracingCallCounts() {
-        return request.options.get(PolyglotCompilerOptions.TraceCompilation) ||
-                        request.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
-                        request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
-                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+        return context.options.get(PolyglotCompilerOptions.TraceCompilation) ||
+                        context.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
+                        context.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        context.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 }

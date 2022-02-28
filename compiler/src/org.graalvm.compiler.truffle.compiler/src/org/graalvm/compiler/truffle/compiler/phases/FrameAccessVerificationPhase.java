@@ -55,8 +55,8 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessorNode;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * This analysis will insert {@link VirtualFrameSetNode}s to change the type of uninitialized slots
  * whenever this is necessary to produce matching types at merges.
  */
-public final class FrameAccessVerificationPhase extends BasePhase<PartialEvaluator.Request> {
+public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierContext> {
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
@@ -190,7 +190,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<PartialEvaluat
     }
 
     @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (graph.getNodes(NewFrameNode.TYPE).isNotEmpty()) {
             ArrayList<Effect> effects = new ArrayList<>();
             ReentrantNodeIterator.apply(new ReentrantIterator(context.compilable, effects), graph.start(), new State(effects));

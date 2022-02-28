@@ -33,13 +33,10 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 
 import java.net.URI;
 import java.nio.Buffer;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -59,9 +56,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
@@ -75,8 +69,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruffleCompilationTask;
-import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
@@ -94,7 +86,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
@@ -116,7 +107,7 @@ public abstract class PartialEvaluator {
     private final NodePlugin[] nodePlugins;
     final KnownTruffleTypes knownTruffleTypes;
     final ResolvedJavaMethod callBoundary;
-    private volatile GraphBuilderConfiguration configForParsing;
+    volatile GraphBuilderConfiguration configForParsing;
 
     /**
      * Holds instrumentation options initialized in
@@ -266,55 +257,6 @@ public abstract class PartialEvaluator {
         return callInlined;
     }
 
-    public final class Request extends HighTierContext {
-        public final OptionValues options;
-        public final DebugContext debug;
-        public final CompilableTruffleAST compilable;
-        public final CompilationIdentifier compilationId;
-        public final SpeculationLog log;
-        public final CancellableTruffleCompilationTask task;
-        public final StructuredGraph graph;
-        public final PerformanceInformationHandler handler;
-
-        public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
-                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task, PerformanceInformationHandler handler, Providers providers) {
-            super(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
-            Objects.requireNonNull(options);
-            Objects.requireNonNull(debug);
-            Objects.requireNonNull(compilable);
-            Objects.requireNonNull(compilationId);
-            Objects.requireNonNull(task);
-            this.options = options;
-            this.debug = debug;
-            this.compilable = compilable;
-            this.compilationId = compilationId;
-            this.log = log;
-            this.task = task;
-            // @formatter:off
-            StructuredGraph.Builder builder = new StructuredGraph.Builder(this.debug.getOptions(), this.debug, AllowAssumptions.YES).
-                    name(this.compilable.getName()).
-                    method(method).
-                    speculationLog(this.log).
-                    compilationId(this.compilationId).
-                    trackNodeSourcePosition(configForParsing.trackNodeSourcePosition()).
-                    cancellable(this.task);
-            // @formatter:on
-            builder = customizeStructuredGraphBuilder(builder);
-            this.graph = builder.build();
-            this.graph.getAssumptions().record(new TruffleAssumption(compilable.getValidRootAssumptionConstant()));
-            this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
-            this.handler = handler;
-        }
-
-        public Request(TruffleCompilerImpl.TruffleCompilationWrapper wrapper, DebugContext debug, SpeculationLog speculationLog, PerformanceInformationHandler handler) {
-            this(wrapper.options, debug, wrapper.compilable, PartialEvaluator.this.rootForCallTarget(wrapper.compilable), wrapper.compilationId, speculationLog, wrapper.task, handler, providers);
-        }
-
-        public boolean isFirstTier() {
-            return task.isFirstTier();
-        }
-    }
-
     /**
      * Hook for subclasses: customize the StructuredGraph.
      */
@@ -400,7 +342,7 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings("unused")
-    protected PEGraphDecoder createGraphDecoder(Request request, LoopExplosionPlugin loopExplosionPlugin,
+    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, LoopExplosionPlugin loopExplosionPlugin,
                     InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList,
                     SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
@@ -412,36 +354,36 @@ public abstract class PartialEvaluator {
         plugins.clearInlineInvokePlugins();
         plugins.appendInlineInvokePlugin(replacements);
         plugins.appendInlineInvokePlugin(new ParsingInlineInvokePlugin(this, replacements, parsingInvocationPlugins, loopExplosionPlugin));
-        if (!request.options.get(PrintExpansionHistogram)) {
+        if (!context.options.get(PrintExpansionHistogram)) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
-        InvocationPlugins decodingPlugins = request.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
+        InvocationPlugins decodingPlugins = context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
 
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
                         method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
         Providers compilationUnitProviders = providers.copyWith(compilationLocalConstantProvider);
-        return new CachingPEGraphDecoder(architecture, request.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
-                        AllowAssumptions.ifNonNull(request.graph.getAssumptions()),
+        return new CachingPEGraphDecoder(architecture, context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
+                        AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
     }
 
-    public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+    public void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         (ReplacementsImpl) providers.getReplacements(),
-                        new NodeLimitControlPlugin(request.options.get(MaximumGraalNodeCount)),
+                        new NodeLimitControlPlugin(context.options.get(MaximumGraalNodeCount)),
                         inlineInvokePlugin
         };
-        PEGraphDecoder decoder = createGraphDecoder(request,
+        PEGraphDecoder decoder = createGraphDecoder(context,
                         new PELoopExplosionPlugin(),
-                        request.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
+                        context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
                         inlineInvokePlugins,
-                        new InterceptReceiverPlugin(request.compilable),
+                        new InterceptReceiverPlugin(context.compilable),
                         nodePlugins,
-                        new TruffleSourceLanguagePositionProvider(request.task.inliningData()),
+                        new TruffleSourceLanguagePositionProvider(context.task.inliningData()),
                         graphCache);
-        decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+        decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
     }
 
     /**

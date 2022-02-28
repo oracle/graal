@@ -30,9 +30,9 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 /**
  * Instruments {@link IfNode}s in the graph, by adding execution counters to the true and the false
@@ -64,7 +64,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected void instrumentGraph(StructuredGraph graph, PartialEvaluator.Request context, JavaConstant tableConstant) {
+    protected void instrumentGraph(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant) {
         MethodFilter methodFilter = methodFilter(context);
         for (IfNode n : graph.getNodes(IfNode.TYPE)) {
             Point p = getOrCreatePoint(n, methodFilter);

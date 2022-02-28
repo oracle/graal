@@ -29,10 +29,11 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlin
 import org.graalvm.compiler.core.phases.BaseTier;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.options.OptionValues;
 
-public class TruffleTier extends BaseTier<PartialEvaluator.Request> {
+public class TruffleTier extends BaseTier<TruffleTierContext> {
 
     public TruffleTier(OptionValues options, PartialEvaluator partialEvaluator, InstrumentationSuite instrumentationSuite, TruffleSuite truffleSuite) {
         appendPhase(new AgnosticInliningPhase(partialEvaluator, truffleSuite));

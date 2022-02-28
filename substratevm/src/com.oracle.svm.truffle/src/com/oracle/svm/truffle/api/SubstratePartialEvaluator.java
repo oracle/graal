@@ -43,6 +43,7 @@ import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKe
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -61,11 +62,11 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected PEGraphDecoder createGraphDecoder(Request request, LoopExplosionPlugin loopExplosionPlugin,
+    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, LoopExplosionPlugin loopExplosionPlugin,
                     InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
-        return new SubstratePEGraphDecoder(architecture, request.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
+        return new SubstratePEGraphDecoder(architecture, context.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
                         parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider,
                         specialCallTargetCache, invocationPluginsCache);
     }

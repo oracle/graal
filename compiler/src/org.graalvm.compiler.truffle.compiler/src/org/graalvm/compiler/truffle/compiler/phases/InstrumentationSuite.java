@@ -26,9 +26,9 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
-public class InstrumentationSuite extends PhaseSuite<PartialEvaluator.Request> {
+public class InstrumentationSuite extends PhaseSuite<TruffleTierContext> {
     public InstrumentationSuite(InstrumentPhase.InstrumentationConfiguration instrumentationCfg, SnippetReflectionProvider snippetReflection, InstrumentPhase.Instrumentation instrumentation) {
         if (instrumentationCfg.instrumentBranches) {
             appendPhase(new InstrumentBranchesPhase(snippetReflection, instrumentation, instrumentationCfg.instrumentBranchesPerInlineSite));

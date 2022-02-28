@@ -551,13 +551,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         PerformanceInformationHandler handler = PerformanceInformationHandler.install(wrapper.options)) {
             // SpeculationLog can be read from wrapper.compilable, but I'm not sure of the machinery
             // around it
-            PartialEvaluator.Request request = partialEvaluator.new Request(wrapper, debug, speculationLog, handler);
-            try (Scope s = request.debug.scope("CreateGraph", request.graph);
-                            Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-                truffleTier.apply(request.graph, request);
-                graph = request.graph;
+            TruffleTierContext context = new TruffleTierContext(partialEvaluator, wrapper, debug, speculationLog, handler);
+            try (Scope s = context.debug.scope("CreateGraph", context.graph);
+                            Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
+                truffleTier.apply(context.graph, context);
+                graph = context.graph;
             } catch (Throwable e) {
-                throw request.debug.handle(e);
+                throw context.debug.handle(e);
             }
         }
         if (wrapper.statistics != null) {

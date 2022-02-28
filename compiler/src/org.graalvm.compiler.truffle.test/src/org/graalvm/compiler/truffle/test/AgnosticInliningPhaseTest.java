@@ -31,6 +31,7 @@ import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -62,7 +63,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return "";
             }
         };
-        final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+        final TruffleTierContext context = new TruffleTierContext(partialEvaluator, callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
                             private TruffleInliningData inlining = new TruffleInlining();
@@ -86,10 +87,10 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             public boolean hasNextTier() {
                                 return false;
                             }
-                        }), null, getProviders());
+                        }), null);
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, new TruffleSuite(false));
-        agnosticInliningPhase.apply(request.graph, request);
-        return request.graph;
+        agnosticInliningPhase.apply(context.graph, context);
+        return context.graph;
     }
 
     protected static final OptimizedCallTarget createDummyNode() {

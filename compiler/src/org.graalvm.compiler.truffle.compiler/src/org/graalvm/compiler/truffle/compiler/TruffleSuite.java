@@ -37,7 +37,7 @@ import org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase
 import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
-public class TruffleSuite extends PhaseSuite<PartialEvaluator.Request> {
+public class TruffleSuite extends PhaseSuite<TruffleTierContext> {
     public TruffleSuite(boolean iterativePartialEscape) {
         appendPhase(new ConvertDeoptimizeToGuardPhase());
         appendPhase(new InlineReplacementsPhase());
@@ -51,10 +51,10 @@ public class TruffleSuite extends PhaseSuite<PartialEvaluator.Request> {
         appendPhase(new PhiTransformPhase(canonicalizerPhase));
     }
 
-    public static class InlineReplacementsPhase extends BasePhase<PartialEvaluator.Request> {
+    public static class InlineReplacementsPhase extends BasePhase<TruffleTierContext> {
 
         @Override
-        protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+        protected void run(StructuredGraph graph, TruffleTierContext context) {
             for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
                 if (!methodCallTargetNode.invokeKind().isDirect()) {
                     continue;

@@ -28,11 +28,11 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
-public final class InliningAcrossTruffleBoundaryPhase extends BasePhase<PartialEvaluator.Request> {
+public final class InliningAcrossTruffleBoundaryPhase extends BasePhase<TruffleTierContext> {
     @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (context.task.isCancelled()) {
             return;
         }

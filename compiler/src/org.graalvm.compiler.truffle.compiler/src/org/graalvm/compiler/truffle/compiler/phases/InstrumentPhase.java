@@ -54,7 +54,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
 // TODO: make sure the subclasses of this are thread-safe
-public abstract class InstrumentPhase extends BasePhase<PartialEvaluator.Request> {
+public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
 
     private static boolean checkMethodExists(String declaringClassName, String methodName) {
         try {
@@ -107,7 +107,7 @@ public abstract class InstrumentPhase extends BasePhase<PartialEvaluator.Request
         return options.get(PolyglotCompilerOptions.InstrumentFilter);
     }
 
-    protected static void insertCounter(StructuredGraph graph, PartialEvaluator.Request context, JavaConstant tableConstant,
+    protected static void insertCounter(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant,
                     FixedWithNextNode targetNode, int slotIndex) {
         assert (tableConstant != null);
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
@@ -128,7 +128,7 @@ public abstract class InstrumentPhase extends BasePhase<PartialEvaluator.Request
     }
 
     @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         JavaConstant tableConstant = snippetReflection.forObject(instrumentation.getAccessTable());
         try {
             instrumentGraph(graph, context, tableConstant);
@@ -137,7 +137,7 @@ public abstract class InstrumentPhase extends BasePhase<PartialEvaluator.Request
         }
     }
 
-    protected MethodFilter methodFilter(PartialEvaluator.Request context) {
+    protected MethodFilter methodFilter(TruffleTierContext context) {
         String filterValue = instrumentationFilter(context.options);
         if (filterValue != null) {
             return MethodFilter.parse(filterValue);
@@ -146,7 +146,7 @@ public abstract class InstrumentPhase extends BasePhase<PartialEvaluator.Request
         }
     }
 
-    protected abstract void instrumentGraph(StructuredGraph graph, PartialEvaluator.Request context, JavaConstant tableConstant);
+    protected abstract void instrumentGraph(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant);
 
     protected abstract int instrumentationPointSlotCount();
 

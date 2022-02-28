@@ -29,13 +29,13 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
-public final class SetIdentityForValueTypesPhase extends BasePhase<PartialEvaluator.Request> {
+public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierContext> {
     @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (context.task.isCancelled()) {
             return;
         }

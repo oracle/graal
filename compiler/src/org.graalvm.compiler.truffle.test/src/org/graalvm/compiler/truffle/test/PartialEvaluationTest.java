@@ -50,6 +50,7 @@ import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -251,13 +252,13 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             TruffleTier truffleTier = truffleCompiler.getTruffleTier();
             final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
             try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compilable.getOptionValues())) {
-                final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                final TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
                                 compilationId, speculationLog,
                                 new TruffleCompilerImpl.CancellableTruffleCompilationTask(newTask()),
-                                handler, getProviders());
-                try (Graph.NodeEventScope nes = nodeEventListener == null ? null : request.graph.trackNodeEvents(nodeEventListener)) {
-                    truffleTier.apply(request.graph, request);
-                    return request.graph;
+                                handler);
+                try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
+                    truffleTier.apply(context.graph, context);
+                    return context.graph;
                 }
             }
         } catch (Throwable e) {

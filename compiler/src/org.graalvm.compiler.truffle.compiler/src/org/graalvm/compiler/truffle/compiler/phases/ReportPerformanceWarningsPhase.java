@@ -26,12 +26,12 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
-public final class ReportPerformanceWarningsPhase extends BasePhase<PartialEvaluator.Request> {
+public final class ReportPerformanceWarningsPhase extends BasePhase<TruffleTierContext> {
 
     @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (context.handler != null) {
             context.handler.reportPerformanceWarnings(context.compilable, graph);
         }

@@ -26,12 +26,12 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 
-public final class MaterializeFramesPhase extends BasePhase<PartialEvaluator.Request> {
+public final class MaterializeFramesPhase extends BasePhase<TruffleTierContext> {
     @Override
-    protected void run(StructuredGraph graph, PartialEvaluator.Request context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (context.task.isCancelled()) {
             return;
         }

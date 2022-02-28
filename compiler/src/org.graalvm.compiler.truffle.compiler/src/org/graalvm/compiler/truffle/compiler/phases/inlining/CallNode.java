@@ -48,8 +48,8 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil.InlineeReturnAct
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 @NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -101,12 +101,12 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     /**
      * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
-    static CallNode makeRoot(CallTree callTree, PartialEvaluator.Request request) {
+    static CallNode makeRoot(CallTree callTree, TruffleTierContext context) {
         Objects.requireNonNull(callTree);
-        Objects.requireNonNull(request);
-        CallNode root = new CallNode(null, request.compilable, 1, 0, callTree.nextId());
+        Objects.requireNonNull(context);
+        CallNode root = new CallNode(null, context.compilable, 1, 0, callTree.nextId());
         callTree.add(root);
-        root.ir = request.graph;
+        root.ir = context.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
         final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
         root.irAfterPE = entry.graphAfterPEForDebugDump;
