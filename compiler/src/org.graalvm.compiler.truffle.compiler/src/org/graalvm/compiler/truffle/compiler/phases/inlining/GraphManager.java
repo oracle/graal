@@ -87,7 +87,8 @@ final class GraphManager {
                         rootRequest.compilationId,
                         rootRequest.log,
                         rootRequest.task,
-                        rootRequest.handler);
+                        rootRequest.handler,
+                        rootRequest.getProviders());
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {

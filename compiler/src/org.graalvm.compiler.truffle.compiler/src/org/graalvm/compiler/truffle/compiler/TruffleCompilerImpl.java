@@ -36,6 +36,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierUseEconomy;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 
 import java.io.PrintStream;
@@ -69,6 +70,7 @@ import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.TTY;
@@ -99,6 +101,8 @@ import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptor;
@@ -126,6 +130,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     private volatile ExpansionStatistics expansionStatistics;
     private volatile boolean expansionStatisticsInitialized;
     private volatile boolean initialized;
+    TruffleTier truffleTier;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -307,6 +312,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
                         final org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
                         partialEvaluator.initialize(options);
+                        truffleTier = newTruffleTier(options);
                         initialized = true;
 
                         if (!FirstTierUseEconomy.getValue(options)) {
@@ -316,6 +322,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 }
             }
         }
+    }
+
+    // Hook for SVM
+    protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
+        return new TruffleTier(options, partialEvaluator,
+                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.snippetReflection, partialEvaluator.getInstrumentation()),
+                        new TruffleSuite(options.get(IterativePartialEscape)));
     }
 
     private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleCompilationTask task, TruffleCompilerListener listener,
@@ -539,7 +552,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // SpeculationLog can be read from wrapper.compilable, but I'm not sure of the machinery
             // around it
             PartialEvaluator.Request request = partialEvaluator.new Request(wrapper, debug, speculationLog, handler);
-            graph = partialEvaluator.evaluate(request);
+            try (Scope s = request.debug.scope("CreateGraph", request.graph);
+                            Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
+                truffleTier.apply(request.graph, request);
+                graph = request.graph;
+            } catch (Throwable e) {
+                throw request.debug.handle(e);
+            }
         }
         if (wrapper.statistics != null) {
             wrapper.statistics.afterTruffleTier(wrapper.compilable, graph);
@@ -562,7 +581,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     /**
-     * Compiles a graph produced by {@link PartialEvaluator#evaluate partial evaluation}.
+     * Compiles a graph produced by {@link TruffleTier}, i.e.
+     * {@link #truffleTier(TruffleCompilationWrapper, DebugContext)}.
      *
      * @param graph a graph resulting from partial evaluation
      * @param name the name to be used for the returned {@link CompilationResult#getName() result}
@@ -645,6 +665,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     @Override
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;
+    }
+
+    @Override
+    public TruffleTier getTruffleTier() {
+        return truffleTier;
     }
 
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
-
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
@@ -45,11 +43,8 @@ import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKe
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -73,13 +68,6 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
         return new SubstratePEGraphDecoder(architecture, request.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
                         parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider,
                         specialCallTargetCache, invocationPluginsCache);
-    }
-
-    @Override
-    protected TruffleTier newTruffleTier(OptionValues options) {
-        return new TruffleTier(options, this,
-                        new InstrumentationSuite(instrumentationCfg, snippetReflection, getInstrumentation()),
-                        new SubstrateTruffleSuite(options.get(IterativePartialEscape)));
     }
 
     @Override

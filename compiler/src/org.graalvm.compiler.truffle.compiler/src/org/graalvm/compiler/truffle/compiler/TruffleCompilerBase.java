@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 
 /**
  * This interface declares additional methods from {@link TruffleCompilerImpl} which are not
@@ -40,4 +41,6 @@ public interface TruffleCompilerBase extends TruffleCompiler {
     PartialEvaluator getPartialEvaluator();
 
     SnippetReflectionProvider getSnippetReflection();
+
+    TruffleTier getTruffleTier();
 }

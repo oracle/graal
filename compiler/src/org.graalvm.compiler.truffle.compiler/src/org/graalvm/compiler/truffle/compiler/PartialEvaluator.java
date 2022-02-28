@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
@@ -41,7 +40,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -81,8 +79,6 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruf
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -109,7 +105,7 @@ public abstract class PartialEvaluator {
     protected final TruffleCompilerConfiguration config;
     protected final Providers providers;
     protected final Architecture architecture;
-    protected final SnippetReflectionProvider snippetReflection;
+    public final SnippetReflectionProvider snippetReflection;
     final ResolvedJavaMethod callDirectMethod;
     protected final ResolvedJavaMethod callInlined;
     final ResolvedJavaMethod callIndirectMethod;
@@ -127,7 +123,7 @@ public abstract class PartialEvaluator {
      * {@link #initialize(org.graalvm.options.OptionValues)} method before the first compilation.
      * These options are not engine aware.
      */
-    protected volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
+    public volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
     /**
      * The instrumentation object is used by the Truffle instrumentation to count executions. The
      * value is lazily initialized the first time it is requested because it depends on the Truffle
@@ -137,8 +133,6 @@ public abstract class PartialEvaluator {
     protected volatile InstrumentPhase.Instrumentation instrumentation;
 
     protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
-
-    private TruffleTier truffleTier;
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
@@ -173,14 +167,6 @@ public abstract class PartialEvaluator {
                         (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
-        truffleTier = newTruffleTier(options);
-    }
-
-    // Hook for SVM
-    protected TruffleTier newTruffleTier(OptionValues options) {
-        return new TruffleTier(options, this,
-                        new InstrumentationSuite(instrumentationCfg, snippetReflection, getInstrumentation()),
-                        new TruffleSuite(options.get(IterativePartialEscape)));
     }
 
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
@@ -191,7 +177,7 @@ public abstract class PartialEvaluator {
      * Gets the instrumentation manager associated with this compiler, creating it first if
      * necessary. Each compiler instance has its own instrumentation manager.
      */
-    protected InstrumentPhase.Instrumentation getInstrumentation() {
+    public InstrumentPhase.Instrumentation getInstrumentation() {
         if (instrumentation == null) {
             synchronized (this) {
                 if (instrumentation == null) {
@@ -291,7 +277,7 @@ public abstract class PartialEvaluator {
         public final PerformanceInformationHandler handler;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method,
-                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task, PerformanceInformationHandler handler) {
+                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task, PerformanceInformationHandler handler, Providers providers) {
             super(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
             Objects.requireNonNull(options);
             Objects.requireNonNull(debug);
@@ -321,22 +307,11 @@ public abstract class PartialEvaluator {
         }
 
         public Request(TruffleCompilerImpl.TruffleCompilationWrapper wrapper, DebugContext debug, SpeculationLog speculationLog, PerformanceInformationHandler handler) {
-            this(wrapper.options, debug, wrapper.compilable, PartialEvaluator.this.rootForCallTarget(wrapper.compilable), wrapper.compilationId, speculationLog, wrapper.task, handler);
+            this(wrapper.options, debug, wrapper.compilable, PartialEvaluator.this.rootForCallTarget(wrapper.compilable), wrapper.compilationId, speculationLog, wrapper.task, handler, providers);
         }
 
         public boolean isFirstTier() {
             return task.isFirstTier();
-        }
-    }
-
-    @SuppressWarnings("try")
-    public final StructuredGraph evaluate(Request request) {
-        try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
-                        Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-            truffleTier.apply(request.graph, request);
-            return request.graph;
-        } catch (Throwable e) {
-            throw request.debug.handle(e);
         }
     }
 

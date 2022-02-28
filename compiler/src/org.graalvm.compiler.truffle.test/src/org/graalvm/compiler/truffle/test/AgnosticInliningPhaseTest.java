@@ -86,7 +86,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             public boolean hasNextTier() {
                                 return false;
                             }
-                        }), null);
+                        }), null, getProviders());
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, new TruffleSuite(false));
         agnosticInliningPhase.apply(request.graph, request);
         return request.graph;
