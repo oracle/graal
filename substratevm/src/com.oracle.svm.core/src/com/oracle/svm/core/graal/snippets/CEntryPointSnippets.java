@@ -292,7 +292,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             ReferenceHandlerThread.start();
         }
 
-        ImageSingletons.lookup(ParallelGC.class).startThreads();
+        ImageSingletons.lookup(ParallelGC.class).startWorkerThreads();
 
         /*
          * After starting all the necessary threads, we can finally execute complex JDK code or code

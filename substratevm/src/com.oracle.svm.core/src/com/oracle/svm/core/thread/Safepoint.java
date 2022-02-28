@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.thread.VMThreads.StatusSupport.STATUS_IN_SAFEPOINT;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -881,16 +882,19 @@ public final class Safepoint {
         }
 
         /** Release each thread at a safepoint. */
-        public static void releaseParallelGCSafepoints() {
-            final Log trace = Log.log().string("[Safepoint.Master.releasePGCSafepoints").newline();
+        public void releaseParallelGCSafepoints() {
+            final Log trace = Log.log().string("[Safepoint.Master.release||safepoints").newline();
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set PGC thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (VMThreads.ParallelGCSupport.isParallelGCThread(vmThread)) {
                     if (trace.isEnabled()) {
-                        trace.string("  PGC vmThread status: ").string(StatusSupport.getStatusString(vmThread));
+                        trace.string("  || vmThread status: ").string(StatusSupport.getStatusString(vmThread));
                     }
 
+                    if (VMThreads.StatusSupport.getStatusVolatile(vmThread) != STATUS_IN_SAFEPOINT) {
+                        continue;
+                    }
                     restoreSafepointRequestedValue(vmThread);
 
                     /*
@@ -944,7 +948,7 @@ public final class Safepoint {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         // Check if the thread is at a safepoint or in native code.
                         switch (status) {
-                            case StatusSupport.STATUS_IN_SAFEPOINT:
+                            case STATUS_IN_SAFEPOINT:
                                 atSafepoint += 1;
                                 break;
                             default:

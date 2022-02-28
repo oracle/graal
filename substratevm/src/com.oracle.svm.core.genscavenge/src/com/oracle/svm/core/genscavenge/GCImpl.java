@@ -32,7 +32,6 @@ import java.lang.ref.Reference;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.heap.ParallelGC;
-import com.oracle.svm.core.thread.Safepoint;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -682,8 +681,8 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                thawParallelGCThreads();
-//                ImageSingletons.lookup(ParallelGC.class).signal();
+                ParallelGC.thawWorkerThreads();
+                ImageSingletons.lookup(ParallelGC.class).signal();
 
                 /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
@@ -776,7 +775,7 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                thawParallelGCThreads();
+                ParallelGC.thawWorkerThreads();
                 ImageSingletons.lookup(ParallelGC.class).signal();
 
                 /* Visit all the Objects promoted since the snapshot, transitively. */
@@ -942,10 +941,6 @@ public final class GCImpl implements GC {
                 return;
             }
         }
-    }
-
-    private void thawParallelGCThreads() {
-        Safepoint.Master.releaseParallelGCSafepoints();
     }
 
     private void walkThreadLocals() {
