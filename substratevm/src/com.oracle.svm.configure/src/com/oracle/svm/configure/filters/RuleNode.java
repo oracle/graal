@@ -25,18 +25,23 @@
 package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.function.BiConsumer;
 
 import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JSONParserException;
+
+import static com.oracle.svm.core.configure.ConfigurationParser.asList;
+import static com.oracle.svm.core.configure.ConfigurationParser.asMap;
+import static com.oracle.svm.core.configure.ConfigurationParser.asString;
 
 /** Represents a rule that includes or excludes a set of Java classes. */
-public final class RuleNode {
+public final class RuleNode implements ConfigurationFilter {
 
     /** Everything that is not included is considered excluded. */
     private static final Inclusion DEFAULT_INCLUSION = Inclusion.Exclude;
@@ -44,31 +49,10 @@ public final class RuleNode {
     private static final String CHILDREN_PATTERN = "*";
     private static final String DESCENDANTS_PATTERN = "**";
 
-    /** Inclusion status of a {@link RuleNode}. */
-    public enum Inclusion {
-        Include("+"),
-        Exclude("-");
-
-        final String s;
-
-        Inclusion(String s) {
-            this.s = s;
-        }
-
-        @Override
-        public String toString() {
-            return s;
-        }
-
-        public Inclusion invert() {
-            return (this == Include) ? Exclude : Include;
-        }
-    }
-
     /** The non-qualified name. The qualified name is derived from the names of all parents. */
     private final String name;
 
-    /** Inclusion for the exact qualified name when queried via {@link #treeIncludes}. */
+    /** Inclusion for the exact qualified name when queried via {@link #includes}. */
     private Inclusion inclusion;
 
     /** Inclusion for immediate children except those in {@link #children}. */
@@ -82,6 +66,12 @@ public final class RuleNode {
 
     public static RuleNode createRoot() {
         return new RuleNode("");
+    }
+
+    public static RuleNode createRootWithIncludedChildren() {
+        RuleNode root = new RuleNode("");
+        root.addOrGetChildren("**", ConfigurationFilter.Inclusion.Include);
+        return root;
     }
 
     private RuleNode(String unqualifiedName) {
@@ -226,17 +216,48 @@ public final class RuleNode {
         return inclusion == null && childrenInclusion == null && descendantsInclusion == null && isLeafNode();
     }
 
-    public void printJsonTree(OutputStream out) throws IOException {
-        try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(out))) {
-            writer.append('{');
-            writer.indent().newline();
-            writer.quote("rules").append(": [").indent().newline();
-            final boolean[] isFirstRule = {true};
-            printJsonEntries(writer, isFirstRule, "");
-            writer.unindent().newline();
-            writer.append(']').unindent().newline();
-            writer.append('}').newline();
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.quote("rules").append(": [").indent().newline();
+        final boolean[] isFirstRule = {true};
+        printJsonEntries(writer, isFirstRule, "");
+        writer.unindent().newline();
+        writer.append(']');
+    }
+
+    @Override
+    public void parseFromJson(Map<String, Object> top) {
+        Object rulesObject = top.get("rules");
+        if (rulesObject != null) {
+            List<Object> rulesList = asList(rulesObject, "Attribute 'list' must be a list of rule objects");
+            for (Object entryObject : rulesList) {
+                parseEntry(entryObject, this::addOrGetChildren);
+            }
         }
+    }
+
+    public static void parseEntry(Object entryObject, BiConsumer<String, Inclusion> parsedEntryConsumer) {
+        Map<String, Object> entry = asMap(entryObject, "Filter entries must be objects");
+        Object qualified = null;
+        RuleNode.Inclusion inclusion = null;
+        String exactlyOneMessage = "Exactly one of attributes 'includeClasses' and 'excludeClasses' must be specified for a filter entry";
+        for (Map.Entry<String, Object> pair : entry.entrySet()) {
+            if (qualified != null) {
+                throw new JSONParserException(exactlyOneMessage);
+            }
+            qualified = pair.getValue();
+            if ("includeClasses".equals(pair.getKey())) {
+                inclusion = ConfigurationFilter.Inclusion.Include;
+            } else if ("excludeClasses".equals(pair.getKey())) {
+                inclusion = ConfigurationFilter.Inclusion.Exclude;
+            } else {
+                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
+            }
+        }
+        if (qualified == null) {
+            throw new JSONParserException(exactlyOneMessage);
+        }
+        parsedEntryConsumer.accept(asString(qualified), inclusion);
     }
 
     private void printJsonEntries(JsonWriter writer, boolean[] isFirstRule, String parentQualified) throws IOException {
@@ -280,7 +301,8 @@ public final class RuleNode {
         writer.append("}");
     }
 
-    public boolean treeIncludes(String qualifiedName) {
+    @Override
+    public boolean includes(String qualifiedName) {
         RuleNode current = this;
         Inclusion inheritedInclusion = DEFAULT_INCLUSION;
         StringTokenizer tokenizer = new StringTokenizer(qualifiedName, ".", false);

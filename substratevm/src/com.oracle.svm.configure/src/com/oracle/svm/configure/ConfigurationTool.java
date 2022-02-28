@@ -29,6 +29,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -45,10 +47,12 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.configure.config.ConfigurationSet;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
+import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.filters.ComplexFilter;
+import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.ModuleFilterTools;
 import com.oracle.svm.configure.filters.RuleNode;
@@ -244,14 +248,17 @@ public class ConfigurationTool {
         }
         failIfAgentLockFilesPresent(inputSet, omittedInputSet, outputSet);
 
-        RuleNode callersFilter = null;
+        RuleNode callersFilterRuleNode = null;
+        ComplexFilter callersFilter = null;
         if (!builtinCallerFilter) {
-            callersFilter = RuleNode.createRoot();
-            callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+            callersFilterRuleNode = RuleNode.createRoot();
+            callersFilterRuleNode.addOrGetChildren("**", ConfigurationFilter.Inclusion.Include);
+            callersFilter = new ComplexFilter(callersFilterRuleNode);
         }
         if (!callerFilters.isEmpty()) {
-            if (callersFilter == null) {
-                callersFilter = AccessAdvisor.copyBuiltinCallerFilterTree();
+            if (callersFilterRuleNode == null) {
+                callersFilterRuleNode = AccessAdvisor.copyBuiltinCallerFilterTree();
+                callersFilter = new ComplexFilter(callersFilterRuleNode);
             }
             for (URI uri : callerFilters) {
                 try {
@@ -261,7 +268,7 @@ public class ConfigurationTool {
                     throw new UsageException("Cannot parse filter file " + uri + ": " + e);
                 }
             }
-            callersFilter.removeRedundantNodes();
+            callersFilter.getRuleNode().removeRedundantNodes();
         }
 
         ConfigurationSet configurationSet;
@@ -367,7 +374,9 @@ public class ConfigurationTool {
                 args.add(arg);
             }
         }
-        RuleNode rootNode = null;
+        RuleNode rootNode = RuleNode.createRoot();
+        ComplexFilter filter = new ComplexFilter(rootNode);
+        boolean filterModified = false;
         for (String arg : args) {
             String[] parts = arg.split("=", 2);
             String current = parts[0];
@@ -377,17 +386,18 @@ public class ConfigurationTool {
                 case "--exclude-packages-from-modules":
                 case "--exclude-unexported-packages-from-modules":
                     if (!ImageInfo.inImageCode()) {
-                        if (rootNode != null) {
+                        if (filterModified) {
                             throw new UsageException(current + " must be specified before other rule-creating arguments");
                         }
+                        filterModified = true;
                         String[] moduleNames = (value != null) ? value.split(",") : new String[0];
-                        RuleNode.Inclusion exportedInclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
+                        RuleNode.Inclusion exportedInclusion = current.startsWith("--include") ? ConfigurationFilter.Inclusion.Include : ConfigurationFilter.Inclusion.Exclude;
                         RuleNode.Inclusion unexportedInclusion = exportedInclusion;
                         RuleNode.Inclusion rootInclusion = exportedInclusion.invert();
                         if (current.equals("--exclude-unexported-packages-from-modules")) {
-                            rootInclusion = RuleNode.Inclusion.Include;
-                            exportedInclusion = RuleNode.Inclusion.Include;
-                            unexportedInclusion = RuleNode.Inclusion.Exclude;
+                            rootInclusion = ConfigurationFilter.Inclusion.Include;
+                            exportedInclusion = ConfigurationFilter.Inclusion.Include;
+                            unexportedInclusion = ConfigurationFilter.Inclusion.Exclude;
                         }
                         rootNode = ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
                     } else {
@@ -396,8 +406,8 @@ public class ConfigurationTool {
                     break;
 
                 case "--input-file":
-                    rootNode = maybeCreateRootNode(rootNode);
-                    new FilterConfigurationParser(rootNode).parseAndRegister(requirePathUri(current, value));
+                    filterModified = true;
+                    new FilterConfigurationParser(filter).parseAndRegister(requirePathUri(current, value));
                     break;
 
                 case "--output-file":
@@ -405,26 +415,31 @@ public class ConfigurationTool {
                     break;
 
                 case "--include-classes":
-                    rootNode = addSingleRule(rootNode, current, value, RuleNode.Inclusion.Include);
+                    filterModified = true;
+                    addSingleRule(rootNode, current, value, ConfigurationFilter.Inclusion.Include);
                     break;
 
                 case "--exclude-classes":
-                    rootNode = addSingleRule(rootNode, current, value, RuleNode.Inclusion.Exclude);
+                    filterModified = true;
+                    addSingleRule(rootNode, current, value, ConfigurationFilter.Inclusion.Exclude);
                     break;
 
                 default:
                     throw new UsageException("Unknown argument: " + current);
             }
         }
-        rootNode = maybeCreateRootNode(rootNode); // in case of no inputs
 
         rootNode.removeRedundantNodes();
+        OutputStream targetStream;
         if (outputPath != null) {
             try (FileOutputStream os = new FileOutputStream(outputPath.toFile())) {
-                rootNode.printJsonTree(os);
+                targetStream = os;
             }
         } else {
-            rootNode.printJsonTree(System.out);
+            targetStream = System.out;
+        }
+        try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(targetStream))) {
+            filter.printJson(writer);
         }
     }
 
@@ -432,8 +447,7 @@ public class ConfigurationTool {
         return (rootNode != null) ? rootNode : RuleNode.createRoot();
     }
 
-    private static RuleNode addSingleRule(RuleNode rootNode, String argName, String qualifiedPkg, RuleNode.Inclusion inclusion) {
-        RuleNode root = maybeCreateRootNode(rootNode);
+    private static void addSingleRule(RuleNode root, String argName, String qualifiedPkg, RuleNode.Inclusion inclusion) {
         if (qualifiedPkg == null || qualifiedPkg.isEmpty()) {
             throw new UsageException("Argument must be provided for: " + argName);
         }
@@ -442,7 +456,6 @@ public class ConfigurationTool {
                             "or as .** to include all classes in the package and all of its subpackages");
         }
         root.addOrGetChildren(qualifiedPkg, inclusion);
-        return root;
     }
 
     private static String getResource(String resourceName) {

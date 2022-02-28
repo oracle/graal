@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.configure.filters.ComplexFilter;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsTracer;
@@ -58,14 +59,14 @@ import com.oracle.svm.configure.trace.TraceProcessor;
  * configuration. See {@link #createConditionalConfiguration()}
  */
 public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTracer implements TracingResultWriter {
-    private final Set<String> applicationPackagePrefixes;
+    private final ComplexFilter userCodeFilter;
     private ConfigurationSet configurationContainer = new ConfigurationSet();
-    private final ConditionalConfigurationPredicate filter;
+    private final ConditionalConfigurationPredicate predicate;
 
-    public ConditionalConfigurationWriter(TraceProcessor processor, MethodInfoRecordKeeper methodInfoRecordKeeper, Set<String> applicationPackagePrefixes, ConditionalConfigurationPredicate filter) {
+    public ConditionalConfigurationWriter(TraceProcessor processor, MethodInfoRecordKeeper methodInfoRecordKeeper, ComplexFilter userCodeFilter, ConditionalConfigurationPredicate predicate) {
         super(processor, methodInfoRecordKeeper);
-        this.applicationPackagePrefixes = applicationPackagePrefixes;
-        this.filter = filter;
+        this.userCodeFilter = userCodeFilter;
+        this.predicate = predicate;
     }
 
     private Map<MethodInfo, List<MethodCallNode>> mapMethodsToCallNodes() {
@@ -195,7 +196,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
     }
 
     private void filterConfiguration() {
-        configurationContainer = configurationContainer.filter(filter);
+        configurationContainer = configurationContainer.filter(predicate);
     }
 
     private void propagateConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
@@ -216,7 +217,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
     }
 
     private boolean methodOriginatesFromApplicationPackage(MethodInfo methodInfo) {
-        return applicationPackagePrefixes.stream().anyMatch(prefix -> methodInfo.getJavaDeclaringClassName().startsWith(prefix));
+        return userCodeFilter.includes(methodInfo.getJavaDeclaringClassName());
     }
 
     @Override

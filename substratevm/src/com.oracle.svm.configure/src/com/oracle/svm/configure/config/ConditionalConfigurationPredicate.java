@@ -1,56 +1,52 @@
 package com.oracle.svm.configure.config;
 
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.core.configure.ConditionalElement;
 
 public class ConditionalConfigurationPredicate implements TypeConfiguration.Predicate, ProxyConfiguration.Predicate,
                 ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate {
 
-    private final Set<Pattern> classNamePatterns;
+    private final ComplexFilter filter;
 
-    public ConditionalConfigurationPredicate(Set<Pattern> classNamePatterns) {
-        this.classNamePatterns = classNamePatterns;
-    }
-
-    private boolean classNameMatchesAny(String className) {
-        return classNamePatterns.stream().anyMatch(p -> p.matcher(className).find());
+    public ConditionalConfigurationPredicate(ComplexFilter filter) {
+        this.filter = filter;
     }
 
     @Override
     public boolean testIncludedType(ConditionalElement<String> conditionalElement, ConfigurationType type) {
-        return classNameMatchesAny(conditionalElement.getCondition().getTypeName()) || classNameMatchesAny(type.getQualifiedJavaName());
+        return !filter.includes(conditionalElement.getCondition().getTypeName()) || !filter.includes(type.getQualifiedJavaName());
     }
 
     @Override
     public boolean testProxyInterfaceList(ConditionalElement<List<String>> conditionalElement) {
-        return classNameMatchesAny(conditionalElement.getCondition().getTypeName());
+        return !filter.includes(conditionalElement.getCondition().getTypeName());
     }
 
     @Override
     public boolean testIncludedResource(ConditionalElement<String> condition, Pattern pattern) {
-        return classNameMatchesAny(condition.getCondition().getTypeName());
+        return !filter.includes(condition.getCondition().getTypeName());
     }
 
     @Override
     public boolean testIncludedBundle(ConditionalElement<String> condition, ResourceConfiguration.BundleConfiguration bundleConfiguration) {
-        return classNameMatchesAny(condition.getCondition().getTypeName());
+        return !filter.includes(condition.getCondition().getTypeName());
     }
 
     @Override
     public boolean testSerializationType(SerializationConfigurationType type) {
-        return classNameMatchesAny(type.getCondition().getTypeName()) || classNameMatchesAny(type.getQualifiedJavaName());
+        return !(filter.includes(type.getCondition().getTypeName()) && filter.includes(type.getQualifiedJavaName()));
     }
 
     @Override
     public boolean testLambdaSerializationType(SerializationConfigurationLambdaCapturingType type) {
-        return classNameMatchesAny(type.getCondition().getTypeName()) || classNameMatchesAny(type.getQualifiedJavaName());
+        return !(filter.includes(type.getCondition().getTypeName()) && filter.includes(type.getQualifiedJavaName()));
     }
 
     @Override
     public boolean testPredefinedClass(ConfigurationPredefinedClass clazz) {
-        return clazz.getNameInfo() != null && classNameMatchesAny(clazz.getNameInfo());
+        return clazz.getNameInfo() != null && !filter.includes(clazz.getNameInfo());
     }
 }

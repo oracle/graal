@@ -180,12 +180,4 @@ public class ConfigurationFileCollection {
             }
         }
     }
-
-    private static Path tryGetPath(URI uri) {
-        try {
-            return Paths.get(uri);
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

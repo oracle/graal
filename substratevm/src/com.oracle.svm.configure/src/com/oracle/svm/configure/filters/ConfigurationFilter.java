@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,24 +25,36 @@
 package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
-import java.io.Reader;
+import java.util.Map;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.configure.json.JsonWriter;
 
-public class FilterConfigurationParser extends ConfigurationParser {
-    private final ConfigurationFilter filter;
+public interface ConfigurationFilter {
 
-    public FilterConfigurationParser(ConfigurationFilter filter) {
-        super(true);
-        assert filter != null;
-        this.filter = filter;
+    void printJson(JsonWriter writer) throws IOException;
+
+    void parseFromJson(Map<String, Object> topJsonObject);
+
+    boolean includes(String qualifiedName);
+
+    /** Inclusion status of a filter. */
+    enum Inclusion {
+        Include("+"),
+        Exclude("-");
+
+        final String s;
+
+        Inclusion(String s) {
+            this.s = s;
+        }
+
+        @Override
+        public String toString() {
+            return s;
+        }
+
+        public Inclusion invert() {
+            return (this == Include) ? Exclude : Include;
+        }
     }
-
-    @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        Object json = new JSONParser(reader).parse();
-        filter.parseFromJson(asMap(json, "First level of document must be an object"));
-    }
-
 }

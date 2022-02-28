@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,41 @@
  */
 package com.oracle.svm.configure.filters;
 
+import com.oracle.svm.configure.json.JsonWriter;
+
 import java.io.IOException;
-import java.io.Reader;
+import java.util.Map;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
+public class ComplexFilter implements ConfigurationFilter {
+    private final RuleNode ruleNode;
+    private final RegexFilter regexFilter = new RegexFilter();
 
-public class FilterConfigurationParser extends ConfigurationParser {
-    private final ConfigurationFilter filter;
-
-    public FilterConfigurationParser(ConfigurationFilter filter) {
-        super(true);
-        assert filter != null;
-        this.filter = filter;
+    public ComplexFilter(RuleNode ruleNode) {
+        this.ruleNode = ruleNode;
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        Object json = new JSONParser(reader).parse();
-        filter.parseFromJson(asMap(json, "First level of document must be an object"));
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append('{');
+        writer.indent().newline();
+        ruleNode.printJson(writer);
+        regexFilter.printJson(writer);
+        writer.unindent().newline();
+        writer.append('}').newline();
     }
 
+    @Override
+    public void parseFromJson(Map<String, Object> topJsonObject) {
+        ruleNode.parseFromJson(topJsonObject);
+        regexFilter.parseFromJson(topJsonObject);
+    }
+
+    @Override
+    public boolean includes(String qualifiedName) {
+        return ruleNode.includes(qualifiedName) && regexFilter.includes(qualifiedName);
+    }
+
+    public RuleNode getRuleNode() {
+        return ruleNode;
+    }
 }

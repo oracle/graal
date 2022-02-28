@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.configure.filters.RuleNode.Inclusion;
+import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
 
 public class ModuleFilterTools {
 
