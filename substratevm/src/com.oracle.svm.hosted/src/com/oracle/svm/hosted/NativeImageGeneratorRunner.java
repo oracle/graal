@@ -357,10 +357,10 @@ public class NativeImageGeneratorRunner {
                         }
                         mainClass = classLoader.forName(className, mainModule);
                         if (mainClass == null) {
-                            throw UserError.abort("Main entry point class '%s' not found.", className);
+                            throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
                         }
                     } catch (ClassNotFoundException ex) {
-                        throw UserError.abort("Main entry point class '%s' not found.", className);
+                        throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
                     }
                     String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
                     if (mainEntryPointName.isEmpty()) {
