@@ -91,23 +91,26 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  */
 public abstract class PartialEvaluator {
 
+    // Configs
     public final TruffleCompilerConfiguration config;
+    volatile GraphBuilderConfiguration configForParsing;
+    // Methods
     final ResolvedJavaMethod callDirectMethod;
     protected final ResolvedJavaMethod callInlined;
     final ResolvedJavaMethod callIndirectMethod;
     private final ResolvedJavaMethod profiledPERoot;
+    final ResolvedJavaMethod callBoundary;
+    // Plugins
     private final GraphBuilderConfiguration configPrototype;
     private final InvocationPlugins firstTierDecodingPlugins;
     private final InvocationPlugins lastTierDecodingPlugins;
+    protected final PELoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
     private final NodePlugin[] nodePlugins;
+    // Misc
     final KnownTruffleTypes knownTruffleTypes;
-    final ResolvedJavaMethod callBoundary;
-    volatile GraphBuilderConfiguration configForParsing;
-
     /**
-     * Holds instrumentation options initialized in
-     * {@link #initialize(OptionValues, GraphBuilderConfiguration)} method before the first
-     * compilation. These options are not engine aware.
+     * Holds instrumentation options initialized in {@link #initialize(OptionValues)} method before
+     * the first compilation. These options are not engine aware.
      */
     public volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
     /**
@@ -117,7 +120,6 @@ public abstract class PartialEvaluator {
      * the TruffleRuntime object is created.
      */
     protected volatile InstrumentPhase.Instrumentation instrumentation;
-
     protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
@@ -308,7 +310,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private class PELoopExplosionPlugin implements LoopExplosionPlugin {
+    private static final class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
         @Override
         public LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method) {
@@ -334,10 +336,8 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings("unused")
-    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, LoopExplosionPlugin loopExplosionPlugin,
-                    InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList,
-                    SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
+                    NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
@@ -368,7 +368,6 @@ public abstract class PartialEvaluator {
                         inlineInvokePlugin
         };
         PEGraphDecoder decoder = createGraphDecoder(context,
-                        new PELoopExplosionPlugin(),
                         context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
                         inlineInvokePlugins,
                         new InterceptReceiverPlugin(context.compilable),

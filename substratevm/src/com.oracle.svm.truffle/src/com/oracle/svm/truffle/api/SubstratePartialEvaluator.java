@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.phases.util.Providers;
@@ -62,14 +61,10 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, LoopExplosionPlugin loopExplosionPlugin,
-                    InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
+                    NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         return new SubstratePEGraphDecoder(config.architecture(), context.graph, config.lastTier().providers().copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins,
-                        inlineInvokePlugins,
-                        parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider,
-                        specialCallTargetCache, invocationPluginsCache);
+                        inlineInvokePlugins, parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider, specialCallTargetCache, invocationPluginsCache);
     }
 
     @Override
