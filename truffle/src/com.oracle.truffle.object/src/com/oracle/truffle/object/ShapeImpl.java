@@ -124,8 +124,6 @@ public abstract class ShapeImpl extends Shape {
     protected final int primitiveArraySize;
     /** @since 0.17 or earlier */
     protected final int primitiveArrayCapacity;
-    /** @since 0.17 or earlier */
-    protected final boolean hasPrimitiveArray;
 
     /** @since 0.17 or earlier */
     protected final int depth;
@@ -176,7 +174,7 @@ public abstract class ShapeImpl extends Shape {
      *      Transition, BaseAllocator, int)
      */
     private ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent,
-                    int objectArraySize, int objectFieldSize, int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
+                    int objectArraySize, int objectFieldSize, int primitiveFieldSize, int primitiveArraySize, int flags, Assumption singleContextAssumption) {
         this.layout = (LayoutImpl) layout;
         this.objectType = Objects.requireNonNull(objectType);
         this.propertyMap = Objects.requireNonNull(propertyMap);
@@ -189,7 +187,6 @@ public abstract class ShapeImpl extends Shape {
         this.primitiveFieldSize = primitiveFieldSize;
         this.primitiveArraySize = primitiveArraySize;
         this.primitiveArrayCapacity = capacityFromSize(primitiveArraySize);
-        this.hasPrimitiveArray = hasPrimitiveArray;
 
         if (parent != null) {
             this.propertyCount = makePropertyCount(parent, propertyMap, transitionFromParent);
@@ -227,7 +224,7 @@ public abstract class ShapeImpl extends Shape {
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap,
                     Transition transition, Allocator allocator, int flags) {
         this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
-                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, ((BaseAllocator) allocator).hasPrimitiveArray, flags, null);
+                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, flags, null);
     }
 
     /** @since 0.17 or earlier */
@@ -237,7 +234,7 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
-        this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, true, flags, constantObjectAssumption);
+        this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, flags, constantObjectAssumption);
     }
 
     private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap, Transition transitionFromParent) {
@@ -338,7 +335,7 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     public final boolean hasPrimitiveArray() {
-        return hasPrimitiveArray;
+        return getLayout().hasPrimitiveExtensionArray();
     }
 
     /**
@@ -636,7 +633,7 @@ public abstract class ShapeImpl extends Shape {
         PropertyMap newPropertyMap = parent.propertyMap.putCopy(addend);
 
         ShapeImpl newShape = parent.createShape(parent.layout, parent.sharedData, parent, parent.objectType, newPropertyMap, addTransition, allocator, parent.flags);
-        assert ((LocationImpl) addend.getLocation()).primitiveArrayCount() == 0 || newShape.hasPrimitiveArray;
+        assert newShape.hasPrimitiveArray() || ((LocationImpl) addend.getLocation()).primitiveArrayCount() == 0;
         assert newShape.depth == allocator.depth;
         return newShape;
     }
@@ -1327,8 +1324,6 @@ public abstract class ShapeImpl extends Shape {
         /** @since 0.17 or earlier */
         protected int primitiveArraySize;
         /** @since 0.17 or earlier */
-        protected boolean hasPrimitiveArray;
-        /** @since 0.17 or earlier */
         protected int depth;
         /** @since 0.18 */
         protected boolean shared;
@@ -1345,7 +1340,6 @@ public abstract class ShapeImpl extends Shape {
             this.objectFieldSize = shape.objectFieldSize;
             this.primitiveFieldSize = shape.primitiveFieldSize;
             this.primitiveArraySize = shape.primitiveArraySize;
-            this.hasPrimitiveArray = shape.hasPrimitiveArray;
             this.depth = shape.depth;
             this.shared = shape.isShared();
         }
@@ -1420,11 +1414,7 @@ public abstract class ShapeImpl extends Shape {
             if (location0 instanceof LocationImpl) {
                 LocationImpl location = (LocationImpl) location0;
                 location.accept(this);
-                if (layout.hasPrimitiveExtensionArray()) {
-                    hasPrimitiveArray |= primitiveArraySize > 0;
-                } else {
-                    assert !hasPrimitiveArray && primitiveArraySize == 0;
-                }
+                assert layout.hasPrimitiveExtensionArray() || primitiveArraySize == 0;
             }
             depth++;
             return location0;
