@@ -842,7 +842,7 @@ public abstract class Launcher {
         try {
             descriptor.getKey().getType().convert(value);
         } catch (IllegalArgumentException e) {
-            throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
+            throw abort(String.format("Invalid argument %s specified. %s", arg, e.getMessage()));
         }
         if (descriptor.isDeprecated()) {
             String messageFormat = "Option '%s' is deprecated and might be removed from future versions.";
