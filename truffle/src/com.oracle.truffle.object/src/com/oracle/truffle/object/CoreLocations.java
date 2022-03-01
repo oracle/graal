@@ -320,16 +320,8 @@ abstract class CoreLocations {
 
     public abstract static class ArrayLocation extends InstanceLocation {
 
-        protected final CoreLocation arrayLocation;
-
-        protected ArrayLocation(int index, CoreLocation arrayLocation) {
+        protected ArrayLocation(int index) {
             super(index);
-            this.arrayLocation = arrayLocation;
-        }
-
-        protected final Object getArray(DynamicObject store, boolean guard) {
-            // non-null cast
-            return arrayLocation.get(store, guard);
         }
 
         @Override
@@ -405,18 +397,22 @@ abstract class CoreLocations {
     }
 
     static class ObjectArrayLocation extends ArrayLocation implements ObjectLocation {
-        protected ObjectArrayLocation(int index, CoreLocation arrayLocation) {
-            super(index, arrayLocation);
+        protected ObjectArrayLocation(int index) {
+            super(index);
+        }
+
+        protected static final Object[] getArray(DynamicObject store) {
+            return LayoutImpl.ACCESS.getObjectArray(store);
         }
 
         @Override
         public Object get(DynamicObject store, boolean guard) {
-            return ((Object[]) getArray(store, guard))[index];
+            return getArray(store)[index];
         }
 
         @Override
         public final void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            ((Object[]) getArray(store, guard))[index] = value;
+            getArray(store)[index] = value;
         }
 
         @Override
@@ -499,13 +495,13 @@ abstract class CoreLocations {
 
         protected final boolean allowInt;
 
-        protected LongArrayLocation(int index, CoreLocation arrayLocation, boolean allowInt) {
-            super(index, arrayLocation);
+        protected LongArrayLocation(int index, boolean allowInt) {
+            super(index);
             this.allowInt = allowInt;
         }
 
-        protected LongArrayLocation(int index, CoreLocation arrayLocation) {
-            this(index, arrayLocation, false);
+        protected LongArrayLocation(int index) {
+            this(index, false);
         }
 
         @Override
@@ -530,14 +526,18 @@ abstract class CoreLocations {
             }
         }
 
+        protected static final int[] getArray(DynamicObject store) {
+            return LayoutImpl.ACCESS.getPrimitiveArray(store);
+        }
+
         @Override
         public long getLong(DynamicObject store, boolean guard) {
-            int[] array = (int[]) getArray(store, guard);
+            int[] array = getArray(store);
             return UNSAFE.getLong(array, getOffset(array));
         }
 
         public final void setLongInternal(DynamicObject store, long value) {
-            int[] array = (int[]) getArray(store, false);
+            int[] array = getArray(store);
             long offset = getOffset(array);
             UNSAFE.putLong(array, offset, value);
         }
