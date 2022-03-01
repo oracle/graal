@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -305,12 +305,25 @@ abstract class CoreLocations {
         }
     }
 
-    public abstract static class ArrayLocation extends CoreLocation {
+    abstract static class InstanceLocation extends CoreLocation {
+
         protected final int index;
+
+        protected InstanceLocation(int index) {
+            this.index = index;
+        }
+
+        public final int getIndex() {
+            return index;
+        }
+    }
+
+    public abstract static class ArrayLocation extends InstanceLocation {
+
         protected final CoreLocation arrayLocation;
 
         protected ArrayLocation(int index, CoreLocation arrayLocation) {
-            this.index = index;
+            super(index);
             this.arrayLocation = arrayLocation;
         }
 
@@ -339,21 +352,16 @@ abstract class CoreLocations {
             return true;
         }
 
-        public final int getIndex() {
-            return index;
-        }
-
         @Override
         public String getWhereString() {
             return "[" + index + "]";
         }
     }
 
-    public abstract static class FieldLocation extends CoreLocation {
-        private final int index;
+    public abstract static class FieldLocation extends InstanceLocation {
 
         protected FieldLocation(int index) {
-            this.index = index;
+            super(index);
         }
 
         @Override
@@ -374,10 +382,6 @@ abstract class CoreLocations {
                 return false;
             }
             return true;
-        }
-
-        public final int getIndex() {
-            return index;
         }
 
         @Override
