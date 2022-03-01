@@ -121,11 +121,7 @@ public final class ModuleLayerFeature implements Feature {
     private Object replaceHostedModules(Object source) {
         if (source instanceof Module) {
             Module module = (Module) source;
-            if (module.isNamed()) {
-                return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module.getName(), module.getDescriptor());
-            } else {
-                return moduleLayerFeatureUtils.getAllUnnamedModule();
-            }
+            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module, module.getDescriptor());
         }
         return source;
     }
@@ -215,10 +211,10 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableModules) {
+    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
 
-        Map<String, HostedRuntimeModulePair> moduleLookupMap = analysisReachableModules
+        Map<String, HostedRuntimeModulePair> moduleLookupMap = analysisReachableNamedModules
                         .stream()
                         .collect(Collectors.toMap(Module::getName, m -> new HostedRuntimeModulePair(m, runtimeBootLayer)));
         moduleLookupMap.putIfAbsent("ALL-UNNAMED", HostedRuntimeModulePair.withReplicatedHostedModule(moduleLayerFeatureUtils.allUnnamedModule));
@@ -425,9 +421,21 @@ public final class ModuleLayerFeature implements Feature {
             return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(String hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
-            if (nameToModuleLookup.containsKey(hostedModule)) {
-                return nameToModuleLookup.get(hostedModule);
+        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
+            if (hostedModule.isNamed()) {
+                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getName(), runtimeModuleDescriptor);
+            }
+
+            if (hostedModule == everyoneModule) {
+                return everyoneModule;
+            }
+
+            return allUnnamedModule;
+        }
+
+        public Module getOrCreateRuntimeModuleForHostedModule(String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
+            if (nameToModuleLookup.containsKey(hostedModuleName)) {
+                return nameToModuleLookup.get(hostedModuleName);
             } else {
                 Module runtimeModule;
                 try {
@@ -435,7 +443,7 @@ public final class ModuleLayerFeature implements Feature {
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
                     throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
                 }
-                nameToModuleLookup.put(hostedModule, runtimeModule);
+                nameToModuleLookup.put(hostedModuleName, runtimeModule);
                 return runtimeModule;
             }
         }
@@ -451,7 +459,7 @@ public final class ModuleLayerFeature implements Feature {
          * VM).
          */
         Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer)
-                        throws IllegalAccessException, InvocationTargetException, InstantiationException {
+                        throws IllegalAccessException, InvocationTargetException {
             Configuration cf = runtimeBootLayer.configuration();
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
