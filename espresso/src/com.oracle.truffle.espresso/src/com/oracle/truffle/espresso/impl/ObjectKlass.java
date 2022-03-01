@@ -293,7 +293,8 @@ public final class ObjectKlass extends Klass {
         if (iLock == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
-                if (initLock == null) {
+                iLock = initLock;
+                if (iLock == null) {
                     iLock = this.initLock = EspressoLock.create(getContext().getBlockingSupport());
                 }
             }
