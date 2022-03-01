@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 @DuplicatedInNativeCode
 public enum HubType {
@@ -44,22 +45,27 @@ public enum HubType {
         this.value = value;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getValue() {
         return value;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int hubType) {
         return hubType <= StoredContinuation.getValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isReferenceInstance(int hubType) {
         return hubType == InstanceReference.getValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isStoredContinuation(int hubType) {
         return hubType == StoredContinuation.getValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArray(int hubType) {
         return hubType >= TypeArray.getValue();
     }

@@ -580,14 +580,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return name;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInstanceClass() {
         return HubType.isInstance(hubType);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isStoredContinuationClass() {
         return HubType.isStoredContinuation(hubType);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isReferenceInstanceClass() {
         return HubType.isReferenceInstance(hubType);
     }

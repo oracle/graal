@@ -150,6 +150,7 @@ public class LayoutEncoding {
         return encoding == ABSTRACT_VALUE;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int encoding) {
         return encoding > LAST_SPECIAL_VALUE;
     }
