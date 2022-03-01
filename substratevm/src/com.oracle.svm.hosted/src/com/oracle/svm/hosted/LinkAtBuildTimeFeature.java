@@ -117,7 +117,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
             throw UserError.abort("Using '%s' without args only allowed on module-path. %s not part of module-path.",
                             SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
         } else {
-            for (String entry : OptionUtils.resolveOptionValueRedirection(Options.LinkAtBuildTime, value, origin)) {
+            for (String entry : OptionUtils.resolveOptionValuesRedirection(Options.LinkAtBuildTime, value, origin)) {
                 if (validOptionValue.matcher(entry).matches()) {
                     requireCompletePackageOrClass.computeIfAbsent(entry, unused -> new HashSet<>()).add(origin);
                 } else {

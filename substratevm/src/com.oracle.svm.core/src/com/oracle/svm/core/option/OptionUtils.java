@@ -75,13 +75,13 @@ public class OptionUtils {
         return result;
     }
 
-    public static List<String> resolveOptionValueRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin) {
+    public static List<String> resolveOptionValuesRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin) {
         return Arrays.asList(SubstrateUtil.split(optionValue, ",")).stream()
-                        .flatMap(entry -> resolveOptionValueRedirectionFlatMap(option, optionValue, origin, entry))
+                        .flatMap(entry -> resolveOptionValueRedirection(option, optionValue, origin, entry))
                         .collect(Collectors.toList());
     }
 
-    private static Stream<? extends String> resolveOptionValueRedirectionFlatMap(OptionKey<?> option, String optionValue, OptionOrigin origin, String entry) {
+    private static Stream<? extends String> resolveOptionValueRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin, String entry) {
         if (entry.trim().startsWith("@")) {
             Path valuesFile = Path.of(entry.substring(1));
             if (valuesFile.isAbsolute()) {
