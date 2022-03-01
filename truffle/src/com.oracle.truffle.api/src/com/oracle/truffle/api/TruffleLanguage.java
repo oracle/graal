@@ -613,7 +613,8 @@ public abstract class TruffleLanguage<C> {
      * Performs language context finalization actions that are necessary before language contexts
      * are {@link #disposeContext(Object) disposed}. However, in case the underlying polyglot
      * context is being cancelled or hard-exited, {@link #disposeContext(Object)} is called even if
-     * {@link #finalizeContext(Object)} throws a {@link TruffleException} or a {@link ThreadDeath}
+     * {@link #finalizeContext(Object)} throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a {@link ThreadDeath}
      * cancel or exit exception.
      * <p>
      * For the hard exit a language is supposed to run its finalization actions that require running
@@ -673,10 +674,11 @@ public abstract class TruffleLanguage<C> {
      * {@link #finalizeContext(Object) finalized}. However, in case the underlying polyglot context
      * is being cancelled, {@link #exitContext(Object, ExitMode, int) exit notifications} are not
      * executed. Also, for {@link ExitMode#HARD hard exit}, {@link #finalizeContext(Object)} is
-     * called even if {@link #exitContext(Object, ExitMode, int)} throws a {@link TruffleException}
-     * or a {@link ThreadDeath} cancel or exit exception. All initialized language contexts must
-     * remain usable after exit notifications. In case a {@link TruffleException} or the
-     * {@link ThreadDeath} exit exception is thrown during a {@link ExitMode#HARD hard exit
+     * called even if {@link #exitContext(Object, ExitMode, int)} throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a {@link ThreadDeath}
+     * cancel or exit exception. All initialized language contexts must remain usable after exit
+     * notifications. In case a {@link com.oracle.truffle.api.exception.AbstractTruffleException} or
+     * the {@link ThreadDeath} exit exception is thrown during an {@link ExitMode#HARD hard exit
      * notification}, it is just logged and otherwise ignored and the notification process continues
      * with the next language in order. In case the {@link ThreadDeath} cancel exception is thrown,
      * it means the context is being cancelled in which case the exit notification process
@@ -778,7 +780,8 @@ public abstract class TruffleLanguage<C> {
      * should be run in {@link #finalizeContext(Object)} instead. Finalization will be performed
      * prior to context {@link #disposeContext(Object) disposal}. However, in case the underlying
      * polyglot context is being cancelled, {@link #disposeContext(Object)} is called even if
-     * {@link #finalizeContext(Object)} throws {@link TruffleException} or {@link ThreadDeath}
+     * {@link #finalizeContext(Object)} throws
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or {@link ThreadDeath}
      * exception..
      * <p>
      * The disposal order can be influenced by specifying {@link Registration#dependentLanguages()
