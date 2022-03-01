@@ -582,6 +582,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
+    private void addSubexpressionCall(int groupNumber) {
+        if (!silent) {
+            astBuilder.addSubexpressionCall(groupNumber);
+        }
+    }
+
     private void addCaret() {
         if (!silent) {
             astBuilder.addCaret();
@@ -1567,8 +1573,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private boolean subexpressionCall() {
         if (match("g<")) {
-            parseGroupReference('>', true, true, false, false);
-            bailOut("subexpression calls not supported");
+            int targetGroup = parseGroupReference('>', true, true, false, false);
+            addSubexpressionCall(targetGroup);
             return true;
         } else {
             return false;
@@ -2356,13 +2362,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         disjunction();
         if (match(")")) {
             popGroup();
+            if (capturing) {
+                groupStack.pop();
+            }
+            lastTerm = TermCategory.Atom;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        if (capturing) {
-            groupStack.pop();
-        }
-        lastTerm = TermCategory.Atom;
     }
 
     /**
@@ -2376,10 +2382,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         disjunction();
         if (match(")")) {
             popGroup();
+            lastTerm = TermCategory.LookAroundAssertion;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        lastTerm = TermCategory.LookAroundAssertion;
     }
 
     /**
@@ -2392,10 +2398,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         lookbehindDepth--;
         if (match(")")) {
             popGroup();
+            lastTerm = TermCategory.LookAroundAssertion;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        lastTerm = TermCategory.LookAroundAssertion;
     }
 
     /**

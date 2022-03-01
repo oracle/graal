@@ -62,6 +62,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
@@ -491,6 +492,11 @@ public final class RegexASTBuilder {
             }
             parent = parent.getParent();
         }
+    }
+
+    public void addSubexpressionCall(int groupNumber) {
+        SubexpressionCall subexpressionCall = ast.createSubexpressionCall(groupNumber);
+        addTerm(subexpressionCall);
     }
 
     /**
