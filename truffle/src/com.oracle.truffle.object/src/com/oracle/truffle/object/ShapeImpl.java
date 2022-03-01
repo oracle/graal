@@ -642,21 +642,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /**
-     * Create a new shape that reserves the primitive extension array field.
-     *
-     * @since 0.17 or earlier
-     */
-    protected static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
-        assert parent.getLayout().hasPrimitiveExtensionArray();
-        assert !parent.hasPrimitiveArray();
-        BaseAllocator allocator = parent.allocator().addLocation(parent.getLayout().getPrimitiveArrayLocation());
-        ShapeImpl newShape = parent.createShape(parent.layout, parent.sharedData, parent, parent.objectType, parent.propertyMap, transition, allocator, parent.flags);
-        assert newShape.hasPrimitiveArray();
-        assert newShape.depth == allocator.depth;
-        return newShape;
-    }
-
-    /**
      * Are these two shapes related, i.e. do they have the same root?
      *
      * @param other Shape to compare to
@@ -1154,9 +1139,6 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final ShapeImpl reservePrimitiveExtensionArray() {
-        if (layout.hasPrimitiveExtensionArray() && !hasPrimitiveArray()) {
-            return getLayoutStrategy().addPrimitiveExtensionArray(this);
-        }
         return this;
     }
 

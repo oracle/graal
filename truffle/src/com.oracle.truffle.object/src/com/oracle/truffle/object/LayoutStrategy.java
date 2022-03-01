@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.object.Transition.DirectReplacePropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.RemovePropertyTransition;
-import com.oracle.truffle.object.Transition.ReservePrimitiveArrayTransition;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
@@ -439,8 +438,6 @@ public abstract class LayoutStrategy {
             return shape.setDynamicType(((ObjectTypeTransition) transition).getObjectType());
         } else if (transition instanceof ObjectFlagsTransition) {
             return shape.setFlags(((ObjectFlagsTransition) transition).getObjectFlags());
-        } else if (transition instanceof ReservePrimitiveArrayTransition) {
-            return shape.reservePrimitiveExtensionArray();
         } else if (transition instanceof DirectReplacePropertyTransition) {
             Property oldProperty = ((DirectReplacePropertyTransition) transition).getPropertyBefore();
             Property newProperty = ((DirectReplacePropertyTransition) transition).getPropertyAfter();
@@ -459,22 +456,6 @@ public abstract class LayoutStrategy {
         } else {
             throw new UnsupportedOperationException(transition.getClass().getName());
         }
-    }
-
-    /** @since 0.17 or earlier */
-    protected ShapeImpl addPrimitiveExtensionArray(ShapeImpl shape) {
-        LayoutImpl layout = shape.getLayout();
-        assert layout.hasPrimitiveExtensionArray() && !shape.hasPrimitiveArray();
-        Transition transition = new ReservePrimitiveArrayTransition();
-        ShapeImpl cachedShape = shape.queryTransition(transition);
-        if (cachedShape != null) {
-            return layout.getStrategy().ensureValid(cachedShape);
-        }
-
-        ShapeImpl oldShape = ensureSpace(shape, layout.getPrimitiveArrayLocation());
-        ShapeImpl newShape = ShapeImpl.makeShapeWithPrimitiveExtensionArray(oldShape, transition);
-        oldShape.addDirectTransition(transition, newShape);
-        return newShape;
     }
 
     /**
