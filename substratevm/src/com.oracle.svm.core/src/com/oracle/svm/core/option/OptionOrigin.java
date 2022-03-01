@@ -53,6 +53,11 @@ public abstract class OptionOrigin {
         return false;
     }
 
+    /**
+     * Return the option values contained in the redirection file specified by the given path.
+     * Depending on the specific kind of OptionOrigin the method to retrieve those values can
+     * require different implementations.
+     */
     public List<String> getRedirectionValues(@SuppressWarnings("unused") Path valuesFile) throws IOException {
         throw new IOException(new UnsupportedOperationException());
     }
