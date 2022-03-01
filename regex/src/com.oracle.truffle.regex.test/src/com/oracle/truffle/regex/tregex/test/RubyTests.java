@@ -391,4 +391,13 @@ public class RubyTests extends RegexTestBase {
         test("\\Ga|\\Gb", "", "cab", 1, true, 1, 2);
         test("\\Ga|\\Gb", "", "cab", 2, true, 2, 3);
     }
+
+    @Test
+    public void subexpressionCalls() {
+        // numeric subexpression calls
+        test("(a)\\g<1>", "", "aa", 0, true, 0, 2, 1, 2);
+        // named subexpression calls
+        test("(?<foo>foo.)bar\\g<foo>", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
+        test("(?<three_digits>[0-9]{3})-\\g<three_digits>", "", "123-456", 0, true, 0, 7, 4, 7);
+    }
 }

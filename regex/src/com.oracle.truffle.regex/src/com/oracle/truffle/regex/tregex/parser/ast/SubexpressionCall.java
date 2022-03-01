@@ -68,6 +68,11 @@ public class SubexpressionCall extends QuantifiableTerm {
         return copy(ast);
     }
 
+    @Override
+    public Sequence getParent() {
+        return (Sequence) super.getParent();
+    }
+
     /**
      * Returns the capture group number this subexpression call is referring to, e.g. the referenced
      * group of {@code \g<1>} is 1.

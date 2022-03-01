@@ -346,6 +346,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private TermCategory lastTerm;
 
+    private boolean hasSubexpressionCalls;
+
     /**
      * The contents of the character class that is currently being parsed.
      */
@@ -398,6 +400,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
         this.lastTerm = TermCategory.None;
+        this.hasSubexpressionCalls = false;
         this.astBuilder = astBuilder;
         this.silent = astBuilder == null;
     }
@@ -440,6 +443,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         astBuilder.pushRootGroup();
         run();
         RegexAST ast = astBuilder.popRootGroup();
+        if (hasSubexpressionCalls) {
+            RubySubexpressionCalls.expandNonRecursiveSubexpressionCalls(ast);
+        }
         ast.setFlags(makeTRegexFlags(globalFlags.isSticky() || startsWithBeginningAnchor));
         return ast;
     }
@@ -1575,6 +1581,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (match("g<")) {
             int targetGroup = parseGroupReference('>', true, true, false, false);
             addSubexpressionCall(targetGroup);
+            hasSubexpressionCalls = true;
             return true;
         } else {
             return false;
