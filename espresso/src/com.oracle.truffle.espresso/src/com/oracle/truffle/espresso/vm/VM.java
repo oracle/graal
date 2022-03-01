@@ -552,7 +552,7 @@ public final class VM extends NativeEnv {
         for (int i = 0; i < packages.length; i++) {
             array[i] = getMeta().toGuestString(packages[i]);
         }
-        return StaticObject.createArray(getMeta().java_lang_String.getArrayClass(), array);
+        return StaticObject.createArray(getMeta().java_lang_String.getArrayClass(), array, getContext());
     }
 
     @VmImpl
@@ -639,56 +639,56 @@ public final class VM extends NativeEnv {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             booleanArray[i] = (boolean) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, booleanArray);
+                        return StaticObject.createArray(arrayKlass, booleanArray, meta.getContext());
                     case Byte:
                         byte[] byteArray = new byte[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             byteArray[i] = (byte) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, byteArray);
+                        return StaticObject.createArray(arrayKlass, byteArray, meta.getContext());
                     case Short:
                         short[] shortArray = new short[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             shortArray[i] = (short) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, shortArray);
+                        return StaticObject.createArray(arrayKlass, shortArray, meta.getContext());
                     case Char:
                         char[] charArray = new char[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             charArray[i] = (char) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, charArray);
+                        return StaticObject.createArray(arrayKlass, charArray, meta.getContext());
                     case Int:
                         int[] intArray = new int[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             intArray[i] = (int) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, intArray);
+                        return StaticObject.createArray(arrayKlass, intArray, meta.getContext());
                     case Float:
                         float[] floatArray = new float[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             floatArray[i] = (float) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, floatArray);
+                        return StaticObject.createArray(arrayKlass, floatArray, meta.getContext());
                     case Long:
                         long[] longArray = new long[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             longArray[i] = (long) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, longArray);
+                        return StaticObject.createArray(arrayKlass, longArray, meta.getContext());
                     case Double:
                         double[] doubleArray = new double[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             doubleArray[i] = (double) toEspressoNode.execute(foreignElement, componentType);
                         }
-                        return StaticObject.createArray(arrayKlass, doubleArray);
+                        return StaticObject.createArray(arrayKlass, doubleArray, meta.getContext());
                     case Object:
                     case Void:
                     case ReturnAddress:
@@ -713,7 +713,7 @@ public final class VM extends NativeEnv {
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast an element of a foreign array to the declared component type");
             }
         }
-        return StaticObject.createArray(arrayKlass, newArray);
+        return StaticObject.createArray(arrayKlass, newArray, meta.getContext());
     }
 
     @VmImpl(isJni = true)
@@ -726,7 +726,7 @@ public final class VM extends NativeEnv {
             if (self.isForeignObject()) {
                 return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
             }
-            return self.copy(language);
+            return self.copy(meta.getContext());
         }
 
         if (self.isForeignObject()) {
@@ -762,7 +762,7 @@ public final class VM extends NativeEnv {
             }
         }
 
-        final StaticObject clone = self.copy(language);
+        final StaticObject clone = self.copy(meta.getContext());
 
         // If the original object is finalizable, so is the copy.
         assert self.getKlass() instanceof ObjectKlass;
@@ -884,7 +884,7 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
-    public @JavaType(Object[].class) StaticObject JVM_GetClassSigners(@JavaType(Class.class) StaticObject self, @Inject EspressoLanguage language) {
+    public @JavaType(Object[].class) StaticObject JVM_GetClassSigners(@JavaType(Class.class) StaticObject self, @Inject EspressoContext context) {
         Klass klass = self.getMirrorKlass();
         if (klass.isPrimitive()) {
             return StaticObject.NULL;
@@ -893,7 +893,7 @@ public final class VM extends NativeEnv {
         if (signersArray == null || StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
         }
-        return signersArray.copy(language);
+        return signersArray.copy(context);
     }
 
     @VmImpl(isJni = true)
@@ -965,7 +965,7 @@ public final class VM extends NativeEnv {
             @Override
             public StaticObject apply(int i) {
                 final Field f = fields[i];
-                StaticObject instance = meta.java_lang_reflect_Field.allocateInstance();
+                StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(getContext());
 
                 Attribute rawRuntimeVisibleAnnotations = f.getAttribute(Name.RuntimeVisibleAnnotations);
                 StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
@@ -1083,7 +1083,7 @@ public final class VM extends NativeEnv {
                     genericSignature = meta.toGuestString(sig);
                 }
 
-                StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance();
+                StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance(getContext());
                 constructorInit.invokeDirect(
                                 /* this */ instance,
                                 /* declaringKlass */ m.getDeclaringKlass().mirror(),
@@ -1126,7 +1126,7 @@ public final class VM extends NativeEnv {
         return meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
-                return methods[i].makeMirror();
+                return methods[i].makeMirror(meta);
             }
         });
 
@@ -1304,7 +1304,7 @@ public final class VM extends NativeEnv {
             // No constant pool for arrays and primitives.
             return StaticObject.NULL;
         }
-        StaticObject cp = InterpreterToVM.newObject(getMeta().sun_reflect_ConstantPool, false);
+        StaticObject cp = getAllocator().createNew(getMeta().sun_reflect_ConstantPool);
         getMeta().sun_reflect_ConstantPool_constantPoolOop.setObject(cp, self);
         return cp;
     }
@@ -1406,7 +1406,7 @@ public final class VM extends NativeEnv {
             }
         }
         if (nClasses == permittedSubclasses.length) {
-            return StaticObject.createArray(getMeta().java_lang_Class_array, permittedSubclasses);
+            return StaticObject.createArray(getMeta().java_lang_Class_array, permittedSubclasses, getContext());
         }
         return getMeta().java_lang_Class.allocateReferenceArray(nClasses, (i) -> permittedSubclasses[i]);
     }
@@ -1440,7 +1440,7 @@ public final class VM extends NativeEnv {
         for (int i = 0; i < nestMembers.length; i++) {
             array[i] = nestMembers[i].mirror();
         }
-        return StaticObject.createArray(getMeta().java_lang_Class_array, array);
+        return StaticObject.createArray(getMeta().java_lang_Class_array, array, getContext());
     }
 
     @VmImpl(isJni = true)
@@ -1727,7 +1727,7 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
         }
-        StaticObject ste = meta.java_lang_StackTraceElement.allocateInstance();
+        StaticObject ste = meta.java_lang_StackTraceElement.allocateInstance(getContext());
         StackTrace frames = EspressoException.getFrames(self, meta);
         if (frames == null || index >= frames.size) {
             profiler.profile(1);
@@ -2377,7 +2377,7 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @JavaType(internalName = "Ljava/lang/AssertionStatusDirectives;") StaticObject JVM_AssertionStatusDirectives(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused) {
         Meta meta = getMeta();
-        StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance();
+        StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance(getContext());
         meta.java_lang_AssertionStatusDirectives.lookupMethod(Name._init_, Signature._void).invokeDirect(instance);
         meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateReferenceArray(0));
         meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocatePrimitiveArray(0));
@@ -2634,7 +2634,7 @@ public final class VM extends NativeEnv {
                                 return null;
                             }
                         });
-        return StaticObject.createArray(getMeta().java_lang_Class_array, result.toArray(StaticObject.EMPTY_ARRAY));
+        return StaticObject.createArray(getMeta().java_lang_Class_array, result.toArray(StaticObject.EMPTY_ARRAY), getContext());
     }
 
     // region privileged
@@ -2643,7 +2643,7 @@ public final class VM extends NativeEnv {
                     boolean isPriviledged,
                     @JavaType(AccessControlContext.class) StaticObject priviledgedContext) {
         Klass accKlass = getMeta().java_security_AccessControlContext;
-        StaticObject acc = accKlass.allocateInstance();
+        StaticObject acc = accKlass.allocateInstance(getContext());
         getMeta().java_security_AccessControlContext_context.setObject(acc, context);
         getMeta().java_security_AccessControlContext_privilegedContext.setObject(acc, priviledgedContext);
         getMeta().java_security_AccessControlContext_isPrivileged.setBoolean(acc, isPriviledged);
@@ -2655,7 +2655,7 @@ public final class VM extends NativeEnv {
 
     private @JavaType(AccessControlContext.class) StaticObject createDummyACC() {
         Klass pdKlass = getMeta().java_security_ProtectionDomain;
-        StaticObject pd = pdKlass.allocateInstance();
+        StaticObject pd = pdKlass.allocateInstance(getContext());
         getMeta().java_security_ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
         StaticObject context = StaticObject.wrap(new StaticObject[]{pd}, getMeta());
         return createACC(context, false, StaticObject.NULL);
@@ -2767,7 +2767,7 @@ public final class VM extends NativeEnv {
             if (meta.java_lang_Exception.isAssignableFrom(e.getGuestException().getKlass()) &&
                             !meta.java_lang_RuntimeException.isAssignableFrom(e.getGuestException().getKlass())) {
                 profiler.profile(3);
-                StaticObject wrapper = meta.java_security_PrivilegedActionException.allocateInstance();
+                StaticObject wrapper = meta.java_security_PrivilegedActionException.allocateInstance(getContext());
                 getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getGuestException());
                 throw meta.throwException(wrapper);
             }
@@ -2868,7 +2868,7 @@ public final class VM extends NativeEnv {
             return createACC(StaticObject.NULL, isPrivileged, context == null ? StaticObject.NULL : context);
         }
 
-        StaticObject guestContext = StaticObject.createArray(getMeta().java_security_ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
+        StaticObject guestContext = StaticObject.createArray(getMeta().java_security_ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY), getContext());
         return createACC(guestContext, isPrivileged, context == null ? StaticObject.NULL : context);
     }
 
@@ -3099,7 +3099,7 @@ public final class VM extends NativeEnv {
             @Override
             public StaticObject apply(int index) {
                 MethodParametersAttribute.Entry entry = methodParameters.getEntries()[index];
-                StaticObject instance = meta.java_lang_reflect_Parameter.allocateInstance();
+                StaticObject instance = meta.java_lang_reflect_Parameter.allocateInstance(getContext());
                 // For a 0 index, give an empty name.
                 StaticObject guestName;
                 if (entry.getNameIndex() != 0) {

@@ -31,7 +31,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
@@ -42,10 +41,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of the Espresso object model.
@@ -81,183 +78,10 @@ public class StaticObject implements TruffleObject, Cloneable {
         this.klass = klass;
     }
 
-    private void initInstanceFields(ObjectKlass thisKlass) {
-        checkNotForeign();
-        if (CompilerDirectives.isPartialEvaluationConstant(thisKlass)) {
-            initLoop(thisKlass);
-        } else {
-            initLoopNoExplode(thisKlass);
-        }
-    }
-
-    @ExplodeLoop
-    private void initLoop(ObjectKlass thisKlass) {
-        for (Field f : thisKlass.getFieldTable()) {
-            assert !f.isStatic();
-            if (!f.isHidden() && !f.isRemoved()) {
-                if (f.getKind() == JavaKind.Object) {
-                    f.setObject(this, StaticObject.NULL);
-                }
-            }
-        }
-    }
-
-    private void initLoopNoExplode(ObjectKlass thisKlass) {
-        for (Field f : thisKlass.getFieldTable()) {
-            assert !f.isStatic();
-            if (!f.isHidden() && !f.isRemoved()) {
-                if (f.getKind() == JavaKind.Object) {
-                    f.setObject(this, StaticObject.NULL);
-                }
-            }
-        }
-    }
-
-    private void initInitialStaticFields(ObjectKlass thisKlass) {
-        checkNotForeign();
-        if (CompilerDirectives.isPartialEvaluationConstant(thisKlass)) {
-            staticInitLoop(thisKlass);
-        } else {
-            staticInitLoopNoExplode(thisKlass);
-        }
-    }
-
-    @ExplodeLoop
-    private void staticInitLoop(ObjectKlass thisKlass) {
-        for (Field f : thisKlass.getInitialStaticFields()) {
-            assert f.isStatic();
-            if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
-                if (f.isHidden()) { // extension field
-                    f.setHiddenObject(this, StaticObject.NULL);
-                } else {
-                    f.setObject(this, StaticObject.NULL);
-                }
-            }
-        }
-    }
-
-    private void staticInitLoopNoExplode(ObjectKlass thisKlass) {
-        for (Field f : thisKlass.getInitialStaticFields()) {
-            assert f.isStatic();
-            if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
-                if (f.isHidden()) { // extension field
-                    f.setHiddenObject(this, StaticObject.NULL);
-                } else {
-                    f.setObject(this, StaticObject.NULL);
-                }
-            }
-        }
-    }
-
-    public static StaticObject createNew(ObjectKlass klass) {
-        assert !klass.isAbstract() && !klass.isInterface();
-        StaticObject newObj = klass.getLinkedKlass().getShape(false).getFactory().create(klass);
-        newObj.initInstanceFields(klass);
-        return trackAllocation(klass, newObj);
-    }
-
-    public static StaticObject createClass(Klass klass) {
-        assert klass != null;
-        ObjectKlass guestClass = klass.getMeta().java_lang_Class;
-        StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
-        newObj.initInstanceFields(guestClass);
-        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
-        if (klass.getContext().getJavaVersion().modulesEnabled()) {
-            newObj.setModule(klass);
-        }
-        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
-            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
-        }
-        // Will be overriden if necessary, but should be initialized to non-host null.
-        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
-        // Final hidden field assignment
-        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
-        return trackAllocation(klass, newObj);
-    }
-
-    public static StaticObject createStatics(ObjectKlass klass) {
-        assert klass != null;
-        StaticObject newObj = klass.getLinkedKlass().getShape(true).getFactory().create(klass);
-        newObj.initInitialStaticFields(klass);
-        return trackAllocation(klass, newObj);
-    }
-
-    // Use an explicit method to create array, avoids confusion.
-    public static StaticObject createArray(ArrayKlass klass, Object array) {
-        assert klass != null;
-        assert array != null;
-        assert !(array instanceof StaticObject);
-        assert array.getClass().isArray();
-        assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
-        EspressoLanguage language = klass.getContext().getLanguage();
-        StaticObject newObj = language.getArrayShape().getFactory().create(klass);
-        language.getArrayProperty().setObject(newObj, array);
-        return trackAllocation(klass, newObj);
-    }
-
-    /**
-     * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
-     * ForeignException.
-     */
-    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject,
-                    InteropLibrary interopLibrary) {
-        assert meta.polyglot != null;
-        assert meta.getContext().Polyglot;
-        assert interopLibrary.isException(foreignObject);
-        assert !(foreignObject instanceof StaticObject);
-        return createForeign(meta.getLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
-    }
-
-    public static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
-        if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(lang, foreignObject);
-        }
-        return createForeign(lang, klass, foreignObject);
-    }
-
-    public static StaticObject createForeignNull(EspressoLanguage lang, Object foreignObject) {
-        assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(lang, null, foreignObject);
-    }
-
-    private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
-        assert foreignObject != null;
-        StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
-        lang.getForeignProperty().setObject(newObj, foreignObject);
-        if (klass != null) {
-            klass.safeInitialize();
-        }
-        return trackAllocation(klass, newObj);
-    }
-
-    // Shallow copy.
-    public final StaticObject copy(EspressoLanguage language) {
-        if (isNull(this)) {
-            return this;
-        }
-        checkNotForeign();
-        StaticObject obj;
-        if (getKlass().isArray()) {
-            obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray(language));
-        } else {
-            try {
-                // Call `this.clone()` rather than `super.clone()` to execute the `clone()` methods
-                // of generated subtypes.
-                obj = (StaticObject) clone();
-            } catch (CloneNotSupportedException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-        return trackAllocation(getKlass(), obj);
-    }
-
-    private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
-        if (klass == null) {
-            return obj;
-        } else {
-            return klass.getContext().trackAllocation(obj);
-        }
+    @Override
+    @TruffleBoundary
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 
     // endregion Constructors
@@ -280,19 +104,6 @@ public class StaticObject implements TruffleObject, Cloneable {
             return BaseInterop.class;
         }
         return getKlass().getDispatch();
-    }
-
-    private void setModule(Klass klass) {
-        StaticObject module = klass.module().module();
-        if (StaticObject.isNull(module)) {
-            if (klass.getRegistries().javaBaseDefined()) {
-                klass.getMeta().java_lang_Class_module.setObject(this, klass.getRegistries().getJavaBaseModule().module());
-            } else {
-                klass.getRegistries().addToFixupList(klass);
-            }
-        } else {
-            klass.getMeta().java_lang_Class_module.setObject(this, module);
-        }
     }
 
     public final Klass getKlass() {
@@ -471,7 +282,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         return Array.getLength(getArray(language));
     }
 
-    private Object cloneWrappedArray(EspressoLanguage language) {
+    Object cloneWrappedArray(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
         Object array = getArray(language);
@@ -499,40 +310,60 @@ public class StaticObject implements TruffleObject, Cloneable {
         return ((Object[]) array).clone();
     }
 
-    public static StaticObject wrap(StaticObject[] array, Meta meta) {
-        return createArray(meta.java_lang_Object_array, array);
+    public StaticObject copy(EspressoContext context) {
+        return context.getAllocator().copy(this);
     }
 
-    public static StaticObject wrap(ArrayKlass klass, StaticObject[] array) {
-        return createArray(klass, array);
+    public static StaticObject createForeign(EspressoLanguage language, Klass klass, Object value, InteropLibrary library) {
+        return GuestAllocator.createForeign(language, klass, value, library);
+    }
+
+    public static StaticObject createForeignException(Meta meta, Object value, InteropLibrary library) {
+        return meta.getAllocator().createForeignException(value, library);
+    }
+
+    public static StaticObject createForeignNull(EspressoLanguage language, Object value) {
+        return GuestAllocator.createForeignNull(language, value);
+    }
+
+    public static StaticObject createArray(ArrayKlass klass, Object array, EspressoContext context) {
+        return context.getAllocator().wrapArrayAs(klass, array);
+    }
+
+    public static StaticObject wrap(StaticObject[] array, Meta meta) {
+        return meta.getAllocator().wrapArrayAs(meta.java_lang_Object_array, array);
+    }
+
+    public static StaticObject wrap(ArrayKlass klass, StaticObject[] array, Meta meta) {
+        return meta.getAllocator().wrapArrayAs(klass, array);
     }
 
     public static StaticObject wrap(byte[] array, Meta meta) {
-        return createArray(meta._byte_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._byte_array, array);
     }
 
     public static StaticObject wrap(char[] array, Meta meta) {
-        return createArray(meta._char_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._char_array, array);
     }
 
     public static StaticObject wrap(short[] array, Meta meta) {
-        return createArray(meta._short_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._short_array, array);
     }
 
     public static StaticObject wrap(int[] array, Meta meta) {
-        return createArray(meta._int_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._int_array, array);
     }
 
     public static StaticObject wrap(float[] array, Meta meta) {
-        return createArray(meta._float_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._float_array, array);
     }
 
     public static StaticObject wrap(double[] array, Meta meta) {
-        return createArray(meta._double_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._double_array, array);
     }
 
     public static StaticObject wrap(long[] array, Meta meta) {
-        return createArray(meta._long_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._long_array, array);
     }
 
     public static StaticObject wrapPrimitiveArray(Object array, Meta meta) {

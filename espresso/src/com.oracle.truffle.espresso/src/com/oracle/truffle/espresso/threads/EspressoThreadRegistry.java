@@ -265,7 +265,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 return exisitingThread;
             }
             vm.attachThread(hostThread);
-            StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
+            StaticObject guestThread = meta.java_lang_Thread.allocateInstance(getContext());
             // Allow guest Thread.currentThread() to work.
             meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
             getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
@@ -298,16 +298,16 @@ public final class EspressoThreadRegistry implements ContextAccess {
      * HotSpot's implementation.
      */
     public void createMainThread(Meta meta) {
-        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
+        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
                         // ThreadGroup()
                         .invokeDirect(systemThreadGroup);
         Thread hostThread = Thread.currentThread();
-        StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
+        StaticObject mainThread = meta.java_lang_Thread.allocateInstance(getContext());
         // Allow guest Thread.currentThread() to work.
         meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
         getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
-        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
+        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
 
         registerMainThread(hostThread, mainThread);
 

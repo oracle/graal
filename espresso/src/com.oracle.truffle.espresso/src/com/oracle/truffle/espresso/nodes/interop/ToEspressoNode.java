@@ -236,15 +236,12 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck,
-                    @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-        // Skip expensive checks for java.lang.Object.
-        if (!klass.isJavaLangObject()) {
-            try {
-                checkHasAllFieldsOrThrow(value, klass, interop, getMeta());
-            } catch (ClassCastException e) {
-                errorProfile.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
-            }
+                                         @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+        try {
+            checkHasAllFieldsOrThrow(value, klass, interop, meta);
+        } catch (ClassCastException e) {
+            errorProfile.enter();
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
         }
         initCheck.execute(klass);
         return StaticObject.createForeign(getLanguage(), klass, value, interop);

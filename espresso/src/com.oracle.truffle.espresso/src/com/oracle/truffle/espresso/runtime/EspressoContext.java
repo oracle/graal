@@ -153,6 +153,7 @@ public final class EspressoContext {
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
     @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
+    @CompilationFinal private GuestAllocator allocator;
     @CompilationFinal private EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -271,6 +272,8 @@ public final class EspressoContext {
 
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
+
+        this.allocator = new GuestAllocator(this);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
         this.allocationReporter = env.lookup(AllocationReporter.class);
@@ -484,6 +487,10 @@ public final class EspressoContext {
         return meta;
     }
 
+    public GuestAllocator getAllocator() {
+        return allocator;
+    }
+
     public NativeAccess getNativeAccess() {
         return nativeAccess;
     }
@@ -597,8 +604,8 @@ public final class EspressoContext {
                 }
             }
             // Init memoryError instances
-            StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
-            StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
+            StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance(this);
+            StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance(this);
 
             // Preemptively set stack trace.
             meta.HIDDEN_FRAMES.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
@@ -804,6 +811,12 @@ public final class EspressoContext {
 
     public <T> T trackAllocation(T object) {
         if (allocationReporter != null) {
+            /*
+             * These methods expects the allocation reporter to be PE-constant, if not, compilation
+             * will bail out. It should be left as-is and not be put behind a boundary. A compiled
+             * code path that triggers the compilation assert is wrongly made, as most compiled
+             * paths should be able to obtain a constant context.
+             */
             allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
             allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         }

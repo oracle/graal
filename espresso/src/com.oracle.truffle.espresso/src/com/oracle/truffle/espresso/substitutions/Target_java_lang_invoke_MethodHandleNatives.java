@@ -318,7 +318,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             result[1] = self;
         }
 
-        return StaticObject.createArray(meta.java_lang_Object_array, result);
+        return StaticObject.createArray(meta.java_lang_Object_array, result, meta.getContext());
     }
 
     @Substitution(methodName = "resolve")

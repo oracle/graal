@@ -91,7 +91,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static @JavaType(Thread[].class) StaticObject getThreads(@Inject Meta meta) {
-        return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
+        return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads(), meta.getContext());
     }
 
     @Substitution
@@ -102,10 +102,11 @@ public final class Target_java_lang_Thread {
         if (threads.length(language) == 0) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-        StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY);
+        EspressoContext context = meta.getContext();
+        StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY, context);
         StaticObject[] toWrap = new StaticObject[threads.length(language)];
         Arrays.fill(toWrap, trace);
-        return StaticObject.createArray(meta.java_lang_StackTraceElement.array().array(), toWrap);
+        return StaticObject.createArray(meta.java_lang_StackTraceElement.array().array(), toWrap, context);
     }
 
     @Substitution(hasReceiver = true)

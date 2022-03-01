@@ -1164,42 +1164,42 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public @JavaType(boolean[].class) StaticObject NewBooleanArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(byte[].class) StaticObject NewByteArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Byte.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Byte.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(char[].class) StaticObject NewCharArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Char.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Char.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(short[].class) StaticObject NewShortArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Short.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Short.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(int[].class) StaticObject NewIntArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Int.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Int.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(long[].class) StaticObject NewLongArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Long.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(float[].class) StaticObject NewFloatArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Float.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Float.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(double[].class) StaticObject NewDoubleArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Double.getBasicType(), len, getMeta());
+        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Double.getBasicType(), len);
     }
 
     @JniImpl
@@ -1985,7 +1985,7 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     public @JavaType(internalName = "Ljava/nio/DirectByteBuffer;") StaticObject NewDirectByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
         Meta meta = getMeta();
-        StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance();
+        StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance(getContext());
         long address = NativeUtils.interopAsPointer(addressPtr);
         meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
         return instance;
@@ -2630,18 +2630,9 @@ public final class JniEnv extends NativeEnv {
         }
         klass.initialize();
         StaticObject instance;
-        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
-            instance = klass.allocateInstance();
-        } else {
-            instance = allocateBoundary(klass);
-        }
+        instance = klass.allocateInstance(getContext());
         method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
         return instance;
-    }
-
-    @TruffleBoundary
-    public static StaticObject allocateBoundary(Klass klass) {
-        return klass.allocateInstance();
     }
 
     /**
@@ -2783,7 +2774,7 @@ public final class JniEnv extends NativeEnv {
             throw meta.throwException(getMeta().java_lang_InstantiationException);
         }
         Klass klass = clazz.getMirrorKlass();
-        return klass.allocateInstance();
+        return klass.allocateInstance(getContext());
     }
 
     /**

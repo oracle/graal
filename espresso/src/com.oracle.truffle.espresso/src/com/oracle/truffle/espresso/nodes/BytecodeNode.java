@@ -228,6 +228,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -296,6 +297,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -1279,9 +1281,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case INVOKEINTERFACE:
                         top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(NEW, bs.readCPI2(curBCI)), true)); break;
-                    case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta(), this)); break;
-                    case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1), this)); break;
+                    case NEW         :
+                        Klass klass = resolveType(NEW, bs.readCPI2(curBCI));
+                        putObject(frame, top, newReferenceObject(klass)); break;
+                    case NEWARRAY    :
+                        byte jvmPrimitiveType = bs.readByte(curBCI);
+                        int length = popInt(frame, top - 1);
+                        putObject(frame, top - 1, newPrimitiveArray(jvmPrimitiveType, length)); break;
+                    case ANEWARRAY   : putObject(frame, top - 1, newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1))); break;
 
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
@@ -1467,7 +1474,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         assert getContext().Polyglot;
                         getMeta().polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1529,6 +1536,22 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
+    }
+
+    private StaticObject newReferenceObject(Klass klass) {
+        assert !klass.isPrimitive() : "Verifier guarantee";
+        checkConcreteClass(klass);
+        return getAllocator().createNew((ObjectKlass) klass);
+    }
+
+    private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
+        checkNegativeArraySize(length);
+        return getAllocator().createNewPrimitiveArray(jvmPrimitiveType, length);
+    }
+
+    private StaticObject newReferenceArray(Klass componentType, int length) {
+        checkNegativeArraySize(length);
+        return getAllocator().createNewReferenceArray(componentType, length);
     }
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
@@ -2292,7 +2315,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         for (int i = 0; i < allocatedDimensions; ++i) {
             dimensions[i] = popInt(frame, top - allocatedDimensions + i);
         }
-        putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(((ArrayKlass) klass).getComponentType(), dimensions));
+        Klass component = ((ArrayKlass) klass).getComponentType();
+        checkNewMultiArray(component, dimensions);
+        StaticObject value = getAllocator().createNewMultiArray(component, dimensions);
+        putObject(frame, top - allocatedDimensions, value);
         return -allocatedDimensions; // Does not include the created (pushed) array.
     }
 
@@ -2427,6 +2453,34 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         enterImplicitExceptionProfile();
         throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+    }
+
+    private void checkNegativeArraySize(int size) {
+        if (size < 0) {
+            enterImplicitExceptionProfile();
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_NegativeArraySizeException, cat("Invalid array size: ", size));
+        }
+    }
+
+    private void checkConcreteClass(Klass klass) {
+        if (klass.isAbstract() || klass.isInterface()) {
+            enterImplicitExceptionProfile();
+            Meta meta = getMeta();
+            throw meta.throwException(meta.java_lang_InstantiationError);
+        }
+    }
+
+    @ExplodeLoop
+    private void checkNewMultiArray(Klass component, int[] dimensions) {
+        if (component == getMeta()._void) {
+            enterImplicitExceptionProfile();
+            Meta meta = getMeta();
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
+        for (int size : dimensions) {
+            checkNegativeArraySize(size);
+        }
     }
 
     // endregion Misc. checks

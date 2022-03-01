@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -1269,7 +1270,9 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
                     @Inject Meta meta) {
-        return InterpreterToVM.newObject(clazz.getMirrorKlass(meta), false);
+        Klass mirrorKlass = clazz.getMirrorKlass(meta);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(meta, mirrorKlass);
+        return meta.getAllocator().createNew((ObjectKlass) mirrorKlass);
     }
 
     /**

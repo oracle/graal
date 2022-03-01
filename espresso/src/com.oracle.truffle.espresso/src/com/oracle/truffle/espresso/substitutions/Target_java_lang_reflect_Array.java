@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.GuestAllocator.AllocationChecks;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -85,11 +86,11 @@ public final class Target_java_lang_reflect_Array {
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
+        AllocationChecks.checkCanAllocateArray(meta, length);
         if (component.isPrimitive()) {
-            byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
-            return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length, meta);
+            return meta.getAllocator().createNewPrimitiveArray(component, length);
         }
-        return InterpreterToVM.newReferenceArray(component, length);
+        return meta.getAllocator().createNewReferenceArray(component, length);
     }
 
     /**
@@ -135,16 +136,11 @@ public final class Target_java_lang_reflect_Array {
         if (dimensions.length == 0 || finalDimensions > 255) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-        for (int d : dimensions) {
-            if (d < 0) {
-                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-            }
-        }
+        AllocationChecks.checkCanAllocateMultiArray(meta, component, dimensions);
         if (dimensions.length == 1) {
-            // getArrayClass(0) is undefined.
-            return meta.getInterpreterToVM().newMultiArray(component, dimensions);
+            return meta.getAllocator().createNewMultiArray(component, dimensions);
         }
-        return meta.getInterpreterToVM().newMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
+        return meta.getAllocator().createNewMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
     }
 
     @Substitution

@@ -98,6 +98,7 @@ import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -840,9 +841,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return resolveParameterKlasses();
     }
 
+    @TruffleBoundary
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {
-            Object theCallee = InterpreterToVM.newObject(getDeclaringKlass(), false);
+            GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), getDeclaringKlass());
+            Object theCallee = getAllocator().createNew(getDeclaringKlass());
             invokeWithConversions(theCallee, args);
             return theCallee;
         }
@@ -1006,8 +1009,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return removedByRedefinition;
     }
 
-    public StaticObject makeMirror() {
-        Meta meta = getMeta();
+    public StaticObject makeMirror(Meta meta) {
         Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
         StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
@@ -1052,7 +1054,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             guestGenericSignature = meta.toGuestString(sig);
         }
 
-        StaticObject instance = meta.java_lang_reflect_Method.allocateInstance();
+        StaticObject instance = meta.java_lang_reflect_Method.allocateInstance(meta.getContext());
 
         meta.java_lang_reflect_Method_init.invokeDirect(
                         /* this */ instance,

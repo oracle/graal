@@ -67,7 +67,7 @@ public final class ExceptionDispatch implements ContextAccess {
     }
 
     private StaticObject fastPath(ObjectKlass klass, StaticObject message, StaticObject cause) {
-        StaticObject ex = klass.allocateInstance();
+        StaticObject ex = klass.allocateInstance(getContext());
 
         // TODO: Remove this when truffle exceptions are reworked.
         InterpreterToVM.fillInStackTrace(ex, false, meta);
@@ -84,20 +84,11 @@ public final class ExceptionDispatch implements ContextAccess {
     private StaticObject slowPath(ObjectKlass klass, StaticObject message, StaticObject cause) {
         assert meta.java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex;
-        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
-            // if klass was a compilation constant, the constantness of the klass field in ex should
-            // propagate even through the boundary.
-            ex = klass.allocateInstance();
-        } else {
-            ex = allocate(klass);
-        }
+        // if klass was a compilation constant, the constantness of the klass field in ex should
+        // propagate even through the boundary.
+        ex = klass.allocateInstance(getContext());
         slowInitEx(ex, klass, message, cause);
         return ex;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static StaticObject allocate(ObjectKlass klass) {
-        return klass.allocateInstance();
     }
 
     private void slowInitEx(StaticObject ex, ObjectKlass klass, StaticObject message, StaticObject cause) {
