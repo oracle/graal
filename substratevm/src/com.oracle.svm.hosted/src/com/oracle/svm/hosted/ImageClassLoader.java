@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -429,5 +430,14 @@ public final class ImageClassLoader {
 
     public Optional<? extends Object> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
+    }
+
+    public String getMainClassNotFoundErrorMessage(String className) {
+        return String.format("Main entry point class '%s' neither found on the classpath nor on the modulepath.%nclasspath: '%s'%nmodulepath: '%s'",
+                        className, pathsToString(applicationClassPath()), pathsToString(applicationModulePath()));
+    }
+
+    private static String pathsToString(List<Path> paths) {
+        return paths.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(File.pathSeparator));
     }
 }

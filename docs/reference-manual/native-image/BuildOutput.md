@@ -133,7 +133,7 @@ The code area contains machine code produced by the Graal compiler for all reach
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
 
 #### <a name="glossary-image-heap"></a>Image Heap
-The image heap contains reachable objects such as static data, classes initialized at run-time, and `byte[]` for different purposes.
+The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes.
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
 The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [method metadata](#glossary-method-metadata), nor [graph encodings](#glossary-graph-encodings).
