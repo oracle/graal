@@ -924,9 +924,6 @@ abstract class CoreLocations {
         }
     }
 
-    static final SimpleObjectFieldLocation OBJECT_ARRAY_LOCATION;
-    static final SimpleObjectFieldLocation PRIMITIVE_ARRAY_LOCATION;
-
     static long decodeLong(int lower, int upper) {
         return (lower & 0xffff_ffffL) | ((long) upper << 32);
     }
@@ -1032,42 +1029,5 @@ abstract class CoreLocations {
         } catch (Exception e) {
             throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
         }
-    }
-
-    static {
-        int index = 0;
-        OBJECT_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
-            @Override
-            public Object[] get(DynamicObject store, boolean guard) {
-                return LayoutImpl.ACCESS.getObjectArray(store);
-            }
-
-            @Override
-            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-                LayoutImpl.ACCESS.setObjectArray(store, (Object[]) value);
-            }
-
-            @Override
-            public Class<? extends DynamicObject> getDeclaringClass() {
-                return DynamicObject.class;
-            }
-        };
-
-        PRIMITIVE_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
-            @Override
-            public int[] get(DynamicObject store, boolean guard) {
-                return LayoutImpl.ACCESS.getPrimitiveArray(store);
-            }
-
-            @Override
-            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-                LayoutImpl.ACCESS.setPrimitiveArray(store, (int[]) value);
-            }
-
-            @Override
-            public Class<? extends DynamicObject> getDeclaringClass() {
-                return DynamicObject.class;
-            }
-        };
     }
 }
