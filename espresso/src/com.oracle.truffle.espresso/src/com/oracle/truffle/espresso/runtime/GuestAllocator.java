@@ -42,7 +42,20 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
- * 
+ * Class responsible for creating guest objects in Espresso. a helper class {@link AllocationChecks}
+ * is also available, and provides checks for validating invocations.
+ * <p>
+ * Note that methods in {@link GuestAllocator} does not perform validating checks, and assumes they
+ * have been performed beforehand. This allows profiling in the caller (for example,
+ * {@code BytecodeNode#checkNewMultiArray(Klass, int[])}).
+ * <p>
+ * Paths that do not require profiling can use the methods in {@link AllocationChecks} to validate
+ * the arguments passed to the methods of {@link GuestAllocator}.
+ * <p>
+ * <p>
+ * Methods in this class wil exploit as much as possible the constant-ness of arguments, exploding
+ * initialization loops whenever possible. Note that performance will be impacted if {@code this} is
+ * not PE constant.
  */
 public final class GuestAllocator implements ContextAccess {
     private final EspressoContext context;
@@ -53,15 +66,27 @@ public final class GuestAllocator implements ContextAccess {
         this.lang = context.getLanguage();
     }
 
+    /**
+     * Allocates a new instance of the given class; does not call any constructor. Initializes the
+     * class.
+     * 
+     * @param klass The klass of the reference to allocate. If it is PE-constant, the field
+     *            initialization loop can be exploded. This is expected to be the case when
+     *            executing the {@code NEW} bytecode, but may not be the case always (for example in
+     *            the interpretation of {@code Unsafe#allocateInstace(Class cls)}).
+     */
     public StaticObject createNew(ObjectKlass klass) {
-        assert klass != null; // May be
+        assert AllocationChecks.canAllocateNewReference(klass);
         klass.safeInitialize();
         StaticObject newObj = klass.getLinkedKlass().getShape(false).getFactory().create(klass);
         initInstanceFields(newObj, klass);
         return trackAllocation(klass, newObj);
     }
 
-    // Shallow copy.
+    /**
+     * The cloning mechanism for guest objects, respecting guest {@link Object#clone()}
+     * specifications.
+     */
     public StaticObject copy(StaticObject toCopy) {
         if (StaticObject.isNull(toCopy)) {
             return toCopy;
@@ -82,6 +107,11 @@ public final class GuestAllocator implements ContextAccess {
         return trackAllocation(obj.getKlass(), obj);
     }
 
+    /**
+     * Creates the guest world {@linkplain Class representation} of {@link Klass}.
+     * 
+     * @param klass The klass for which to create the mirror (not guest {@link Class}).
+     */
     public StaticObject createClass(Klass klass) {
         assert klass != null;
         CompilerAsserts.neverPartOfCompilation();
@@ -102,6 +132,9 @@ public final class GuestAllocator implements ContextAccess {
         return trackAllocation(klass, newObj);
     }
 
+    /**
+     * Allocates and populates the static storage for the specified klass.
+     */
     public StaticObject createStatics(ObjectKlass klass) {
         assert klass != null;
         CompilerAsserts.neverPartOfCompilation();
@@ -110,17 +143,30 @@ public final class GuestAllocator implements ContextAccess {
         return trackAllocation(klass, newObj);
     }
 
+    /**
+     * @see #createNewPrimitiveArray(byte, int)
+     */
     public StaticObject createNewPrimitiveArray(Klass klass, int length) {
         assert klass.isPrimitive();
         return createNewPrimitiveArray(klass.getJavaKind(), length);
     }
 
+    /**
+     * @see #createNewPrimitiveArray(byte, int)
+     */
     public StaticObject createNewPrimitiveArray(JavaKind kind, int length) {
         assert kind.isPrimitive();
         return createNewPrimitiveArray((byte) kind.getBasicType(), length);
     }
 
+    /**
+     * Allocates a guest primitive array.
+     * 
+     * @param jvmPrimitiveType see {@code JVMS Table 6.5.newarray-A. Array type codes}
+     * @param length length of the array to allocate
+     */
     public StaticObject createNewPrimitiveArray(byte jvmPrimitiveType, int length) {
+        assert AllocationChecks.canAllocateNewArray(length);
         Meta meta = getMeta();
         // @formatter:off
         switch (jvmPrimitiveType) {
@@ -136,22 +182,43 @@ public final class GuestAllocator implements ContextAccess {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
+        // @formatter:on
     }
 
+    /**
+     * Allocates a guest reference array, and fills it with the guest {@link StaticObject#NULL}.
+     * 
+     * @param componentKlass The class of the references to store in the array
+     */
     public StaticObject createNewReferenceArray(Klass componentKlass, int length) {
         assert length >= 0;
         assert !componentKlass.isPrimitive();
+        assert AllocationChecks.canAllocateNewArray(length);
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
         return wrapArrayAs(componentKlass.getArrayClass(), arr);
     }
-    
+
+    /**
+     * Creates a new guest multi-dimensional array. See jvms-6.5.multianewarray
+     * 
+     * @param component The class of what is stored in the top-most array.
+     * @param dimensions The dimensions array
+     */
     public StaticObject createNewMultiArray(Klass component, int[] dimensions) {
-        assert  dimensions != null && dimensions.length > 0;
+        assert dimensions != null && dimensions.length > 0;
+        assert AllocationChecks.canAllocateMultiArray(getMeta(), component, dimensions);
         return createNewMultiArray(component, dimensions, 0);
     }
 
-    // Use an explicit method to create array, avoids confusion.
+    /**
+     * Given a host {@code array}, wraps in a guest object, and advertise it to be of class
+     * {@code klass}.
+     * 
+     * @param klass The klass to wrap the given array with.
+     * @param array A host array, either a primitive array (e.g.: {@code byte[]} or {@code int[]}),
+     *            or a {@code StaticObject[]}.
+     */
     public StaticObject wrapArrayAs(ArrayKlass klass, Object array) {
         assert klass != null;
         assert array != null;
@@ -165,11 +232,10 @@ public final class GuestAllocator implements ContextAccess {
 
     /**
      * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
-     * ForeignException.
+     * {@code ForeignException}.
      */
-    public @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject 
-    createForeignException(
-            Object foreignObject,
+    public @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(
+                    Object foreignObject,
                     InteropLibrary interopLibrary) {
         Meta meta = getMeta();
         assert meta.polyglot != null;
@@ -179,17 +245,24 @@ public final class GuestAllocator implements ContextAccess {
         return createForeign(lang, meta.polyglot.ForeignException, foreignObject, interopLibrary);
     }
 
+    /**
+     * Wraps a foreign object in a espresso guest object. This espresso object will be types as a
+     * {@code klass}.
+     */
     public static StaticObject createForeign(
-            EspressoLanguage lang, 
-            Klass klass, 
-            Object foreignObject, 
-            InteropLibrary interopLibrary) {
+                    EspressoLanguage lang,
+                    Klass klass,
+                    Object foreignObject,
+                    InteropLibrary interopLibrary) {
         if (interopLibrary.isNull(foreignObject)) {
             return createForeignNull(lang, foreignObject);
         }
         return createForeign(lang, klass, foreignObject);
     }
 
+    /**
+     * Wraps a foreign null in an espresso null.
+     */
     public static StaticObject createForeignNull(EspressoLanguage lang, Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
         return createForeign(lang, null, foreignObject);
@@ -287,7 +360,7 @@ public final class GuestAllocator implements ContextAccess {
     }
 
     private StaticObject createNewMultiArray(Klass component, int[] dimensions, int currentDimension) {
-        assert  dimensions != null && dimensions.length > 0;
+        assert dimensions != null && dimensions.length > 0;
         int dimLength = dimensions[currentDimension];
         if (currentDimension == dimensions.length - 1) {
             if (component.isPrimitive()) {
@@ -310,13 +383,13 @@ public final class GuestAllocator implements ContextAccess {
     @ExplodeLoop
     private void initMultiArrayLoop(Klass klass, StaticObject[] wrapped, int dimLength, int[] dimensions, int pos) {
         for (int i = 0; i < dimLength; i++) {
-            wrapped[i] = createNewMultiArray(klass, dimensions, pos +1);
+            wrapped[i] = createNewMultiArray(klass, dimensions, pos + 1);
         }
     }
 
     private void initMultiArrayLoopNoExplode(Klass downComponent, StaticObject[] wrapped, int dimLength, int[] dimensions, int pos) {
         for (int i = 0; i < dimLength; i++) {
-            wrapped[i] = createNewMultiArray(downComponent, dimensions, pos +1);
+            wrapped[i] = createNewMultiArray(downComponent, dimensions, pos + 1);
         }
     }
 
@@ -325,11 +398,12 @@ public final class GuestAllocator implements ContextAccess {
             return obj;
         }
         if (!CompilerDirectives.isPartialEvaluationConstant(context)) {
+            // TODO: fail here ?
             return trackAllocationBoundary(context, obj);
         }
         return context.trackAllocation(obj);
     }
-    
+
     private static StaticObject trackForeignAllocation(Klass klass, StaticObject obj) {
         if (klass == null) {
             return obj;
@@ -340,7 +414,7 @@ public final class GuestAllocator implements ContextAccess {
             return trackAllocationBoundary(klass.getContext(), obj);
         }
     }
-    
+
     @TruffleBoundary
     private static StaticObject trackAllocationBoundary(EspressoContext context, StaticObject obj) {
         return context.trackAllocation(obj);
@@ -350,41 +424,21 @@ public final class GuestAllocator implements ContextAccess {
     public EspressoContext getContext() {
         return context;
     }
-    
+
     public static final class AllocationChecks {
-        private AllocationChecks() {}
-        
-        public static boolean canAllocateNewReference(Klass klass) {
-            return (klass instanceof ObjectKlass) && !klass.isAbstract() && !klass.isInterface();
+        private AllocationChecks() {
         }
-        
+
         public static void checkCanAllocateNewReference(Meta meta, Klass klass) {
             if (!canAllocateNewReference(klass)) {
                 throw meta.throwException(meta.java_lang_InstantiationException);
             }
         }
-        
-        public static boolean canAllocateNewArray(int size) {
-            return size >= 0;
-        }
-        
+
         public static void checkCanAllocateArray(Meta meta, int size) {
             if (!canAllocateNewArray(size)) {
                 throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
-        }
-        
-        public static boolean canAllocateMultiArray(Meta meta, Klass component, int[] dimensions) {
-            if (invalidComponent(meta, component)) {
-                return false;
-            }
-            if (invalidDimensionsArray(dimensions)) {
-                return false;
-            }
-            if (invalidDimensions(dimensions)) {
-                return false;
-            }
-            return true;
         }
 
         public static void checkCanAllocateMultiArray(Meta meta, Klass component, int[] dimensions) {
@@ -398,11 +452,32 @@ public final class GuestAllocator implements ContextAccess {
                 throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
-        
+
+        static boolean canAllocateNewReference(Klass klass) {
+            return (klass instanceof ObjectKlass) && !klass.isAbstract() && !klass.isInterface();
+        }
+
+        static boolean canAllocateNewArray(int size) {
+            return size >= 0;
+        }
+
+        static boolean canAllocateMultiArray(Meta meta, Klass component, int[] dimensions) {
+            if (invalidComponent(meta, component)) {
+                return false;
+            }
+            if (invalidDimensionsArray(dimensions)) {
+                return false;
+            }
+            if (invalidDimensions(dimensions)) {
+                return false;
+            }
+            return true;
+        }
+
         private static boolean invalidDimensionsArray(int[] dimensions) {
             return dimensions.length == 0 || dimensions.length > 255;
         }
-        
+
         private static boolean invalidDimensions(int[] dimensions) {
             for (int dim : dimensions) {
                 if (!canAllocateNewArray(dim)) {
