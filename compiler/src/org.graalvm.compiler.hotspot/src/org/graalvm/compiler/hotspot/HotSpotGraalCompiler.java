@@ -208,8 +208,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         // @formatter:on
     }
 
-    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int entryBCI,
-                    boolean shouldRetainLocalVariables, OptionValues options) {
+    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, OptionValues options) {
+        int entryBCI = graph.getEntryBCI();
+        ResolvedJavaMethod method = graph.method();
         assert options == graph.getOptions();
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
@@ -241,13 +242,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     public CompilationResult compile(StructuredGraph graph,
-                    ResolvedJavaMethod method,
-                    int entryBCI,
                     boolean shouldRetainLocalVariables,
                     CompilationIdentifier compilationId,
                     DebugContext debug) {
         CompilationResult result = new CompilationResult(compilationId);
-        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, method, entryBCI, shouldRetainLocalVariables, debug.getOptions());
+        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, debug.getOptions());
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {

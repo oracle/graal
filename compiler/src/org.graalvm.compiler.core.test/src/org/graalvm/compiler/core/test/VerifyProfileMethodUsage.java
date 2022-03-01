@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider;
 import org.graalvm.compiler.phases.VerifyPhase;
@@ -38,6 +39,10 @@ import org.graalvm.compiler.phases.VerifyPhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Check that regular Graal code accesses profile information through through a
+ * {@link ProfileProvider} so that a compilation can correctly interpose on the reading of it.
+ */
 public class VerifyProfileMethodUsage extends VerifyPhase<CoreProviders> {
     private static final Method GET_PROFILING_INFO;
     private static final Method GET_PROFILING_INFO_2;
