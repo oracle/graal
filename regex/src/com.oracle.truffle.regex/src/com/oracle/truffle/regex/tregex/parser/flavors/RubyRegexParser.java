@@ -53,11 +53,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
+import com.oracle.truffle.regex.RegexFlags;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -68,26 +68,19 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
+import org.graalvm.collections.Pair;
 
 /**
- * Implements the parsing and translating of Ruby regular expressions to ECMAScript regular
- * expressions.
- *
- * @see RegexFlavorProcessor
+ * Implements the parsing and validation of Ruby regular expressions.
  */
-public final class RubyFlavorProcessor implements RegexFlavorProcessor {
-
-    /**
-     * Characters that are considered special in ECMAScript regexes. To match these characters, they
-     * need to be escaped using a backslash.
-     */
-    static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
-    /**
-     * Characters that are considered special in ECMAScript regex character classes.
-     */
-    static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
+public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     // Ruby's predefined character classes.
     // This one is for classes like \w, \s or \d...
@@ -101,6 +94,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private static final Map<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
     // This is the same as above but restricted to ASCII.
     private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
+
+    // The [\n\r] CodePointSet.
+    private static final CodePointSet NEWLINE_RETURN = CodePointSet.create('\n', '\n', '\r', '\r');
+
+    // CodePointSet constants used for expanding the \R escape sequence.
+    private static final CodePointSet UNICODE_LINE_BREAKS = CodePointSet.create(0x0a, 0x0c, 0x85, 0x85, 0x2028, 0x2029);
+    private static final CodePointSet ASCII_LINE_BREAKS = CodePointSet.create(0x0a, 0x0c);
 
     static {
         CodePointSet asciiRange = CodePointSet.create(0x00, 0x7F);
@@ -157,18 +157,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), asciiRange.createIntersectionSingleRange(entry.getValue()));
         }
     }
-
-    // The behavior of the word-boundary assertions depends on the notion of a word character.
-    // Ruby's notion differs from that of ECMAScript and so we cannot compile Ruby word-boundary
-    // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
-    // character is dependent on whether the Ruby regular expression is set to use the ASCII range
-    // only. These are helper constants that we use to implement word-boundary assertions.
-    // WORD_BOUNDARY and WORD_NON_BOUNDARY are templates for word-boundary and word-non-boundary
-    // assertions, respectively. These templates contain occurrences of \w and \W, which are
-    // substituted with the correct notion of a word character during regexp transpilation time.
-    public static final Pattern WORD_CHARS_PATTERN = Pattern.compile("\\\\[wW]");
-    public static final String WORD_BOUNDARY = "(?:(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$))";
-    public static final String WORD_NON_BOUNDARY = "(?:(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w))";
 
     /**
      * An enumeration of the possible grammatical categories of Ruby regex terms, for use with
@@ -301,9 +289,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private int position;
 
     /**
-     * A {@link StringBuilder} hosting the resulting ECMAScript pattern.
+     * A {@link RegexASTBuilder} for constructing the resulting AST.
      */
-    private final StringBuilder outPattern;
+    private final RegexASTBuilder astBuilder;
 
     /**
      * Whether the regex starts with a \\G anchor, in which case it should be translated to a sticky
@@ -359,13 +347,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private TermCategory lastTerm;
 
     /**
-     * The position within the output stream {@link #outPattern} at which starts the translation of
-     * the last translated term. The range [ lastTermOutPosition, position ), gives the part of the
-     * output buffer that's occupied by the last term.
-     */
-    private int lastTermOutPosition;
-
-    /**
      * The contents of the character class that is currently being parsed.
      */
     private CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
@@ -403,12 +384,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private final IntArrayBuffer codepointsBuffer = new IntArrayBuffer();
 
     @TruffleBoundary
-    public RubyFlavorProcessor(RegexSource source) {
+    private RubyRegexParser(RegexSource source, RegexASTBuilder astBuilder) throws RegexSyntaxException {
         this.inSource = source;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
         this.position = 0;
-        this.outPattern = new StringBuilder(inPattern.length());
         this.startsWithBeginningAnchor = false;
         this.globalFlags = new RubyFlags(inFlags);
         this.flagsStack = new LinkedList<>();
@@ -418,13 +398,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
         this.lastTerm = TermCategory.None;
-        this.lastTermOutPosition = -1;
+        this.astBuilder = astBuilder;
+        this.silent = astBuilder == null;
     }
 
-    @Override
-    public int getNumberOfCaptureGroups() {
-        // include capture group 0
-        return numberOfCaptureGroups + 1;
+    public static RegexValidator createValidator(RegexSource source) throws RegexSyntaxException {
+        return new RubyRegexParser(source, null);
+    }
+
+    public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), compilationBuffer));
     }
 
     @Override
@@ -437,31 +420,28 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         return globalFlags;
     }
 
-    @Override
-    public boolean isUnicodePattern() {
-        // We always return true; see the comment in #toECMAScriptRegex.
-        return true;
+    private static RegexFlags makeTRegexFlags(boolean sticky) {
+        // We need to set the Unicode flag to true so that character classes will treat the entire
+        // Unicode code point range as the set of all characters, not just the UTF-16 code units.
+        // We will also need to set the sticky flag to properly reflect both the sticky flag in the
+        // incoming regex flags and the any \G assertions used in the expression.
+        return RegexFlags.builder().unicode(true).sticky(sticky).build();
     }
 
     @TruffleBoundary
     @Override
     public void validate() throws RegexSyntaxException {
-        silent = true;
-        parse();
+        run();
     }
 
-    @TruffleBoundary
     @Override
-    public RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException {
-        silent = false;
-        parse();
-        // When translating to ECMAScript, we always the dotAll and unicode flags. The dotAll flag
-        // lets us use . when translating Ruby's . in multiline mode. The unicode flag lets us use
-        // some of the ECMAScript regex escape sequences which are restricted to Unicode regexes.
-        // It also lets us reason with a more rigid grammar (as the ECMAScript non-Unicode regexes
-        // contain a lot of ambiguous syntactic constructions for backwards compatibility).
-        String outFlags = globalFlags.isSticky() || startsWithBeginningAnchor ? "suy" : "su";
-        return new RegexSource(outPattern.toString(), outFlags, inSource.getOptions(), inSource.getSource());
+    @TruffleBoundary
+    public RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException {
+        astBuilder.pushRootGroup();
+        run();
+        RegexAST ast = astBuilder.popRootGroup();
+        ast.setFlags(makeTRegexFlags(globalFlags.isSticky() || startsWithBeginningAnchor));
+        return ast;
     }
 
     private RubyFlags getLocalFlags() {
@@ -538,7 +518,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         return position >= inPattern.length();
     }
 
-    /// Emitting the translated regular expression
+    /// Building the AST
 
     private void bailOut(String reason) throws UnsupportedRegexException {
         if (!silent) {
@@ -546,80 +526,89 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
-    /**
-     * Emits the argument into the output pattern <em>verbatim</em>. This is useful for syntax
-     * characters or for prebaked snippets.
-     */
-    private void emitSnippet(CharSequence snippet) {
+    /// RegexASTBuilder method wrappers
+
+    private void pushGroup() {
         if (!silent) {
-            outPattern.append(snippet);
+            astBuilder.pushGroup();
         }
     }
 
-    /**
-     * Like {@link #emitChar(int)}, but does not do any case-folding.
-     *
-     * @param inCharClass are we emitting inside a character class?
-     */
-    private void emitCharNoCasing(int codepoint, boolean inCharClass) {
+    private void pushCaptureGroup() {
         if (!silent) {
-            TBitSet syntaxChars = inCharClass ? CHAR_CLASS_SYNTAX_CHARACTERS : SYNTAX_CHARACTERS;
-            if (syntaxChars.get(codepoint)) {
-                emitSnippet("\\");
-            }
-            outPattern.appendCodePoint(codepoint);
+            astBuilder.pushCaptureGroup();
         }
     }
 
-    /**
-     * Emits a matcher or a character class expression that can match a given character. Since
-     * case-folding (IGNORECASE flag) can be enabled, a single character in the pattern could
-     * correspond to a variety of different characters in the input.
-     *
-     * @param codepoint the character to be matched
-     */
-    private void emitChar(int codepoint) {
+    private void pushLookAheadAssertion(boolean negate) {
         if (!silent) {
-            if (getLocalFlags().isIgnoreCase()) {
-                emitSnippet(RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}, inSource.getEncoding().getFullSet()));
-            } else {
-                emitCharNoCasing(codepoint, false);
-            }
+            astBuilder.pushLookAheadAssertion(negate);
         }
     }
 
-    /**
-     * Emits a matcher (either a character class expression or a literal character) that would match
-     * the contents of {@code curCharClass}.
-     */
-    private void emitCharSet() {
+    private void pushLookBehindAssertion(boolean negate) {
         if (!silent) {
-            if (curCharClass.matchesSingleChar()) {
-                emitCharNoCasing(curCharClass.get().getLo(0), false);
-            } else {
-                emitSnippet("[");
-                for (Range r : curCharClass) {
-                    if (r.isSingle()) {
-                        emitCharNoCasing(r.lo, true);
-                    } else {
-                        emitCharNoCasing(r.lo, true);
-                        emitSnippet("-");
-                        emitCharNoCasing(r.hi, true);
-                    }
-                }
-                emitSnippet("]");
-            }
+            astBuilder.pushLookBehindAssertion(negate);
         }
     }
 
-    /**
-     * Emits a matcher that matches character in a given set.
-     */
-    private void emitCharSet(CodePointSet charSet) {
+    private void popGroup() {
         if (!silent) {
-            curCharClass.clear();
-            curCharClass.addSet(charSet);
-            emitCharSet();
+            astBuilder.popGroup();
+        }
+    }
+
+    private void nextSequence() {
+        if (!silent) {
+            astBuilder.nextSequence();
+        }
+    }
+
+    private void addCharClass(CodePointSet charSet) {
+        if (!silent) {
+            astBuilder.addCharClass(charSet);
+        }
+    }
+
+    private void addChar(int codepoint) {
+        if (!silent) {
+            astBuilder.addCharClass(CodePointSet.create(codepoint), true);
+        }
+    }
+
+    private void addBackReference(int groupNumber) {
+        if (!silent) {
+            astBuilder.addBackReference(groupNumber);
+        }
+    }
+
+    private void addCaret() {
+        if (!silent) {
+            astBuilder.addCaret();
+        }
+    }
+
+    private void addDollar() {
+        if (!silent) {
+            astBuilder.addDollar();
+        }
+    }
+
+    private void addQuantifier(Token.Quantifier quantifier) {
+        if (!silent) {
+            astBuilder.addQuantifier(quantifier);
+        }
+    }
+
+    private void addDeadNode() {
+        if (!silent) {
+            astBuilder.addDeadNode();
+        }
+    }
+
+    private void wrapCurTermInGroup() {
+        if (!silent) {
+            astBuilder.wrapCurTermInGroup();
         }
     }
 
@@ -761,7 +750,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     // The parser
 
-    private void parse() {
+    private void run() {
         scanForCaptureGroups();
 
         flagsStack.push(globalFlags);
@@ -788,9 +777,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             alternative();
 
             if (match("|")) {
-                emitSnippet("|");
+                nextSequence();
                 lastTerm = TermCategory.None;
-                lastTermOutPosition = -1;
 
                 if (beginningAnchor() != beginningAnchor) {
                     bailOut("\\G anchor is only supported when used at the start of all top-level alternatives");
@@ -824,8 +812,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 return false;
             }
         }
-        // Do not update lastTerm or lastTermOutPosition. This term cannot be followed by a
-        // quantifier, since we just parsed any following quantifiers.
+        // Do not update lastTerm This term cannot be followed by a quantifier, since we just
+        // parsed any following quantifiers.
         return true;
     }
 
@@ -857,7 +845,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * </ul>
      */
     private void term() {
-        int outPosition = outPattern.length();
         int ch = consumeChar();
 
         if (getLocalFlags().isExtended()) {
@@ -877,7 +864,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             case '[':
                 characterClass();
                 lastTerm = TermCategory.Atom;
-                lastTermOutPosition = outPosition;
                 break;
             case '*':
             case '+':
@@ -887,29 +873,43 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 break;
             case '.':
                 if (getLocalFlags().isMultiline()) {
-                    emitSnippet(".");
+                    addCharClass(inSource.getEncoding().getFullSet());
                 } else {
-                    emitSnippet("[^\n]");
+                    addCharClass(CodePointSet.create('\n').createInverse(inSource.getEncoding()));
                 }
                 lastTerm = TermCategory.Atom;
-                lastTermOutPosition = outPosition;
                 break;
             case '(':
                 parens();
                 break;
             case '^':
-                emitSnippet("(?:^|(?<=[\\n])(?=.))");
+                // (?:^|(?<=[\n])(?=.))
+                pushGroup(); // (?:
+                addCaret(); // ^
+                nextSequence(); // |
+                pushLookBehindAssertion(false); // (?<=
+                addCharClass(CodePointSet.create('\n')); // [\n]
+                popGroup(); // )
+                pushLookAheadAssertion(false); // (?=
+                addCharClass(inSource.getEncoding().getFullSet()); // .
+                popGroup(); // )
+                popGroup(); // )
                 lastTerm = TermCategory.OtherAssertion;
-                lastTermOutPosition = outPosition;
                 break;
             case '$':
-                emitSnippet("(?:$|(?=[\\n]))");
+                // (?:$|(?=[\n]))
+                pushGroup(); // (?:
+                addDollar(); // $
+                nextSequence(); // |
+                pushLookAheadAssertion(false); // (?=
+                addCharClass(CodePointSet.create('\n')); // [\n]
+                popGroup(); // )
+                popGroup(); // )
                 lastTerm = TermCategory.OtherAssertion;
-                lastTermOutPosition = outPosition;
                 break;
             default:
                 string(ch);
-                // NB: string sets lastTerm and lastTermOutPosition itself
+                // NB: string sets lastTerm itself
         }
     }
 
@@ -919,7 +919,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void string(int firstCodepoint) {
         codepointsBuffer.clear();
         codepointsBuffer.add(firstCodepoint);
-        int outPosition = outPattern.length();
 
         stringLoop: while (!atEnd() && curChar() != '|' && curChar() != ')') {
             int ch = consumeChar();
@@ -967,22 +966,36 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
 
             if (getLocalFlags().isIgnoreCase()) {
-                String caseFoldSnippet = RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray(), inSource.getEncoding().getFullSet());
-                emitSnippet(caseFoldSnippet);
+                RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray(), inSource.getEncoding().getFullSet(), astBuilder);
             } else {
                 for (int i = 0; i < codepointsBuffer.length(); i++) {
-                    emitCharNoCasing(codepointsBuffer.get(i), false);
+                    addChar(codepointsBuffer.get(i));
                 }
             }
 
             if (isQuantifierNext) {
-                outPosition = outPattern.length();
-                emitChar(last);
+                buildChar(last);
             }
         }
 
         lastTerm = TermCategory.Atom;
-        lastTermOutPosition = outPosition;
+    }
+
+    /**
+     * Adds a matcher for a given character. Since case-folding (IGNORECASE flag) can be enabled, a
+     * single character in the pattern could correspond to a variety of different characters in the
+     * input.
+     *
+     * @param codepoint the character to be matched
+     */
+    private void buildChar(int codepoint) {
+        if (!silent) {
+            if (getLocalFlags().isIgnoreCase()) {
+                RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}, inSource.getEncoding().getFullSet(), astBuilder);
+            } else {
+                addChar(codepoint);
+            }
+        }
     }
 
     /**
@@ -1023,10 +1036,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         return false;
                     } else {
                         // lower bound
-                        getMany(RubyFlavorProcessor::isDecDigit);
+                        getMany(RubyRegexParser::isDecDigit);
                         // upper bound
                         if (match(",")) {
-                            getMany(RubyFlavorProcessor::isDecDigit);
+                            getMany(RubyRegexParser::isDecDigit);
                         }
                         if (!match("}")) {
                             return false;
@@ -1075,34 +1088,24 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * </ul>
      */
     private void escape() {
-        int outPosition = outPattern.length();
         if (assertionEscape()) {
             lastTerm = TermCategory.OtherAssertion;
-            lastTermOutPosition = outPosition;
         } else if (categoryEscape(false)) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else if (backreference()) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else if (namedBackreference()) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else if (lineBreak()) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else if (extendedGraphemeCluster()) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else if (keepCommand()) {
             lastTerm = TermCategory.OtherAssertion;
-            lastTermOutPosition = outPosition;
         } else if (subexpressionCall()) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else if (stringEscape()) {
             lastTerm = TermCategory.Atom;
-            lastTermOutPosition = outPosition;
         } else {
             // characterEscape has to come after assertionEscape because of the ambiguity of \b,
             // which (outside of character classes) is resolved in the favor of the assertion.
@@ -1111,12 +1114,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             // backreferences
             Optional<Integer> characterEscape = characterEscape();
             if (characterEscape.isPresent()) {
-                emitChar(characterEscape.get());
+                buildChar(characterEscape.get());
                 lastTerm = TermCategory.Atom;
-                lastTermOutPosition = outPosition;
             } else {
                 string(fetchEscapedChar());
-                // NB: string sets lastTerm and lastTermOutPosition itself
+                // NB: string sets lastTerm itself
             }
         }
     }
@@ -1158,29 +1160,37 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         int restorePosition = position;
         switch (consumeChar()) {
             case 'A':
-                emitSnippet("(?:^)");
+                addCaret();
                 return true;
             case 'Z':
-                emitSnippet("(?:$|(?=[\\r\\n]$))");
+                // (?:$|(?=[\r\n]$))
+                pushGroup(); // (?:
+                addDollar(); // $
+                nextSequence(); // |
+                pushLookAheadAssertion(false); // (?=
+                addCharClass(NEWLINE_RETURN); // [\r\n]
+                addDollar(); // $
+                popGroup(); // )
+                popGroup(); // )
                 return true;
             case 'z':
-                emitSnippet("(?:$)");
+                addDollar();
                 return true;
             case 'G':
                 bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
                 return true;
             case 'b':
                 if (getLocalFlags().isAscii()) {
-                    emitWordBoundaryAssertion(WORD_BOUNDARY, ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
+                    buildWordBoundaryAssertion(ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
                 } else {
-                    emitWordBoundaryAssertion(WORD_BOUNDARY, getUnicodeCharClass('w'), getUnicodeCharClass('W'));
+                    buildWordBoundaryAssertion(getUnicodeCharClass('w'), getUnicodeCharClass('W'));
                 }
                 return true;
             case 'B':
                 if (getLocalFlags().isAscii()) {
-                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
+                    buildWordNonBoundaryAssertion(ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
                 } else {
-                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, getUnicodeCharClass('w'), getUnicodeCharClass('W'));
+                    buildWordNonBoundaryAssertion(getUnicodeCharClass('w'), getUnicodeCharClass('W'));
                 }
                 return true;
             default:
@@ -1189,20 +1199,63 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
-    private void emitWordBoundaryAssertion(String snippetTemplate, CodePointSet wordChars, CodePointSet nonWordChars) {
-        Matcher matcher = WORD_CHARS_PATTERN.matcher(snippetTemplate);
-        int lastAppendPosition = 0;
-        while (matcher.find()) {
-            emitSnippet(snippetTemplate.substring(lastAppendPosition, matcher.start()));
-            if (matcher.group().equals("\\w")) {
-                emitCharSet(wordChars);
-            } else {
-                assert matcher.group().equals("\\W");
-                emitCharSet(nonWordChars);
-            }
-            lastAppendPosition = matcher.end();
-        }
-        emitSnippet(snippetTemplate.substring(lastAppendPosition));
+    // The behavior of the word-boundary assertions depends on the notion of a word character.
+    // Ruby's notion differs from that of ECMAScript and so we cannot compile Ruby word-boundary
+    // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
+    // character is dependent on whether the Ruby regular expression is set to use the ASCII range
+    // only.
+    private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
+        pushGroup(); // (?:
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        pushGroup(); // (?:
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        addDollar(); // $
+        popGroup(); // )
+        popGroup(); // )
+    }
+
+    private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
+        pushGroup(); // (?:
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
+        pushGroup(); // (?:
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        addDollar(); // $
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        popGroup(); // )
     }
 
     /**
@@ -1219,8 +1272,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * <li>\p{...} (Unicode properties)</li>
      * </ul>
      *
-     * @param inCharClass whether or not this escape was found in (and is being emitted as part of)
-     *            a character class
+     * @param inCharClass whether or not this escape was found in a character class
      * @return {@code true} iff a category escape was found
      */
     private boolean categoryEscape(boolean inCharClass) {
@@ -1249,7 +1301,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         fullyFoldableCharacters.addSet(charSet);
                     }
                 } else {
-                    emitCharSet(charSet);
+                    addCharClass(charSet);
                 }
                 return true;
             case 'p':
@@ -1292,7 +1344,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                             fullyFoldableCharacters.addSet(property);
                         }
                     } else {
-                        emitCharSet(property);
+                        addCharClass(property);
                     }
                     return true;
                 } else {
@@ -1313,7 +1365,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         int restorePosition = position;
         if (curChar() >= '1' && curChar() <= '9') {
             // Joni only considers backreferences numbered <= 1000.
-            String number = getUpTo(4, RubyFlavorProcessor::isDecDigit);
+            String number = getUpTo(4, RubyRegexParser::isDecDigit);
             int groupNumber = Integer.parseInt(number);
             if (groupNumber > 1000) {
                 position = restorePosition;
@@ -1333,7 +1385,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 position = restorePosition;
                 return false;
             }
-            emitBackreference(groupNumber);
+            buildBackreference(groupNumber);
             return true;
         } else {
             return false;
@@ -1348,7 +1400,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private boolean namedBackreference() {
         if (match("k<")) {
             int groupNumber = parseGroupReference('>', true, true, true, false);
-            emitBackreference(groupNumber);
+            buildBackreference(groupNumber);
             return true;
         } else {
             return false;
@@ -1364,7 +1416,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
             }
             int sign = match("-") ? -1 : 1;
-            groupName = getMany(RubyFlavorProcessor::isDecDigit);
+            groupName = getMany(RubyRegexParser::isDecDigit);
             try {
                 groupNumber = sign * Integer.parseInt(groupName);
                 if (groupNumber < 0) {
@@ -1408,7 +1460,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
         if (allowLevels && (curChar() == '+' || curChar() == '-')) {
             advance(); // consume sign
-            String level = getMany(RubyFlavorProcessor::isDecDigit);
+            String level = getMany(RubyRegexParser::isDecDigit);
             if (level.isEmpty()) {
                 throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
             }
@@ -1423,15 +1475,15 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         return groupNumber;
     }
 
-    private void emitBackreference(int groupNumber) {
+    private void buildBackreference(int groupNumber) {
         if (isCaptureGroupOpen(groupNumber)) {
             // Ruby syntax allows references to an open capture group. However, such a reference can
             // never match anything as the capture group is reset on entry.
-            emitSnippet("[]");
+            addDeadNode();
         } else if (getLocalFlags().isIgnoreCase()) {
             bailOut("case insensitive backreferences not supported");
         } else {
-            emitSnippet("\\" + groupNumber);
+            addBackReference(groupNumber);
         }
     }
 
@@ -1453,13 +1505,21 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private boolean lineBreak() {
         if (curChar() == 'R') {
             advance();
-            // When matching \\x0d, we check that it is not followed by \\x0a to emulate the
+            // When matching \x0d, we check that it is not followed by \x0a to emulate the
             // atomic group in the original Ruby expansion: (?>\x0d\x0a|[\x0a-\x0d\x85\u2028\u2029])
-            if (inSource.getEncoding().isUnicode()) {
-                emitSnippet("(?:\\x0d\\x0a|\\x0d(?!\\x0a)|[\\x0a-\\x0c\\x85\\u2028\\u2029])");
-            } else {
-                emitSnippet("(?:\\x0d\\x0a|\\x0d(?!\\x0a)|[\\x0a-\\x0c])");
-            }
+            CodePointSet lineBreaks = inSource.getEncoding().isUnicode() ? UNICODE_LINE_BREAKS : ASCII_LINE_BREAKS;
+            // (?:\x0d\x0a|\x0d(?!\x0a)|[\x0a-\x0c\x85\u2028\u2029])
+            pushGroup(); // (?:
+            addChar(0x0d); // \x0d
+            addChar(0x0a); // \x0a
+            nextSequence(); // |
+            addChar(0x0d); // \x0d
+            pushLookAheadAssertion(true); // (?!
+            addChar(0x0a); // \x0a
+            popGroup(); // )
+            nextSequence(); // |
+            addCharClass(lineBreaks); // [\x0a-\x0c\x85\u2028\u2029]
+            popGroup(); // )
             return true;
         } else {
             return false;
@@ -1527,13 +1587,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         if (match("u{")) {
             getMany(c -> ASCII_POSIX_CHAR_CLASSES.get("space").contains(c));
             while (!match("}")) {
-                String code = getMany(RubyFlavorProcessor::isHexDigit);
+                String code = getMany(RubyRegexParser::isHexDigit);
                 try {
                     int codePoint = Integer.parseInt(code, 16);
                     if (codePoint > 0x10FFFF) {
                         throw syntaxErrorAt(RbErrorMessages.invalidUnicodeEscape(code), beginPos);
                     }
-                    emitChar(codePoint);
+                    buildChar(codePoint);
                 } catch (NumberFormatException e) {
                     throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos);
                 }
@@ -1633,7 +1693,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         switch (curChar()) {
             case 'x': {
                 advance();
-                String code = getUpTo(2, RubyFlavorProcessor::isHexDigit);
+                String code = getUpTo(2, RubyRegexParser::isHexDigit);
                 int byteValue = Integer.parseInt(code, 16);
                 if (byteValue > 0x7F) {
                     // This is a non-ASCII byte escape. The escaped character might be part of a
@@ -1652,10 +1712,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 advance();
                 String code;
                 if (match("{")) {
-                    code = getMany(RubyFlavorProcessor::isHexDigit);
+                    code = getMany(RubyRegexParser::isHexDigit);
                     mustMatch("}");
                 } else {
-                    code = getUpTo(4, RubyFlavorProcessor::isHexDigit);
+                    code = getUpTo(4, RubyRegexParser::isHexDigit);
                     if (code.length() < 4) {
                         throw syntaxErrorAt(RbErrorMessages.incompleteEscape(code), beginPos);
                     }
@@ -1678,7 +1738,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             case '5':
             case '6':
             case '7': {
-                String code = getUpTo(3, RubyFlavorProcessor::isOctDigit);
+                String code = getUpTo(3, RubyRegexParser::isOctDigit);
                 int codePoint = Integer.parseInt(code, 8);
                 if (codePoint > 0xFF) {
                     throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos);
@@ -1701,19 +1761,30 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void characterClass() {
         curCharClassClear();
         collectCharClass();
-        if (getLocalFlags().isIgnoreCase()) {
-            List<String> multiCodePointExpansions = caseClosureMultiCodePoint();
-            if (multiCodePointExpansions.size() > 0) {
-                emitSnippet("(?:");
-                emitCharSet();
-                emitSnippet("|");
-                emitSnippet(String.join("|", multiCodePointExpansions));
-                emitSnippet(")");
+        buildCharClass();
+    }
+
+    private void buildCharClass() {
+        if (!silent) {
+            if (getLocalFlags().isIgnoreCase()) {
+                List<Pair<Integer, int[]>> multiCodePointExpansions = caseClosureMultiCodePoint();
+                if (multiCodePointExpansions.size() > 0) {
+                    pushGroup();
+                    addCharClass(curCharClass.toCodePointSet());
+                    for (Pair<Integer, int[]> pair : multiCodePointExpansions) {
+                        nextSequence();
+                        int from = pair.getLeft();
+                        int[] to = pair.getRight();
+                        boolean dropAsciiOnStart = !fullyFoldableCharacters.get().contains(from);
+                        RubyCaseFolding.caseFoldUnfoldString(to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, astBuilder);
+                    }
+                    popGroup();
+                } else {
+                    addCharClass(curCharClass.toCodePointSet());
+                }
             } else {
-                emitCharSet();
+                addCharClass(curCharClass.toCodePointSet());
             }
-        } else {
-            emitCharSet();
         }
     }
 
@@ -1995,13 +2066,19 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         curCharClass.addSet(charClassTmp.get());
     }
 
-    private List<String> caseClosureMultiCodePoint() {
-        List<String> multiCodePointExpansions = new ArrayList<>();
+    /**
+     * Finds any characters in {@link #curCharClass} that have multi-codepoint expansions.
+     * 
+     * @return a list of pairs, with the first element being the expanded codepoint and the second
+     *         element the expansion
+     */
+    private List<Pair<Integer, int[]>> caseClosureMultiCodePoint() {
+        List<Pair<Integer, int[]>> multiCodePointExpansions = new ArrayList<>();
 
         caseFoldCharClass((from, to) -> {
             if (to.length > 1) {
                 assert !isAscii(from);
-                multiCodePointExpansions.add(RubyCaseFolding.caseFoldUnfoldString(to, inSource.getEncoding().getFullSet(), !fullyFoldableCharacters.get().contains(from)));
+                multiCodePointExpansions.add(Pair.create(from, to));
             }
         });
 
@@ -2033,7 +2110,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         int start = position - 1;
         Quantifier quantifier = parseQuantifier(ch);
         if (quantifier != null) {
-            emitQuantifier(quantifier, start);
+            buildQuantifier(quantifier, start);
         } else {
             string(consumeChar());
         }
@@ -2052,12 +2129,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
                 boolean canBeNonGreedy = true;
-                String lower = getMany(RubyFlavorProcessor::isDecDigit);
+                String lower = getMany(RubyRegexParser::isDecDigit);
                 if (!lower.isEmpty()) {
                     lowerBound = Optional.of(new BigInteger(lower));
                 }
                 if (match(",")) {
-                    String upper = getMany(RubyFlavorProcessor::isDecDigit);
+                    String upper = getMany(RubyRegexParser::isDecDigit);
                     if (!upper.isEmpty()) {
                         upperBound = Optional.of(new BigInteger(upper));
                     }
@@ -2109,13 +2186,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
-    private void emitQuantifier(Quantifier quantifier, int start) {
+    private void buildQuantifier(Quantifier quantifier, int start) {
         switch (lastTerm) {
             case None:
                 throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
-            case Quantifier:
-                wrapLastTerm("(?:", ")" + quantifier.toString());
-                break;
             case LookAroundAssertion:
                 // A lookaround assertion might contain capture groups and thus have side effects.
                 // ECMAScript regular expressions do not accept extraneous empty matches. Therefore,
@@ -2129,20 +2203,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 bailOut("quantifiers on lookaround assertions not supported");
                 lastTerm = TermCategory.Quantifier;
                 break;
+            case Quantifier:
             case OtherAssertion:
-            case Atom:
-                emitSnippet(quantifier.toString());
+                wrapCurTermInGroup();
+                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
                 lastTerm = TermCategory.Quantifier;
-                // lastTermOutPosition stays the same: the term with its quantifier is considered as
-                // the last term
                 break;
-        }
-    }
-
-    private void wrapLastTerm(String prefix, String suffix) {
-        if (!silent) {
-            outPattern.insert(lastTermOutPosition, prefix);
-            emitSnippet(suffix);
+            case Atom:
+                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
+                lastTerm = TermCategory.Quantifier;
+                break;
         }
     }
 
@@ -2180,10 +2250,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     final int ch2 = consumeChar();
                     switch (ch2) {
                         case '=':
-                            lookbehind(true);
+                            lookbehind(false);
                             break;
                         case '!':
-                            lookbehind(false);
+                            lookbehind(true);
                             break;
                         default:
                             retreat();
@@ -2195,11 +2265,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 }
 
                 case '=':
-                    lookahead(true);
+                    lookahead(false);
                     break;
 
                 case '!':
-                    lookahead(false);
+                    lookahead(true);
                     break;
 
                 case '>':
@@ -2273,20 +2343,19 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * is used not only for ordinary capture groups, but also for named capture groups,
      * non-capturing groups or the contents of a local flags block.
      *
-     * @param capturing whether or not we should emit a capturing group
+     * @param capturing whether or not we should push a capturing group
      */
     private void group(boolean capturing) {
-        int outPosition = outPattern.length();
         if (capturing) {
             groupIndex++;
             groupStack.push(new Group(groupIndex));
-            emitSnippet("(");
+            pushCaptureGroup();
         } else {
-            emitSnippet("(?:");
+            pushGroup();
         }
         disjunction();
         if (match(")")) {
-            emitSnippet(")");
+            popGroup();
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
@@ -2294,52 +2363,39 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             groupStack.pop();
         }
         lastTerm = TermCategory.Atom;
-        lastTermOutPosition = outPosition;
     }
 
     /**
      * Parses a lookahead assertion, assuming that the opening parantheses and special characters
      * (either '(?=' or '(?!') have already been parsed.
      *
-     * @param positive {@code true} if the assertion to be emitted is a positive lookahead assertion
+     * @param negate {@code true} if the assertion to be pushed is a negative lookahead assertion
      */
-    private void lookahead(boolean positive) {
-        int outPosition = outPattern.length();
-        if (positive) {
-            emitSnippet("(?:(?=");
-        } else {
-            emitSnippet("(?:(?!");
-        }
+    private void lookahead(boolean negate) {
+        pushLookAheadAssertion(negate);
         disjunction();
         if (match(")")) {
-            emitSnippet("))");
+            popGroup();
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
         lastTerm = TermCategory.LookAroundAssertion;
-        lastTermOutPosition = outPosition;
     }
 
     /**
      * Just like {@link #lookahead}, but for lookbehind assertions.
      */
-    private void lookbehind(boolean positive) {
-        int outPosition = outPattern.length();
-        if (positive) {
-            emitSnippet("(?:(?<=");
-        } else {
-            emitSnippet("(?:(?<!");
-        }
+    private void lookbehind(boolean negate) {
+        pushLookBehindAssertion(negate);
         lookbehindDepth++;
         disjunction();
         lookbehindDepth--;
         if (match(")")) {
-            emitSnippet("))");
+            popGroup();
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
         lastTerm = TermCategory.LookAroundAssertion;
-        lastTermOutPosition = outPosition;
     }
 
     /**
@@ -2369,7 +2425,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
         lastTerm = TermCategory.Atom;
-        lastTermOutPosition = -1; // bail out
     }
 
     /**
@@ -2384,7 +2439,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
         lastTerm = TermCategory.Atom;
-        lastTermOutPosition = -1; // bail out
     }
 
     /**
@@ -2442,12 +2496,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void openEndedLocalFlags(RubyFlags newFlags) {
         setLocalFlags(newFlags);
         lastTerm = TermCategory.None;
-        lastTermOutPosition = -1;
         // Using "open-ended" flag modifiers, e.g. /a(?i)b|c/, makes Ruby wrap the continuation
         // of the flag modifier in parentheses, so that the above regex is equivalent to
         // /a(?i:b|c)/.
-        emitSnippet("(?:");
+        pushGroup();
         disjunction();
-        emitSnippet(")");
+        popGroup();
     }
 }
