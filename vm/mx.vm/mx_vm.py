@@ -64,6 +64,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             ],
             dir_jars=True,
             main_class="org.graalvm.component.installer.ComponentInstaller",
+            link_at_build_time=False,
             build_args=[],
             # Please see META-INF/native-image in the project for custom build options for native-image
             is_sdk_launcher=True,
