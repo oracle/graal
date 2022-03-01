@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1184,7 +1184,6 @@ public abstract class ShapeImpl extends Shape {
         for (ListIterator<Property> iterator = properties.listIterator(); iterator.hasNext();) {
             Property property = iterator.next();
             // skip non-instance fields
-            assert property.getLocation() != layout.getPrimitiveArrayLocation();
             if (property.getLocation().isValue()) {
                 if (filtered == null) {
                     filtered = new ArrayList<>();
@@ -1438,11 +1437,9 @@ public abstract class ShapeImpl extends Shape {
         protected <T extends Location> T advance(T location0) {
             if (location0 instanceof LocationImpl) {
                 LocationImpl location = (LocationImpl) location0;
-                if (location != layout.getPrimitiveArrayLocation()) {
-                    location.accept(this);
-                }
+                location.accept(this);
                 if (layout.hasPrimitiveExtensionArray()) {
-                    hasPrimitiveArray |= location == layout.getPrimitiveArrayLocation() || primitiveArraySize > 0;
+                    hasPrimitiveArray |= primitiveArraySize > 0;
                 } else {
                     assert !hasPrimitiveArray && primitiveArraySize == 0;
                 }

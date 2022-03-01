@@ -65,7 +65,6 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     CoreAllocator(LayoutImpl layout) {
         super(layout);
-        advance(layout.getPrimitiveArrayLocation());
     }
 
     CoreAllocator(ShapeImpl shape) {
