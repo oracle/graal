@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.TriState;
 public class StableProfileProvider implements ProfileProvider {
     private static final JavaTypeProfile NULL_PROFILE = new JavaTypeProfile(TriState.UNKNOWN, 1.0, new JavaTypeProfile.ProfiledType[0]);
 
-    private final EconomicMap<ResolvedJavaMethod, CachingProfilingInfo> profiles = EconomicMap.create();
+    private final EconomicMap<ProfileKey, CachingProfilingInfo> profiles = EconomicMap.create();
 
     public StableProfileProvider() {
     }
@@ -51,18 +51,45 @@ public class StableProfileProvider implements ProfileProvider {
         return getProfilingInfo(method, true, true);
     }
 
+    static class ProfileKey {
+        final ResolvedJavaMethod method;
+        final boolean includeNormal;
+        final boolean includeOSR;
+
+        ProfileKey(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+            this.method = method;
+            this.includeNormal = includeNormal;
+            this.includeOSR = includeOSR;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            ProfileKey that = (ProfileKey) o;
+            return includeNormal == that.includeNormal && includeOSR == that.includeOSR && method.equals(that.method);
+        }
+
+        @Override
+        public int hashCode() {
+            return method.hashCode() + (includeNormal ? 1 : 0) + (includeOSR ? 2 : 0);
+        }
+    }
+
     @Override
     public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
         // In the normal case true is passed for both arguments but the root method of the compile
         // will pass true for only one of these flags.
-        CachingProfilingInfo profile = profiles.get(method);
+        ProfileKey key = new ProfileKey(method, includeNormal, includeOSR);
+        CachingProfilingInfo profile = profiles.get(key);
         if (profile == null) {
             profile = new CachingProfilingInfo(method, includeNormal, includeOSR);
-            profiles.put(method, profile);
-        } else {
-            profile = profile.lookupOrCreate(method, includeNormal, includeOSR);
+            profiles.put(key, profile);
         }
-
         return profile;
     }
 
@@ -88,20 +115,10 @@ public class StableProfileProvider implements ProfileProvider {
             }
         }
 
-        private final boolean includeNormal;
-
-        private final boolean includeOSR;
-
         /**
          * The underlying profiling object used for queries.
          */
         private final ProfilingInfo realProfile;
-
-        /**
-         * Link to the next profile with different values for {@link #includeNormal} or
-         * {@link #includeOSR}.
-         */
-        CachingProfilingInfo next;
 
         private Boolean isMature;
 
@@ -114,26 +131,7 @@ public class StableProfileProvider implements ProfileProvider {
 
         CachingProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
             this.realProfile = method.getProfilingInfo(includeNormal, includeOSR);
-            this.includeNormal = includeNormal;
-            this.includeOSR = includeOSR;
             this.bytecodeProfiles = EconomicMap.create();
-        }
-
-        /**
-         * Find or create a cache for the method based on the counters to check.
-         */
-        CachingProfilingInfo lookupOrCreate(ResolvedJavaMethod method, boolean normal, boolean osr) {
-            CachingProfilingInfo current = this;
-            while (current != null) {
-                if (normal == current.includeNormal && osr == current.includeOSR) {
-                    return this;
-                }
-                current = current.next;
-            }
-            current = new CachingProfilingInfo(method, normal, osr);
-            current.next = this.next;
-            this.next = current;
-            return current;
         }
 
         @Override
