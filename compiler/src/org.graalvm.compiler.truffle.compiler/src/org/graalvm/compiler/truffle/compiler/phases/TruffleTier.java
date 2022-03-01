@@ -28,15 +28,15 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlin
 
 import org.graalvm.compiler.core.phases.BaseTier;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.options.OptionValues;
 
 public class TruffleTier extends BaseTier<TruffleTierContext> {
 
-    public TruffleTier(OptionValues options, PartialEvaluator partialEvaluator, InstrumentationSuite instrumentationSuite, TruffleSuite truffleSuite) {
-        appendPhase(new AgnosticInliningPhase(partialEvaluator, truffleSuite));
+    public TruffleTier(OptionValues options, PartialEvaluator partialEvaluator, InstrumentationSuite instrumentationSuite, PostPartialEvaluationSuite postPartialEvaluationSuite) {
+        appendPhase(new AgnosticInliningPhase(partialEvaluator, postPartialEvaluationSuite));
         appendPhase(instrumentationSuite);
         appendPhase(new ReportPerformanceWarningsPhase());
         appendPhase(new VerifyFrameDoesNotEscapePhase());

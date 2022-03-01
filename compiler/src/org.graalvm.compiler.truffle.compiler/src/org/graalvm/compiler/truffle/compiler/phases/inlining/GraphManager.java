@@ -42,7 +42,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
@@ -55,11 +55,11 @@ final class GraphManager {
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
     private final TruffleTierContext rootContext;
-    private final TruffleSuite truffleSuite;
+    private final PostPartialEvaluationSuite postPartialEvaluationSuite;
 
-    GraphManager(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite, TruffleTierContext rootContext) {
+    GraphManager(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
         this.partialEvaluator = partialEvaluator;
-        this.truffleSuite = truffleSuite;
+        this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
     }
@@ -72,7 +72,7 @@ final class GraphManager {
             context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
             StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
-            truffleSuite.apply(context.graph, context);
+            postPartialEvaluationSuite.apply(context.graph, context);
             entry = new Entry(context.graph, plugin, graphAfterPE);
             irCache.put(truffleAST, entry);
         }
@@ -100,7 +100,7 @@ final class GraphManager {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
-        truffleSuite.apply(rootContext.graph, rootContext);
+        postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
         return new Entry(rootContext.graph, plugin, graphAfterPE);
     }
 

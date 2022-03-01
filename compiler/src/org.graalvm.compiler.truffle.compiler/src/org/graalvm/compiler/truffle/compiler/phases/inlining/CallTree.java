@@ -29,7 +29,7 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -44,11 +44,11 @@ public final class CallTree extends Graph {
     int frontierSize;
     private int nextId = 0;
 
-    CallTree(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite, TruffleTierContext context, InliningPolicy policy) {
+    CallTree(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext context, InliningPolicy policy) {
         super(context.graph.getOptions(), context.debug);
         this.policy = policy;
         this.context = context;
-        this.graphManager = new GraphManager(partialEvaluator, truffleSuite, context);
+        this.graphManager = new GraphManager(partialEvaluator, postPartialEvaluationSuite, context);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(this, context);
     }

@@ -37,8 +37,8 @@ import org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase
 import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
-public class TruffleSuite extends PhaseSuite<TruffleTierContext> {
-    public TruffleSuite(boolean iterativePartialEscape) {
+public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
+    public PostPartialEvaluationSuite(boolean iterativePartialEscape) {
         appendPhase(new ConvertDeoptimizeToGuardPhase());
         appendPhase(new InlineReplacementsPhase());
         appendPhase(new ConditionalEliminationPhase(false));

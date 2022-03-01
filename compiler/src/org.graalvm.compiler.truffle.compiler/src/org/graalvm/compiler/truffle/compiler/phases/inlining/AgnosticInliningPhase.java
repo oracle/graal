@@ -33,7 +33,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -52,11 +52,11 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
     }
 
     private final PartialEvaluator partialEvaluator;
-    private final TruffleSuite truffleSuite;
+    private final PostPartialEvaluationSuite postPartialEvaluationSuite;
 
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, TruffleSuite truffleSuite) {
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite) {
         this.partialEvaluator = partialEvaluator;
-        this.truffleSuite = truffleSuite;
+        this.postPartialEvaluationSuite = postPartialEvaluationSuite;
     }
 
     private static InliningPolicyProvider chosenProvider(String name) {
@@ -81,7 +81,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         final InliningPolicy policy = getInliningPolicyProvider(context).get(context.options, context);
-        final CallTree tree = new CallTree(partialEvaluator, truffleSuite, context, policy);
+        final CallTree tree = new CallTree(partialEvaluator, postPartialEvaluationSuite, context, policy);
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining(context)) {
             policy.run(tree);
@@ -96,7 +96,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
              * finalized the graph. On the other hand, if there are no calls (root is a leaf) we can
              * skip the truffle tier because there are no finalization points.
              */
-            truffleSuite.apply(graph, context);
+            postPartialEvaluationSuite.apply(graph, context);
         }
         tree.finalizeGraph();
         tree.trace();

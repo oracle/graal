@@ -328,7 +328,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.config.snippetReflection(), partialEvaluator.getInstrumentation()),
-                        new TruffleSuite(options.get(IterativePartialEscape)));
+                        new PostPartialEvaluationSuite(options.get(IterativePartialEscape)));
     }
 
     private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleCompilationTask task, TruffleCompilerListener listener,

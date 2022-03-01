@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.compiler.TruffleSuite;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
-public class SubstrateTruffleSuite extends TruffleSuite {
+public class SubstratePostPartialEvaluationSuite extends PostPartialEvaluationSuite {
 
-    public SubstrateTruffleSuite(boolean iterativePartialEscape) {
+    public SubstratePostPartialEvaluationSuite(boolean iterativePartialEscape) {
         super(iterativePartialEscape);
         appendPhase(new DeadStoreRemovalPhase());
         appendPhase(new TruffleBoundaryPhase());
