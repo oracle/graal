@@ -393,11 +393,24 @@ public class RubyTests extends RegexTestBase {
     }
 
     @Test
-    public void subexpressionCalls() {
+    public void nonRecursiveSubexpressionCalls() {
         // numeric subexpression calls
         test("(a)\\g<1>", "", "aa", 0, true, 0, 2, 1, 2);
         // named subexpression calls
         test("(?<foo>foo.)bar\\g<foo>", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
         test("(?<three_digits>[0-9]{3})-\\g<three_digits>", "", "123-456", 0, true, 0, 7, 4, 7);
+        // chained calls
+        test("(?<digit>\\d)-(?<two_digits>\\g<digit>\\g<digit>)-(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)", "", "1-23-45678", 0, true, 0, 10, 9, 10, 8, 10, 5, 10);
+        // with forward references
+        test("\\g<1>(a)", "", "aa", 0, true, 0, 2, 1, 2);
+        test("\\g<foo>bar(?<foo>foo.)", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
+        test("\\g<three_digits>-(?<three_digits>[0-9]{3})", "", "123-456", 0, true, 0, 7, 4, 7);
+        test("(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)-(?<two_digits>\\g<digit>\\g<digit>)-(?<digit>\\d)", "", "12345-67-8", 0, true, 0, 10, 0, 5, 6, 8, 9, 10);
+    }
+
+    @Test
+    public void recursiveSubexpressionCalls() {
+        testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
+        testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
     }
 }
