@@ -1024,8 +1024,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         out = mx.OutputCapture()
         mx.logv('[Creating CDS shared archive]')
         if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
-            mx.log(out.data)
-            mx.abort('Error generating CDS shared archive')
+            if "Shared spaces are not supported in this VM" in out.data:
+                # GR-37047: CDS support in darwin-aarch64 jdk11 is missing.
+                assert mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64' and jdk.javaCompliance == '11'
+            else:
+                mx.log(out.data)
+                mx.abort('Error generating CDS shared archive')
     else:
         # -Xshare is incompatible with --upgrade-module-path
         pass
