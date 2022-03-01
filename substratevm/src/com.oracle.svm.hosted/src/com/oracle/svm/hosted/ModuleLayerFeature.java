@@ -448,9 +448,6 @@ public final class ModuleLayerFeature implements Feature {
             }
         }
 
-        public Module getAllUnnamedModule() {
-            return allUnnamedModule;
-        }
         /**
          * This method creates Module instances that will populate the runtime boot module layer of
          * the image. This implementation is copy-pasted from Module#defineModules(Configuration,
