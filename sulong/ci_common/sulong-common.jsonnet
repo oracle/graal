@@ -212,13 +212,8 @@
   },
 
   requireGMP:: {
-    downloads+: {
-      LIBGMP: { name: "libgmp", version: "6.1.0", platformspecific: true },
-    },
-    environment+: {
-      CPPFLAGS: "-g -I$LIBGMP/include",
-      LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH",
-      LDFLAGS: "-L$LIBGMP/lib",
+    packages+: {
+      libgmp: "==6.1.2",
     },
   },
 }
