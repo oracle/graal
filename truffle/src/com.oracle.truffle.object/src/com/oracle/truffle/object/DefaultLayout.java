@@ -156,16 +156,6 @@ class DefaultLayout extends LayoutImpl {
         return primitiveFields.length;
     }
 
-    @Override
-    protected CoreLocation getObjectArrayLocation() {
-        return null;
-    }
-
-    @Override
-    protected CoreLocation getPrimitiveArrayLocation() {
-        return null;
-    }
-
     protected ObjectLocation getObjectFieldLocation(int index) {
         return objectFields[index];
     }
