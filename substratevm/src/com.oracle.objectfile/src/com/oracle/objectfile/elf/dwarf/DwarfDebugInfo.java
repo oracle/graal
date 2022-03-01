@@ -32,8 +32,10 @@ import java.util.HashMap;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 
+import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 
 /**
@@ -101,10 +103,17 @@ public class DwarfDebugInfo extends DebugInfoBase {
     /* Level 2+K DIEs (where inline depth K >= 0) */
     public static final int DW_ABBREV_CODE_inlined_subroutine = 31;
     public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 32;
-    /* Level 3 DIEs. */
+    /* Level 2 DIEs. */
     public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 33;
     public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 34;
     public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 35;
+    public static final int DW_ABBREV_CODE_method_local_declaration1 = 36;
+    public static final int DW_ABBREV_CODE_method_local_declaration2 = 37;
+    /* Level 3 DIEs. */
+    public static final int DW_ABBREV_CODE_method_parameter_location1 = 38;
+    public static final int DW_ABBREV_CODE_method_parameter_location2 = 39;
+    public static final int DW_ABBREV_CODE_method_local_location1 = 40;
+    public static final int DW_ABBREV_CODE_method_local_location2 = 41;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.
@@ -330,6 +339,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.threadRegister = rthread_x86;
         }
         propertiesIndex = new HashMap<>();
+        methodPropertiesIndex = new HashMap<>();
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
@@ -752,5 +762,95 @@ public class DwarfDebugInfo extends DebugInfoBase {
         assert abstractInlineMethodIndex != null : classEntry.getTypeName() + methodName;
         assert abstractInlineMethodIndex.get(methodName) != null : classEntry.getTypeName() + methodName;
         return abstractInlineMethodIndex.get(methodName);
+    }
+
+    /**
+     * A class used to associate properties with a specific primary or abstract inline method. This
+     * includes the index of each parameter or local declaration for the method in the info section,
+     * either for a top level or an inline version of the parameter/local. It also includes the
+     * index of each such parameter or local's location list in the loc section. Note, however, that
+     * in some cases a parameter or local may not have a corresponding location list.
+     */
+
+    static final class DwarfMethodProperties {
+        private HashMap<DebugLocalInfo, Integer> locals;
+        private HashMap<DebugLocalInfo, Integer> inlineLocals;
+        private HashMap<DebugLocalInfo, Integer> locations;
+        private HashMap<DebugLocalInfo, Integer> inlineLocations;
+
+        private DwarfMethodProperties() {
+            locals = new HashMap<>();
+            inlineLocals = new HashMap<>();
+            locations = new HashMap<>();
+            inlineLocations = new HashMap<>();
+        }
+
+        int getIndex(DebugLocalInfo localInfo, boolean isInline) {
+            HashMap<DebugLocalInfo, Integer> localsIndex = (isInline ? inlineLocals : locals);
+            return localsIndex.get(localInfo);
+        }
+
+        void setIndex(DebugLocalInfo localInfo, boolean isInline, int index) {
+            HashMap<DebugLocalInfo, Integer> localsIndex = (isInline ? inlineLocals : locals);
+            if (localsIndex.get(localInfo) != null) {
+                assert localsIndex.get(localInfo) == index;
+            } else {
+                localsIndex.put(localInfo, index);
+            }
+        }
+
+        int getLocationIndex(DebugLocalInfo localInfo, boolean isInline) {
+            HashMap<DebugLocalInfo, Integer> locationsIndex = (isInline ? inlineLocations : locations);
+            return locationsIndex.get(localInfo);
+        }
+
+        void setLocationIndex(DebugLocalInfo localInfo, boolean isInline, int index) {
+            HashMap<DebugLocalInfo, Integer> locationsIndex = (isInline ? inlineLocations : locations);
+            if (locationsIndex.get(localInfo) != null) {
+                assert locationsIndex.get(localInfo) == index;
+            } else {
+                locationsIndex.put(localInfo, index);
+            }
+        }
+    }
+
+    private HashMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex;
+
+    private DwarfMethodProperties addMethodProperties(MethodEntry methodEntry) {
+        DwarfMethodProperties methodProperties = new DwarfMethodProperties();
+        methodPropertiesIndex.put(methodEntry, methodProperties);
+        return methodProperties;
+    }
+
+    public void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, boolean isInline, int index) {
+        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+        if (methodProperties == null) {
+            methodProperties = addMethodProperties(methodEntry);
+        }
+        methodProperties.setIndex(localInfo, isInline, index);
+    }
+
+    public int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localinfo, boolean isInline) {
+        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+        assert methodProperties != null : "get of non-existent local index";
+        int index = methodProperties.getIndex(localinfo, isInline);
+        assert index > 0 : "get of local index before it was set";
+        return index;
+    }
+
+    public void setMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, boolean isInline, int index) {
+        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+        if (methodProperties == null) {
+            methodProperties = addMethodProperties(methodEntry);
+        }
+        methodProperties.setLocationIndex(localInfo, isInline, index);
+    }
+
+    public int getMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo localinfo, boolean isInline) {
+        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+        assert methodProperties != null : "get of non-existent local index";
+        int index = methodProperties.getLocationIndex(localinfo, isInline);
+        assert index > 0 : "get of local index before it was set";
+        return index;
     }
 }

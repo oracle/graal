@@ -40,6 +40,7 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
@@ -383,9 +384,12 @@ public abstract class DebugInfoBase {
         debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
                         ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
         assert (callerLocationInfo == null || (callerLocationInfo.addressLo() <= loOff && callerLocationInfo.addressHi() >= hiOff)) : "parent range should enclose subrange!";
-        locationInfo.localsProvider().forEach(localInfo -> {
-            debugContext.log(DebugContext.DETAILED_LEVEL, "  local %s:%s = %s", localInfo.name(), localInfo.typeName(), localInfo.valueString());
-        });
+        DebugLocalValueInfo[] localValueInfos = locationInfo.getLocalValueInfo();
+        for (int i = 0; i < localValueInfos.length; i++) {
+            DebugLocalValueInfo localValueInfo = localValueInfos[i];
+            debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo.valueString());
+        }
+        subRange.setLocalValueInfo(localValueInfos);
         return subRange;
     }
 

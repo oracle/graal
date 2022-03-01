@@ -26,14 +26,48 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
- * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
- * method. Each sub-range is linked with its caller and its callees, forming a call tree.
+ * whole compiled method or a sub-range identifying a sub-sequence of the compiled instructions that
+ * may derive from top level or inlined code. Each sub-range is linked with its caller, (which may
+ * be the primary range) and its callees, forming a call tree. Subranges are either leaf nodes with
+ * no children or call nodes which have children.
+ *
+ * <ul>
+ * <li>A leaf node at the top level (depth 0) records the start and extent of a sequence of compiled
+ * code derived from the top level method. The leaf node reports itself as belonging to the top
+ * level method.
+ * <li>A leaf node at depth N records the start and extent of a sequence of compiled code derived
+ * from a leaf inlined method at a call depth of N. The leaf node reports itself as belonging to the
+ * leaf method.
+ * <li>A call node at level 0 records the start and extent of a sequence of compiled code that
+ * includes all compiled code derived from a top level call that has been inlined. All child nodes
+ * of the call node (direct or indirect) should model ranges that lie within the parent range. The
+ * call node reports itself as belonging to the top level method and its file and line information
+ * identify the location of the call.
+ * <li>A call node at level N records the start and extent of a sequence of compiled code that
+ * includes all compiled code derived from an inline call at depth N. All child nodes of the call
+ * node (direct or indirect) should model ranges that lie within the parent range. The call node
+ * reports itself as belonging to the caller method at depth N and its file and line information
+ * identify the location of the call.
+ * <ul>
+ *
+ * Ranges also record the location of local and parameter values that are valid for the range's
+ * extent. Each value maps to a corresponding parameter or local variable attached to the range's
+ * method. So, a leaf or call node at level 0 records local and parameter values for separate
+ * sub-extents of the top level method while a leaf or call node at level N+1 records local and
+ * parameter values for separate sub-extents of an inline called method whose full extent is
+ * represented by the parent call range at level N.
  */
 public class Range {
     private static final String CLASS_DELIMITER = ".";
-    private Range caller;
     private final MethodEntry methodEntry;
     private final String fullMethodName;
     private final String fullMethodNameWithParams;
@@ -48,12 +82,13 @@ public class Range {
      */
     private final Range primary;
 
-    /*
-     * Support for tree of nested inline callee ranges
-     */
-
     /**
-     * The first direct callee whose range is wholly contained in this range.
+     * The range for the caller or the primary range when this range if for top level method code.
+     */
+    private Range caller;
+    /**
+     * The first direct callee whose range is wholly contained in this range or null if this is a
+     * leaf range.
      */
     private Range firstCallee;
 
@@ -66,6 +101,40 @@ public class Range {
      * A link to a sibling callee, i.e., a range sharing the same caller with this range.
      */
     private Range siblingCallee;
+
+    /**
+     * Values for the associated method's local and parameter variables that are available or,
+     * alternatively, marked as invalid in this range.
+     */
+    private DebugLocalValueInfo[] localValueInfos;
+
+    /**
+     * The set of local or parameter variables with which each corresponding local value in field
+     * localvalueInfos is associated. Local values which are associated with the same local or
+     * parameter variable will share the same reference in the corresponding array entries. Local
+     * values with which no local variable can be associated will have a null reference in the
+     * corresponding array. The latter case can happen when a local value has an invalid slot or
+     * when a local value that maps to a parameter slot has a different name or type to the
+     * parameter.
+     */
+    private DebugLocalInfo[] localInfos;
+
+    public int getLocalValueCount() {
+        assert !this.isPrimary() : "primary range does not have local values";
+        return localValueInfos.length;
+    }
+
+    public DebugLocalValueInfo getLocalValue(int i) {
+        assert !this.isPrimary() : "primary range does not have local values";
+        assert i >= 0 && i < localValueInfos.length : "bad index";
+        return localValueInfos[i];
+    }
+
+    public DebugLocalInfo getLocal(int i) {
+        assert !this.isPrimary() : "primary range does not have local vars";
+        assert i >= 0 && i < localInfos.length : "bad index";
+        return localInfos[i];
+    }
 
     /*
      * Create a primary range.
@@ -246,10 +315,6 @@ public class Range {
         return siblingCallee;
     }
 
-    public Range getLastCallee() {
-        return lastCallee;
-    }
-
     public boolean isLeaf() {
         return firstCallee == null;
     }
@@ -269,5 +334,69 @@ public class Range {
     @SuppressWarnings("unused")
     public boolean isPrologueEnd() {
         return isPrologueEnd;
+    }
+
+    public void setLocalValueInfo(DebugLocalValueInfo[] localValueInfos) {
+        int len = localValueInfos.length;
+        this.localValueInfos = localValueInfos;
+        this.localInfos = new DebugLocalInfo[len];
+        // set up mapping from local values to local variables
+        for (int i = 0; i < len; i++) {
+            localInfos[i] = methodEntry.recordLocal(localValueInfos[i]);
+        }
+    }
+
+    public HashMap<DebugLocalInfo, List<Range>> getVarRangeMap() {
+        MethodEntry calleeMethod;
+        if (isPrimary()) {
+            calleeMethod = getMethodEntry();
+        } else {
+            assert !isLeaf() : "should only be looking up var ranges for inlined calls";
+            calleeMethod = firstCallee.getMethodEntry();
+        }
+        HashMap<DebugLocalInfo, List<Range>> varRangeMap = new HashMap<>();
+        varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<Range>());
+        for (int i = 0; i < calleeMethod.getParamCount(); i++) {
+            varRangeMap.put(calleeMethod.getParam(i), new ArrayList<Range>());
+        }
+        for (int i = 0; i < calleeMethod.getLocalCount(); i++) {
+            varRangeMap.put(calleeMethod.getLocal(i), new ArrayList<Range>());
+        }
+        return updateVarRangeMap(varRangeMap);
+    }
+
+    public HashMap<DebugLocalInfo, List<Range>> updateVarRangeMap(HashMap<DebugLocalInfo, List<Range>> varRangeMap) {
+        // leaf subranges of the current range may provide values for param or local vars
+        // of this range's method. find them and index the range so that we can identify
+        // both the local/param and the associated range.
+        Range subRange = this.firstCallee;
+        while (subRange != null) {
+            addVarRanges(subRange, varRangeMap);
+            subRange = subRange.siblingCallee;
+        }
+        return varRangeMap;
+    }
+
+    public void addVarRanges(Range subRange, HashMap<DebugLocalInfo, List<Range>> varRangeMap) {
+        int localValueCount = subRange.getLocalValueCount();
+        for (int i = 0; i < localValueCount; i++) {
+            DebugLocalValueInfo localValueInfo = subRange.getLocalValue(i);
+            DebugLocalInfo local = subRange.getLocal(i);
+            if (local != null && localValueInfo.localKind() != DebugLocalValueInfo.LocalKind.UNDEFINED) {
+                List<Range> varRanges = varRangeMap.get(local);
+                assert varRanges != null : "local not present in var to ranges map!";
+                varRanges.add(subRange);
+            }
+        }
+    }
+
+    public DebugLocalValueInfo lookupValue(DebugLocalInfo local) {
+        int localValueCount = getLocalValueCount();
+        for (int i = 0; i < localValueCount; i++) {
+            if (getLocal(i) == local) {
+                return getLocalValue(i);
+            }
+        }
+        return null;
     }
 }

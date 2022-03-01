@@ -73,6 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -83,6 +84,7 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -111,6 +113,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     int primitiveStartOffset;
     int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
+    HostedType wordBaseType;
+
+    private static final String GRAAL_WORDBASE_TYPE_NAME = "Lorg/graalvm/word/WordBase;";
 
     NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap) {
         super();
@@ -141,6 +146,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
+        wordBaseType = heap.getUniverse().getTypes().stream().filter(type -> type.getName().equals(GRAAL_WORDBASE_TYPE_NAME)).findFirst().get();
     }
 
     @Override
@@ -221,11 +227,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
         // we want a substituted target if there is one. if there is a substitution at the end of
         // the method chain fetch the annotated target class
-        ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
-        if (javaMethod instanceof SubstitutionMethod) {
-            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
-            return substitutionMethod.getAnnotated().getDeclaringClass();
-        }
+        ResolvedJavaMethod javaMethod = getOriginal(hostedMethod);
         return javaMethod.getDeclaringClass();
     }
 
@@ -250,14 +252,19 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return javaType;
     }
 
-    private static int getOriginalModifiers(HostedMethod hostedMethod) {
-        ResolvedJavaMethod targetMethod = hostedMethod.getWrapped().getWrapped();
-        if (targetMethod instanceof SubstitutionMethod) {
-            targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-        } else if (targetMethod instanceof CustomSubstitutionMethod) {
-            targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
+    private static ResolvedJavaMethod getOriginal(HostedMethod hostedMethod) {
+        ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        if (javaMethod instanceof SubstitutionMethod) {
+            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
+            javaMethod = substitutionMethod.getAnnotated();
+        } else if (javaMethod instanceof CustomSubstitutionMethod) {
+            javaMethod = ((CustomSubstitutionMethod) javaMethod).getOriginal();
         }
-        return targetMethod.getModifiers();
+        return javaMethod;
+    }
+
+    private static int getOriginalModifiers(HostedMethod hostedMethod) {
+        return getOriginal(hostedMethod).getModifiers();
     }
 
     private static String toJavaName(JavaType javaType) {
@@ -803,10 +810,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     protected abstract class NativeImageDebugBaseMethodInfo extends NativeImageDebugFileInfo implements DebugMethodInfo {
         protected final ResolvedJavaMethod method;
+        protected final List<DebugLocalInfo> paramInfo;
+        protected final DebugLocalInfo thisParamInfo;
 
         NativeImageDebugBaseMethodInfo(ResolvedJavaMethod method) {
             super(method);
             this.method = method;
+            this.paramInfo = createParamInfo(method);
+            // We use the target modifiers to decide where to install any first param
+            // even though we may have added it according to whether method is static.
+            // That's because in a few special cases method is static but the original
+            // DebugFrameLocals
+            // from which it is derived is an instance method. This appears to happen
+            // when a C function pointer masquerades as a method. Whatever parameters
+            // we pass through need to match the definition of the original.
+            if (Modifier.isStatic(modifiers())) {
+                this.thisParamInfo = null;
+            } else {
+                this.thisParamInfo = paramInfo.remove(0);
+            }
         }
 
         /**
@@ -896,6 +918,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public DebugLocalInfo[] getParamInfo() {
+            return paramInfo.toArray(new DebugLocalInfo[paramInfo.size()]);
+        }
+
+        @Override
+        public DebugLocalInfo getThisParamInfo() {
+            return thisParamInfo;
+        }
+
+        @Override
         public String symbolNameForMethod() {
             return NativeImage.localSymbolNameForMethod(method);
         }
@@ -906,30 +938,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return ((HostedMethod) method).isDeoptTarget();
             }
             return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
-        }
-
-        @Override
-        public List<String> paramTypes() {
-            Signature signature = method.getSignature();
-            int parameterCount = signature.getParameterCount(false);
-            List<String> paramTypes = new ArrayList<>(parameterCount);
-            for (int i = 0; i < parameterCount; i++) {
-                JavaType parameterType = signature.getParameterType(i, null);
-                paramTypes.add(toJavaName(parameterType));
-            }
-            return paramTypes;
-        }
-
-        @Override
-        public List<String> paramNames() {
-            /* Can only provide blank names for now. */
-            Signature signature = method.getSignature();
-            int parameterCount = signature.getParameterCount(false);
-            List<String> paramNames = new ArrayList<>(parameterCount);
-            for (int i = 0; i < parameterCount; i++) {
-                paramNames.add("");
-            }
-            return paramNames;
         }
 
         @Override
@@ -959,6 +967,51 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             /* TODO - convert index to offset (+ sizeof DynamicHub) */
             return isVirtual() ? ((HostedMethod) method).getVTableIndex() : -1;
         }
+    }
+
+    private List<DebugLocalInfo> createParamInfo(ResolvedJavaMethod method) {
+        Signature signature = method.getSignature();
+        int parameterCount = signature.getParameterCount(false);
+        List<DebugLocalInfo> paramInfos = new ArrayList<>(parameterCount);
+        LocalVariableTable table = method.getLocalVariableTable();
+        LineNumberTable lineNumberTable = method.getLineNumberTable();
+        int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
+        int slot = 0;
+        if (!method.isStatic()) {
+            ResolvedJavaType ownerType = method.getDeclaringClass();
+            JavaKind kind = ownerType.getJavaKind();
+            JavaKind storageKind = isPseudoObjectType(ownerType) ? JavaKind.Long : kind;
+            assert kind == JavaKind.Object : "must be an object";
+            paramInfos.add(new NativeImageDebugLocalValueInfo("this", storageKind, ownerType, slot, line));
+            slot += kind.getSlotCount();
+        }
+        for (int i = 0; i < parameterCount; i++) {
+            JavaType type = signature.getParameterType(i, null);
+            JavaKind kind = type.getJavaKind();
+            JavaKind storageKind = isPseudoObjectType(type) ? JavaKind.Long : kind;
+            Local local = (table == null ? null : table.getLocal(slot, 0));
+            String name = (local != null ? local.getName() : "__" + i);
+            paramInfos.add(new NativeImageDebugLocalValueInfo(name, storageKind, type.resolve(null), slot, line));
+            slot += kind.getSlotCount();
+        }
+        return paramInfos;
+    }
+
+    /**
+     * Identify a pseudo-object Java type which is used only to model a memory word, pointer or
+     * foreign opaque type.
+     * 
+     * @param type the type to be tested
+     * @return true if the type is a pseudo object type
+     */
+    private boolean isPseudoObjectType(JavaType type) {
+        ResolvedJavaType resolvedJavaType = type.resolve(null);
+        return (wordBaseType.isAssignableFrom(resolvedJavaType));
+    }
+
+    private static boolean isIntegralKindPromotion(JavaKind promoted, JavaKind original) {
+        return (promoted == JavaKind.Int &&
+                        (original == JavaKind.Boolean || original == JavaKind.Byte || original == JavaKind.Short || original == JavaKind.Char));
     }
 
     protected abstract class NativeImageDebugHostedMethodInfo extends NativeImageDebugBaseMethodInfo {
@@ -1387,7 +1440,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private int hi;
         private DebugLocationInfo callersLocationInfo;
         private boolean isPrologueEnd;
-        private List<DebugLocalInfo> localInfoList;
+        private List<DebugLocalValueInfo> localInfoList;
 
         NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo) {
             this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, frameNode.sourcePos.isMethodStart());
@@ -1407,7 +1460,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.localInfoList = initLocalInfoList(bcpos);
         }
 
-        private List<DebugLocalInfo> initLocalInfoList(BytecodePosition bcpos) {
+        private List<DebugLocalValueInfo> initLocalInfoList(BytecodePosition bcpos) {
             if (!(bcpos instanceof BytecodeFrame)) {
                 return null;
             }
@@ -1416,27 +1469,39 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (frame.numLocals == 0) {
                 return null;
             }
+            // deal with any inconsistencies in the layout of the frame locals
+            // NativeImageDebugFrameInfo debugFrameInfo = new NativeImageDebugFrameInfo(frame);
+
+            LineNumberTable lineNumberTable = frame.getMethod().getLineNumberTable();
             Local[] localsBySlot = getLocalsBySlot();
             if (localsBySlot == null) {
-                // TODO perhaps try synthesising locals info here
-                return null;
+                return Collections.emptyList();
             }
             int count = Integer.min(localsBySlot.length, frame.numLocals);
-            ArrayList<DebugLocalInfo> localInfos = new ArrayList<>(count);
+            ArrayList<DebugLocalValueInfo> localInfos = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
-                JavaValue value = frame.getLocalValue(i);
-                JavaKind kind = frame.getLocalValueKind(i);
                 Local l = localsBySlot[i];
-                String name;
-                ResolvedJavaType type;
                 if (l != null) {
-                    name = l.getName();
-                    type = l.getType().resolve(method.getDeclaringClass());
-                } else {
-                    name = "_" + i;
-                    type = null;
+                    // we have a local with a known name, type and slot
+                    String name = l.getName();
+                    ResolvedJavaType type = l.getType().resolve(method.getDeclaringClass());
+                    JavaKind kind = type.getJavaKind();
+                    int slot = l.getSlot();
+                    debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", i, name, type.getName(), slot);
+                    JavaValue value = (slot < frame.numLocals ? frame.getLocalValue(slot) : Value.ILLEGAL);
+                    JavaKind storageKind = (slot < frame.numLocals ? frame.getLocalValueKind(slot) : JavaKind.Illegal);
+                    debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value.toString(), storageKind.toString());
+                    int bciStart = l.getStartBCI();
+                    int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(bciStart) : -1);
+                    // only add the local if the kinds match
+                    if ((storageKind == kind) ||
+                                    isIntegralKindPromotion(storageKind, kind) ||
+                                    (isPseudoObjectType(type) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
+                        localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, type, slot, line));
+                    } else if (storageKind != JavaKind.Illegal) {
+                        debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind().toString());
+                    }
                 }
-                localInfos.add(new NativeImageDebugLocalInfo(name, value, kind, type));
             }
             return localInfos;
         }
@@ -1445,7 +1510,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             LocalVariableTable lvt = method.getLocalVariableTable();
             Local[] nonEmptySortedLocals = null;
             if (lvt != null) {
-                Local[] locals = lvt.getLocals();
+                Local[] locals = lvt.getLocalsAt(bci);
                 if (locals != null && locals.length > 0) {
                     nonEmptySortedLocals = Arrays.copyOf(locals, locals.length);
                     Arrays.sort(nonEmptySortedLocals, (Local l1, Local l2) -> l1.getSlot() - l2.getSlot());
@@ -1484,11 +1549,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Stream<DebugLocalInfo> localsProvider() {
+        public DebugLocalValueInfo[] getLocalValueInfo() {
             if (localInfoList != null) {
-                return localInfoList.stream();
+                return localInfoList.toArray(new DebugLocalValueInfo[localInfoList.size()]);
             } else {
-                return Stream.empty();
+                return new DebugLocalValueInfo[0];
             }
         }
 
@@ -1539,8 +1604,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return null;
             }
             for (int i = 0; i < size; i++) {
-                NativeImageDebugLocalInfo thisLocal = (NativeImageDebugLocalInfo) localInfoList.get(i);
-                NativeImageDebugLocalInfo thatLocal = (NativeImageDebugLocalInfo) that.localInfoList.get(i);
+                NativeImageDebugLocalValueInfo thisLocal = (NativeImageDebugLocalValueInfo) localInfoList.get(i);
+                NativeImageDebugLocalValueInfo thatLocal = (NativeImageDebugLocalValueInfo) that.localInfoList.get(i);
                 if (!thisLocal.sameAs(thatLocal)) {
                     return null;
                 }
@@ -1553,18 +1618,26 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugLocalInfo implements DebugLocalInfo {
+    public class NativeImageDebugLocalValueInfo implements DebugLocalValueInfo {
         private final String name;
         private ResolvedJavaType type;
         private final JavaValue value;
         private final JavaKind kind;
+        private int slot;
+        private int line;
         private LocalKind localKind;
 
-        NativeImageDebugLocalInfo(String name, JavaValue value, JavaKind kind, ResolvedJavaType type) {
+        NativeImageDebugLocalValueInfo(String name, JavaKind kind, ResolvedJavaType type, int slot, int line) {
+            this(name, Value.ILLEGAL, kind, type, slot, line);
+        }
+
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
             this.name = name;
             this.value = value;
             this.kind = kind;
             this.type = type;
+            this.slot = slot;
+            this.line = line;
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
             } else if (value instanceof StackSlot) {
@@ -1594,6 +1667,26 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public int slot() {
+            return slot;
+        }
+
+        @Override
+        public int slotCount() {
+            return kind.getSlotCount();
+        }
+
+        @Override
+        public JavaKind javaKind() {
+            return kind;
+        }
+
+        @Override
+        public int line() {
+            return line;
+        }
+
+        @Override
         public String valueString() {
             switch (localKind) {
                 case REGISTER:
@@ -1609,7 +1702,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public LocalKind localKind() {
-            return null;
+            return localKind;
         }
 
         @Override
@@ -1627,7 +1720,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return null;
         }
 
-        public boolean sameAs(NativeImageDebugLocalInfo that) {
+        public boolean sameAs(NativeImageDebugLocalValueInfo that) {
             if (localKind == that.localKind) {
                 switch (localKind) {
                     case REGISTER:

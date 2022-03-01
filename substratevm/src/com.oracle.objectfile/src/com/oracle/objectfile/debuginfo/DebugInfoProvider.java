@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -202,14 +203,15 @@ public interface DebugInfoProvider {
 
     interface DebugMethodInfo extends DebugMemberInfo {
         /**
-         * @return an array of Strings identifying the method parameters.
+         * @return an array of DebugLocalInfo objects holding details of this method's parameters
          */
-        List<String> paramTypes();
+        DebugLocalInfo[] getParamInfo();
 
         /**
-         * @return an array of Strings with the method parameters' names.
+         * @return a DebugLocalInfo objects holding details of the target instance parameter this if
+         *         the method is an instance method or null if it is a static method.
          */
-        List<String> paramNames();
+        DebugLocalInfo getThisParamInfo();
 
         /**
          * @return the symbolNameForMethod string
@@ -338,28 +340,42 @@ public interface DebugInfoProvider {
         boolean isPrologueEnd();
 
         /**
-         * @return a stream of {@link DebugLocalInfo} objects identifying local or parameter
+         * @return a stream of {@link DebugLocalValueInfo} objects identifying local or parameter
          *         variables present in the frame of the current range.
          */
-        Stream<DebugLocalInfo> localsProvider();
+        DebugLocalValueInfo[] getLocalValueInfo();
     }
 
     /**
-     * A DebugLocalInfo identifies a local or parameter variable present in the current frame, which
-     * may be undefined. If not then the instance records its type and either its (constant) value
-     * or the register or slot location in which the value can be found.
+     * A DebugLocalInfo details a local or parameter variable recording its name and type, the
+     * (abstract machine) local slot index it resides in and the number of slots it occupies.
      */
     interface DebugLocalInfo {
+        String name();
+
+        String typeName();
+
+        int slot();
+
+        int slotCount();
+
+        JavaKind javaKind();
+
+        int line();
+    }
+
+    /**
+     * A DebugLocalValueInfo details the value a local or parameter variable present in a specific
+     * frame. The value may be undefined. If not then the instance records its type and either its
+     * (constant) value or the register or stack location in which the value resides.
+     */
+    interface DebugLocalValueInfo extends DebugLocalInfo {
         enum LocalKind {
             UNDEFINED,
             REGISTER,
             STACKSLOT,
             CONSTANT
         }
-
-        String name();
-
-        String typeName();
 
         String valueString();
 

@@ -464,7 +464,7 @@ public final class CompilationResultFrameTree {
         @SuppressWarnings("try")
         public CallNode build(CompilationResult compilationResult) {
             try (DebugContext.Scope s = debug.scope("FrameTree.Builder", compilationResult)) {
-                debug.log("Building FrameTree for %s", compilationResult);
+                debug.log(DebugContext.VERBOSE_LEVEL, "Building FrameTree for %s", compilationResult);
 
                 List<Infopoint> infopoints = compilationResult.getInfopoints();
                 List<SourceMapping> sourceMappings = compilationResult.getSourceMappings();
@@ -476,21 +476,21 @@ public final class CompilationResultFrameTree {
                         sourcePosData.add(wrapper);
                         infopointForRoot = wrapper;
                     } else {
-                        debug.log(" Discard Infopoint without BytecodePosition %s", infopoint);
+                        debug.log(DebugContext.DETAILED_LEVEL, " Discard Infopoint without BytecodePosition %s", infopoint);
                     }
                 }
                 for (SourceMapping sourceMapping : sourceMappings) {
                     SourceMappingWrapper wrapper = SourceMappingWrapper.create(sourceMapping);
                     if (wrapper != null) {
                         if (wrapper.getStartOffset() > targetCodeSize - 1) {
-                            if (debug.isLogEnabled()) {
+                            if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
                                 debug.log(" Discard SourceMapping outside code-range %s", SourceMappingWrapper.getSourceMappingString(sourceMapping));
                             }
                             continue;
                         }
                         sourcePosData.add(wrapper);
                     } else {
-                        if (debug.isLogEnabled()) {
+                        if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
                             debug.log(" Discard SourceMapping without NodeSourcePosition %s", SourceMappingWrapper.getSourceMappingString(sourceMapping));
                         }
                     }
@@ -500,7 +500,7 @@ public final class CompilationResultFrameTree {
 
                 nullifyOverlappingSourcePositions(sourcePosData);
 
-                if (debug.isLogEnabled()) {
+                if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
                     debug.log("Sorted input data:");
                     for (SourcePositionSupplier sourcePositionSupplier : sourcePosData) {
                         if (sourcePositionSupplier != null) {
@@ -593,7 +593,7 @@ public final class CompilationResultFrameTree {
                 SourcePositionSupplier rightPos = sourcePosData.get(indexRight);
 
                 if (overlappingSourcePosition(leftPos, rightPos)) {
-                    debug.log("Handle Overlapping SourcePositions: %s | %s", leftPos, rightPos);
+                    debug.log(DebugContext.DETAILED_LEVEL, "Handle Overlapping SourcePositions: %s | %s", leftPos, rightPos);
 
                     /* Handle infopoint overlapping */
                     if (leftPos instanceof InfopointSourceWrapper && rightPos instanceof InfopointSourceWrapper) {

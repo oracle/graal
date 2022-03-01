@@ -32,8 +32,10 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
@@ -612,5 +614,27 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return 0;
         }
         return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodName);
+    }
+
+    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline, int index) {
+        dwarfSections.setMethodLocalIndex(methodEntry, paramInfo, isInline, index);
+    }
+
+    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getMethodLocalIndex(methodEntry, paramInfo, isInline);
+    }
+
+    protected void setMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline, int index) {
+        dwarfSections.setMethodLocationIndex(methodEntry, paramInfo, isInline, index);
+    }
+
+    protected int getMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getMethodLocationIndex(methodEntry, paramInfo, isInline);
     }
 }
