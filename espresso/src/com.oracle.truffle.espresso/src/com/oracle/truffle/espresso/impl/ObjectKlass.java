@@ -177,7 +177,7 @@ public final class ObjectKlass extends Klass {
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
             Field staticField;
-            if (superKlass == getMeta().java_lang_Enum && lkStaticFields[i].getName() != Name.$VALUES) {
+            if (superKlass == getMeta().java_lang_Enum && !isEnumValuesField(lkStaticFields[i])) {
                 staticField = new EnumConstantField(klassVersion, lkStaticFields[i], pool);
             } else {
                 staticField = new Field(klassVersion, lkStaticFields[i], pool);
@@ -199,6 +199,11 @@ public final class ObjectKlass extends Klass {
         }
         this.initState = LOADED;
         assert verifyTables();
+    }
+
+    private boolean isEnumValuesField(LinkedField lkStaticFields) {
+        return lkStaticFields.getName() == Name.$VALUES ||
+                lkStaticFields.getName() == Name.ENUM$VALUES;
     }
 
     private void addSubType(ObjectKlass objectKlass) {

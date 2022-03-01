@@ -327,6 +327,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // java.lang.Enum
         public static final Symbol<Name> $VALUES = StaticSymbols.putName("$VALUES");
+        public static final Symbol<Name> ENUM$VALUES = StaticSymbols.putName("ENUM$VALUES");
 
         // LambdaForm
         public static final Symbol<Name> compileToBytecode = StaticSymbols.putName("compileToBytecode");

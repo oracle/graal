@@ -82,7 +82,8 @@ final class ExtensionFieldsMetadata {
             LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(holder.linkedKlass.getParserKlass());
             LinkedField linkedField = new LinkedField(newField, nextFieldSlot, mode);
             Field field;
-            if (holder.getSuperKlass() == holder.getKlass().getMeta().java_lang_Enum && newField.getName() != Symbol.Name.$VALUES) {
+            if (holder.getSuperKlass() == holder.getKlass().getMeta().java_lang_Enum &&
+                    newField.getName() != Symbol.Name.$VALUES && newField.getName() != Symbol.Name.ENUM$VALUES) {
                 field = new RedefineAddedEnumField(holder, linkedField, pool);
             } else {
                 field = new RedefineAddedField(holder, linkedField, pool, false);

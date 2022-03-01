@@ -130,7 +130,7 @@ public abstract class EspressoInstrumentableNode extends Node implements BciProv
         return EspressoScope.createVariables(liveLocals, frame, method.getName());
     }
 
-    private boolean checkLocals(Local[] liveLocals, Method method) {
+    private static boolean checkLocals(Local[] liveLocals, Method method) {
         if (liveLocals.length == 0) {
             return false;
         }

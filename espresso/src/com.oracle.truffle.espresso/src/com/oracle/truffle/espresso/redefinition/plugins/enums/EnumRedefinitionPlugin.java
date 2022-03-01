@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.redefinition.plugins.enums;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -39,20 +38,28 @@ import java.util.Map;
 
 public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
 
-    private ArrayList<ObjectKlass> toRerun = new ArrayList<>(4);
+    private ArrayList<ObjectKlass> enumClassesToRerun = new ArrayList<>(4);
+    private ArrayList<Field> fieldsToClear = new ArrayList<>(4);
 
     @Override
     public boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed) {
         // changed enum classes store enum constants in static fields
         if (changed && getContext().getMeta().java_lang_Enum.isAssignable(klass)) {
-            toRerun.add(klass);
+            enumClassesToRerun.add(klass);
+        }
+        for (Field declaredField : klass.getDeclaredFields()) {
+            // ecj compiler generates mappings for ordinals directly
+            // in the classes that use them, and they need to be reset
+            if (declaredField.getNameAsString().startsWith("$SWITCH_TABLE$")) {
+                fieldsToClear.add(declaredField);
+            }
         }
         return false;
     }
 
     @Override
     public void postClassRedefinition(@SuppressWarnings("unused") ObjectKlass[] changedKlasses) {
-        for (ObjectKlass objectKlass : toRerun) {
+        for (ObjectKlass objectKlass : enumClassesToRerun) {
             // existing enum constants will not be re-created because of
             // loss in object identity, so we have to capture constructor
             // arguments and re-run the constructor to re-initialize enum
@@ -91,7 +98,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                         }
 
                         @Override
-                        public boolean onMethodExit(MethodRef method, Object returnValue) {
+                        public boolean onMethodExit(@SuppressWarnings("unused")MethodRef m, @SuppressWarnings("unused")Object returnValue) {
                             return false;
                         }
                     };
@@ -107,6 +114,10 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                 method.removeActiveHook(hook);
             }
         }
-        toRerun.clear();
+        enumClassesToRerun.clear();
+        for (Field field : fieldsToClear) {
+            field.set(field.getDeclaringKlass().getStatics(), StaticObject.NULL);
+        }
+        fieldsToClear.clear();
     }
 }
