@@ -145,23 +145,23 @@ suite = {
       ],
     },
     "LLVM_ORG" : {
-      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
+      "version" : "12.0.1-4-g44c3fb5080-bgffeaf3b8e1",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "9a22c2f67f359e62fe9bcf8d89c24295f9d489dd",
+            "sha1" : "0998e68bc7059d03d3dc81d7002d45918f64b42d",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "c61f0795a8b3ca6fedcb640aa9b93db7d1c5bb14",
+            "sha1" : "d9533fcd2261b37eef3eaa9e096d3f5397f3ca2d",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "f820252fc848e3f7ab7a7ebbe8e9b2d4b129a98e",
+            "sha1" : "053617d434656b17f5470d77e01de065ef5262b2",
           },
           "aarch64" : {
             # GR-34811
@@ -171,7 +171,7 @@ suite = {
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "sha1" : "a321d009a97545f8a6cf301678a79b4166a31d22",
+            "sha1" : "4573773432e1e36244387684ac5ddf66a8d75fe7",
           }
         },
         "<others>": {
@@ -183,19 +183,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
+      "version" : "12.0.1-4-g44c3fb5080-bgffeaf3b8e1",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "daf84066ea4f77f1b0ee7c96b14b948ae56517e9",
+      "sha1" : "fc88bc3f49f51d073c00bc85af1c4a63bce53f05",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
+      "version" : "12.0.1-4-g44c3fb5080-bgffeaf3b8e1",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "623d031f0f0ec296557138b46ad153af65f839e3",
+      "sha1" : "bed3eeea2fd5038eb47632a6f52aa4f10c27a989",
       "license" : "Apache-2.0-LLVM",
       },
   },
