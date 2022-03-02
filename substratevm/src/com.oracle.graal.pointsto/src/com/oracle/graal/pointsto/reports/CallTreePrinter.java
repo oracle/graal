@@ -349,18 +349,19 @@ public final class CallTreePrinter {
         }
 
         String msgPrefix = "call tree csv file for ";
-        toCsvFile(msgPrefix + "vm entry point", reportsPath, "call_tree_vm", reportName, CallTreePrinter::printVMEntryPoint);
-        toCsvFile(msgPrefix + "methods", reportsPath, "call_tree_methods", reportName, writer -> printMethodNodes(methodToNode.values(), writer));
-        toCsvFile(msgPrefix + "virtual methods", reportsPath, "call_tree_virtual_methods", reportName, writer -> printVirtualNodes(virtualNodes, writer));
-        toCsvFile(msgPrefix + "entry points", reportsPath, "call_tree_entry_points", reportName, writer -> printEntryPointIds(entryPointIds, writer));
-        toCsvFile(msgPrefix + "direct edges", reportsPath, "call_tree_direct_edges", reportName, writer -> printBciEdges(directEdges, writer));
-        toCsvFile(msgPrefix + "overriden by edges", reportsPath, "call_tree_override_by_edges", reportName, writer -> printNonBciEdges(overridenByEdges, writer));
-        toCsvFile(msgPrefix + "virtual edges", reportsPath, "call_tree_virtual_edges", reportName, writer -> printBciEdges(virtualEdges, writer));
+        String timeStamp = ReportUtils.getTimeStampString();
+        toCsvFile(msgPrefix + "vm entry point", reportsPath, "call_tree_vm", reportName, timeStamp, CallTreePrinter::printVMEntryPoint);
+        toCsvFile(msgPrefix + "methods", reportsPath, "call_tree_methods", reportName, timeStamp, writer -> printMethodNodes(methodToNode.values(), writer));
+        toCsvFile(msgPrefix + "virtual methods", reportsPath, "call_tree_virtual_methods", reportName, timeStamp, writer -> printVirtualNodes(virtualNodes, writer));
+        toCsvFile(msgPrefix + "entry points", reportsPath, "call_tree_entry_points", reportName, timeStamp, writer -> printEntryPointIds(entryPointIds, writer));
+        toCsvFile(msgPrefix + "direct edges", reportsPath, "call_tree_direct_edges", reportName, timeStamp, writer -> printBciEdges(directEdges, writer));
+        toCsvFile(msgPrefix + "overriden by edges", reportsPath, "call_tree_override_by_edges", reportName, timeStamp, writer -> printNonBciEdges(overridenByEdges, writer));
+        toCsvFile(msgPrefix + "virtual edges", reportsPath, "call_tree_virtual_edges", reportName, timeStamp, writer -> printBciEdges(virtualEdges, writer));
     }
 
-    private static void toCsvFile(String description, String reportsPath, String prefix, String reportName, Consumer<PrintWriter> reporter) {
+    private static void toCsvFile(String description, String reportsPath, String prefix, String reportName, String timeStamp, Consumer<PrintWriter> reporter) {
         final String name = prefix + "_" + reportName;
-        final Path csvFile = ReportUtils.report(description, reportsPath, name, "csv", reporter);
+        final Path csvFile = ReportUtils.report(description, reportsPath, name, "csv", reporter, true, timeStamp);
         final Path csvLink = Paths.get(reportsPath).resolve(prefix + ".csv");
 
         if (Files.exists(csvLink, LinkOption.NOFOLLOW_LINKS)) {
@@ -384,7 +385,7 @@ public final class CallTreePrinter {
     }
 
     private static void printMethodNodes(Collection<MethodNode> methods, PrintWriter writer) {
-        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display"));
+        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display", "Flags"));
         methods.stream()
                         .map(CallTreePrinter::methodNodeInfo)
                         .map(CallTreePrinter::convertToCSV)
@@ -525,7 +526,8 @@ public final class CallTreePrinter {
                         method.getDeclaringClass().toJavaName(true),
                         parameters,
                         method.getSignature().getReturnType(null).toJavaName(true),
-                        display(method));
+                        display(method),
+                        flags(method));
     }
 
     private static String display(ResolvedJavaMethod method) {
@@ -542,6 +544,42 @@ public final class CallTreePrinter {
         }
 
         return typeName + "." + method.getName();
+    }
+
+    private static String flags(ResolvedJavaMethod method) {
+        StringBuilder sb = new StringBuilder();
+        if (method.isPublic()) {
+            sb.append('p');
+        } else if (method.isPrivate()) {
+            sb.append('P');
+        } else if (method.isProtected()) {
+            sb.append('d');
+        }
+        if (method.isStatic()) {
+            sb.append('s');
+        }
+        if (method.isFinal()) {
+            sb.append('f');
+        }
+        if (method.isSynchronized()) {
+            sb.append('S');
+        }
+        if (method.isBridge()) {
+            sb.append('b');
+        }
+        if (method.isVarArgs()) {
+            sb.append('v');
+        }
+        if (method.isNative()) {
+            sb.append('n');
+        }
+        if (method.isAbstract()) {
+            sb.append('a');
+        }
+        if (method.isSynthetic()) {
+            sb.append('y');
+        }
+        return sb.toString();
     }
 
     private static String convertToCSV(String... data) {
