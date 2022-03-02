@@ -126,6 +126,13 @@ public interface StackOverflowCheck {
     void initialize(IsolateThread thread);
 
     /**
+     * Determines whether the given address, e.g. a potential stack pointer, is within the safe
+     * boundaries of the current thread's stack (which includes the yellow zone if
+     * {@linkplain #makeYellowZoneAvailable() made available}.
+     */
+    boolean isWithinBounds(UnsignedWord address);
+
+    /**
      * Make the yellow zone of the stack available for usage. It must be eventually followed by a
      * call to {@link #protectYellowZone()}. Nested calls are supported: if the yellow zone is
      * already available, this function is a no-op.

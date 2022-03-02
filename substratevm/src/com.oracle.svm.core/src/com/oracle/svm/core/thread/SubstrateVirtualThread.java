@@ -205,7 +205,7 @@ final class SubstrateVirtualThread extends Thread {
             return false;
         }
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        if (anchor.isNonNull() && cont.sp.aboveThan(anchor.getLastJavaSP())) {
+        if (anchor.isNonNull() && cont.getBottomSP().aboveThan(anchor.getLastJavaSP())) {
             return false;
         }
 

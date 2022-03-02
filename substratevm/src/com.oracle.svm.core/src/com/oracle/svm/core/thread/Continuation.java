@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
@@ -58,12 +59,18 @@ public final class Continuation {
 
     public StoredContinuation stored;
 
+    /** Frame pointer to return to when yielding, {@code null} if not executing. */
+    private Pointer sp;
+
     /**
-     * Frame pointer of {@link #enter} if continuation is running, otherwise frame pointer of
-     * {@link #yield}.
+     * While executing, where to return to when yielding, otherwise, where to continue execution at
+     * when re-entering.
      */
-    Pointer sp;
-    CodePointer ip;
+    private CodePointer ip;
+
+    /** Frame pointer of first frame of the continuation. */
+    private Pointer bottomSP;
+
     private boolean done;
     private int overflowCheckState;
 
@@ -71,8 +78,16 @@ public final class Continuation {
         this.target = target;
     }
 
+    public CodePointer getIP() {
+        return ip;
+    }
+
     public void setIP(CodePointer ip) {
         this.ip = ip;
+    }
+
+    public Pointer getBottomSP() {
+        return bottomSP;
     }
 
     void enter() {
@@ -85,9 +100,13 @@ public final class Continuation {
         }
         try {
             enter0(this, isContinue);
+        } catch (StackOverflowError e) {
+            throw (e == ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR) ? new StackOverflowError() : e;
         } finally {
             overflowCheckState = StackOverflowCheck.singleton().getState();
             StackOverflowCheck.singleton().setState(stateBefore);
+
+            assert sp.isNull() && bottomSP.isNull();
         }
     }
 
@@ -102,42 +121,70 @@ public final class Continuation {
      * @return {@link Object} because we return here via {@link KnownIntrinsics#farReturn} which
      *         passes an object result.
      */
-    @NeverInline("access stack pointer")
-    @Uninterruptible(reason = "write stack", calleeMustBe = false)
+    @NeverInline("Accesses caller stack pointer and return address.")
+    @Uninterruptible(reason = "Copies stack frames containing references.")
     private Object enter1(boolean isContinue) {
-        Pointer currentSP = KnownIntrinsics.readCallerStackPointer();
-        CodePointer currentIP = KnownIntrinsics.readReturnAddress();
+        // Note that the frame of this method will remain on the stack, and yielding will ignore it
+        // and return past it to our caller.
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+        CodePointer callerIP = KnownIntrinsics.readReturnAddress();
+        Pointer currentSP = KnownIntrinsics.readStackPointer();
 
+        assert sp.isNull() && bottomSP.isNull();
         if (isContinue) {
-            assert this.stored != null;
-            assert this.ip.isNonNull();
+            assert stored != null && ip.isNonNull();
 
-            byte[] buf = StoredContinuationImpl.allocateBuf(this.stored);
-            StoredContinuationImpl.writeBuf(this.stored, buf);
-
-            for (int i = 0; i < buf.length; i++) {
-                currentSP.writeByte(i - buf.length, buf[i]);
+            int totalSize = StoredContinuationImpl.readAllFrameSize(stored);
+            Pointer topSP = currentSP.subtract(totalSize);
+            if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
+                throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
             }
+
+            // Inlined loop because a utility method would overwrite its own frame
+            Pointer frameData = StoredContinuationImpl.payloadFrameStart(stored);
+            int offset = 0;
+            for (int next = offset + 32; next < totalSize; next += 32) {
+                Pointer src = frameData.add(offset);
+                Pointer dst = topSP.add(offset);
+                long l0 = src.readLong(0);
+                long l8 = src.readLong(8);
+                long l16 = src.readLong(16);
+                long l24 = src.readLong(24);
+                dst.writeLong(0, l0);
+                dst.writeLong(8, l8);
+                dst.writeLong(16, l16);
+                dst.writeLong(24, l24);
+                offset = next;
+            }
+            for (; offset < totalSize; offset++) {
+                topSP.writeByte(offset, frameData.readByte(offset));
+            }
+            /*
+             * NO CALLS BEYOND THIS POINT! They would overwrite the frames we copied above.
+             */
 
             CodePointer storedIP = this.ip;
 
             this.stored = null;
-            this.sp = currentSP;
-            this.ip = currentIP;
-            KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), storedIP, false);
+            this.ip = callerIP;
+            this.sp = callerSP;
+            this.bottomSP = currentSP;
+            KnownIntrinsics.farReturn(0, topSP, storedIP, false);
             throw VMError.shouldNotReachHere();
 
         } else {
-            assert this.sp.isNull() && this.ip.isNull() && this.stored == null;
-            this.sp = currentSP;
-            this.ip = currentIP;
+            assert ip.isNull() && stored == null;
+            this.ip = callerIP;
+            this.sp = callerSP;
+            this.bottomSP = currentSP;
 
-            enter0();
+            enter2();
             return null;
         }
     }
 
-    private void enter0() {
+    @Uninterruptible(reason = "Not actually, but because caller is uninterruptible.", calleeMustBe = false)
+    private void enter2() {
         try {
             target.run();
         } finally {
@@ -175,27 +222,28 @@ public final class Continuation {
         Pointer leafSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer leafIP = KnownIntrinsics.readReturnAddress();
 
-        Pointer rootSP = sp;
-        CodePointer rootIP = ip;
+        Pointer returnSP = sp;
+        CodePointer returnIP = ip;
 
-        int preemptStatus = StoredContinuationImpl.allocateFromCurrentStack(this, rootSP, leafSP, leafIP);
+        int preemptStatus = StoredContinuationImpl.allocateFromCurrentStack(this, bottomSP, leafSP, leafIP);
         if (preemptStatus != 0) {
             return preemptStatus;
         }
 
-        sp = leafSP;
         ip = leafIP;
+        sp = WordFactory.nullPointer();
+        bottomSP = WordFactory.nullPointer();
 
-        KnownIntrinsics.farReturn(0, rootSP, rootIP, false);
+        KnownIntrinsics.farReturn(0, returnSP, returnIP, false);
         throw VMError.shouldNotReachHere();
     }
 
     public boolean isStarted() {
-        return sp.isNonNull();
+        return ip.isNonNull();
     }
 
     public boolean isEmpty() {
-        return sp.isNull();
+        return ip.isNull();
     }
 
     public boolean isDone() {
@@ -204,8 +252,9 @@ public final class Continuation {
 
     public void finish() {
         done = true;
-        sp = WordFactory.nullPointer();
         ip = WordFactory.nullPointer();
+        sp = WordFactory.nullPointer();
+        bottomSP = WordFactory.nullPointer();
         assert isEmpty();
     }
 
@@ -223,12 +272,15 @@ public final class Continuation {
         @Override
         public void invoke() {
             IsolateThread vmThread = PlatformThreads.getIsolateThread(thread);
-            Pointer rootSP = cont.sp;
-            CodePointer rootIP = cont.ip;
-            preemptStatus = StoredContinuationImpl.allocateFromForeignStack(cont, rootSP, vmThread);
+            Pointer bottomSP = cont.bottomSP;
+            Pointer returnSP = cont.sp;
+            CodePointer returnIP = cont.ip;
+            preemptStatus = StoredContinuationImpl.allocateFromForeignStack(cont, bottomSP, vmThread);
             if (preemptStatus == 0) {
+                cont.sp = WordFactory.nullPointer();
+                cont.bottomSP = WordFactory.nullPointer();
                 VMThreads.ActionOnExitSafepointSupport.setSwitchStack(vmThread);
-                VMThreads.ActionOnExitSafepointSupport.setSwitchStackTarget(vmThread, rootSP, rootIP);
+                VMThreads.ActionOnExitSafepointSupport.setSwitchStackTarget(vmThread, returnSP, returnIP);
             }
         }
     }

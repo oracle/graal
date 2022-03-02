@@ -56,6 +56,7 @@ public class ImplicitExceptions {
     public static final NegativeArraySizeException CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION = new NegativeArraySizeException(NO_STACK_MSG);
     public static final ArithmeticException CACHED_ARITHMETIC_EXCEPTION = new ArithmeticException(NO_STACK_MSG);
     public static final AssertionError CACHED_ASSERTION_ERROR = new AssertionError(NO_STACK_MSG);
+    public static final StackOverflowError CACHED_STACK_OVERFLOW_ERROR = new StackOverflowError(NO_STACK_MSG);
 
     public static final SubstrateForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNullPointerException", false);
     public static final SubstrateForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOutOfBoundsException", false);

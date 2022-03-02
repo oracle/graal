@@ -218,17 +218,6 @@ public final class StoredContinuationImpl {
         return payloadLocation(f).add(readFrameMetaSize(f));
     }
 
-    /** A non-uninterruptible function to allocate temporary buffer. */
-    public static byte[] allocateBuf(StoredContinuation f) {
-        return new byte[readAllFrameSize(f)];
-    }
-
-    @Uninterruptible(reason = "access stack")
-    public static void writeBuf(StoredContinuation f, byte[] buf) {
-        Pointer frameStart = payloadFrameStart(f);
-        UnmanagedMemoryUtil.copy(frameStart, Word.objectToUntrackedPointer(buf).add(getByteArrayBaseOffset()), WordFactory.unsigned(buf.length));
-    }
-
     public static int allocateFromCurrentStack(Continuation cont, Pointer rootSp, Pointer leafSp, CodePointer leafIp) {
         return allocateFromStack(cont, rootSp, leafSp, leafIp, WordFactory.nullPointer());
     }
