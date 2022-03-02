@@ -65,6 +65,9 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
+        if (!Options.UseTrappingNullChecks.getValue(graph.getOptions()) || context.getTarget().implicitNullCheckLimit <= 0) {
+            return;
+        }
         new Instance(context.getTarget().implicitNullCheckLimit).run(graph, context);
     }
 
@@ -78,9 +81,6 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
         @Override
         protected void run(StructuredGraph graph, LowTierContext context) {
-            if (!Options.UseTrappingNullChecks.getValue(graph.getOptions()) || context.getTarget().implicitNullCheckLimit <= 0) {
-                return;
-            }
             assert graph.getGuardsStage().areFrameStatesAtDeopts();
             MetaAccessProvider metaAccessProvider = context.getMetaAccess();
             for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {

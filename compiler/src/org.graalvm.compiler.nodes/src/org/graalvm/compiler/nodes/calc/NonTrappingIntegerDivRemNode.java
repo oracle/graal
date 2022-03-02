@@ -83,7 +83,7 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     private boolean canTrap() {
         IntegerStamp yStamp = (IntegerStamp) y.stamp(NodeView.DEFAULT);
-        return yStamp.canBeZero();
+        return yStamp.contains(0);
     }
 
     public boolean canOverflow() {

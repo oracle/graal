@@ -25,6 +25,7 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
@@ -52,6 +53,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -75,6 +77,12 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
+        if (!GraalOptions.FloatingDivNodes.getValue(graph.getOptions())) {
+            return;
+        }
+        if (!GraalServices.supportsArbitraryImplicitException()) {
+            return;
+        }
         EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets = null;
         ScheduleResult sched = null;
         for (NonTrappingIntegerDivRemNode<?> divRem : graph.getNodes(NonTrappingIntegerDivRemNode.TYPE)) {
