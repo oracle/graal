@@ -256,7 +256,7 @@ class SlOperationsBuilderNode {
 
     public static String dump(byte[] bc, Object[] consts) {
         StringBuilder sb = new StringBuilder();
-    
+
         for (int bci = 0; bci < bc.length;) {
             sb.append(String.format(" %04x ", bci));
             switch (bc[bci]) {
@@ -268,7 +268,7 @@ class SlOperationsBuilderNode {
                     sb.append(String.format("jp_f  %04x", SlOperationsBuilderImpl.BYTES.getShort(bc, bci + 1)));
                     bci += 3;
                     break;
-    
+
                 case SlOperationsBuilderImpl.PRIM_OP_UNCOND_JUMP:
                     sb.append(String.format("jp    %04x", SlOperationsBuilderImpl.BYTES.getShort(bc, bci + 1)));
                     bci += 3;
@@ -314,7 +314,7 @@ class SlOperationsBuilderNode {
             }
             sb.append("\n");
         }
-    
+
         return sb.toString();
     }
 

@@ -2,6 +2,7 @@ package com.oracle.truffle.api.operation.test.example;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Stack;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
@@ -173,18 +174,11 @@ class SlOperationsBuilderImpl extends SlOperationsBuilder {
 
             return returnValue;
         }
-
-        @Override
-        public OperationsNode copyUninitialized() {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
     }
 
-    ArrayList<SlOperationsBuilderNode.Type> typeStack = new ArrayList<>();
-    ArrayList<ArrayList<SlOperationsBuilderNode>> childStack = new ArrayList<>();
-    ArrayList<Object[]> argStack = new ArrayList<>();
+    Stack<SlOperationsBuilderNode.Type> typeStack = new Stack<>();
+    Stack<ArrayList<SlOperationsBuilderNode>> childStack = new Stack<>();
+    Stack<Object[]> argStack = new Stack<>();
 
     static class SlOperationsLabel extends OperationLabel {
         private boolean marked = false;

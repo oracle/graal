@@ -68,6 +68,8 @@ import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.library.LibraryGenerator;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
+import com.oracle.truffle.dsl.processor.operations.OperationsCodeGenerator;
+import com.oracle.truffle.dsl.processor.operations.OperationsParser;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
@@ -187,6 +189,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
+        annotations.add(TruffleTypes.GenerateOperations_Name);
         annotations.add(TruffleTypes.Specialization_Name);
         annotations.add(TruffleTypes.Fallback_Name);
         annotations.add(TruffleTypes.TypeSystemReference_Name);
@@ -203,6 +206,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private static List<AnnotationProcessor<?>> createGenerators() {
         List<AnnotationProcessor<?>> generators = new ArrayList<>();
+        generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new TypeSystemParser(), new TypeSystemCodeGenerator()));
         generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));

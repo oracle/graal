@@ -27,7 +27,7 @@ class SlOperations {
             return left.toString() + right.toString();
         }
 
-        public static boolean isString(Object a, Object b) {
+        protected static boolean isString(Object a, Object b) {
             return a instanceof String || b instanceof String;
         }
 

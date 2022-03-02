@@ -269,7 +269,7 @@ suite = {
     "com.oracle.truffle.api.library" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities"],
+      "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities", "com.oracle.truffle.api.operation"],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
       ],
@@ -282,7 +282,7 @@ suite = {
     "com.oracle.truffle.api.operation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.polyglot"],
+      "dependencies" : ["com.oracle.truffle.api"],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "11+",
