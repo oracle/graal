@@ -406,6 +406,14 @@ public class RubyTests extends RegexTestBase {
         test("\\g<foo>bar(?<foo>foo.)", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
         test("\\g<three_digits>-(?<three_digits>[0-9]{3})", "", "123-456", 0, true, 0, 7, 4, 7);
         test("(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)-(?<two_digits>\\g<digit>\\g<digit>)-(?<digit>\\d)", "", "12345-67-8", 0, true, 0, 10, 0, 5, 6, 8, 9, 10);
+        // quantifier of called group is not copied
+        test("(a)+b\\g<1>b", "", "aaabab", 0, true, 0, 6, 4, 5);
+        test("(a)+b\\g<1>b", "", "aaabaaab", 0, false);
+        // quantifier of subexpression call is preserved
+        test("(a)\\g<1>+", "", "aaaa", 0, true, 0, 4, 3, 4);
+        // quantifier of subexpression call replaced quantifier of called group
+        test("(a)?b\\g<1>+", "", "abaaa", 0, true, 0, 5, 4, 5);
+        test("(a)?b\\g<1>+", "", "ab", 0, false);
     }
 
     @Test
