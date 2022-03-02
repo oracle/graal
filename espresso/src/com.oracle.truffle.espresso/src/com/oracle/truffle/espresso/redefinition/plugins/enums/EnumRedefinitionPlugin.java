@@ -39,20 +39,12 @@ import java.util.Map;
 public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
 
     private ArrayList<ObjectKlass> enumClassesToRerun = new ArrayList<>(4);
-    private ArrayList<Field> fieldsToClear = new ArrayList<>(4);
 
     @Override
     public boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed) {
         // changed enum classes store enum constants in static fields
         if (changed && getContext().getMeta().java_lang_Enum.isAssignable(klass)) {
             enumClassesToRerun.add(klass);
-        }
-        for (Field declaredField : klass.getDeclaredFields()) {
-            // ecj compiler generates mappings for ordinals directly
-            // in the classes that use them, and they need to be reset
-            if (declaredField.getNameAsString().startsWith("$SWITCH_TABLE$")) {
-                fieldsToClear.add(declaredField);
-            }
         }
         return false;
     }
@@ -114,10 +106,15 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                 method.removeActiveHook(hook);
             }
         }
-        enumClassesToRerun.clear();
-        for (Field field : fieldsToClear) {
-            field.set(field.getDeclaringKlass().getStatics(), StaticObject.NULL);
+        for (ObjectKlass changedKlass : changedKlasses) {
+            for (Field declaredField : changedKlass.getDeclaredFields()) {
+                // ecj compiler generates mappings for ordinals directly
+                // in the classes that use them, and they need to be reset
+                if (declaredField.getNameAsString().startsWith("$SWITCH_TABLE$")) {
+                    declaredField.set(changedKlass.getStatics(), StaticObject.NULL);
+                }
+            }
         }
-        fieldsToClear.clear();
+        enumClassesToRerun.clear();
     }
 }
