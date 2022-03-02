@@ -201,7 +201,7 @@ public final class ObjectKlass extends Klass {
         assert verifyTables();
     }
 
-    private boolean isEnumValuesField(LinkedField lkStaticFields) {
+    private static boolean isEnumValuesField(LinkedField lkStaticFields) {
         return lkStaticFields.getName() == Name.$VALUES ||
                 lkStaticFields.getName() == Name.ENUM$VALUES;
     }
