@@ -1,8 +1,9 @@
 local graal_common = import '../../common.jsonnet';
 local base = import '../ci.jsonnet';
+local base_json = import '../../common.json';
 
 local composable = (import "../../common-utils.libsonnet").composable;
-local sulong_deps = composable((import "../../common.json").sulong.deps);
+local sulong_deps = composable(base_json.sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
 
@@ -19,9 +20,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // platform-specific snippets
   common: sulong_deps.common + {
     python_version: '3',
-    packages+: {
-      'python': '>=3.5',
-      'pip:pylint': '==2.4.4',
+    packages+: base_json.deps.common.packages + {
       'pip:ninja_syntax': '==1.7.2',
       'mx': mx_version,
     },

@@ -7,8 +7,9 @@ local graal_suite_root = root_ci.graal_suite_root;
 {
   local mx = (import "../../graal-common.json").mx_version,
   local common = (import "../../common.jsonnet"),
+  local common_json = (import "../../common.json"),
 
-  devkits: (import "../../common.json").devkits,
+  devkits: common_json.devkits,
 
   gate: {
     targets+: ['gate'],
@@ -22,10 +23,8 @@ local graal_suite_root = root_ci.graal_suite_root;
     environment+: {
       MX_PYTHON: 'python3',
     },
-    packages+: {
+    packages+: common_json.deps.common.packages + {
       'mx': mx,
-      '00:pip:logilab-common': '==1.4.4',
-      'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
     },
   },
