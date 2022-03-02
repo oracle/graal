@@ -122,9 +122,10 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (descriptor.isOptionMap()) {
             key.append(".<key>");
         }
-        if (!Boolean.FALSE.equals(descriptor.getKey().getDefaultValue())) {
+        String usageSyntax = descriptor.getUsageSyntax();
+        if (usageSyntax != null) {
             key.append("=");
-            key.append(descriptor.getUsageSyntax());
+            key.append(usageSyntax);
         }
         String help = descriptor.getHelp();
         if (descriptor.isDeprecated()) {
@@ -425,7 +426,9 @@ public abstract class LanguageLauncherBase extends Launcher {
                 printCategory(options, OptionCategory.EXPERT, "   Expert options:");
                 printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
                 println("");
-                println("   Use --help:" + language.getId() + ":internal to also show internal options.");
+                if (options.get(OptionCategory.INTERNAL).isEmpty()) {
+                    println("   Use --help:" + language.getId() + ":internal to also show internal options.");
+                }
             }
             return true;
         }
