@@ -346,6 +346,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private TermCategory lastTerm;
 
+    private boolean hasSubexpressionCalls;
+
     /**
      * The contents of the character class that is currently being parsed.
      */
@@ -398,6 +400,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
         this.lastTerm = TermCategory.None;
+        this.hasSubexpressionCalls = false;
         this.astBuilder = astBuilder;
         this.silent = astBuilder == null;
     }
@@ -440,6 +443,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         astBuilder.pushRootGroup();
         run();
         RegexAST ast = astBuilder.popRootGroup();
+        if (hasSubexpressionCalls) {
+            RubySubexpressionCalls.expandNonRecursiveSubexpressionCalls(ast);
+        }
         ast.setFlags(makeTRegexFlags(globalFlags.isSticky() || startsWithBeginningAnchor));
         return ast;
     }
@@ -579,6 +585,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private void addBackReference(int groupNumber) {
         if (!silent) {
             astBuilder.addBackReference(groupNumber);
+        }
+    }
+
+    private void addSubexpressionCall(int groupNumber) {
+        if (!silent) {
+            astBuilder.addSubexpressionCall(groupNumber);
         }
     }
 
@@ -1567,8 +1579,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private boolean subexpressionCall() {
         if (match("g<")) {
-            parseGroupReference('>', true, true, false, false);
-            bailOut("subexpression calls not supported");
+            int targetGroup = parseGroupReference('>', true, true, false, false);
+            addSubexpressionCall(targetGroup);
+            hasSubexpressionCalls = true;
             return true;
         } else {
             return false;
@@ -2356,13 +2369,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         disjunction();
         if (match(")")) {
             popGroup();
+            if (capturing) {
+                groupStack.pop();
+            }
+            lastTerm = TermCategory.Atom;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        if (capturing) {
-            groupStack.pop();
-        }
-        lastTerm = TermCategory.Atom;
     }
 
     /**
@@ -2376,10 +2389,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         disjunction();
         if (match(")")) {
             popGroup();
+            lastTerm = TermCategory.LookAroundAssertion;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        lastTerm = TermCategory.LookAroundAssertion;
     }
 
     /**
@@ -2392,10 +2405,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         lookbehindDepth--;
         if (match(")")) {
             popGroup();
+            lastTerm = TermCategory.LookAroundAssertion;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        lastTerm = TermCategory.LookAroundAssertion;
     }
 
     /**

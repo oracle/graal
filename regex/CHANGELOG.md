@@ -10,6 +10,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Support for named character escapes in Python regular expressions.
 * Limited support for \G anchors in Ruby regular expressions.
 * Dropped sticky flag from Python regular expressions.
+* Added support for non-recursive subexpression calls in Ruby regular expressions.
 
 ## Version 22.0.0
 

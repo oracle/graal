@@ -330,6 +330,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return register(new Sequence());
     }
 
+    public SubexpressionCall createSubexpressionCall(int groupNumber) {
+        return register(new SubexpressionCall(groupNumber));
+    }
+
     public BackReference register(BackReference backReference) {
         nodeCount.inc();
         return backReference;
@@ -363,6 +367,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     public Sequence register(Sequence sequence) {
         nodeCount.inc();
         return sequence;
+    }
+
+    public SubexpressionCall register(SubexpressionCall subexpressionCall) {
+        nodeCount.inc();
+        return subexpressionCall;
     }
 
     public boolean isNFAInitialState(RegexASTNode node) {
