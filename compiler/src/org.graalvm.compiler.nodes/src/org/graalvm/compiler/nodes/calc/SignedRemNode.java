@@ -68,7 +68,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroCheck(), stamp(view), view, tool);
+        return canonical(this, forX, forY, getZeroGuard(), stamp(view), view, tool);
     }
 
     /**
@@ -100,17 +100,17 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
         }
         if (self != null && self.hasNoUsages() && self.next() instanceof SignedDivNode) {
             SignedDivNode div = (SignedDivNode) self.next();
-            if (div.x == self.x && div.y == self.y && div.getZeroCheck() == self.getZeroCheck() && div.stateBefore() == self.stateBefore()) {
+            if (div.x == self.x && div.y == self.y && div.getZeroGuard() == self.getZeroGuard() && div.stateBefore() == self.stateBefore()) {
                 // left over from canonicalizing ((a - a % b) / b) into (a / b)
                 return null;
             }
         }
         if (tool != null && GraalOptions.FloatingDivNodes.getValue(tool.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            // a: devision of a/0 traps
+            // a: division of a/0 traps
             // b: division of Integer.MIN_VALUE / -1 overflows
             if (!yStamp.contains(0) && !SignedDivNode.divCanOverflow(forX, forY)) {
-                return FloatingIntegerRemNode.create(forX, forY, view, zeroCheck);
+                return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck);
             }
         }
 

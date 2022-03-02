@@ -38,8 +38,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
@@ -47,6 +45,8 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -61,9 +61,9 @@ import jdk.vm.ci.code.CodeUtil;
  * express it in faster, equivalent, arithmetic.
  *
  * Note on stamps: When this phase replaces a node with a faster computed version we inject a pi
- * node with the old stamp. This is done to ensure a stamp never gets worse and subject to the
- * weaknesses of our integer stamp representation. This phase injects "magic" knowledge about two's
- * complement division into the graph that cannot be expressed otherwise.
+ * node with the old stamp. This is done to ensure a stamp never gets worse, compensating for
+ * limitations in the current integer stamp representation.. This phase injects "magic" knowledge
+ * about two's complement division into the graph that cannot be expressed otherwise.
  */
 public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     protected final CanonicalizerPhase canon;
@@ -78,22 +78,22 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
         try (NodeEventScope nes = graph.trackNodeEvents(ec)) {
             for (IntegerDivRemNode rem : graph.getNodes(IntegerDivRemNode.TYPE)) {
-                if (rem instanceof SignedRemNode && divByNonZeroConstant(rem)) {
+                if (rem instanceof SignedRemNode && isDivByNonZeroConstant(rem)) {
                     optimizeRem(rem);
                 }
             }
-            for (FloatingIntegerRemNode nonTrappingRem : graph.getNodes(FloatingIntegerRemNode.TYPE)) {
-                if (divByNonZeroConstant(nonTrappingRem)) {
+            for (SignedFloatingIntegerRemNode nonTrappingRem : graph.getNodes(SignedFloatingIntegerRemNode.TYPE)) {
+                if (isDivByNonZeroConstant(nonTrappingRem)) {
                     optimizeRem(nonTrappingRem);
                 }
             }
             for (IntegerDivRemNode div : graph.getNodes(IntegerDivRemNode.TYPE)) {
-                if (div instanceof SignedDivNode && divByNonZeroConstant(div)) {
+                if (div instanceof SignedDivNode && isDivByNonZeroConstant(div)) {
                     optimizeSignedDiv(div);
                 }
             }
-            for (FloatingIntegerDivNode div : graph.getNodes(FloatingIntegerDivNode.TYPE)) {
-                if (divByNonZeroConstant(div)) {
+            for (SignedFloatingIntegerDivNode div : graph.getNodes(SignedFloatingIntegerDivNode.TYPE)) {
+                if (isDivByNonZeroConstant(div)) {
                     optimizeSignedDiv(div);
                 }
             }
@@ -108,12 +108,12 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         return 5.0f;
     }
 
-    protected static boolean divByNonZeroConstant(Canonicalizable.Binary<ValueNode> divRemNode) {
+    protected static boolean isDivByNonZeroConstant(Canonicalizable.Binary<ValueNode> divRemNode) {
         return divRemNode.getY().isConstant() && divRemNode.getY().asJavaConstant().asLong() != 0;
     }
 
     protected final void optimizeRem(Canonicalizable.Binary<ValueNode> rem) {
-        assert rem instanceof IntegerDivRemNode || rem instanceof FloatingIntegerRemNode;
+        assert rem instanceof IntegerDivRemNode || rem instanceof SignedFloatingIntegerRemNode;
         // Java spec 15.17.3.: (a/b)*b+(a%b) == a
         // so a%b == a-(a/b)*b
         StructuredGraph graph = ((ValueNode) rem).graph();
@@ -121,10 +121,11 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         ValueNode mul = BinaryArithmeticNode.mul(graph, div, rem.getY(), NodeView.DEFAULT);
         ValueNode result = BinaryArithmeticNode.sub(graph, rem.getX(), mul, NodeView.DEFAULT);
         if (rem instanceof IntegerDivRemNode) {
-            // see phase documentation note on stamps
-            graph.replaceFixedWithFloating((FixedWithNextNode) rem, graph.maybeAddOrUnique(PiNode.create(result, ((IntegerDivRemNode) rem).stamp(NodeView.DEFAULT))));
+            // PiNode insertion explained in javadoc for this class
+            graph.replaceFixedWithFloating((FixedWithNextNode) rem, wrapInOldStamp(graph, result, (ValueNode) rem));
         } else {
-            ((ValueNode) rem).replaceAndDelete(graph.maybeAddOrUnique(PiNode.create(result, ((ValueNode) rem).stamp(NodeView.DEFAULT))));
+            // PiNode insertion explained in javadoc for this class
+            ((ValueNode) rem).replaceAndDelete(graph.maybeAddOrUnique(wrapInOldStamp(graph, result, (ValueNode) rem)));
         }
     }
 
@@ -149,7 +150,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
                 rem.graph().addAfterFixed(rem, (FixedNode) div);
             }
             return div;
-        } else if (val instanceof FloatingIntegerRemNode) {
+        } else if (val instanceof SignedFloatingIntegerRemNode) {
             ValueNode div = val.graph().addOrUniqueWithInputs(createDiv(val));
             return div;
         }
@@ -159,9 +160,10 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     protected ValueNode createDiv(ValueNode val) {
         if (val instanceof SignedRemNode) {
             SignedRemNode rem = (SignedRemNode) val;
-            return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroCheck(), NodeView.DEFAULT);
+            return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroGuard(), NodeView.DEFAULT);
         } else {
-            return FloatingIntegerDivNode.create(((BinaryNode) val).getX(), ((BinaryNode) val).getY(), NodeView.DEFAULT, ((FloatingIntegerRemNode) val).getGuard());
+            SignedFloatingIntegerRemNode rem = (SignedFloatingIntegerRemNode) val;
+            return SignedFloatingIntegerDivNode.create(((BinaryNode) val).getX(), ((BinaryNode) val).getY(), NodeView.DEFAULT, rem.getGuard());
         }
     }
 
@@ -221,16 +223,20 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
 
         StructuredGraph graph = ((ValueNode) div).graph();
         if (div instanceof SignedDivNode) {
-            Stamp oldStamp = ((SignedDivNode) div).stamp(NodeView.DEFAULT);
-            // see phase documentation note on stamps
-            graph.replaceFixed((FixedWithNextNode) div, graph.addOrUniqueWithInputs(PiNode.create(value, oldStamp)));
-        } else if (div instanceof FloatingIntegerDivNode) {
-            // see phase documentation note on stamps
-            ((FloatingIntegerDivNode) div).replaceAndDelete(graph.addOrUniqueWithInputs(PiNode.create(value, ((FloatingIntegerDivNode) div).stamp(NodeView.DEFAULT))));
+            // PiNode insertion explained in javadoc for this class
+            graph.replaceFixed((FixedWithNextNode) div, wrapInOldStamp(graph, value, (ValueNode) div));
+        } else if (div instanceof SignedFloatingIntegerDivNode) {
+            // PiNode insertion explained in javadoc for this class
+            ((SignedFloatingIntegerDivNode) div).replaceAndDelete(wrapInOldStamp(graph, value, (ValueNode) div));
         } else {
             throw GraalError.shouldNotReachHere("Unknown or invalid div:" + div);
         }
 
+    }
+
+    private static ValueNode wrapInOldStamp(StructuredGraph graph, ValueNode value, ValueNode oldStampValue) {
+        Stamp oldStamp = oldStampValue.stamp(NodeView.DEFAULT);
+        return graph.addOrUniqueWithInputs(PiNode.create(value, oldStamp));
     }
 
     /**

@@ -67,7 +67,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroCheck(), view);
+        return canonical(this, forX, forY, getZeroGuard(), view);
     }
 
     /**
@@ -114,10 +114,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
         if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            // a: devision of a/0 traps
+            // a: division of a/0 traps
             // b: division of Integer.MIN_VALUE / -1 overflows
             if (!yStamp.contains(0) && !divCanOverflow(forX, forY)) {
-                return FloatingIntegerDivNode.create(forX, forY, view, zeroCheck);
+                return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck);
             }
         }
 

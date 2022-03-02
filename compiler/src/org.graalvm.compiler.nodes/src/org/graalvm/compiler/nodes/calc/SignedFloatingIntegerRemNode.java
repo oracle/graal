@@ -44,16 +44,16 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public class FloatingIntegerRemNode extends NonTrappingIntegerDivRemNode<BinaryOp.Rem> {
+@NodeInfo(cycles = CYCLES_32, size = SIZE_1, shortName = "%")
+public class SignedFloatingIntegerRemNode extends NonTrappingIntegerDivRemNode<BinaryOp.Rem> {
 
-    public static final NodeClass<FloatingIntegerRemNode> TYPE = NodeClass.create(FloatingIntegerRemNode.class);
+    public static final NodeClass<SignedFloatingIntegerRemNode> TYPE = NodeClass.create(SignedFloatingIntegerRemNode.class);
 
-    protected FloatingIntegerRemNode(ValueNode x, ValueNode y) {
+    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y) {
         super(TYPE, getArithmeticOpTable(x).getRem(), x, y, null);
     }
 
-    protected FloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
+    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
         super(TYPE, getArithmeticOpTable(x).getRem(), x, y, zeroCheck);
     }
 
@@ -64,7 +64,7 @@ public class FloatingIntegerRemNode extends NonTrappingIntegerDivRemNode<BinaryO
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new FloatingIntegerRemNode(x, y, zeroCheck).canonical(null);
+        return new SignedFloatingIntegerRemNode(x, y, zeroCheck).canonical(null);
     }
 
     @Override

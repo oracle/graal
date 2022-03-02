@@ -39,7 +39,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -80,8 +79,6 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -94,6 +91,8 @@ import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
@@ -1252,13 +1251,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     /**
-     * Determine if lowering should try to create options for global value numbering of floating div
-     * nodes if there are multiple equal exact division nodes. This often forces the creation of 2
-     * guards for a single division node.
-     */
-    public static final boolean CREATE_OVERFLOW_SPECULATION_FOR_GVN = false;
-
-    /**
      * Lower ({@link FixedNode}) {@link IntegerDivRemNode} nodes to a {@link GuardingNode}
      * (potentially 2 guards if an overflow is possible) and a floating division
      * {@link NonTrappingIntegerDivRemNode}. This enabled global value numbering for non-constant
@@ -1266,8 +1258,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * checks to avoid explicit 0 and overflow checks.
      */
     protected void lowerIntegerDivRem(IntegerDivRemNode n, LoweringTool tool) {
+        ValueNode dividend = n.getX();
+        ValueNode divisor = n.getY();
+        final IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
+        final IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
         if (n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
-            // TODO: unimplemented
+            // Floating integer division is only supported for signed division at the moment
             return;
         }
         if (n.getY().isConstant() && n.getY().asJavaConstant().asLong() == 0) {
@@ -1277,58 +1273,29 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (!GraalOptions.FloatingDivNodes.getValue(n.getOptions())) {
             return;
         }
-        if (n.getZeroCheck() != null) {
+        if (n.getZeroGuard() != null) {
             return;
         }
 
-        ValueNode x = n.getX();
-        ValueNode y = n.getY();
-        final IntegerStamp dividendStamp = (IntegerStamp) x.stamp(NodeView.DEFAULT);
-        final IntegerStamp divisorStamp = (IntegerStamp) y.stamp(NodeView.DEFAULT);
         long minValue = NumUtil.minValue(dividendStamp.getBits());
-        if (!n.isForceLowerFloating()) {
-            if (dividendStamp.contains(minValue)) {
-                /*
-                 * the dividend may contain MIN_VALUE which can lead to an overflow of the division,
-                 * thus also check if the divisor contains -1, in such case we can only start to
-                 * float if we actually create 2 guards (one min check for the dividend and the 0
-                 * check for the divisor), this is only beneficial if we actually have at least 2
-                 * equivalent divisions
-                 */
-                if (divisorStamp.contains(-1)) {
-                    if (CREATE_OVERFLOW_SPECULATION_FOR_GVN) {
-                        int commonUsages = 0;
-                        EconomicSet<IntegerDivRemNode> divs = EconomicSet.create();
-                        for (Node usage : x.usages()) {
-                            for (Node usage1 : y.usages()) {
-                                if (usage == usage1 && usage instanceof IntegerDivRemNode && ((IntegerDivRemNode) usage).getX() == x && ((IntegerDivRemNode) usage).getY() == y) {
-                                    commonUsages++;
-                                    divs.add((IntegerDivRemNode) usage);
-                                }
-                            }
-                        }
-                        if (commonUsages <= 1) {
-                            /*
-                             * do not float, 2 guards + division is more expensive than a single
-                             * division and the explicit guard
-                             */
-                            return;
-                        } else {
-                            for (IntegerDivRemNode div : divs) {
-                                div.setForceLowerFloating();
-                            }
-                        }
-                    } else {
-                        return;
-                    }
-                }
+        if (dividendStamp.contains(minValue)) {
+            /*
+             * The dividend may contain NumUtil.minValue(dividendStamp.getBits()) which can lead to
+             * an overflow of the division. Thus, also check if the divisor contains -1, in such
+             * case we can only start to float if we actually create 2 guards (one min check for the
+             * dividend and the 0 check for the divisor), this is only beneficial if we actually
+             * have at least 2 equivalent divisions. Thus, we do not perform this optimization at
+             * the moment, this may change in the future.
+             */
+            if (divisorStamp.contains(-1)) {
+                return;
+
             }
         }
 
         final StructuredGraph graph = n.graph();
-        final IntegerStamp yStamp = (IntegerStamp) n.getY().stamp(NodeView.DEFAULT);
         LogicNode conditionDivisor = graph.addOrUniqueWithInputs(
-                        CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(yStamp.getBits(), 0), tool.getConstantReflection()));
+                        CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(divisorStamp.getBits(), 0), tool.getConstantReflection()));
         if (conditionDivisor instanceof LogicConstantNode) {
             boolean val = ((LogicConstantNode) conditionDivisor).getValue();
             if (val) {
@@ -1339,21 +1306,19 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         GuardingNode guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-        IntegerStamp stampWithout0 = IntegerStamp.create(yStamp.getBits(), yStamp.lowerBound(), yStamp.upperBound(), yStamp.downMask(), yStamp.upMask(),
-                        false);
-        stampWithout0.toString();
-        y = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+        IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+        divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
 
         boolean dividendChecked = false;
-        if (SignedDivNode.divCanOverflow(x, y)) {
-            ConstantNode minVal = ConstantNode.forIntegerBits(yStamp.getBits(), NumUtil.minValue(yStamp.getBits()));
+        if (SignedDivNode.divCanOverflow(dividend, divisor)) {
+            ConstantNode minVal = ConstantNode.forIntegerBits(divisorStamp.getBits(), NumUtil.minValue(divisorStamp.getBits()));
             LogicNode conditionDividend = graph.addOrUniqueWithInputs(CompareNode.createAnyCompareNode(Condition.GT, n.getX(), minVal, tool.getConstantReflection()));
             GuardingNode guard2 = tool.createGuard(n, conditionDividend, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, false,
                             null);
-            int bits = yStamp.getBits();
+            int bits = divisorStamp.getBits();
             IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
-            x = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
-            assert !SignedDivNode.divCanOverflow(x, y);
+            dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
+            assert !SignedDivNode.divCanOverflow(dividend, divisor);
             guard = MultiGuardNode.combine(guard2, guard);
         } else {
             dividendChecked = true;
@@ -1361,10 +1326,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         ValueNode divRem = null;
         if (n instanceof SignedDivNode) {
-            divRem = graph.addOrUnique(FloatingIntegerDivNode.create(x, y, NodeView.DEFAULT, guard));
+            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard));
 
         } else if (n instanceof SignedRemNode) {
-            divRem = graph.addOrUnique(FloatingIntegerRemNode.create(x, y, NodeView.DEFAULT, guard));
+            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard));
         } else {
             // do nothing with it
             return;

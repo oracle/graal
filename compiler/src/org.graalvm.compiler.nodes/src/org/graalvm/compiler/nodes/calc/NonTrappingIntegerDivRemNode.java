@@ -43,23 +43,26 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
  * {@link FloatingNode} version of {@link IntegerDivRemNode} if it is known that this node cannot
- * trap nor overflow (either based on the input stamps, or based on the input stamps and an
- * additional guard node).
+ * trap nor overflow. We distinguish between two reasons to trap: a division by zero or an overflow
+ * of MIN_VALUE/-1. The division by 0 is typically checked with a zeroGuard. The knowledge about the
+ * dividend containing MIN_VALUE is either guaranteed by its stamp or externally injected by a
+ * guard.
  */
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1)
 public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode {
 
     @SuppressWarnings("rawtypes") public static final NodeClass<NonTrappingIntegerDivRemNode> TYPE = NodeClass.create(NonTrappingIntegerDivRemNode.class);
 
-    protected NonTrappingIntegerDivRemNode(NodeClass<? extends NonTrappingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode guard) {
+    protected NonTrappingIntegerDivRemNode(NodeClass<? extends NonTrappingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode zeroGuard) {
         super(c, op, x, y);
-        this.zeroGuard = guard;
+        this.zeroGuard = zeroGuard;
     }
 
     @OptionalInput(InputType.Guard) protected GuardingNode zeroGuard;
 
     /**
-     * TODO Loop Stamps and divisors.
+     * Determines if an external guard (or external knowledge) proves the dividend to be checked for
+     * its getBits().minimalValue(). This means that a division with -1 can never overflow.
      */
     private boolean dividendOverflowChecked;
 

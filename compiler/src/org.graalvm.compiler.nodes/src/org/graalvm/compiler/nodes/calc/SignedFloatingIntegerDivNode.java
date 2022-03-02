@@ -44,16 +44,16 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public class FloatingIntegerDivNode extends NonTrappingIntegerDivRemNode<BinaryOp.Div> {
+@NodeInfo(cycles = CYCLES_32, size = SIZE_1, shortName = "/")
+public class SignedFloatingIntegerDivNode extends NonTrappingIntegerDivRemNode<BinaryOp.Div> {
 
-    public static final NodeClass<FloatingIntegerDivNode> TYPE = NodeClass.create(FloatingIntegerDivNode.class);
+    public static final NodeClass<SignedFloatingIntegerDivNode> TYPE = NodeClass.create(SignedFloatingIntegerDivNode.class);
 
-    protected FloatingIntegerDivNode(ValueNode x, ValueNode y) {
+    protected SignedFloatingIntegerDivNode(ValueNode x, ValueNode y) {
         super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, null);
     }
 
-    protected FloatingIntegerDivNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
+    protected SignedFloatingIntegerDivNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
         super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, zeroCheck);
     }
 
@@ -64,7 +64,7 @@ public class FloatingIntegerDivNode extends NonTrappingIntegerDivRemNode<BinaryO
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new FloatingIntegerDivNode(x, y, zeroCheck).canonical(null);
+        return new SignedFloatingIntegerDivNode(x, y, zeroCheck).canonical(null);
     }
 
     @Override

@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
@@ -77,7 +76,6 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -607,21 +605,16 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         schedulePhase.apply(graph, context);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
-        EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
-        try (Graph.NodeEventScope scope = graph.trackNodeEvents(ec)) {
-            for (Block block : schedule.getCFG().getBlocks()) {
-                fixReadsClosure.processNodes(block, schedule);
-            }
-            graph.setAfterStage(StageFlag.FIXED_READS);
-            assert graph.verify();
-            if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
-                schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
+        for (Block block : schedule.getCFG().getBlocks()) {
+            fixReadsClosure.processNodes(block, schedule);
+        }
+        graph.setAfterStage(StageFlag.FIXED_READS);
+        assert graph.verify();
+        if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
+            schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
 
-            }
         }
-        if (!ec.getNodes().isEmpty()) {
-            canonicalizerPhase.applyIncremental(graph, context, ec.getNodes());
-        }
+        canonicalizerPhase.apply(graph, context);
     }
 
     public static class RawCEPhase extends BasePhase<LowTierContext> {

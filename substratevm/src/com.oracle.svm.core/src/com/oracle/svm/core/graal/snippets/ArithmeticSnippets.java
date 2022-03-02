@@ -243,7 +243,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             args.add("y", node.getY());
 
             IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroCheck() == null && yStamp.contains(0));
+            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
             args.addConst("needsZeroCheck", needsZeroCheck);
             if (node instanceof SignedDivNode || node instanceof SignedRemNode) {
                 args.addConst("needsBoundsCheck", needsSignedBoundsCheck);

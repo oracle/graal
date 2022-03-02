@@ -24,18 +24,66 @@
  */
 package org.graalvm.compiler.core.test;
 
+import java.util.ListIterator;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
-import org.graalvm.compiler.nodes.calc.SignedDivNode;
-import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.NonTrappingIntegerDivRemNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class FloatingDivTest extends GraalCompilerTest {
+
+    private void checkHighTierGraph(String snippet, int fixedDivsBeforeLowering, int floatingDivsBeforeLowering, int fixedDivAfterLowering, int floatingDivAfterLowering) {
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
+        PhaseSuite<HighTierContext> ht = suites.getHighTier().copy();
+        ListIterator<BasePhase<? super HighTierContext>> position = ht.findPhase(LoweringPhase.class);
+        position.previous();
+        position.add(new BasePhase<HighTierContext>() {
+
+            @Override
+            protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {
+                Assert.assertEquals(fixedDivsBeforeLowering, graph.getNodes().filter(IntegerDivRemNode.class).count());
+                Assert.assertEquals(floatingDivsBeforeLowering, graph.getNodes().filter(NonTrappingIntegerDivRemNode.class).count());
+            }
+        });
+        ht.apply(graph, getDefaultHighTierContext());
+
+        Assert.assertEquals(fixedDivAfterLowering, graph.getNodes().filter(IntegerDivRemNode.class).count());
+        Assert.assertEquals(floatingDivAfterLowering, graph.getNodes().filter(NonTrappingIntegerDivRemNode.class).count());
+    }
+
+    private void checkFinalGraph(String snippet, int fixedDivs, int floatingDivs, int zeroChecks) {
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
+
+        suites.getHighTier().apply(graph, getDefaultHighTierContext());
+        suites.getMidTier().apply(graph, getDefaultMidTierContext());
+        suites.getLowTier().apply(graph, getDefaultLowTierContext());
+
+        Assert.assertEquals(fixedDivs, graph.getNodes().filter(IntegerDivRemNode.class).count());
+        Assert.assertEquals(floatingDivs, graph.getNodes().filter(NonTrappingIntegerDivRemNode.class).count());
+        int ie = 0;
+        for (IntegerEqualsNode ieq : graph.getNodes().filter(IntegerEqualsNode.class)) {
+            if (ieq.getY().isConstant() && ieq.getY().asJavaConstant().asLong() == 0) {
+                if (ieq.getY().usages().filter(NonTrappingIntegerDivRemNode.class).isNotEmpty()) {
+                    ie++;
+                }
+            }
+        }
+        Assert.assertEquals(zeroChecks, ie);
+    }
 
     public static int snippet(int x) {
         int result = 0;
@@ -53,58 +101,44 @@ public class FloatingDivTest extends GraalCompilerTest {
         return result;
     }
 
-    private boolean noFixedDivLeft = true;
-    private boolean noFloatingDivLeft = true;
-
-    private void check(boolean c) {
-        noFixedDivLeft = c;
-        noFloatingDivLeft = c;
-    }
-
-    @Override
-    protected void checkHighTierGraph(StructuredGraph graph) {
-        if (noFixedDivLeft) {
-            Assert.assertEquals(0, graph.getNodes().filter(SignedDivNode.class).count());
-            Assert.assertEquals(0, graph.getNodes().filter(SignedRemNode.class).count());
-        }
-        super.checkHighTierGraph(graph);
-    }
-
-    @Override
-    protected void checkLowTierGraph(StructuredGraph graph) {
-        if (noFloatingDivLeft) {
-            Assert.assertEquals(0, graph.getNodes().filter(FloatingIntegerDivNode.class).count());
-            Assert.assertEquals(0, graph.getNodes().filter(FloatingIntegerRemNode.class).count());
-        }
-        super.checkLowTierGraph(graph);
-    }
-
     @Test
     public void test01() {
-        test("snippet", 100);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        String s = "snippet";
+        test(opt, s, 100);
+        checkHighTierGraph(s, 0, 2, 0, 2);
+        checkFinalGraph(s, 0, 0, 0);
     }
 
     public static int snippet2(int x, int y, int z) {
         int result = 0;
-        for (int n = 0; n < x; n++) {
+        for (int n = 0; n < x; n += GraalDirectives.opaque(1)) {
             if (n % y == 0 && n % z == 0) {
+                GraalDirectives.controlFlowAnchor();
                 result += 1;
-            } else if (n % y == 0) {
+            }
+            GraalDirectives.controlFlowAnchor();
+            if (n % y == 0) {
                 result += 2;
-            } else if (n % z == 0) {
+            }
+            GraalDirectives.controlFlowAnchor();
+            if (n % z == 0) {
                 result += 3;
             } else {
                 result += 4;
             }
+            GraalDirectives.controlFlowAnchor();
         }
         return result;
     }
 
     @Test
     public void test02() {
-        check(false);
-        test("snippet2", 100, 5, 3);
-        check(true);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        String s = "snippet2";
+        test(opt, s, 100, 5, 3);
+        checkHighTierGraph(s, 4, 0, 4, 0);
+        checkFinalGraph(s, 4, 0, 0);
     }
 
     public static int snippet3(int a) {
@@ -113,15 +147,17 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test03() {
-        check(false);
-        test("snippet3", 10);
-        test("snippet3", Integer.MIN_VALUE);
-        check(true);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        String s = "snippet3";
+        test(opt, s, 10);
+        test(opt, s, Integer.MIN_VALUE);
+        checkHighTierGraph(s, 0, 0, 0, 0);
+        checkFinalGraph(s, 0, 0, 0);
     }
 
     public static int snippet4(int a, @SuppressWarnings("unused") int b) {
         int i = 0;
-        for (; i < a; i++) {
+        for (; i < a; i += GraalDirectives.opaque(1)) {
             GraalDirectives.sideEffect();
         }
         int res1 = i / 100000;
@@ -131,10 +167,11 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test04() {
-        check(false);
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
-        test(opt, "snippet4", 10, 3);
-        check(true);
+        String s = "snippet4";
+        test(opt, s, 10, 3);
+        checkHighTierGraph(s, 1, 1, 1, 1);
+        checkFinalGraph(s, 1, 0, 0);
     }
 
     public static int snippet5(int a, @SuppressWarnings("unused") int b) {
@@ -146,10 +183,11 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test05() {
-        check(false);
+        String s = "snippet5";
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
-        test(opt, "snippet5", 10, 3);
-        check(true);
+        test(opt, s, 10, 3);
+        checkHighTierGraph(s, 2, 0, 2, 0);
+        checkFinalGraph(s, 2, 0, 0);
     }
 
     public static int snippet6(@SuppressWarnings("unused") int a, int b) {
@@ -161,10 +199,11 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test06() {
-        check(false);
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
-        test(opt, "snippet6", 10, 3);
-        check(true);
+        String s = "snippet6";
+        test(opt, s, 10, 3);
+        checkHighTierGraph(s, 2, 0, 0, 1);
+        checkFinalGraph(s, 1, 0, 0);
     }
 
     public static int snippet7(int[] arr) {
@@ -182,10 +221,12 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test07() {
-        check(false);
+        String s = "snippet7";
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
-        test(opt, "snippet7", new int[]{1, 2, 3, 4, 5, 6});
-        check(true);
+        test(opt, s, new int[]{1, 2, 3, 4, 5, 6});
+        checkHighTierGraph(s, 3, 0, 0, 2);
+        // one div is made fixed and is the /0 guard of the other
+        checkFinalGraph(s, 1, 1, 0);
     }
 
 }

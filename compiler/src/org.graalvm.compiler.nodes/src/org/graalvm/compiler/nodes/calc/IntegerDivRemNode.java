@@ -56,30 +56,29 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         UNSIGNED
     }
 
-    @OptionalInput(InputType.Guard) private GuardingNode zeroCheck;
+    @OptionalInput(InputType.Guard) private GuardingNode zeroGuard;
 
     private final Op op;
     private final Type type;
     private boolean canDeopt;
-    private boolean forceLowerFloating;
     protected JavaConstant deoptReasonAndAction;
     protected JavaConstant deoptSpeculation;
 
-    protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode x, ValueNode y, GuardingNode zeroCheck) {
-        super(c, stamp, x, y);
-        this.zeroCheck = zeroCheck;
+    protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode dividend, ValueNode divisor, GuardingNode zeroGuard) {
+        super(c, stamp, dividend, divisor);
+        this.zeroGuard = zeroGuard;
         this.op = op;
         this.type = type;
         this.canDeopt = calculateCanDeoptimize();
     }
 
-    public final GuardingNode getZeroCheck() {
-        return zeroCheck;
+    public final GuardingNode getZeroGuard() {
+        return zeroGuard;
     }
 
     public void setZeroGuard(GuardingNode zeroCheck) {
-        updateUsagesInterface(this.zeroCheck, zeroCheck);
-        this.zeroCheck = zeroCheck;
+        updateUsagesInterface(this.zeroGuard, zeroCheck);
+        this.zeroGuard = zeroCheck;
     }
 
     public final Op getOp() {
@@ -92,15 +91,7 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
 
     private boolean calculateCanDeoptimize() {
         IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
-        return (yStamp.contains(0) && zeroCheck == null) || yStamp.contains(-1);
-    }
-
-    public boolean isForceLowerFloating() {
-        return forceLowerFloating;
-    }
-
-    public void setForceLowerFloating() {
-        this.forceLowerFloating = true;
+        return (yStamp.contains(0) && zeroGuard == null) || yStamp.contains(-1);
     }
 
     @Override

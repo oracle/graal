@@ -38,12 +38,12 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.NonTrappingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
@@ -73,17 +73,56 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         return false;
     }
 
-    static class UseTrappingDivVersion implements UseTrappingNullChecksPhase.UseTrappingVersion {
-
-        EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets;
-
-        UseTrappingDivVersion(EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets) {
-            this.trappingReplaceTargets = trappingReplaceTargets;
+    @Override
+    protected void run(StructuredGraph graph, LowTierContext context) {
+        EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets = null;
+        ScheduleResult sched = null;
+        for (NonTrappingIntegerDivRemNode<?> divRem : graph.getNodes(NonTrappingIntegerDivRemNode.TYPE)) {
+            ValueNode divisor = divRem.getY();
+            ValueNode dividend = divRem.getX();
+            if (divRem.getGuard() instanceof MultiGuardNode) {
+                // both the dividend and the divisor had a speculation attached, ignore
+            } else if (divRem.getGuard() instanceof BeginNode) {
+                // regular begin case
+                BeginNode divGuard = (BeginNode) divRem.getGuard();
+                if (divGuard.predecessor() instanceof IfNode) {
+                    IfNode ifNode = (IfNode) divGuard.predecessor();
+                    if (ifNode.falseSuccessor() == divGuard) {
+                        // we only care about single usage cases, ignore complex other cases
+                        if (conditionIsZeroCheck(ifNode.condition(), divisor) && ifNode.condition().hasExactlyOneUsage()) {
+                            if (trappingReplaceTargets == null) {
+                                trappingReplaceTargets = EconomicMap.create();
+                                SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST);
+                                sched = graph.getLastSchedule();
+                            }
+                            // condition ensures that divisor is dominated by condition, now do
+                            // the
+                            // same for the dividend
+                            Block ifBlock = sched.getNodeToBlockMap().get(ifNode);
+                            Block dividendBlock = sched.getNodeToBlockMap().get(dividend);
+                            if (dividendBlock == null) {
+                                assert dividend instanceof PhiNode;
+                                dividendBlock = sched.getNodeToBlockMap().get(((PhiNode) dividend).merge());
+                            }
+                            if (AbstractControlFlowGraph.dominates(dividendBlock, ifBlock)) {
+                                trappingReplaceTargets.put((IntegerEqualsNode) ifNode.condition(), divRem);
+                            }
+                        }
+                    }
+                }
+            }
         }
+        if (trappingReplaceTargets != null) {
+            new Instance(trappingReplaceTargets).run(graph, context);
+        }
+    }
 
-        @Override
-        public boolean canUseTrappingVersion() {
-            return true;
+    static class Instance extends UseTrappingOperationPhase {
+
+        final EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets;
+
+        Instance(EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets) {
+            this.trappingReplaceTargets = trappingReplaceTargets;
         }
 
         @Override
@@ -118,9 +157,9 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
             ValueNode dividend = divRem.getX();
             ValueNode divisor = divRem.getY();
             IntegerDivRemNode divRemFixed = null;
-            if (divRem instanceof FloatingIntegerDivNode) {
+            if (divRem instanceof SignedFloatingIntegerDivNode) {
                 divRemFixed = graph.add(new SignedDivNode(dividend, divisor, null));
-            } else if (divRem instanceof FloatingIntegerRemNode) {
+            } else if (divRem instanceof SignedFloatingIntegerRemNode) {
                 divRemFixed = graph.add(new SignedRemNode(dividend, divisor, null));
             }
             divRemFixed.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
@@ -142,57 +181,19 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         public void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode) {
 
         }
-    }
 
-    @Override
-    protected void run(StructuredGraph graph, LowTierContext context) {
-        EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets = null;
-        ScheduleResult sched = null;
-        for (NonTrappingIntegerDivRemNode<?> divRem : graph.getNodes(NonTrappingIntegerDivRemNode.TYPE)) {
-            ValueNode divisor = divRem.getY();
-            ValueNode dividend = divRem.getX();
-            if (divRem.getGuard() instanceof MultiGuardNode) {
-                // both the dividend and the divisor had a speculation attached, ignore
-            } else if (divRem.getGuard() instanceof BeginNode) {
-                // regular begin case
-                BeginNode divGuard = (BeginNode) divRem.getGuard();
-                if (divGuard.predecessor() instanceof IfNode) {
-                    IfNode ifNode = (IfNode) divGuard.predecessor();
-                    if (ifNode.falseSuccessor() == divGuard) {
-                        // we only care about single usage cases, ignore complex other cases
-                        if (conditionIsZeroCheck(ifNode.condition(), divisor) && ifNode.condition().hasExactlyOneUsage()) {
-                            if (trappingReplaceTargets == null) {
-                                trappingReplaceTargets = EconomicMap.create();
-                                SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST);
-                                sched = graph.getLastSchedule();
-                            }
-                            // condition ensures that divisor is dominated by condition, now do the
-                            // same for the dividend
-                            Block ifBlock = sched.getNodeToBlockMap().get(ifNode);
-                            Block dividendBlock = sched.getNodeToBlockMap().get(dividend);
-                            if (dividendBlock == null) {
-                                assert dividend instanceof PhiNode;
-                                dividendBlock = sched.getNodeToBlockMap().get(((PhiNode) dividend).merge());
-                            }
-                            if (AbstractControlFlowGraph.dominates(dividendBlock, ifBlock)) {
-                                trappingReplaceTargets.put((IntegerEqualsNode) ifNode.condition(), divRem);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (trappingReplaceTargets != null) {
-            UseTrappingDivVersion trappingDivVersion = new UseTrappingDivVersion(trappingReplaceTargets);
+        @Override
+        protected void run(StructuredGraph graph, LowTierContext context) {
             MetaAccessProvider metaAccessProvider = context.getMetaAccess();
             for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
-                UseTrappingNullChecksPhase.tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(),
-                                deopt.getSpeculation(), trappingDivVersion, deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
+                tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(),
+                                deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
                                 deopt.getSpeculation(metaAccessProvider).asJavaConstant());
             }
             for (DynamicDeoptimizeNode deopt : graph.getNodes(DynamicDeoptimizeNode.TYPE)) {
-                UseTrappingNullChecksPhase.tryUseTrappingVersion(metaAccessProvider, deopt, trappingDivVersion);
+                tryUseTrappingVersion(metaAccessProvider, deopt);
             }
+
         }
     }
 

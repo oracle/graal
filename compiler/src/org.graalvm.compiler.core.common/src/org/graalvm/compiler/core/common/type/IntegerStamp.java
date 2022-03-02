@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -86,9 +87,18 @@ public final class IntegerStamp extends PrimitiveStamp {
         assert (upMask & CodeUtil.mask(bits)) == upMask : this;
         // Check for valid masks or the empty encoding
         assert (downMask & ~upMask) == 0 || (upMask == 0 && downMask == CodeUtil.mask(bits)) : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
-        boolean valuesCanContainZero = contains(0);
-        valuesCanContainZero &= canBeZero;
-        this.canBeZero = valuesCanContainZero;
+
+        if (lowerBound == upperBound) {
+            TTY.printf("");
+        }
+
+        /*
+         * Either canBeZero is set to false in which case it marks a hole in the stamp and over
+         * rules the value range, else the value range decides (not we use a version of contains
+         * with a parameter since this.canBeZero is not yet assigned and must not be read in
+         * contains).
+         */
+        this.canBeZero = contains(0, canBeZero);
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
@@ -141,6 +151,13 @@ public final class IntegerStamp extends PrimitiveStamp {
         return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask, canBeZero);
     }
 
+    /**
+     * Determines if this stamp can contain the value {@code 0}. If this returns {@code true} the
+     * stamp is a typical stamp without holes. If the stamp ranges over zero but
+     * {@code canBeZero()==false} it means the stamp contains a "hole", i.e., all values in the
+     * range except zero. We typically cannot express holes in our Stamp system, thus we have the
+     * special logic for {@code 0}.
+     */
     public boolean canBeZero() {
         return canBeZero;
     }
@@ -323,6 +340,13 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public boolean contains(long value) {
+        return contains(value, canBeZero);
+    }
+
+    private boolean contains(long value, boolean canContainZero) {
+        if (value == 0 && !canContainZero) {
+            return false;
+        }
         return value >= lowerBound && value <= upperBound && (value & downMask) == downMask && (value & upMask) == (value & CodeUtil.mask(getBits()));
     }
 

@@ -481,10 +481,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return MaxNode.create(a, MaxNode.create(m1, m2, view), view);
         } else if (node instanceof MinNode) {
             return MinNode.create(a, MinNode.create(m1, m2, view), view);
-        } else if (node instanceof FloatingIntegerDivNode) {
-            return FloatingIntegerDivNode.create(a, FloatingIntegerDivNode.create(m1, m2, view, null), view, null);
-        } else if (node instanceof FloatingIntegerRemNode) {
-            return FloatingIntegerRemNode.create(a, FloatingIntegerRemNode.create(m1, m2, view, null), view, null);
+        } else if (node instanceof SignedFloatingIntegerDivNode) {
+            return SignedFloatingIntegerDivNode.create(a, SignedFloatingIntegerDivNode.create(m1, m2, view, null), view, null);
+        } else if (node instanceof SignedFloatingIntegerRemNode) {
+            return SignedFloatingIntegerRemNode.create(a, SignedFloatingIntegerRemNode.create(m1, m2, view, null), view, null);
         } else {
             throw GraalError.shouldNotReachHere();
         }
