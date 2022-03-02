@@ -606,7 +606,6 @@ public final class DebuggerConnection implements Commands {
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                t.printStackTrace();
                 if (entered) {
                     // we can only use the Truffle logger if we were able to enter the context
                     JDWP.LOGGER.warning(() -> "[Internal error]");
