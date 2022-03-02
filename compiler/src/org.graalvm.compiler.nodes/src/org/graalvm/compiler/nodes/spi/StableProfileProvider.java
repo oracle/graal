@@ -35,8 +35,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
 
 /**
- * A {@link ProfileProvider} that caches the answer to all queries so that stable answers are
- * returned over the lifetime of the provider. This can improve the stability of compilation.
+ * A {@link ProfileProvider} that caches the answer to all queries so that each query returns the
+ * same answer for the entire compilation. This can improve the consistency of compilation results.
  */
 public class StableProfileProvider implements ProfileProvider {
     private static final JavaTypeProfile NULL_PROFILE = new JavaTypeProfile(TriState.UNKNOWN, 1.0, new JavaTypeProfile.ProfiledType[0]);

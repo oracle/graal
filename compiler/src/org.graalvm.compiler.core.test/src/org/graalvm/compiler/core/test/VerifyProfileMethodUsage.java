@@ -40,8 +40,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Check that regular Graal code accesses profile information through through a
- * {@link ProfileProvider} so that a compilation can correctly interpose on the reading of it.
+ * Check that Graal code accesses profile information through a {@link ProfileProvider} so that a
+ * compilation can correctly interpose on the reading of it.
  */
 public class VerifyProfileMethodUsage extends VerifyPhase<CoreProviders> {
     private static final Method GET_PROFILING_INFO;
