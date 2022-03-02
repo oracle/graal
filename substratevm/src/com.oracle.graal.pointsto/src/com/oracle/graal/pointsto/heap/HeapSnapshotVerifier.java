@@ -58,7 +58,7 @@ public class HeapSnapshotVerifier {
     protected final ImageHeapScanner scanner;
     protected final ImageHeap imageHeap;
 
-    private ReusableSet scannedObjects;
+    protected ReusableSet scannedObjects;
     private boolean heapPatched;
     private boolean analysisModified;
 
@@ -80,7 +80,7 @@ public class HeapSnapshotVerifier {
         int reachableTypesBefore = bb.getUniverse().getReachableTypes();
         iterations++;
         scannedObjects.reset();
-        ObjectScanner objectScanner = new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
+        ObjectScanner objectScanner = installObjectScanner(executor);
         executor.start();
         scanTypes(objectScanner);
         objectScanner.scanBootImageHeapRoots();
@@ -106,6 +106,10 @@ public class HeapSnapshotVerifier {
         return analysisModified || verificationReachableTypes > 0;
     }
 
+    protected ObjectScanner installObjectScanner(CompletionExecutor executor) {
+        return new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
+    }
+
     protected void scanTypes(@SuppressWarnings("unused") ObjectScanner objectScanner) {
     }
 
@@ -113,7 +117,10 @@ public class HeapSnapshotVerifier {
         scannedObjects = null;
     }
 
-    private final class ScanningObserver implements ObjectScanningObserver {
+    protected final class ScanningObserver implements ObjectScanningObserver {
+
+        public ScanningObserver() {
+        }
 
         @Override
         public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
