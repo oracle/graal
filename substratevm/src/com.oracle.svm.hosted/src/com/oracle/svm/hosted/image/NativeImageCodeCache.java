@@ -237,11 +237,11 @@ public abstract class NativeImageCodeCache {
             codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
         }
 
-        MethodMetadataEncoder methodMetadataEncoder = ImageSingletons.lookup(MethodMetadataEncoderFactory.class).create(encoders);
+        ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
         for (HostedType type : imageHeap.getUniverse().getTypes()) {
             Map<Class<?>, Set<Class<?>>> innerClasses = ImageSingletons.lookup(RuntimeReflectionSupport.class).getReflectionInnerClasses();
             if (type.getWrapped().isReachable()) {
-                methodMetadataEncoder.addClassMetadata(imageHeap.getMetaAccess(), type, innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]));
+                reflectionMetadataEncoder.addClassMetadata(imageHeap.getMetaAccess(), type, innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]));
             }
         }
         Set<HostedField> includedFields = new HashSet<>();
@@ -253,12 +253,12 @@ public abstract class NativeImageCodeCache {
             if (object instanceof Method || object instanceof Constructor) {
                 includedMethods.add(imageHeap.getMetaAccess().lookupJavaMethod((Executable) object));
             }
-            methodMetadataEncoder.addHeapObjectMetadata(imageHeap.getMetaAccess(), object);
+            reflectionMetadataEncoder.addHeapObjectMetadata(imageHeap.getMetaAccess(), object);
         }
         for (Field reflectField : ImageSingletons.lookup(RuntimeReflectionSupport.class).getReflectionFields()) {
             HostedField field = imageHeap.getMetaAccess().lookupJavaField(reflectField);
             if (!includedFields.contains(field)) {
-                methodMetadataEncoder.addReflectionFieldMetadata(imageHeap.getMetaAccess(), field, reflectField);
+                reflectionMetadataEncoder.addReflectionFieldMetadata(imageHeap.getMetaAccess(), field, reflectField);
                 includedFields.add(field);
             }
         }
@@ -266,7 +266,7 @@ public abstract class NativeImageCodeCache {
             HostedMethod method = imageHeap.getMetaAccess().lookupJavaMethod(reflectMethod);
             if (!includedMethods.contains(method)) {
                 Object accessor = ImageSingletons.lookup(RuntimeReflectionSupport.class).getAccessor(reflectMethod);
-                methodMetadataEncoder.addReflectionExecutableMetadata(imageHeap.getMetaAccess(), method, reflectMethod, accessor);
+                reflectionMetadataEncoder.addReflectionExecutableMetadata(imageHeap.getMetaAccess(), method, reflectMethod, accessor);
                 includedMethods.add(method);
             }
         }
@@ -283,7 +283,7 @@ public abstract class NativeImageCodeCache {
                 }
                 int modifiers = hidingMethod.getModifiers();
                 HostedType returnType = imageHeap.getUniverse().lookup(hidingMethod.getSignature().getReturnType(null));
-                methodMetadataEncoder.addHidingMethodMetadata(declaringType, name, parameterTypes, modifiers, returnType);
+                reflectionMetadataEncoder.addHidingMethodMetadata(declaringType, name, parameterTypes, modifiers, returnType);
                 if (hostedMethod != null) {
                     includedMethods.add(hostedMethod);
                 }
@@ -292,12 +292,12 @@ public abstract class NativeImageCodeCache {
         if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedField field : imageHeap.getUniverse().getFields()) {
                 if (field.isAccessed() && !includedFields.contains(field)) {
-                    methodMetadataEncoder.addReachableFieldMetadata(field);
+                    reflectionMetadataEncoder.addReachableFieldMetadata(field);
                 }
             }
             for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
                 if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod() && !includedMethods.contains(method)) {
-                    methodMetadataEncoder.addReachableMethodMetadata(method);
+                    reflectionMetadataEncoder.addReachableMethodMetadata(method);
                 }
             }
         }
@@ -309,7 +309,7 @@ public abstract class NativeImageCodeCache {
 
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
-        methodMetadataEncoder.encodeAllAndInstall();
+        reflectionMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
@@ -601,7 +601,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public interface MethodMetadataEncoder {
+    public interface ReflectionMetadataEncoder {
         void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] reflectionClasses);
 
         void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, Field reflectField);
@@ -629,7 +629,7 @@ public abstract class NativeImageCodeCache {
         byte[] getReflectParametersEncoding(Executable object);
     }
 
-    public interface MethodMetadataEncoderFactory {
-        MethodMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
+    public interface ReflectionMetadataEncoderFactory {
+        ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
     }
 }

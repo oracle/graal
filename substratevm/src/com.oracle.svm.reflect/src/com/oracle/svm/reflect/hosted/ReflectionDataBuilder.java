@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import static com.oracle.svm.reflect.hosted.MethodMetadataEncoderImpl.getTypeAnnotations;
+import static com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl.getTypeAnnotations;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -246,7 +246,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     /**
-     * See {@link MethodMetadataEncoderImpl} for details.
+     * See {@link ReflectionMetadataEncoderImpl} for details.
      */
     protected void processMethodMetadata(DuringAnalysisAccessImpl access) {
         for (AnalysisType type : access.getUniverse().getTypes()) {

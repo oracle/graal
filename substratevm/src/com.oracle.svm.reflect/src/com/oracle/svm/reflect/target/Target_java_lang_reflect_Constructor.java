@@ -85,7 +85,7 @@ public final class Target_java_lang_reflect_Constructor {
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return ImageSingletons.lookup(NativeImageCodeCache.MethodMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);
+            return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 
@@ -98,7 +98,7 @@ public final class Target_java_lang_reflect_Constructor {
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return ImageSingletons.lookup(NativeImageCodeCache.MethodMetadataEncoder.class).getParameterAnnotationsEncoding((Executable) receiver);
+            return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getParameterAnnotationsEncoding((Executable) receiver);
         }
     }
 }

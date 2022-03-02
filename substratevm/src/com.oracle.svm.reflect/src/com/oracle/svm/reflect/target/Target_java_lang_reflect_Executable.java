@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -62,7 +62,7 @@ public final class Target_java_lang_reflect_Executable {
         if (rawParameters == null) {
             return null;
         }
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
     }
 
     @Substitute
@@ -79,7 +79,7 @@ public final class Target_java_lang_reflect_Executable {
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return ImageSingletons.lookup(NativeImageCodeCache.MethodMetadataEncoder.class).getReflectParametersEncoding((Executable) receiver);
+            return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getReflectParametersEncoding((Executable) receiver);
         }
     }
 }

@@ -32,20 +32,22 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder;
-import com.oracle.svm.hosted.image.NativeImageCodeCache.MethodMetadataEncoderFactory;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.reflect.target.MethodMetadataDecoderImpl;
+import com.oracle.svm.reflect.target.ReflectionMetadataDecoderImpl;
+import com.oracle.svm.reflect.target.ReflectionMetadataEncoding;
 
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.TypeAnnotation;
 
 @AutomaticFeature
-class MethodMetadataFeature implements Feature {
+class ReflectionMetadataFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(MethodMetadataEncoderFactory.class, new MethodMetadataEncoderImpl.Factory());
-        ImageSingletons.add(MethodMetadataDecoder.class, new MethodMetadataDecoderImpl());
+        ImageSingletons.add(ReflectionMetadataEncoderFactory.class, new ReflectionMetadataEncoderImpl.Factory());
+        ImageSingletons.add(ReflectionMetadataDecoder.class, new ReflectionMetadataDecoderImpl());
+        ImageSingletons.add(ReflectionMetadataEncoding.class, new ReflectionMetadataEncoding());
     }
 }
 

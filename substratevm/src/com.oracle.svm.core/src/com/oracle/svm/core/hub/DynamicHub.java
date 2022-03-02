@@ -71,13 +71,14 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -323,24 +324,24 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private Class<?> newInstanceCallerCache;
 
-    @UnknownObjectField(types = {byte[].class}) private byte[] enclosingMethodInfo;
+    @UnknownPrimitiveField private int enclosingMethodInfoIndex;
 
-    @UnknownObjectField(types = {byte[].class}) private byte[] annotations;
+    @UnknownPrimitiveField private int annotationsIndex;
 
-    @UnknownObjectField(types = {byte[].class}) private byte[] typeAnnotations;
+    @UnknownPrimitiveField private int typeAnnotationsIndex;
 
-    @UnknownObjectField(types = {byte[].class}) byte[] fieldsEncoding;
+    @UnknownPrimitiveField int fieldsEncodingIndex;
 
-    @UnknownObjectField(types = {byte[].class}) byte[] methodsEncoding;
+    @UnknownPrimitiveField int methodsEncodingIndex;
 
-    @UnknownObjectField(types = {byte[].class}) byte[] constructorsEncoding;
+    @UnknownPrimitiveField int constructorsEncodingIndex;
 
-    @UnknownObjectField(types = {byte[].class}) byte[] classesEncoding;
+    @UnknownPrimitiveField int classesEncodingIndex;
 
     @TargetElement(onlyWith = JDK17OrLater.class)//
-    @UnknownObjectField(types = {byte[].class}) byte[] recordComponentsEncoding;
+    @UnknownPrimitiveField int recordComponentsEncodingIndex;
 
-    @UnknownObjectField(types = {byte[].class}) byte[] permittedSubclassesEncoding;
+    @UnknownPrimitiveField int permittedSubclassesEncodingIndex;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
@@ -475,48 +476,48 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setFieldsEncoding(byte[] encoding) {
-        this.fieldsEncoding = encoding;
+    public void setFieldsEncodingIndex(int encodingIndex) {
+        this.fieldsEncodingIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMethodsEncoding(byte[] encoding) {
-        this.methodsEncoding = encoding;
+    public void setMethodsEncodingIndex(int encodingIndex) {
+        this.methodsEncodingIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setConstructorsEncoding(byte[] encoding) {
-        this.constructorsEncoding = encoding;
+    public void setConstructorsEncodingIndex(int encodingIndex) {
+        this.constructorsEncodingIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setClassesEncoding(byte[] encoding) {
-        this.classesEncoding = encoding;
+    public void setClassesEncodingIndex(int encodingIndex) {
+        this.classesEncodingIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setRecordComponentsEncoding(byte[] encoding) {
-        this.recordComponentsEncoding = encoding;
+    public void setRecordComponentsEncodingIndex(int encodingIndex) {
+        this.recordComponentsEncodingIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setPermittedSubclassesEncoding(byte[] encoding) {
-        this.permittedSubclassesEncoding = encoding;
+    public void setPermittedSubclassesEncodingIndex(int encodingIndex) {
+        this.permittedSubclassesEncodingIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setAnnotationsEncoding(byte[] encoding) {
-        this.annotations = encoding;
+    public void setAnnotationsEncodingIndex(int encodingIndex) {
+        this.annotationsIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setTypeAnnotationsEncoding(byte[] encoding) {
-        this.typeAnnotations = encoding;
+    public void setTypeAnnotationsEncodingIndex(int encodingIndex) {
+        this.typeAnnotationsIndex = encodingIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setEnclosingMethodInfo(byte[] encoding) {
-        this.enclosingMethodInfo = encoding;
+    public void setEnclosingMethodInfoIndex(int encodingIndex) {
+        this.enclosingMethodInfoIndex = encodingIndex;
     }
 
     /** Executed at runtime. */
@@ -1001,12 +1002,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
-        if (recordComponentsEncoding == null) {
+        if (recordComponentsEncodingIndex == ReflectionMetadataDecoder.NULL_ARRAY) {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw VMError.unsupportedFeature("Record components not available for record class " + getTypeName() + ". " +
                             "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
         }
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseRecordComponents(this, recordComponentsEncoding);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseRecordComponents(this, recordComponentsEncodingIndex);
     }
 
     @KeepOriginal
@@ -1329,10 +1330,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private Object[] getEnclosingMethod0() {
-        if (enclosingMethodInfo == null) {
+        if (enclosingMethodInfoIndex == ReflectionMetadataDecoder.NULL_ARRAY) {
             return null;
         }
-        Object[] enclosingMethod = ImageSingletons.lookup(MethodMetadataDecoder.class).parseEnclosingMethod(enclosingMethodInfo);
+        Object[] enclosingMethod = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseEnclosingMethod(enclosingMethodInfoIndex);
         if (enclosingMethod != null) {
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) enclosingMethod[0], getClassLoader0());
         }
@@ -1365,12 +1366,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     byte[] getRawAnnotations() {
-        return annotations;
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseByteArray(annotationsIndex);
     }
 
     @Substitute
     byte[] getRawTypeAnnotations() {
-        return typeAnnotations;
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseByteArray(typeAnnotationsIndex);
     }
 
     @Substitute
@@ -1380,22 +1381,22 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private Field[] getDeclaredFields0(boolean publicOnly) {
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseFields(this, fieldsEncoding, publicOnly, true);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseFields(this, fieldsEncodingIndex, publicOnly, true);
     }
 
     @Substitute
     private Method[] getDeclaredMethods0(boolean publicOnly) {
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseMethods(this, methodsEncoding, publicOnly, true);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseMethods(this, methodsEncodingIndex, publicOnly, true);
     }
 
     @Substitute
     private Constructor<?>[] getDeclaredConstructors0(boolean publicOnly) {
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseConstructors(this, constructorsEncoding, publicOnly, true);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseConstructors(this, constructorsEncodingIndex, publicOnly, true);
     }
 
     @Substitute
     private Class<?>[] getDeclaredClasses0() {
-        Class<?>[] declaredClasses = ImageSingletons.lookup(MethodMetadataDecoder.class).parseClasses(classesEncoding);
+        Class<?>[] declaredClasses = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(classesEncodingIndex);
         for (Class<?> clazz : declaredClasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1447,10 +1448,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private Class<?>[] getPermittedSubclasses0() {
-        if (permittedSubclassesEncoding.length == 0) {
+        if (permittedSubclassesEncodingIndex == ReflectionMetadataDecoder.NULL_ARRAY) {
             return null;
         }
-        Class<?>[] permittedSubclasses = ImageSingletons.lookup(MethodMetadataDecoder.class).parseClasses(permittedSubclassesEncoding);
+        Class<?>[] permittedSubclasses = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(permittedSubclassesEncodingIndex);
         for (Class<?> clazz : permittedSubclasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1478,7 +1479,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static Method[] filterHidingMethods(Method... methods) {
         List<Method> filtered = new ArrayList<>();
         for (Method method : methods) {
-            if (!ImageSingletons.lookup(MethodMetadataDecoder.class).isHidingMethod(method.getModifiers())) {
+            if (!ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHidingMethod(method.getModifiers())) {
                 filtered.add(method);
             }
         }
@@ -1531,15 +1532,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public Field[] getReachableFields() {
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseFields(this, fieldsEncoding, false, false);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseFields(this, fieldsEncodingIndex, false, false);
     }
 
     public Method[] getReachableMethods() {
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseMethods(this, methodsEncoding, false, false);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseMethods(this, methodsEncodingIndex, false, false);
     }
 
     public Constructor<?>[] getReachableConstructors() {
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).parseConstructors(this, constructorsEncoding, false, false);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseConstructors(this, constructorsEncodingIndex, false, false);
     }
 }
 
@@ -1640,7 +1641,7 @@ final class Target_java_lang_PublicMethods_MethodList {
             }
         }
         /* Filter out hiding methods after the retursive lookup is done */
-        return ImageSingletons.lookup(MethodMetadataDecoder.class).isHidingMethod(m.getModifiers()) ? null : m;
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHidingMethod(m.getModifiers()) ? null : m;
     }
 }
 

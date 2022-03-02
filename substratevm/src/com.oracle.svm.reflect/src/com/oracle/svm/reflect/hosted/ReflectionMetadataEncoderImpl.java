@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import static com.oracle.svm.reflect.target.MethodMetadataDecoderImpl.COMPLETE_FLAG_MASK;
-import static com.oracle.svm.reflect.target.MethodMetadataDecoderImpl.HIDING_FLAG_MASK;
-import static com.oracle.svm.reflect.target.MethodMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
-import static com.oracle.svm.reflect.target.MethodMetadataDecoderImpl.NULL_OBJECT;
+import static com.oracle.svm.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
+import static com.oracle.svm.reflect.target.ReflectionMetadataDecoderImpl.HIDING_FLAG_MASK;
+import static com.oracle.svm.reflect.target.ReflectionMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
+import static com.oracle.svm.reflect.target.ReflectionMetadataDecoderImpl.NULL_OBJECT;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -64,12 +64,12 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.image.NativeImageCodeCache.MethodMetadataEncoder;
-import com.oracle.svm.hosted.image.NativeImageCodeCache.MethodMetadataEncoderFactory;
+import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoder;
+import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -83,7 +83,8 @@ import com.oracle.svm.reflect.hosted.ReflectionMetadata.FieldMetadata;
 import com.oracle.svm.reflect.hosted.ReflectionMetadata.MethodMetadata;
 import com.oracle.svm.reflect.hosted.ReflectionMetadata.RecordComponentMetadata;
 import com.oracle.svm.reflect.hosted.ReflectionMetadata.ReflectParameterMetadata;
-import com.oracle.svm.reflect.target.MethodMetadataDecoderImpl;
+import com.oracle.svm.reflect.target.ReflectionMetadataDecoderImpl;
+import com.oracle.svm.reflect.target.ReflectionMetadataEncoding;
 import com.oracle.svm.reflect.target.Target_sun_reflect_annotation_AnnotationParser;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -115,12 +116,12 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
  * phase, the values are encoded as byte arrays and stored in {@link DynamicHub} arrays (see
  * {@link #encodeAllAndInstall()}).
  */
-public class MethodMetadataEncoderImpl implements MethodMetadataEncoder {
+public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder {
 
-    static class Factory implements MethodMetadataEncoderFactory {
+    static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
-        public MethodMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {
-            return new MethodMetadataEncoderImpl(encoders);
+        public ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {
+            return new ReflectionMetadataEncoderImpl(encoders);
         }
     }
 
@@ -140,7 +141,7 @@ public class MethodMetadataEncoderImpl implements MethodMetadataEncoder {
     private final Map<AccessibleObject, byte[]> typeAnnotationsEncodings = new HashMap<>();
     private final Map<Executable, byte[]> reflectParametersEncodings = new HashMap<>();
 
-    public MethodMetadataEncoderImpl(CodeInfoEncoder.Encoders encoders) {
+    public ReflectionMetadataEncoderImpl(CodeInfoEncoder.Encoders encoders) {
         this.encoders = encoders;
     }
 
@@ -202,6 +203,7 @@ public class MethodMetadataEncoderImpl implements MethodMetadataEncoder {
         TypeAnnotation[] typeAnnotations = getTypeAnnotations(javaClass);
 
         /* Register string and class values in annotations */
+        encoders.sourceClasses.addObject(javaClass);
         if (enclosingMethodInfo != null) {
             encoders.sourceClasses.addObject(enclosingMethodDeclaringClass.getJavaClass());
             encoders.sourceMethodNames.addObject(enclosingMethodName);
@@ -672,73 +674,90 @@ public class MethodMetadataEncoderImpl implements MethodMetadataEncoder {
     }
 
     /**
-     * See {@link MethodMetadataDecoderImpl} for the encoding format description.
+     * See {@link ReflectionMetadataDecoderImpl} for the encoding format description.
      */
     @Override
     public void encodeAllAndInstall() {
-        int metadataByteLength = 0;
+        UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
+        encodeAndAddCollection(buf, sortedTypes.toArray(new HostedType[0]), this::encodeType, (ignored) -> {
+        }, false);
         for (HostedType declaringType : sortedTypes) {
             DynamicHub hub = declaringType.getHub();
             ClassMetadata classMetadata = classData.get(declaringType);
-            metadataByteLength += encodeAndInstallCollection(classMetadata.classes, this::encodeType, hub::setClassesEncoding, false);
-            if (classMetadata.enclosingMethodDeclaringClass != null || classMetadata.enclosingMethodName != null || classMetadata.enclosingMethodDescriptor != null) {
-                metadataByteLength += encodeAndInstall(new Object[]{classMetadata.enclosingMethodDeclaringClass, classMetadata.enclosingMethodName, classMetadata.enclosingMethodDescriptor},
-                                this::encodeEnclosingMethod, hub::setEnclosingMethodInfo);
-            }
+            encodeAndAddCollection(buf, classMetadata.classes, this::encodeType, hub::setClassesEncodingIndex, false);
+            encodeAndAddElement(buf, new Object[]{classMetadata.enclosingMethodDeclaringClass, classMetadata.enclosingMethodName, classMetadata.enclosingMethodDescriptor},
+                            this::encodeEnclosingMethod, hub::setEnclosingMethodInfoIndex);
             if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                metadataByteLength += encodeAndInstallCollection(classMetadata.recordComponents, this::encodeRecordComponent, hub::setRecordComponentsEncoding, true);
-                metadataByteLength += encodeAndInstallCollection(classMetadata.permittedSubclasses, this::encodeType, hub::setPermittedSubclassesEncoding, true);
+                encodeAndAddCollection(buf, classMetadata.recordComponents, this::encodeRecordComponent, hub::setRecordComponentsEncodingIndex, true);
+                encodeAndAddCollection(buf, classMetadata.permittedSubclasses, this::encodeType, hub::setPermittedSubclassesEncodingIndex, true);
             }
-            metadataByteLength += encodeAndInstall(classMetadata.annotations, this::encodeAnnotations, hub::setAnnotationsEncoding);
-            metadataByteLength += encodeAndInstall(classMetadata.typeAnnotations, this::encodeTypeAnnotations,
-                            hub::setTypeAnnotationsEncoding);
-            metadataByteLength += encodeAndInstallCollection(fieldData.getOrDefault(declaringType, Collections.emptySet()).toArray(new FieldMetadata[0]), this::encodeField, hub::setFieldsEncoding,
+            encodeAndAddEncodedElement(buf, classMetadata.annotations, this::encodeAnnotations, hub::setAnnotationsEncodingIndex);
+            encodeAndAddEncodedElement(buf, classMetadata.typeAnnotations, this::encodeTypeAnnotations,
+                            hub::setTypeAnnotationsEncodingIndex);
+            encodeAndAddCollection(buf, fieldData.getOrDefault(declaringType, Collections.emptySet()).toArray(new FieldMetadata[0]), this::encodeField, hub::setFieldsEncodingIndex,
                             false);
-            metadataByteLength += encodeAndInstallCollection(methodData.getOrDefault(declaringType, Collections.emptySet()).toArray(new MethodMetadata[0]), this::encodeExecutable,
-                            hub::setMethodsEncoding, false);
-            metadataByteLength += encodeAndInstallCollection(constructorData.getOrDefault(declaringType, Collections.emptySet()).toArray(new ConstructorMetadata[0]), this::encodeExecutable,
-                            hub::setConstructorsEncoding, false);
+            encodeAndAddCollection(buf, methodData.getOrDefault(declaringType, Collections.emptySet()).toArray(new MethodMetadata[0]), this::encodeExecutable,
+                            hub::setMethodsEncodingIndex, false);
+            encodeAndAddCollection(buf, constructorData.getOrDefault(declaringType, Collections.emptySet()).toArray(new ConstructorMetadata[0]), this::encodeExecutable,
+                            hub::setConstructorsEncodingIndex, false);
         }
         for (AccessibleObjectMetadata metadata : heapData) {
             AccessibleObject heapObject = (AccessibleObject) SubstrateObjectConstant.asObject(metadata.heapObject);
-            metadataByteLength += encodeAndInstall(metadata.annotations, this::encodeAnnotations, (array) -> annotationsEncodings.put(heapObject, array));
-            metadataByteLength += encodeAndInstall(metadata.typeAnnotations, this::encodeTypeAnnotations, (array) -> typeAnnotationsEncodings.put(heapObject, array));
+            encodeAndAddHeapElement(metadata.annotations, this::encodeAnnotations, (array) -> annotationsEncodings.put(heapObject, array));
+            encodeAndAddHeapElement(metadata.typeAnnotations, this::encodeTypeAnnotations, (array) -> typeAnnotationsEncodings.put(heapObject, array));
             if (metadata instanceof ExecutableMetadata) {
-                metadataByteLength += encodeAndInstall(((ExecutableMetadata) metadata).parameterAnnotations, this::encodeParameterAnnotations,
+                encodeAndAddHeapElement(((ExecutableMetadata) metadata).parameterAnnotations, this::encodeParameterAnnotations,
                                 (array) -> parameterAnnotationsEncodings.put((Executable) heapObject, array));
                 if (((ExecutableMetadata) metadata).reflectParameters != null) {
-                    metadataByteLength += encodeAndInstall(((ExecutableMetadata) metadata).reflectParameters, this::encodeReflectParameters,
+                    encodeAndAddHeapElement(((ExecutableMetadata) metadata).reflectParameters, this::encodeReflectParameters,
                                     (array) -> reflectParametersEncodings.put((Executable) heapObject, array));
                 }
                 if (metadata instanceof MethodMetadata && ((Method) SubstrateObjectConstant.asObject(metadata.heapObject)).getDeclaringClass().isAnnotation() &&
                                 ((MethodMetadata) metadata).annotationDefault != null) {
-                    metadataByteLength += encodeAndInstall(((MethodMetadata) metadata).annotationDefault, this::encodeMemberValue,
+                    encodeAndAddHeapElement(((MethodMetadata) metadata).annotationDefault, this::encodeMemberValue,
                                     (array) -> annotationDefaultEncodings.put((Method) heapObject, array));
                 }
             }
         }
+        install(buf);
         /* Enable field recomputers in reflection objects to see the computed values */
-        ImageSingletons.add(MethodMetadataEncoder.class, this);
-        ProgressReporter.singleton().setMetadataByteLength(metadataByteLength);
+        ImageSingletons.add(ReflectionMetadataEncoder.class, this);
     }
 
-    private static <T> int encodeAndInstallCollection(T[] data, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, Consumer<byte[]> saveCallback, boolean canBeNull) {
-        UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        encodeArray(encodingBuffer, data, element -> encodeCallback.accept(encodingBuffer, element), canBeNull);
-        return install(encodingBuffer, saveCallback);
+    private static <T> void encodeAndAddCollection(UnsafeArrayTypeWriter buf, T[] data, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, Consumer<Integer> saveCallback, boolean canBeNull) {
+        int offset = ReflectionMetadataDecoder.NULL_ARRAY;
+        if (!canBeNull || data != null) {
+            offset = TypeConversion.asS4(buf.getBytesWritten());
+            encodeArray(buf, data, element -> encodeCallback.accept(buf, element));
+        }
+        saveCallback.accept(offset);
     }
 
-    private static <T> int encodeAndInstall(T data, Function<T, byte[]> encodeCallback, Consumer<byte[]> saveCallback) {
-        UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        encodeBytes(encodingBuffer, encodeCallback.apply(data));
-        return install(encodingBuffer, saveCallback);
+    private static <T> void encodeAndAddElement(UnsafeArrayTypeWriter buf, T data, Function<T, byte[]> encodeCallback, Consumer<Integer> saveCallback) {
+        byte[] encoding = encodeCallback.apply(data);
+        int offset = ReflectionMetadataDecoder.NULL_ARRAY;
+        if (encoding != null) {
+            offset = TypeConversion.asS4(buf.getBytesWritten());
+            encodeBytes(buf, encoding);
+        }
+        saveCallback.accept(offset);
     }
 
-    private static int install(UnsafeArrayTypeWriter encodingBuffer, Consumer<byte[]> saveCallback) {
+    private static <T> void encodeAndAddEncodedElement(UnsafeArrayTypeWriter buf, T data, Function<T, byte[]> encodeCallback, Consumer<Integer> saveCallback) {
+        int offset = TypeConversion.asS4(buf.getBytesWritten());
+        encodeByteArray(buf, encodeCallback.apply(data));
+        saveCallback.accept(offset);
+    }
+
+    private static <T> void encodeAndAddHeapElement(T data, Function<T, byte[]> encodeCallback, Consumer<byte[]> saveCallback) {
+        byte[] encoding = encodeCallback.apply(data);
+        saveCallback.accept(encoding);
+    }
+
+    private static void install(UnsafeArrayTypeWriter encodingBuffer) {
         int encodingSize = TypeConversion.asS4(encodingBuffer.getBytesWritten());
         byte[] dataEncoding = new byte[encodingSize];
-        saveCallback.accept(encodingBuffer.toArray(dataEncoding));
-        return encodingSize;
+        ImageSingletons.lookup(ReflectionMetadataEncoding.class).setEncoding(encodingBuffer.toArray(dataEncoding));
     }
 
     private void encodeField(UnsafeArrayTypeWriter buf, FieldMetadata field) {
@@ -817,13 +836,6 @@ public class MethodMetadataEncoderImpl implements MethodMetadataEncoder {
     }
 
     private static <T> void encodeArray(UnsafeArrayTypeWriter buf, T[] array, Consumer<T> elementEncoder) {
-        encodeArray(buf, array, elementEncoder, false);
-    }
-
-    private static <T> void encodeArray(UnsafeArrayTypeWriter buf, T[] array, Consumer<T> elementEncoder, boolean canBeNull) {
-        if (canBeNull && array == null) {
-            return;
-        }
         buf.putUV(array.length);
         for (T elem : array) {
             elementEncoder.accept(elem);
@@ -1187,6 +1199,10 @@ public class MethodMetadataEncoderImpl implements MethodMetadataEncoder {
     }
 
     private byte[] encodeEnclosingMethod(Object[] enclosingMethod) {
+        assert enclosingMethod.length == 3;
+        if (enclosingMethod[0] == null && enclosingMethod[1] == null && enclosingMethod[2] == null) {
+            return null;
+        }
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         encodeType(buf, (HostedType) enclosingMethod[0]);
         encodeName(buf, (String) enclosingMethod[1]);

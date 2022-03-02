@@ -36,6 +36,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -43,7 +44,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.util.ByteArrayReader;
 
@@ -106,7 +107,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
  * } SimpleMethodEncoding;
  * </pre>
  */
-public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
+public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
     public static final int NO_METHOD_METADATA = -1;
     public static final int NULL_OBJECT = -1;
     public static final int COMPLETE_FLAG_INDEX = 31;
@@ -116,37 +117,41 @@ public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
     public static final int HIDING_FLAG_INDEX = 29;
     public static final int HIDING_FLAG_MASK = 1 << HIDING_FLAG_INDEX;
 
+    static byte[] getEncoding() {
+        return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
+    }
+
     @Override
-    public Field[] parseFields(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         return decodeArray(reader, Field.class, (i) -> decodeField(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
     }
 
     @Override
-    public Method[] parseMethods(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         return decodeArray(reader, Method.class, (i) -> decodeMethod(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
     }
 
     @Override
-    public Constructor<?>[] parseConstructors(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         return decodeArray(reader, Constructor.class, (i) -> decodeConstructor(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
     }
 
     @Override
-    public Class<?>[] parseClasses(byte[] encoding) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Class<?>[] parseClasses(int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         return decodeArray(reader, Class.class, (i) -> decodeType(reader, codeInfo));
     }
 
     @Override
-    public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, byte[] encoding) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, codeInfo, DynamicHub.toClass(declaringType)));
     }
@@ -159,8 +164,8 @@ public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
     }
 
     @Override
-    public Object[] parseEnclosingMethod(byte[] encoding) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Object[] parseEnclosingMethod(int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         Class<?> declaringClass = decodeType(reader, codeInfo);
         String name = decodeName(reader, codeInfo);
@@ -169,8 +174,19 @@ public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
     }
 
     @Override
+    public byte[] parseByteArray(int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        return decodeByteArray(reader);
+    }
+
+    @Override
     public boolean isHidingMethod(int modifiers) {
         return (modifiers & HIDING_FLAG_MASK) != 0;
+    }
+
+    @Override
+    public long getMetadataByteLength() {
+        return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
     }
 
     private static Field decodeField(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {

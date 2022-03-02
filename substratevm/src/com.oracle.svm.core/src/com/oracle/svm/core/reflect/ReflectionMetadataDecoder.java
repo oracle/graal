@@ -32,20 +32,26 @@ import java.lang.reflect.Parameter;
 
 import com.oracle.svm.core.hub.DynamicHub;
 
-public interface MethodMetadataDecoder {
-    Field[] parseFields(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly);
+public interface ReflectionMetadataDecoder {
+    int NULL_ARRAY = -1;
 
-    Method[] parseMethods(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly);
+    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
 
-    Constructor<?>[] parseConstructors(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly);
+    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
 
-    Class<?>[] parseClasses(byte[] encoding);
+    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
 
-    Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, byte[] encoding);
+    Class<?>[] parseClasses(int index);
+
+    Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
 
     Parameter[] parseReflectParameters(Executable executable, byte[] encoding);
 
-    Object[] parseEnclosingMethod(byte[] encoding);
+    Object[] parseEnclosingMethod(int index);
+
+    byte[] parseByteArray(int index);
 
     boolean isHidingMethod(int modifiers);
+
+    long getMetadataByteLength();
 }

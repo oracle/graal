@@ -143,7 +143,7 @@ public final class Target_java_lang_reflect_Field {
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return ImageSingletons.lookup(NativeImageCodeCache.MethodMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);
+            return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 }
