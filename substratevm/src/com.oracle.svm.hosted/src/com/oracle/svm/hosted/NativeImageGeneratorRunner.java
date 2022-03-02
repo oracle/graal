@@ -267,16 +267,9 @@ public class NativeImageGeneratorRunner {
         }
         String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
-
-        OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
-
-        if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
-            printCPUFeatures(classLoader.platform);
-            return 0;
-        }
-
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
+        OptionValues parsedHostedOptions = null;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
@@ -295,6 +288,11 @@ public class NativeImageGeneratorRunner {
              */
             parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
+
+            if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
+                printCPUFeatures(classLoader.platform);
+                return 0;
+            }
 
             imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
             if (imageName.length() == 0) {
