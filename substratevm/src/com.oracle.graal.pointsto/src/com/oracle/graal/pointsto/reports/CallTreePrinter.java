@@ -373,7 +373,7 @@ public final class CallTreePrinter {
         }
 
         try {
-            Files.createSymbolicLink(csvLink, csvFile);
+            Files.createSymbolicLink(csvLink, csvFile.getFileName());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
