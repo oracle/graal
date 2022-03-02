@@ -66,18 +66,17 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_STACK_SIZE_
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_LENGTH;
 
 /**
- * Representation of the extra data array during module validation. Used to build up the extra data
- * array.
+ * Representation of extra data during module validation. Used to build up the extra data array.
  */
 class ExtraDataList {
-    private static final int[] EMPTY_EXTRA_DATA = new int[0];
+    private static final int INITIAL_EXTRA_DATA_SIZE = 8;
+    private static final int[] EMPTY_INT_ARRAY = new int[0];
 
     private int[] extraData;
-
     private int extraDataCount;
 
     ExtraDataList() {
-        this.extraData = new int[4];
+        this.extraData = new int[INITIAL_EXTRA_DATA_SIZE];
         this.extraDataCount = 0;
     }
 
@@ -239,11 +238,14 @@ class ExtraDataList {
         return extraDataCount;
     }
 
+    /**
+     * @return A copy of the underlying extra data array.
+     */
     int[] getExtraDataArray() {
-        int[] result = new int[extraDataCount];
-        if (extraData == null) {
-            return EMPTY_EXTRA_DATA;
+        if (extraDataCount == 0) {
+            return EMPTY_INT_ARRAY;
         } else {
+            int[] result = new int[extraDataCount];
             System.arraycopy(extraData, 0, result, 0, extraDataCount);
             return result;
         }

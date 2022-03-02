@@ -49,9 +49,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
@@ -70,25 +68,21 @@ import com.oracle.truffle.api.source.SourceSection;
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
 
-    protected final WasmInstance instance;
-    private final WasmCodeEntry codeEntry;
     private final SourceSection sourceSection;
-    @Child private WasmBlockNode body;
+    @Child private WasmFunctionNode function;
 
-    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstance instance, WasmCodeEntry codeEntry) {
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
         super(language, frameDescriptor);
-        this.instance = instance;
-        this.codeEntry = codeEntry;
-        this.body = null;
-        this.sourceSection = instance.module().source().createUnavailableSection();
+        this.function = function;
+        if (function == null) {
+            this.sourceSection = null;
+        } else {
+            this.sourceSection = function.getInstance().module().source().createUnavailableSection();
+        }
     }
 
     protected final WasmContext getContext() {
         return WasmContext.get(this);
-    }
-
-    public void setBody(WasmBlockNode body) {
-        this.body = insert(body);
     }
 
     @Override
@@ -100,7 +94,7 @@ public class WasmRootNode extends RootNode {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(instance);
+        context.linker().tryLink(function.getInstance());
     }
 
     @Override
@@ -122,7 +116,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int numLocals = codeEntry.numLocals();
+        final int numLocals = function.getLocalCount();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -131,13 +125,13 @@ public class WasmRootNode extends RootNode {
         initializeLocals(frame);
 
         try {
-            body.execute(context, frame);
+            function.execute(context, frame);
         } catch (StackOverflowError e) {
-            errorBranch();
+            function.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
 
-        final byte returnTypeId = body.returnTypeId();
+        final byte returnTypeId = function.returnTypeId();
         CompilerAsserts.partialEvaluationConstant(returnTypeId);
         switch (returnTypeId) {
             case 0x00:
@@ -156,18 +150,14 @@ public class WasmRootNode extends RootNode {
         }
     }
 
-    protected final void errorBranch() {
-        codeEntry.errorBranch();
-    }
-
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int numArgs = instance.symbolTable().function(codeEntry.functionIndex()).numArguments();
+        int numArgs = function.getArgumentCount();
         assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
         for (int i = 0; i != numArgs; ++i) {
             final Object arg = args[i];
-            byte type = codeEntry.localType(i);
+            byte type = function.getLocalType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, (int) arg);
@@ -187,9 +177,9 @@ public class WasmRootNode extends RootNode {
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int numArgs = instance.symbolTable().function(codeEntry.functionIndex()).numArguments();
-        for (int i = numArgs; i != codeEntry.numLocals(); ++i) {
-            byte type = codeEntry.localType(i);
+        int numArgs = function.getArgumentCount();
+        for (int i = numArgs; i != function.getLocalCount(); ++i) {
+            byte type = function.getLocalType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, 0);
@@ -214,18 +204,18 @@ public class WasmRootNode extends RootNode {
 
     @Override
     public String getName() {
-        if (codeEntry == null) {
+        if (function == null) {
             return "function";
         }
-        return codeEntry.function().name();
+        return function.getName();
     }
 
     @Override
     public final String getQualifiedName() {
-        if (codeEntry == null) {
+        if (function == null) {
             return getName();
         }
-        return codeEntry.function().moduleName() + "." + getName();
+        return function.getQualifiedName();
     }
 
     @Override

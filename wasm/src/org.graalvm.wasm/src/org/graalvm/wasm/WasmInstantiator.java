@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmBlockNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
@@ -142,25 +142,13 @@ public class WasmInstantiator {
         final int functionIndex = codeEntry.getFunctionIndex();
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
         WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getMaxStackSize(), codeEntry.getExtraData());
-
-        /*
-         * Create the root node and create and set the call target for the body. This needs to be
-         * done before translating the body block, because we need to be able to create direct call
-         * nodes {@see TruffleRuntime#createDirectCallNode} during translation.
-         */
-        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()), instance, wasmCodeEntry);
+        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()), instantiateFunctionNode(instance, wasmCodeEntry, codeEntry));
         instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
-
-        /*
-         * Translate and set the function body.
-         */
-        WasmBlockNode bodyBlock = instantiateBlockNode(instance, wasmCodeEntry, codeEntry);
-        rootNode.setBody(bodyBlock);
     }
 
-    private static WasmBlockNode instantiateBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
+    private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
         int returnLength = entry.getReturnTypeId() == WasmType.VOID_TYPE ? 0 : 1;
-        final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), entry.getReturnTypeId(), returnLength);
+        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), entry.getReturnTypeId(), returnLength);
         List<CallNode> childNodeList = entry.getCallNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;

@@ -60,7 +60,7 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_STACK_I
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_SIZE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_NODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_CONDITION_PROFILE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_BYTECODE_INDEX;
@@ -297,7 +297,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class WasmBlockNode extends Node implements BytecodeOSRNode {
+public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
     private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
@@ -318,7 +318,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_LONG = MIN_DOUBLE_TRUNCATABLE_TO_U_INT;
     private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_LONG = 18446744073709550000.0;
 
-    private static final byte[] RETURN_VALUE = new byte[0];
+    private static final Object RETURN_VALUE = new Object();
 
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
@@ -336,7 +336,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
 
     @CompilationFinal private Object osrMetadata;
 
-    public WasmBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, byte returnTypeId, int functionReturnLength) {
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, byte returnTypeId, int functionReturnLength) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.functionStartOffset = functionStartOffset;
@@ -350,12 +350,36 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         this.callNodes = callNodes;
     }
 
-    public int startOffset() {
+    public int getStartOffset() {
         return functionStartOffset;
     }
 
-    private void errorBranch() {
+    public void enterErrorBranch() {
         codeEntry.errorBranch();
+    }
+
+    public int getArgumentCount() {
+        return instance.symbolTable().function(codeEntry.functionIndex()).numArguments();
+    }
+
+    public int getLocalCount() {
+        return codeEntry.numLocals();
+    }
+
+    public byte getLocalType(int localIndex) {
+        return codeEntry.localType(localIndex);
+    }
+
+    public WasmInstance getInstance() {
+        return instance;
+    }
+
+    public String getName() {
+        return codeEntry.function().name();
+    }
+
+    public String getQualifiedName() {
+        return codeEntry.function().moduleName() + "." + getName();
     }
 
     // region OSR support
@@ -425,7 +449,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
             CompilerAsserts.partialEvaluationConstant(extraOffset);
             switch (opcode) {
                 case UNREACHABLE:
-                    errorBranch();
+                    enterErrorBranch();
                     throw WasmException.create(Failure.UNREACHABLE, this);
                 case NOP:
                     break;
@@ -628,14 +652,14 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
                     final Object[] elements = table.elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
-                        errorBranch();
+                        enterErrorBranch();
                         throw WasmException.format(Failure.UNDEFINED_ELEMENT, this, "Element index '%d' out of table bounds.", elementIndex);
                     }
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
                     final Object element = elements[elementIndex];
                     if (element == null) {
-                        errorBranch();
+                        enterErrorBranch();
                         throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
                     }
                     final WasmFunctionInstance functionInstance;
@@ -648,7 +672,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
                         target = functionInstance.target();
                         functionInstanceContext = functionInstance.context();
                     } else {
-                        errorBranch();
+                        enterErrorBranch();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                     }
 
@@ -667,11 +691,11 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(extraData, extraOffset + CALL_INDIRECT_CONDITION_PROFILE, functionInstanceContext == context);
+                    boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(extraData, extraOffset + CALL_INDIRECT_PROFILE, functionInstanceContext == context);
                     if (functionFromCurrentContext) {
                         // We can do a quick equivalence-class check.
                         if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
-                            errorBranch();
+                            enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }
                     } else {
@@ -680,7 +704,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
                         // in the body of the function. This is done when the function is
                         // provided externally (e.g. comes from a different language).
                         if (function != null && !function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
-                            errorBranch();
+                            enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }
                     }
@@ -2330,14 +2354,14 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         int x = popInt(frame, stackPointer - 1);
         int y = popInt(frame, stackPointer - 2);
         if (x == -1 && y == Integer.MIN_VALUE) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW, this);
         }
         int result;
         try {
             result = y / x;
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushInt(frame, stackPointer - 2, result);
@@ -2350,7 +2374,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         try {
             result = Integer.divideUnsigned(y, x);
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushInt(frame, stackPointer - 2, result);
@@ -2363,7 +2387,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         try {
             result = y % x;
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushInt(frame, stackPointer - 2, result);
@@ -2376,7 +2400,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         try {
             result = Integer.remainderUnsigned(y, x);
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushInt(frame, stackPointer - 2, result);
@@ -2481,14 +2505,14 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         long x = popLong(frame, stackPointer - 1);
         long y = popLong(frame, stackPointer - 2);
         if (x == -1 && y == Long.MIN_VALUE) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW, this);
         }
         final long result;
         try {
             result = y / x;
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushLong(frame, stackPointer - 2, result);
@@ -2501,7 +2525,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         try {
             result = Long.divideUnsigned(y, x);
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushLong(frame, stackPointer - 2, result);
@@ -2514,7 +2538,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         try {
             result = y % x;
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushLong(frame, stackPointer - 2, result);
@@ -2527,7 +2551,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         try {
             result = Long.remainderUnsigned(y, x);
         } catch (ArithmeticException e) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
         }
         pushLong(frame, stackPointer - 2, result);
@@ -2780,10 +2804,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i32_trunc_f32_s(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
         if (Float.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_FLOAT_TRUNCATABLE_TO_INT || x > MAX_FLOAT_TRUNCATABLE_TO_INT) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final int result = (int) WasmMath.truncFloatToLong(x);
@@ -2793,10 +2817,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i32_trunc_f32_u(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
         if (Float.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_FLOAT_TRUNCATABLE_TO_U_INT || x > MAX_FLOAT_TRUNCATABLE_TO_U_INT) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final int result = (int) WasmMath.truncFloatToUnsignedLong(x);
@@ -2806,10 +2830,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i32_trunc_f64_s(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
         if (Double.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_INT || x > MAX_DOUBLE_TRUNCATABLE_TO_INT) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final int result = (int) WasmMath.truncDoubleToLong(x);
@@ -2819,10 +2843,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i32_trunc_f64_u(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
         if (Double.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_U_INT || x > MAX_DOUBLE_TRUNCATABLE_TO_U_INT) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final int result = (int) WasmMath.truncDoubleToUnsignedLong(x);
@@ -2881,10 +2905,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i64_trunc_f32_s(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
         if (Float.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_FLOAT_TRUNCATABLE_TO_LONG || x > MAX_FLOAT_TRUNCATABLE_TO_LONG) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final long result = WasmMath.truncFloatToLong(x);
@@ -2894,10 +2918,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i64_trunc_f32_u(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
         if (Float.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_FLOAT_TRUNCATABLE_TO_U_LONG || x > MAX_FLOAT_TRUNCATABLE_TO_U_LONG) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final long result = WasmMath.truncFloatToUnsignedLong(x);
@@ -2907,10 +2931,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i64_trunc_f64_s(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
         if (Double.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_LONG || x > MAX_DOUBLE_TRUNCATABLE_TO_LONG) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final long result = WasmMath.truncDoubleToLong(x);
@@ -2920,10 +2944,10 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private void i64_trunc_f64_u(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
         if (Double.isNaN(x)) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
         } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_U_LONG || x > MAX_DOUBLE_TRUNCATABLE_TO_U_LONG) {
-            errorBranch();
+            enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final long result = WasmMath.truncDoubleToUnsignedLong(x);

@@ -148,9 +148,9 @@ public final class ExtraDataOffsets {
      * size: The number of entries in the branch table.
      * 
      * count: The number of times the branch table instruction has been executed. Used for
-     * calculating the branch probability.
+     * calculating the branch probabilities.
      * 
-     * entry: A branch table entry.
+     * entry: A branch table entry. (see below)
      */
     public static final int BR_TABLE_SIZE = 0;
     public static final int BR_TABLE_COUNT = 1;
@@ -160,7 +160,7 @@ public final class ExtraDataOffsets {
      * Br_table_entry:
      * 
      * <code>
-     *     | bytecodeIndex (4 byte) | extraIndex (4 byte) | returnLength (1 byte) | stackSize (3 byte) |
+     *     | bytecodeIndex (4 byte) | extraIndex (4 byte) | returnLength (1 byte) | stackSize (3 byte) | profileCount (4 byte) |
      * </code>
      * 
      * bytecodeIndex (data array): The index of the first instruction after the jump.
@@ -174,6 +174,9 @@ public final class ExtraDataOffsets {
      * 
      * stackSize: The stack pointer of the jump target block (number of stack values after the
      * jump).
+     * 
+     * profileCount: The number of times this branch table entry has been chosen. Used for
+     * calculating the branch probability.
      */
     public static final int BR_TABLE_ENTRY_BYTECODE_INDEX = 0;
     public static final int BR_TABLE_ENTRY_EXTRA_INDEX = 1;
@@ -193,7 +196,7 @@ public final class ExtraDataOffsets {
      * conditionProfile: The condition profile probability for calling an external module.
      */
     public static final int CALL_INDIRECT_NODE_INDEX = 0;
-    public static final int CALL_INDIRECT_CONDITION_PROFILE = 1;
+    public static final int CALL_INDIRECT_PROFILE = 1;
     public static final int CALL_INDIRECT_LENGTH = 2;
 
     /**
