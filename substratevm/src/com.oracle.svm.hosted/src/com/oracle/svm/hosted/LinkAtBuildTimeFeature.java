@@ -72,6 +72,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private boolean requireCompleteAll;
 
     private ClassLoaderSupport classLoaderSupport;
+    private ImageClassLoader imageClassLoader;
     private Map<URI, Module> uriModuleMap;
 
     @Override
@@ -83,10 +84,10 @@ public final class LinkAtBuildTimeFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
 
-        var loader = ((FeatureImpl.AfterRegistrationAccessImpl) access).getImageClassLoader();
-        uriModuleMap = ModuleFinder.of(loader.applicationModulePath().toArray(Path[]::new)).findAll().stream()
+        imageClassLoader = ((FeatureImpl.AfterRegistrationAccessImpl) access).getImageClassLoader();
+        uriModuleMap = ModuleFinder.of(imageClassLoader.applicationModulePath().toArray(Path[]::new)).findAll().stream()
                         .filter(mRef -> mRef.location().isPresent())
-                        .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> loader.findModule(mRef.descriptor().name()).get()));
+                        .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> imageClassLoader.findModule(mRef.descriptor().name()).get()));
 
         /*
          * SerializationBuilder.newConstructorForSerialization() creates synthetic
@@ -104,12 +105,13 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private void extractOptionValue(Pair<String, OptionOrigin> valueOrigin) {
         var value = valueOrigin.getLeft();
         OptionOrigin origin = valueOrigin.getRight();
+        URI container = origin.container();
         if (value.isEmpty()) {
             if (origin.commandLineLike()) {
                 requireCompleteAll = true;
                 return;
             }
-            var originModule = uriModuleMap.get(origin.container());
+            var originModule = uriModuleMap.get(container);
             if (originModule != null) {
                 requireCompleteModules.add(originModule);
                 return;
@@ -119,9 +121,13 @@ public final class LinkAtBuildTimeFeature implements Feature {
         } else {
             for (String entry : OptionUtils.resolveOptionValuesRedirection(Options.LinkAtBuildTime, value, origin)) {
                 if (validOptionValue.matcher(entry).matches()) {
+                    if (!origin.commandLineLike() && !imageClassLoader.classes(container).contains(entry) && !imageClassLoader.packages(container).contains(entry)) {
+                        throw UserError.abort("Option '%s' provided by %s contains '%s'. No such package or class name found in '%s'.",
+                                        SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin, entry, container);
+                    }
                     requireCompletePackageOrClass.computeIfAbsent(entry, unused -> new HashSet<>()).add(origin);
                 } else {
-                    throw UserError.abort("Entry '%s' in option '%s' provided by '%s' is neither a package nor a fully qualified classname.",
+                    throw UserError.abort("Entry '%s' in option '%s' provided by %s is neither a package nor a fully qualified classname.",
                                     entry, SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
                 }
             }

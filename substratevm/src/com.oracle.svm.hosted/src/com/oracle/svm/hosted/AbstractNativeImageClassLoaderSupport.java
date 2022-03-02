@@ -55,6 +55,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -68,10 +70,17 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     final List<Path> imagecp;
     private final List<Path> buildcp;
+    private final EconomicMap<URI, EconomicSet<String>> classes;
+    private final EconomicMap<URI, EconomicSet<String>> packages;
+    private final EconomicSet<String> emptySet;
 
     protected final URLClassLoader classPathClassLoader;
 
     protected AbstractNativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath) {
+
+        classes = EconomicMap.create();
+        packages = EconomicMap.create();
+        emptySet = EconomicSet.create();
 
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
@@ -130,6 +139,14 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     public OptionValues getParsedHostedOptions() {
         return parsedHostedOptions;
+    }
+
+    public EconomicSet<String> classes(URI container) {
+        return classes.get(container, emptySet);
+    }
+
+    public EconomicSet<String> packages(URI container) {
+        return packages.get(container, emptySet);
     }
 
     protected abstract void processClassLoaderOptions();
@@ -252,7 +269,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
                     String fileName = root.relativize(file).toString();
                     if (fileName.endsWith(CLASS_EXTENSION)) {
-                        executor.execute(() -> handleClassFileName(null, fileName, fileSystemSeparatorChar));
+                        executor.execute(() -> handleClassFileName(root.toUri(), null, fileName, fileSystemSeparatorChar));
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -295,12 +312,32 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             return result.substring(0, result.length() - CLASS_EXTENSION.length());
         }
 
-        protected void handleClassFileName(Object module, String fileName, char fileSystemSeparatorChar) {
+        protected void handleClassFileName(URI location, Object module, String fileName, char fileSystemSeparatorChar) {
             String strippedClassFileName = strippedClassFileName(fileName);
             if (strippedClassFileName.equals("module-info")) {
                 return;
             }
+
             String className = strippedClassFileName.replace(fileSystemSeparatorChar, '.');
+            synchronized (classes) {
+                EconomicSet<String> classNames = classes.get(location);
+                if (classNames == null) {
+                    classNames = EconomicSet.create();
+                    classes.put(location, classNames);
+                }
+                classNames.add(className);
+            }
+            int packageSep = className.lastIndexOf('.');
+            String packageName = packageSep > 0 ? className.substring(0, packageSep) : "";
+            synchronized (packages) {
+                EconomicSet<String> packageNames = packages.get(location);
+                if (packageNames == null) {
+                    packageNames = EconomicSet.create();
+                    packages.put(location, packageNames);
+                }
+                packageNames.add(packageName);
+            }
+
             Class<?> clazz = null;
             try {
                 clazz = imageClassLoader.forName(className, module);

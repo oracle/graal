@@ -430,7 +430,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 Module module = optionalModule.get();
                 moduleReader.list().forEach(moduleResource -> {
                     if (moduleResource.endsWith(CLASS_EXTENSION)) {
-                        executor.execute(() -> handleClassFileName(module, moduleResource, '/'));
+                        executor.execute(() -> handleClassFileName(moduleReference.location().get(), module, moduleResource, '/'));
                     }
                 });
             } catch (IOException e) {
