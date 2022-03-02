@@ -378,6 +378,49 @@ public abstract class ClassRegistry {
         return entry.klass();
     }
 
+    /**
+     * Queries a registry to load a LinkedKlass for us.
+     *
+     * @param env the environment in which the loading is taking place
+     * @param type the symbolic reference to the Klass we want to load
+     * @param info the class definition information
+     * @return The Klass corresponding to given type
+     */
+    @SuppressWarnings("try")
+    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+        if (Types.isArray(type)) {
+            // TODO (ivan-ristovic) throw (what?) or return null?
+        }
+
+        // TODO (ivan-ristovic) should counters now only count LinkedKlass loads?
+        loadKlassCountInc();
+
+        // Double-checked locking on the symbol (globally unique).
+        ClassRegistries.RegistryEntry entry;
+        try (DebugCloseable probe = KLASS_PROBE.scope(env.getTimers())) {
+            entry = classes.get(type);
+        }
+        LinkedKlass linkedKlass = null;
+        if (entry == null) {
+            synchronized (type) {
+                entry = classes.get(type);
+                if (entry == null) {
+                    linkedKlass = loadLinkedKlassImpl(env, type, info);
+                    if (linkedKlass == null) {
+                        return null;
+                    }
+                } else {
+                    linkedKlass = ((ObjectKlass) entry.klass()).getLinkedKlass();
+                }
+            }
+        } else {
+            // Grabbing a lock to fetch the class is not considered a hit.
+            loadKlassCacheHitsInc();
+            linkedKlass = ((ObjectKlass) entry.klass()).getLinkedKlass();
+        }
+        return linkedKlass;
+    }
+
     public Klass findLoadedKlass(ClassLoadingEnv.InContext env, Symbol<Type> type) {
         if (Types.isArray(type)) {
             Symbol<Type> elemental = env.getTypes().getElementalType(type);
@@ -560,7 +603,7 @@ public abstract class ClassRegistry {
 
     public abstract ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException;
 
-    public abstract LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException;
+    public abstract LinkedKlass loadLinkedKlassImpl(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException;
 
     protected abstract Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type) throws EspressoClassLoadingException;
 

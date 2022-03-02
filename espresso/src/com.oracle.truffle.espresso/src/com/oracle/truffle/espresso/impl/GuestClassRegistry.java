@@ -84,7 +84,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+    public LinkedKlass loadLinkedKlassImpl(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
         ObjectKlass klass = performLoadKlass(env, type);
         return klass.getLinkedKlass();
     }

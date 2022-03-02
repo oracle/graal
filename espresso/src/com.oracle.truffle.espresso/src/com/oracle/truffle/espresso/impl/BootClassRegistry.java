@@ -83,7 +83,7 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public LinkedKlass loadLinkedKlassImpl(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ParserKlass parserKlass = loadParserKlass(env, type, info);
         return parserKlass != null ? createLinkedKlass(env, parserKlass, info) : null;
     }
