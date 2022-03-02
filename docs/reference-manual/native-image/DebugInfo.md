@@ -494,8 +494,6 @@ You can also add extra directories to the search path using the `set directories
 Note that the GNU Debugger does not understand zip format file systems so any extra entries you add must identify a directory tree containing the relevant sources.
 Once again, top level entries in the directory added to the search path must correspond to the top level package for the classes whose sources are being included.
 
-<!-- ### Configuring Source Paths in VS TO BE ADDED -->
-
 ## Checking Debug Info on Linux
 
 Note that this is only of interest to those who want to understand how the debug info implementation works or want to troubleshoot problems encountered during debugging that might relate to the debug info encoding.
