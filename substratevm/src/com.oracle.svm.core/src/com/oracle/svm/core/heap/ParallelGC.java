@@ -1,65 +1,38 @@
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-public class ParallelGC {
+public abstract class ParallelGC {
+    protected final VMMutex mutex = new VMMutex("pargc");
+    protected final VMCondition cond = new VMCondition(mutex);
 
-    private final VMMutex mutex = new VMMutex("pargc");
-    private final VMCondition cond = new VMCondition(mutex);
+    protected volatile boolean workerThreadActive;
+    protected volatile boolean stopped;
 
-    private volatile boolean notified;
-    private volatile boolean stopped;
+    public abstract void startWorkerThreads();
 
-    public void startWorkerThreads() {
-        Log trace = Log.log();
-        Thread t = new Thread() {
-            @Override
-            @Uninterruptible(reason = "Trying to ignore safepoints", calleeMustBe = false)
-            public void run() {
-                VMThreads.ParallelGCSupport.setParallelGCThread();
-                try {
-                    while (!stopped) {
-                        waitForNotification();
-                    }
-                } catch (Throwable e) {
-                    VMError.shouldNotReachHere(e.getClass().getName());
-                }
-            }
-        };
-        t.setName("ParallelGC-noop");
-        t.setDaemon(true);
-        t.start();
-    }
-
-    private void waitForNotification() {
+    public void waitForNotification(boolean onWorkerThread) {
         Log trace = Log.log();
         mutex.lock();
         try {
-            while (!notified) {
+            while (workerThreadActive != onWorkerThread) {
                 trace.string("  blocking on ").string(Thread.currentThread().getName()).newline();
                 cond.block();
                 trace.string("  unblocking ").string(Thread.currentThread().getName()).newline();
             }
-            notified = false;
         } finally {
             mutex.unlock();
         }
     }
 
-    public void signal() {
+    public void signal(boolean onWorkerThread) {
         mutex.lock();
         try {
             Log.log().string("signaling on ").string(Thread.currentThread().getName()).newline();
-            notified = true;
+            workerThreadActive = !onWorkerThread;
             cond.broadcast();
         } finally {
             mutex.unlock();
@@ -68,18 +41,5 @@ public class ParallelGC {
 
     public static void thawWorkerThreads() {
         Safepoint.Master.singleton().releaseParallelGCSafepoints();
-    }
-}
-
-@AutomaticFeature
-class ParallelGCFeature implements Feature {
-//    @Override
-//    public boolean isInConfiguration(IsInConfigurationAccess access) {
-//        return SubstrateOptions.UseSerialGC.getValue();
-//    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ParallelGC.class, new ParallelGC());
     }
 }

@@ -682,7 +682,7 @@ public final class GCImpl implements GC {
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 ParallelGC.thawWorkerThreads();
-                ImageSingletons.lookup(ParallelGC.class).signal();
+                parallelScanGreyObjects(false);
 
                 /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
@@ -701,6 +701,17 @@ public final class GCImpl implements GC {
             }
         } finally {
             cheneyScanFromRootsTimer.close();
+        }
+    }
+
+    private void parallelScanGreyObjects(boolean isIncremental) {
+        Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
+        try {
+            ParallelGC pgc = ImageSingletons.lookup(ParallelGC.class);
+            pgc.signal(false);
+            pgc.waitForNotification(false);
+        } finally {
+            scanGreyObjectsTimer.close();
         }
     }
 
