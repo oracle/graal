@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.redefinition.plugins.enums;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -31,10 +35,6 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
 
@@ -66,6 +66,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                         public Kind getKind() {
                             return Kind.INDEFINITE;
                         }
+
                         @Override
                         public boolean onMethodEnter(MethodRef methodRef, MethodVariable[] variables) {
                             // OK, see if we have a pre-existing enum constant with the same name
@@ -90,7 +91,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                         }
 
                         @Override
-                        public boolean onMethodExit(@SuppressWarnings("unused")MethodRef m, @SuppressWarnings("unused")Object returnValue) {
+                        public boolean onMethodExit(@SuppressWarnings("unused") MethodRef m, @SuppressWarnings("unused") Object returnValue) {
                             return false;
                         }
                     };

@@ -203,7 +203,7 @@ public final class ObjectKlass extends Klass {
 
     private static boolean isEnumValuesField(LinkedField lkStaticFields) {
         return lkStaticFields.getName() == Name.$VALUES ||
-                lkStaticFields.getName() == Name.ENUM$VALUES;
+                        lkStaticFields.getName() == Name.ENUM$VALUES;
     }
 
     private void addSubType(ObjectKlass objectKlass) {

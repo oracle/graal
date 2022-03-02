@@ -140,7 +140,7 @@ public abstract class ClassInfo {
             if (parserKlass.getFields().length == 1) {
                 if (parserKlass.getFields()[0].getName().toString().startsWith("$SwitchMap$")) {
                     // filter out enum switchmap helper classes
-                   enumHelper = true;
+                    enumHelper = true;
                 }
             }
             if (!enumHelper) {
@@ -167,7 +167,8 @@ public abstract class ClassInfo {
             }
         }
 
-        return new HotSwapClassInfo(klass, name, definingLoader, hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), new ArrayList<>(1), bytes, enumHelper, isNewInnerTestKlass);
+        return new HotSwapClassInfo(klass, name, definingLoader, hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), new ArrayList<>(1), bytes, enumHelper,
+                        isNewInnerTestKlass);
     }
 
     public static ImmutableClassInfo copyFrom(HotSwapClassInfo info) {
