@@ -20,6 +20,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-33851 Dropped Java 8 support.
 * Deprecated `MemoryFence`. Please use `VarHandle` directly.
 * Deprecated `TruffleSafepoint.setBlocked`, in favor of `TruffleSafepoint.setBlockedWithException`, which allows interception and handling of safepoint-thrown exceptions.
+* GR-36525 Deprecated `CompilerOptions`. They had no effect for several releases already. Deprecated for removal.
+* GR-22281 Deprecated `TruffleRuntime.getCurrentFrame()` and `TruffleRuntime.getCallerFrame()`. They were encouraging unsafe use of the `FrameInstance` class. Note that a `FrameInstance` instance must not be escaped outside the scope of the `FrameInstanceVisitor.visitFrame` method. Language implementers are encouraged to validate all usages of `TruffleRuntime.iterateFrames(...)`. We plan to enforce this rule in future versions of Truffle.
+* GR-22281 Added `TruffleRuntime.iterateFrames(FrameInstanceVisitor visitor, int skipFrames)` that allows to efficiently skip a number of frames before the visitor is invoked. This was added to allow efficient migration of usages from the deprecated `TruffleRuntime.getCallerFrame()` method.
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.

@@ -101,6 +101,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Compile
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface com.oracle.truffle.api.CompilerOptions
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public abstract boolean supportsOption(java.lang.String)
 meth public abstract void setOption(java.lang.String,java.lang.Object)
 
@@ -632,16 +633,14 @@ fld public final static java.lang.String TraceRewritesFilterClass
 supr java.lang.Object
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntime
+meth public <%0 extends java.lang.Object> {%%0} iterateFrames(com.oracle.truffle.api.frame.FrameInstanceVisitor<{%%0}>)
+meth public <%0 extends java.lang.Object> {%%0} iterateFrames(com.oracle.truffle.api.frame.FrameInstanceVisitor<{%%0}>,int)
 meth public abstract <%0 extends java.lang.Object> {%%0} getCapability(java.lang.Class<{%%0}>)
-meth public abstract <%0 extends java.lang.Object> {%%0} iterateFrames(com.oracle.truffle.api.frame.FrameInstanceVisitor<{%%0}>)
 meth public abstract boolean isProfilingEnabled()
 meth public abstract com.oracle.truffle.api.Assumption createAssumption()
 meth public abstract com.oracle.truffle.api.Assumption createAssumption(java.lang.String)
-meth public abstract com.oracle.truffle.api.CompilerOptions createCompilerOptions()
 meth public abstract com.oracle.truffle.api.RootCallTarget createCallTarget(com.oracle.truffle.api.nodes.RootNode)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public abstract com.oracle.truffle.api.frame.FrameInstance getCallerFrame()
-meth public abstract com.oracle.truffle.api.frame.FrameInstance getCurrentFrame()
 meth public abstract com.oracle.truffle.api.frame.MaterializedFrame createMaterializedFrame(java.lang.Object[])
 meth public abstract com.oracle.truffle.api.frame.MaterializedFrame createMaterializedFrame(java.lang.Object[],com.oracle.truffle.api.frame.FrameDescriptor)
 meth public abstract com.oracle.truffle.api.frame.VirtualFrame createVirtualFrame(java.lang.Object[],com.oracle.truffle.api.frame.FrameDescriptor)
@@ -650,6 +649,12 @@ meth public abstract com.oracle.truffle.api.nodes.IndirectCallNode createIndirec
 meth public abstract com.oracle.truffle.api.nodes.LoopNode createLoopNode(com.oracle.truffle.api.nodes.RepeatingNode)
 meth public abstract java.lang.String getName()
 meth public abstract void notifyTransferToInterpreter()
+meth public com.oracle.truffle.api.CompilerOptions createCompilerOptions()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public com.oracle.truffle.api.frame.FrameInstance getCallerFrame()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public com.oracle.truffle.api.frame.FrameInstance getCurrentFrame()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess
 meth public abstract com.oracle.truffle.api.TruffleRuntime getRuntime()
@@ -1338,6 +1343,7 @@ meth public boolean isCaptureFramesForTrace()
 meth public boolean isCloningAllowed()
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.CompilerOptions getCompilerOptions()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public final com.oracle.truffle.api.RootCallTarget getCallTarget()
 meth public final com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
