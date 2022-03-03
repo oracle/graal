@@ -481,6 +481,9 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                 n.safeDelete();
                 graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After replacing %s with %s", n, edgeDataEqual);
                 earlyGVN.increment(graph.getDebug());
+                if (graph.getDebug().isCountEnabled()) {
+                    DebugContext.counter(earlyGVN.getName() + "_" + edgeDataEqual.getClass().getSimpleName()).increment(graph.getDebug());
+                }
             }
         }
 
