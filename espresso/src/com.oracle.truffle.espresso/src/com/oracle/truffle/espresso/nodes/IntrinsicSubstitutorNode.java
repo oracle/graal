@@ -46,7 +46,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
         EspressoError.guarantee(!substitution.isTrivial() || !method.isSynchronized(),
                         "Substitution for synchronized method '%s' cannot be marked as trivial", method);
 
-        if (substitution.shouldSplit()) {
+        if (substitution.canSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));
         } else {
             this.nbSplits = null;
@@ -55,7 +55,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
 
     private IntrinsicSubstitutorNode(IntrinsicSubstitutorNode toSplit) {
         super(toSplit.getMethodVersion());
-        assert toSplit.substitution.shouldSplit();
+        assert toSplit.substitution.canSplit();
         this.substitution = toSplit.substitution.split();
         this.nbSplits = toSplit.nbSplits;
     }
@@ -71,8 +71,8 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    public boolean shouldSplit() {
-        return substitution.shouldSplit();
+    public boolean canSplit() {
+        return substitution.canSplit();
     }
 
     @Override

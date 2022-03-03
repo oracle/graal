@@ -255,7 +255,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String CREATE = "create";
 
-    static final String SHOULD_SPLIT = "shouldSplit";
+    static final String CAN_SPLIT = "canSplit";
     static final String SPLIT = "split";
 
     static final String ARGS_NAME = "args";
@@ -714,7 +714,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         substitutorClass.withMethod(constructor);
 
         if (helper.hasProfileInjection) {
-            substitutorClass.withMethod(generateShouldSplit());
+            substitutorClass.withMethod(generateCanSplit());
             substitutorClass.withMethod(generateSplit());
         }
 
@@ -729,10 +729,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     /**
-     * Injects override of 'shouldSplit()' methods.
+     * Injects override of 'canSplit()' methods.
      */
-    private static MethodBuilder generateShouldSplit() {
-        MethodBuilder method = new MethodBuilder(SHOULD_SPLIT) //
+    private static MethodBuilder generateCanSplit() {
+        MethodBuilder method = new MethodBuilder(CAN_SPLIT) //
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType("boolean") //

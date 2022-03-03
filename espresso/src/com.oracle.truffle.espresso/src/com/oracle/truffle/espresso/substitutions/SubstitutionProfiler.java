@@ -47,11 +47,7 @@ public class SubstitutionProfiler extends Node {
         }
     }
 
-    /**
-     * Should return true if the substitution uses profiles. This will allow to spawn a profile for
-     * every call site.
-     */
-    public boolean shouldSplit() {
+    public boolean canSplit() {
         return false;
     }
 
