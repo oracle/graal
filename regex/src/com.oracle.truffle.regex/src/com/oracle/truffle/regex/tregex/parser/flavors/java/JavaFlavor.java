@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,64 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.util;
+package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
-import java.util.Arrays;
+import java.util.function.BiPredicate;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.AbstractRegexObject;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
-@ExportLibrary(InteropLibrary.class)
-public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
+/**
+ * An implementation of the java.util.Pattern regex flavor.
+ */
+public final class JavaFlavor extends RegexFlavor {
 
-    @CompilationFinal(dimensions = 1) private final String[] keys;
+    public static final JavaFlavor INSTANCE = new JavaFlavor();
 
-    @TruffleBoundary
-    public TruffleReadOnlyKeysArray(String... keys) {
-        this.keys = keys;
-        Arrays.sort(this.keys);
+    private JavaFlavor() {
+        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | SUPPORTS_RECURSIVE_BACKREFERENCES);
     }
 
-    public int size() {
-        return keys.length;
-    }
-
-    @TruffleBoundary
-    public boolean contains(String key) {
-        return Arrays.binarySearch(keys, key) >= 0;
-    }
-
-    @ExportMessage
-    boolean hasArrayElements() {
-        return true;
-    }
-
-    @ExportMessage
-    boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < keys.length;
-    }
-
-    @ExportMessage
-    long getArraySize() {
-        return keys.length;
-    }
-
-    @ExportMessage
-    String readArrayElement(long index) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(index)) {
-            throw InvalidArrayIndexException.create(index);
-        }
-        return keys[(int) index];
-    }
-
-    @TruffleBoundary
     @Override
-    public String toString() {
-        return "TRegexReadOnlyArray{" + "keys=" + Arrays.toString(keys) + '}';
+    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return JavaRegexParser.createParser(language, source, compilationBuffer);
+    }
+
+    @Override
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+        throw new UnsupportedOperationException();
     }
 }

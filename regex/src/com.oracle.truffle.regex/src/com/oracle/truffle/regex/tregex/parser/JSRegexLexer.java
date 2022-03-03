@@ -167,6 +167,11 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledClassSetDifference() {
+        return true;
+    }
+
+    @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
         CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = flags.isEitherUnicode() ? CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode;
         CodePointSetAccumulator tmp = compilationBuffer.getCodePointSetAccumulator1();
@@ -275,12 +280,17 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
+    protected Token handleBoundedQuantifierEmptyOrMissingMin() throws RegexSyntaxException {
         if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         position = getLastTokenPosition() + 1;
         return literalChar('{');
+    }
+
+    @Override
+    protected Token handleBoundedQuantifierInvalidCharacter() {
+        return handleBoundedQuantifierEmptyOrMissingMin();
     }
 
     @Override
@@ -326,11 +336,6 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleEmptyGroupName() {
-        return syntaxError(JsErrorMessages.EMPTY_GROUP_NAME);
-    }
-
-    @Override
     protected void handleGroupRedefinition(String name, int newId, int oldId) {
         // checking for clashing group names is done in JSRegexParser
     }
@@ -343,19 +348,15 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleInvalidBackReference(int reference) {
+    protected Token handleInvalidBackReference(int reference) {
         if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
         }
+        return null;
     }
 
     @Override
-    protected void handleInvalidBackReference(String reference) {
-        throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
-    }
-
-    @Override
-    protected RegexSyntaxException handleInvalidCharInCharClass() {
+    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
         throw syntaxError(JsErrorMessages.INVALID_CHARACTER_IN_CHARACTER_CLASS);
     }
 
@@ -450,7 +451,7 @@ public final class JSRegexLexer extends RegexLexer {
         ParseGroupNameResult result = parseGroupName('>');
         switch (result.state) {
             case empty:
-                throw handleEmptyGroupName();
+                throw syntaxError(JsErrorMessages.EMPTY_GROUP_NAME);
             case unterminated:
                 throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP_NAME);
             case invalidStart:
@@ -476,7 +477,7 @@ public final class JSRegexLexer extends RegexLexer {
                 }
                 String groupName = jsParseGroupName();
                 // backward reference
-                if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
+                if (namedCaptureGroups.containsKey(groupName)) {
                     return Token.createBackReference(namedCaptureGroups.get(groupName).stream().mapToInt(x -> x).toArray(), false);
                 }
                 // possible forward reference
@@ -484,7 +485,7 @@ public final class JSRegexLexer extends RegexLexer {
                 if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
                     return Token.createBackReference(allNamedCaptureGroups.get(groupName).stream().mapToInt(x -> x).toArray(), false);
                 }
-                handleInvalidBackReference(groupName);
+                throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
             } else {
                 return literalChar(c);
             }
@@ -500,7 +501,7 @@ public final class JSRegexLexer extends RegexLexer {
                     throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
                 }
                 if (!flags.isEitherUnicode() && lookahead(RegexLexer::isOctalDigit, 1)) {
-                    return parseOctal(0);
+                    return parseOctal(0, 2);
                 }
                 return '\0';
             case 'c':

@@ -80,7 +80,8 @@ public abstract class RegexLexer {
      * The index of the next character in {@link #pattern} to be parsed.
      */
     protected int position = 0;
-    protected Map<String, List<Integer>> namedCaptureGroups = null;
+    // use a LinkedHashMap so that the order of capture groups is preserved
+    protected Map<String, List<Integer>> namedCaptureGroups = new LinkedHashMap<>();
     private int curStartIndex = 0;
     private int curCharClassStartIndex = -1;
     private int charClassCurAtomStartIndex = 0;
@@ -213,6 +214,11 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledClassSetExpressions();
 
     /**
+     * Returns {@code true} if class set expressions support the difference (--) operator.
+     */
+    protected abstract boolean featureEnabledClassSetDifference();
+
+    /**
      * Updates a character set by expanding it to the set of characters that case fold to the same
      * characters as the characters currently in the set. This is done by case folding the set and
      * then "unfolding" it by finding all inverse case fold mappings.
@@ -280,9 +286,14 @@ public abstract class RegexLexer {
     protected abstract RegexSyntaxException handleBoundedQuantifierOutOfOrder();
 
     /**
-     * Handle syntax errors in bounded quantifiers (missing {@code }}, non-digit characters).
+     * Handle missing {@code }} or minimum value in bounded quantifiers.
      */
-    protected abstract Token handleBoundedQuantifierSyntaxError();
+    protected abstract Token handleBoundedQuantifierEmptyOrMissingMin();
+
+    /**
+     * Handle non-digit characters in bounded quantifiers.
+     */
+    protected abstract Token handleBoundedQuantifierInvalidCharacter();
 
     /**
      * Handle integer overflows in quantifier bounds, e.g. {@code {2147483649}}. If this method
@@ -313,11 +324,6 @@ public abstract class RegexLexer {
      */
     protected abstract RegexSyntaxException handleComplementOfStringSet();
 
-    /**
-     * Handle empty group name in group references.
-     */
-    protected abstract RegexSyntaxException handleEmptyGroupName();
-
     protected abstract void handleGroupRedefinition(String name, int newId, int oldId);
 
     /**
@@ -328,14 +334,9 @@ public abstract class RegexLexer {
     /**
      * Handle group references to non-existent groups.
      */
-    protected abstract void handleInvalidBackReference(int reference);
+    protected abstract Token handleInvalidBackReference(int reference);
 
-    /**
-     * Handle group references to non-existent groups.
-     */
-    protected abstract void handleInvalidBackReference(String reference);
-
-    protected abstract RegexSyntaxException handleInvalidCharInCharClass();
+    protected abstract ClassSetOperator handleTripleAmpersandInClassSetExpression();
 
     /**
      * Handle groups starting with {@code (?} and invalid next char.
@@ -662,6 +663,13 @@ public abstract class RegexLexer {
         }
     }
 
+    /**
+     * Get the number of capture groups parsed <em>so far</em>.
+     */
+    protected int getNumberOfParsedGroups() {
+        return nGroups;
+    }
+
     public int totalNumberOfCaptureGroups() throws RegexSyntaxException {
         if (!identifiedAllGroups) {
             identifyCaptureGroups();
@@ -701,10 +709,6 @@ public abstract class RegexLexer {
 
     protected void registerNamedCaptureGroup(String name) {
         if (!identifiedAllGroups) {
-            if (namedCaptureGroups == null) {
-                // use a LinkedHashMap so that the order of capture groups is preserved
-                namedCaptureGroups = new LinkedHashMap<>();
-            }
             List<Integer> groupsWithSameName = namedCaptureGroups.get(name);
             if (groupsWithSameName != null) {
                 handleGroupRedefinition(name, nGroups, groupsWithSameName.get(0));
@@ -716,6 +720,12 @@ public abstract class RegexLexer {
             }
         }
         registerCaptureGroup();
+    }
+
+    protected int getSingleNamedGroupNumber(String name) {
+        List<Integer> groups = namedCaptureGroups.get(name);
+        assert groups.size() == 1;
+        return groups.get(0);
     }
 
     /**
@@ -835,7 +845,10 @@ public abstract class RegexLexer {
             if (backRefNumber < (featureEnabledForwardReferences() ? totalNumberOfCaptureGroups() : nGroups)) {
                 return Token.createBackReference(backRefNumber, false);
             } else {
-                handleInvalidBackReference(backRefNumber);
+                Token replacement = handleInvalidBackReference(backRefNumber);
+                if (replacement != null) {
+                    return replacement;
+                }
             }
             position = restoreIndex;
         }
@@ -965,7 +978,7 @@ public abstract class RegexLexer {
         final long max;
         if (c == '{') {
             if (lookahead("}")) {
-                return handleBoundedQuantifierSyntaxError();
+                return handleBoundedQuantifierEmptyOrMissingMin();
             }
             final int resetIndex = position;
             final int lengthMin = countDecimalDigits();
@@ -973,7 +986,7 @@ public abstract class RegexLexer {
                 if (featureEnabledBoundedQuantifierEmptyMin()) {
                     min = 0;
                 } else {
-                    return handleBoundedQuantifierSyntaxError();
+                    return handleBoundedQuantifierEmptyOrMissingMin();
                 }
             } else {
                 min = parseIntSaturated(0, lengthMin, -1, boundedQuantifierMaxValue());
@@ -996,12 +1009,12 @@ public abstract class RegexLexer {
                 }
             } else {
                 if (!consumingLookahead(",")) {
-                    return handleBoundedQuantifierSyntaxError();
+                    return handleBoundedQuantifierInvalidCharacter();
                 }
                 final int lengthMax = countDecimalDigits();
                 max = parseIntSaturated(0, lengthMax, -1, boundedQuantifierMaxValue());
                 if (!consumingLookahead("}")) {
-                    return handleBoundedQuantifierSyntaxError();
+                    return handleBoundedQuantifierInvalidCharacter();
                 }
                 if (min == -1 || max == -1 || min > Integer.MAX_VALUE || max > Integer.MAX_VALUE) {
                     Token ret = handleBoundedQuantifierOverflow(min, max);
@@ -1297,10 +1310,10 @@ public abstract class RegexLexer {
     private ClassSetOperator parseClassSetOperator() {
         if (consumingLookahead("&&")) {
             if (lookahead("&")) {
-                throw handleInvalidCharInCharClass();
+                return handleTripleAmpersandInClassSetExpression();
             }
             return ClassSetOperator.Intersection;
-        } else if (consumingLookahead("--")) {
+        } else if (featureEnabledClassSetDifference() && consumingLookahead("--")) {
             return ClassSetOperator.Difference;
         } else {
             return ClassSetOperator.Union;
@@ -1444,7 +1457,7 @@ public abstract class RegexLexer {
                 return Integer.parseInt(pattern, position - 2, position, 16);
             default:
                 if (featureEnabledOctalEscapes() && isOctalDigit(c)) {
-                    return parseOctal(c - '0');
+                    return parseOctal(c - '0', 2);
                 }
                 return parseCustomEscapeCharFallback(toCodePoint(c), inCharClass);
         }
@@ -1466,9 +1479,9 @@ public abstract class RegexLexer {
         }
     }
 
-    protected int parseOctal(int firstDigit) {
+    protected int parseOctal(int firstDigit, int maxDigits) {
         int ret = firstDigit;
-        for (int i = 0; !atEnd() && isOctalDigit(curChar()) && i < 2; i++) {
+        for (int i = 0; !atEnd() && isOctalDigit(curChar()) && i < maxDigits; i++) {
             if (ret * 8 > 255) {
                 handleOctalOutOfRange();
                 return ret;
