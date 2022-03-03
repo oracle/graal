@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,18 +21,25 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.nodes.interop;
+package com.oracle.truffle.espresso.nodes.commands;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class ExitCodeNode extends RootNode {
-    public static final String EVAL_NAME = "<ExitCode>";
+/**
+ * Node that performs the soft destruction of the Espresso VM. In practice, it is intended to be
+ * used once the main method has returned, so that the main thread can wait for all other thread to
+ * naturally terminate
+ *
+ * @see EspressoContext#destroyVM(boolean)
+ */
+public final class DestroyVMNode extends RootNode {
+    public static final String EVAL_NAME = "<DestroyJavaVM>";
 
-    public ExitCodeNode(TruffleLanguage<?> language) {
+    public DestroyVMNode(TruffleLanguage<?> language) {
         super(language);
     }
 
@@ -40,9 +47,7 @@ public final class ExitCodeNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         assert frame.getArguments().length == 0;
         EspressoContext context = EspressoContext.get(this);
-        if (!context.isClosing()) {
-            return StaticObject.NULL;
-        }
-        return context.getExitStatus();
+        context.destroyVM(true); // Throws an exit exception.
+        throw EspressoError.shouldNotReachHere();
     }
 }

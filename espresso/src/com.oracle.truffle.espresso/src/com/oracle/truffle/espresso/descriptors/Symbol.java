@@ -526,6 +526,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> poll = StaticSymbols.putName("poll");
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
 
+        // Secrets
+        public static final Symbol<Name> javaLangAccess = StaticSymbols.putName("javaLangAccess");
+
         // Polyglot ExceptionType
         public static final Symbol<Name> EXIT = StaticSymbols.putName("EXIT");
         public static final Symbol<Name> INTERRUPT = StaticSymbols.putName("INTERRUPT");
@@ -810,6 +813,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_management_MemoryUsage = StaticSymbols.putType("Ljava/lang/management/MemoryUsage;");
         public static final Symbol<Type> java_lang_management_ThreadInfo = StaticSymbols.putType("Ljava/lang/management/ThreadInfo;");
 
+        // Secrets
+        public static final Symbol<Type> jdk_internal_access_SharedSecrets = StaticSymbols.putType("Ljdk/internal/access/SharedSecrets;");
+        public static final Symbol<Type> jdk_internal_access_JavaLangAccess = StaticSymbols.putType("Ljdk/internal/access/JavaLangAccess;");
+
         // Interop conversions.
         public static final Symbol<Type> java_time_Duration = StaticSymbols.putType("Ljava/time/Duration;");
         public static final Symbol<Type> java_time_LocalTime = StaticSymbols.putType("Ljava/time/LocalTime;");
@@ -1000,6 +1007,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
 
         public static final Symbol<Signature> Reference = StaticSymbols.putSignature(Type.java_lang_ref_Reference);
+        public static final Symbol<Signature> _void_JavaLangAccess = StaticSymbols.putSignature(Type._void, Type.jdk_internal_access_JavaLangAccess);
 
         public static final Symbol<Signature> _void_CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
 

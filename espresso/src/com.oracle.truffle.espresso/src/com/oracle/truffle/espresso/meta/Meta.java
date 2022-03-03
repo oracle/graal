@@ -477,6 +477,8 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
         java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.requireDeclaredMethod(Name.register, Signature._void_Object);
 
+        jdk_internal_access_SharedSecrets = knownKlass(Type.jdk_internal_access_SharedSecrets);
+
         java_lang_Object_wait = java_lang_Object.requireDeclaredMethod(Name.wait, Signature._void_long);
         java_lang_Object_toString = java_lang_Object.requireDeclaredMethod(Name.toString, Signature.String);
 
@@ -1307,6 +1309,9 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_StackFrameInfo;
     public final Field java_lang_StackFrameInfo_memberName;
     public final Field java_lang_StackFrameInfo_bci;
+
+    // Secrets
+    public final ObjectKlass jdk_internal_access_SharedSecrets;
 
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;

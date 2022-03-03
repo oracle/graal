@@ -34,6 +34,9 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+/**
+ * Node for triggering reference processing in single threaded contexts.
+ */
 public class ReferenceProcessNode extends RootNode {
     public static final String EVAL_NAME = "<ReferenceDrain>";
 
@@ -42,6 +45,7 @@ public class ReferenceProcessNode extends RootNode {
     private final StaticObject finalizerQueue;
     private final DirectCallNode queuePoll;
     private final DirectCallNode runFinalizer;
+    private final StaticObject jla;
 
     public ReferenceProcessNode(EspressoLanguage lang) {
         super(lang);
@@ -60,18 +64,24 @@ public class ReferenceProcessNode extends RootNode {
         assert poll != null;
         this.queuePoll = DirectCallNode.create(poll.getCallTargetForceInit());
 
-        Method runFinalizerMethod = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredMethod(Symbol.Name.runFinalizer, Symbol.Signature._void, Klass.LookupMode.INSTANCE_ONLY);
+        Method runFinalizerMethod = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredMethod(Symbol.Name.runFinalizer, Symbol.Signature._void_JavaLangAccess, Klass.LookupMode.INSTANCE_ONLY);
         assert runFinalizerMethod != null;
         this.runFinalizer = DirectCallNode.create(runFinalizerMethod.getCallTargetForceInit());
+
+        Field javaLangAccess = context.getMeta().jdk_internal_access_SharedSecrets.lookupDeclaredField(Symbol.Name.javaLangAccess, Symbol.Type.jdk_internal_access_JavaLangAccess);
+        assert javaLangAccess != null;
+        jla = javaLangAccess.getObject(context.getMeta().jdk_internal_access_SharedSecrets.tryInitializeAndGetStatics());
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int processes = 0;
+        if (context.multiThreadingEnabled()) {
+            return StaticObject.NULL;
+        }
         context.triggerDrain();
-        processFinalizers();
         processPendingReferences();
-        return null;
+        processFinalizers();
+        return StaticObject.NULL;
     }
 
     private void processPendingReferences() {
@@ -82,10 +92,13 @@ public class ReferenceProcessNode extends RootNode {
         processPendingReferences.call();
     }
 
+    /*
+     * Process loop of `FinalizerThread.run()`
+     */
     private void processFinalizers() {
         StaticObject finalizer = (StaticObject) queuePoll.call(finalizerQueue);
         while (!StaticObject.isNull(finalizer)) {
-            runFinalizer.call(finalizer);
+            runFinalizer.call(finalizer, jla);
             finalizer = (StaticObject) queuePoll.call(finalizerQueue);
         }
     }
