@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
@@ -137,7 +138,8 @@ public final class RegexOptions {
     public static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
     public static final String FLAVOR_RUBY = "Ruby";
     public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
-    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
+    public static final String FLAVOR_JAVA = "JavaUtilPattern";
+    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT, FLAVOR_JAVA};
 
     public static final String ENCODING_NAME = "Encoding";
 
@@ -470,6 +472,9 @@ public final class RegexOptions {
                 case 'E':
                     flavor = ECMAScriptFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
+                case 'J':
+                    flavor = JavaFlavor.INSTANCE;
+                    return expectValue(iVal, FLAVOR_JAVA, FLAVOR_OPTIONS);
                 case 'R':
                     flavor = RubyFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
