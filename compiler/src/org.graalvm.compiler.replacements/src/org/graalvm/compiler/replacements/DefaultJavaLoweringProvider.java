@@ -1262,6 +1262,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode divisor = n.getY();
         final IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
         final IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
+        final StructuredGraph graph = n.graph();
         if (n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Floating integer division is only supported for signed division at the moment
             return;
@@ -1271,9 +1272,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return;
         }
         if (!GraalOptions.FloatingDivNodes.getValue(n.getOptions())) {
-            return;
-        }
-        if (n.getZeroGuard() != null) {
             return;
         }
 
@@ -1296,21 +1294,34 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        final StructuredGraph graph = n.graph();
-        LogicNode conditionDivisor = graph.addOrUniqueWithInputs(
-                        CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(divisorStamp.getBits(), 0), tool.getConstantReflection()));
-        if (conditionDivisor instanceof LogicConstantNode) {
-            boolean val = ((LogicConstantNode) conditionDivisor).getValue();
-            if (val) {
-                // stamp always is zero
-                return;
-            } else {
-                // stamp never is zero, let canon later handle it
+        GuardingNode guard = null;
+        if (n.getZeroGuard() == null) {
+            LogicNode conditionDivisor = graph.addOrUniqueWithInputs(
+                            CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(divisorStamp.getBits(), 0), tool.getConstantReflection()));
+            if (conditionDivisor instanceof LogicConstantNode) {
+                boolean val = ((LogicConstantNode) conditionDivisor).getValue();
+                if (val) {
+                    // stamp always is zero
+                    return;
+                } else {
+                    // stamp never is zero, let canon later handle it
+                }
+            }
+            guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
+            IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+            divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+        } else {
+            guard = n.getZeroGuard();
+            /*
+             * We have a zero guard but its possible we are still missing a proper pi node for the
+             * guard (which ensures the div never floats to far also based on the value input,
+             * construct one if necessary.
+             */
+            if (divisorStamp.contains(0)) {
+                IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+                divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
             }
         }
-        GuardingNode guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-        IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
-        divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
 
         boolean dividendChecked = !integerDivOverflowTraps;
         if (SignedDivNode.divCanOverflow(dividend, divisor, integerDivOverflowTraps)) {
@@ -1322,7 +1333,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
             dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
             assert !SignedDivNode.divCanOverflow(dividend, divisor, integerDivOverflowTraps);
-            guard = MultiGuardNode.combine(guard2, guard);
+            guard = guard == null ? guard2 : MultiGuardNode.combine(guard2, guard);
         } else {
             dividendChecked = true;
         }

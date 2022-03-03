@@ -251,4 +251,20 @@ public class FloatingDivTest extends GraalCompilerTest {
         checkFinalGraph(s, 1, 1, 0);
     }
 
+    public static int snippet08(int b) {
+        return 100 / b;
+    }
+
+    @Test
+    public void test08() {
+        String s = "snippet08";
+        try {
+            snippet08(0);
+        } catch (ArithmeticException e) {
+            // get an exception edge
+        }
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(opt, s, 1);
+        checkHighTierGraph(s, 1, 0, 0, 1);
+    }
 }
