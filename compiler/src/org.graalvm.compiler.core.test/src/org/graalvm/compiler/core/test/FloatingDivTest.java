@@ -65,6 +65,13 @@ public class FloatingDivTest extends GraalCompilerTest {
     }
 
     private void checkFinalGraph(String snippet, int fixedDivs, int floatingDivs, int zeroChecks) {
+        if (!isArchitecture("AMD64")) {
+            /*
+             * We only try to fold divs and their guards back together if the architecture supports
+             * it, i.e., amd64 at the moment.
+             */
+            return;
+        }
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
 

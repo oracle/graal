@@ -24,12 +24,18 @@
  */
 package org.graalvm.compiler.core.amd64;
 
+import java.util.ListIterator;
+
 import org.graalvm.compiler.java.DefaultSuitesCreator;
 import org.graalvm.compiler.lir.amd64.phases.StackMoveOptimizationPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 public class AMD64SuitesCreator extends DefaultSuitesCreator {
 
@@ -39,6 +45,17 @@ public class AMD64SuitesCreator extends DefaultSuitesCreator {
 
     public AMD64SuitesCreator(CompilerConfiguration compilerConfiguration) {
         super(compilerConfiguration);
+    }
+
+    @Override
+    public Suites createSuites(OptionValues options) {
+        Suites suites = super.createSuites(options);
+        ListIterator<BasePhase<? super LowTierContext>> position = suites.getLowTier().findPhase(UseTrappingNullChecksPhase.class);
+        if (position != null) {
+            position.previous();
+            position.add(new UseTrappingDivPhase());
+        }
+        return suites;
     }
 
     @Override

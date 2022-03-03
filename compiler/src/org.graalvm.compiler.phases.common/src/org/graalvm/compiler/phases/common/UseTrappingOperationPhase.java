@@ -61,22 +61,22 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  */
 public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext> {
 
-    abstract boolean isSupportedReason(DeoptimizationReason reason);
+    public abstract boolean isSupportedReason(DeoptimizationReason reason);
 
-    abstract boolean canReplaceCondition(LogicNode condition, IfNode ifNode);
+    public abstract boolean canReplaceCondition(LogicNode condition, IfNode ifNode);
 
-    abstract boolean useAddressOptimization(AddressNode adr, LowTierContext context);
+    public abstract boolean useAddressOptimization(AddressNode adr, LowTierContext context);
 
-    abstract DeoptimizingFixedWithNextNode tryReplaceExisting(StructuredGraph graph, AbstractBeginNode nonTrappingContinuation, AbstractBeginNode trappingContinuation, LogicNode condition,
+    public abstract DeoptimizingFixedWithNextNode tryReplaceExisting(StructuredGraph graph, AbstractBeginNode nonTrappingContinuation, AbstractBeginNode trappingContinuation, LogicNode condition,
                     IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation, LowTierContext context);
 
-    abstract DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation);
+    public abstract DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation);
 
-    abstract boolean trueSuccessorIsDeopt();
+    public abstract boolean trueSuccessorIsDeopt();
 
-    abstract void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition);
+    public abstract void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition);
 
-    abstract void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
+    public abstract void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
 
     protected void tryUseTrappingVersion(MetaAccessProvider metaAccessProvider, DynamicDeoptimizeNode deopt, LowTierContext context) {
         Node predecessor = deopt.predecessor();
