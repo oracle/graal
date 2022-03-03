@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -433,8 +433,11 @@ public final class ImageClassLoader {
     }
 
     public String getMainClassNotFoundErrorMessage(String className) {
-        return String.format("Main entry point class '%s' neither found on the classpath nor on the modulepath.%nclasspath: '%s'%nmodulepath: '%s'",
-                        className, pathsToString(applicationClassPath()), pathsToString(applicationModulePath()));
+        List<Path> classPath = applicationClassPath();
+        String classPathString = classPath.isEmpty() ? "" : String.format("%nclasspath: '%s'", pathsToString(classPath));
+        List<Path> modulePath = applicationModulePath();
+        String modulePathString = modulePath.isEmpty() ? "" : String.format("%nmodulepath: '%s'", pathsToString(modulePath));
+        return String.format("Main entry point class '%s' neither found on the classpath nor on the modulepath.%s%s", className, classPathString, modulePathString);
     }
 
     private static String pathsToString(List<Path> paths) {
