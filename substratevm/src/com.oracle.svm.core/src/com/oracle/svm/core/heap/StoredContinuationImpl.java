@@ -61,33 +61,29 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Helper class to access a {@link StoredContinuation}.
  *
- * Memory layout of a {@link StoredContinuation} instance:
- *
- * Each {@link StoredContinuation} has a fixed-size header (16 bytes) which stores the size of the
- * instance, after which follows the data of the stored frame(s).
+ * Memory layout of a {@link StoredContinuation} instance:e Each {@link StoredContinuation} has a
+ * fixed-size header with the size of the instance, followed by the data of the stored frame(s).
  *
  * <pre>
  *      +-0x0-|-0x4-|-0x8-|-0xa-+
- * 0x00 | hub | (1) | (2) |  -  |
- *      +-----------------------+ header: hub; 1) identity hash code; 2) object monitor; 3) payload size in bytes;
- * 0x10 | (3) | (4) |    (5)    |         4) number of frames n; (5) reference map address (same for all frames)
+ * 0x00 | hub | (1) | (2) |  -  | header: hub; 1) identity hash code; 2) object monitor;
+ *      +-----------------------+               3) payload size in bytes; 4) number of frames n
+ * 0x10 | (3) | (4) | (a1)|(b1) | 8-byte per-frame headers: a) size of frame in bytes; b) reference map index of frame
  *      +-----------------------+
- * 0x20 | (a1)|(b1) | (a2)|(b2) | 8-byte per-frame headers: a) size of frame in bytes; b) reference map index of frame
- *  .   | ..  | ..  |  .. | ..  |
+ * 0x20 | (a2)|(b2) |  .. | ..  |
  *  .   | (an)|(bn) | c o n t i |
  *  .   : n u o u s   f r a m e :
- *  .   :  d a t a  :
+ *  .   |  d a t a  |
  *      +-----------+
  * </pre>
  */
 public final class StoredContinuationImpl {
-    private static final int HEADER_SIZE = 32;
+    private static final int HEADER_SIZE = 0x18;
     public static final int PAYLOAD_OFFSET = HEADER_SIZE;
     public static final int OBJECT_MONITOR_OFFSET = 8;
 
     private static final int SIZE_OFFSET_TO_PAYLOAD = -HEADER_SIZE + 0x10;
     private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -HEADER_SIZE + 0x14;
-    private static final int SHARED_REFERENCE_MAP_OFFSET_TO_PAYLOAD = -HEADER_SIZE + 0x18;
 
     private static final int VALID_OFFSET_START = SIZE_OFFSET_TO_PAYLOAD;
 
@@ -143,18 +139,6 @@ public final class StoredContinuationImpl {
         return payloadLocation(f).readInt(offset);
     }
 
-    @Uninterruptible(reason = "read StoredContinuation")
-    private static long readPayloadLong(StoredContinuation f, int offset) {
-        checkOffset(f, offset);
-        return payloadLocation(f).readLong(offset);
-    }
-
-    @Uninterruptible(reason = "write StoredContinuation")
-    private static void writePayloadLong(StoredContinuation f, int offset, long value) {
-        checkPayloadOffset(f, offset);
-        payloadLocation(f).writeLong(offset, value);
-    }
-
     @Uninterruptible(reason = "write StoredContinuation")
     private static void writePayloadInt(StoredContinuation f, int offset, int value) {
         checkPayloadOffset(f, offset);
@@ -185,11 +169,6 @@ public final class StoredContinuationImpl {
     }
 
     // read frame meta-data
-
-    @Uninterruptible(reason = "read StoredContinuation")
-    private static NonmovableArray<Byte> readReferenceMapEncoding(StoredContinuation f) {
-        return WordFactory.pointer(payloadLocation(f).readLong(SHARED_REFERENCE_MAP_OFFSET_TO_PAYLOAD));
-    }
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static int readFrameMetaSize(StoredContinuation f) {
@@ -262,7 +241,6 @@ public final class StoredContinuationImpl {
          * are interrupted by a GC, it will not attempt to make sense of it. Only at the end of this
          * method we uninterruptibly initialize the frame count and copy the stack frames.
          */
-        NonmovableArray<Byte> referenceMap = visitor.referenceMapEncoding;
         int allFrameSize = 0;
         for (int i = 0; i < frameCount; i++) {
             Pair<Integer, Integer> frameSizeRefMapInxPair = visitor.frameSizeReferenceMapIndex.get(i);
@@ -272,15 +250,14 @@ public final class StoredContinuationImpl {
                             frameSizeRefMapInxPair.getRight());
             allFrameSize += frameSizeRefMapInxPair.getLeft();
         }
-        fillUninterruptibly(cont.stored, referenceMap, resultLeafSP, allFrameSize, frameCount);
+        fillUninterruptibly(cont.stored, resultLeafSP, allFrameSize, frameCount);
         return Continuation.YIELD_SUCCESS;
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while copying.")
-    private static void fillUninterruptibly(StoredContinuation stored, NonmovableArray<Byte> referenceMap, Pointer sp, int size, int frameCount) {
+    private static void fillUninterruptibly(StoredContinuation stored, Pointer sp, int size, int frameCount) {
         Pointer p = payloadLocation(stored);
         p.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
-        p.writeWord(SHARED_REFERENCE_MAP_OFFSET_TO_PAYLOAD, referenceMap);
 
         VMError.guarantee(size == readAllFrameSize(stored));
         Pointer frameStart = payloadFrameStart(stored);
@@ -317,7 +294,7 @@ public final class StoredContinuationImpl {
         Pointer curFrame = StoredContinuationImpl.payloadFrameStart(f);
         int frameIndex = 0;
 
-        NonmovableArray<Byte> referenceMapEncoding = StoredContinuationImpl.readReferenceMapEncoding(f);
+        NonmovableArray<Byte> referenceMapEncoding = CodeInfoTable.getImageCodeCache().getStackReferenceMapEncoding();
         for (; frameIndex < frameCount; frameIndex++) {
             int frameSize = StoredContinuationImpl.readFrameSize(f, frameIndex);
             int referenceMapIndex = StoredContinuationImpl.readReferenceMapIndex(f, frameIndex);
@@ -345,7 +322,7 @@ public final class StoredContinuationImpl {
         CodePointer leafIP;
 
         List<Pair<Integer, Integer>> frameSizeReferenceMapIndex = new ArrayList<>();
-        NonmovableArray<Byte> referenceMapEncoding = WordFactory.nullPointer();
+        final NonmovableArray<Byte> expectedReferenceMap;
 
         private static boolean startFromNextFrame = false;
 
@@ -356,6 +333,8 @@ public final class StoredContinuationImpl {
             this.rootSP = rootSp;
             this.leafSP = verifyLeafSp;
             this.leafIP = leafIp;
+
+            this.expectedReferenceMap = CodeInfoAccess.getStackReferenceMapEncoding(CodeInfoTable.getImageCodeInfo());
         }
 
         @SuppressWarnings("hiding")
@@ -386,12 +365,7 @@ public final class StoredContinuationImpl {
                 VMError.guarantee(leafIP.equal(ip));
             }
 
-            NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
-            if (this.referenceMapEncoding.isNull()) {
-                this.referenceMapEncoding = referenceMapEncoding;
-            } else {
-                VMError.guarantee(this.referenceMapEncoding.equal(referenceMapEncoding));
-            }
+            VMError.guarantee(expectedReferenceMap.equal(CodeInfoAccess.getStackReferenceMapEncoding(codeInfo)));
 
             long relIp = CodeInfoAccess.relativeIP(codeInfo, ip);
             int frameSize = TypeConversion.asU4(CodeInfoAccess.lookupTotalFrameSize(codeInfo, relIp));
