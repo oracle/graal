@@ -130,10 +130,13 @@ public abstract class OptionOrigin {
 
         public final OptionUtils.MacroOptionKind kind;
         public final String name;
+        public final Path optionDirectory;
 
-        private MacroOptionOrigin(OptionUtils.MacroOptionKind kind, String name) {
+        private MacroOptionOrigin(OptionUtils.MacroOptionKind kind, String name, URI optionDirectory) {
             this.kind = kind;
             this.name = name;
+            VMError.guarantee(optionDirectory != null, "Invalid optionDirectory origin");
+            this.optionDirectory = Path.of(optionDirectory);
         }
 
         @Override
@@ -155,7 +158,15 @@ public abstract class OptionOrigin {
             for (OptionUtils.MacroOptionKind kind : OptionUtils.MacroOptionKind.values()) {
                 String prefix = kind.getDescriptionPrefix(true);
                 if (rawOrigin.startsWith(prefix)) {
-                    return new MacroOptionOrigin(kind, rawOrigin.substring(prefix.length()));
+                    int optionDirectorySep = rawOrigin.indexOf('@');
+                    VMError.guarantee(optionDirectorySep > 0, "Missing macro-option optionDirectory origin");
+                    String optionDirectory = rawOrigin.substring(optionDirectorySep + 1);
+                    int argumentOriginSep = optionDirectory.indexOf('@');
+                    if (argumentOriginSep > 0) {
+                        /* Strip optional trailing argumentOrigin */
+                        optionDirectory = optionDirectory.substring(0, argumentOriginSep);
+                    }
+                    return new MacroOptionOrigin(kind, rawOrigin.substring(prefix.length()), originURI(optionDirectory));
                 }
             }
             return null;
@@ -169,6 +180,12 @@ public abstract class OptionOrigin {
         @Override
         public String toString() {
             return kind + " option '" + name + "'";
+        }
+
+        @Override
+        public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+            var normalizedRedirPath = optionDirectory.resolve(valuesFile).normalize();
+            return getRedirectionValuesFromPath(normalizedRedirPath);
         }
     }
 
@@ -219,6 +236,7 @@ public abstract class OptionOrigin {
             location = Path.of(specific.substring(sep + 2));
         }
 
+        @SuppressWarnings("try")
         @Override
         public List<String> getRedirectionValues(Path valuesFile) throws IOException {
             URI jarFileURI = URI.create("jar:" + container());
@@ -231,13 +249,9 @@ public abstract class OptionOrigin {
             if (probeJarFS == null) {
                 throw new IOException("Unable to create jar file system for " + jarFileURI);
             }
-            try (FileSystem jarFS = probeJarFS) {
+            try (FileSystem fs = probeJarFS) {
                 var normalizedRedirPath = location().getParent().resolve(valuesFile).normalize();
-                var pathInJarFS = jarFS.getPath(normalizedRedirPath.toString());
-                if (Files.isReadable(pathInJarFS)) {
-                    return Files.readAllLines(pathInJarFS);
-                }
-                throw new FileNotFoundException("Unable to read " + pathInJarFS + " from jar file system " + jarFS);
+                return getRedirectionValuesFromPath(normalizedRedirPath);
             }
         }
     }
@@ -261,10 +275,14 @@ public abstract class OptionOrigin {
         @Override
         public List<String> getRedirectionValues(Path valuesFile) throws IOException {
             var normalizedRedirPath = Path.of(container()).resolve(location()).getParent().resolve(valuesFile).normalize();
-            if (Files.isReadable(normalizedRedirPath)) {
-                return Files.readAllLines(normalizedRedirPath);
-            }
-            throw new FileNotFoundException("Unable to read file from " + normalizedRedirPath);
+            return getRedirectionValuesFromPath(normalizedRedirPath);
         }
+    }
+
+    private static List<String> getRedirectionValuesFromPath(Path normalizedRedirPath) throws IOException {
+        if (Files.isReadable(normalizedRedirPath)) {
+            return Files.readAllLines(normalizedRedirPath);
+        }
+        throw new FileNotFoundException("Unable to read file from " + normalizedRedirPath.toUri());
     }
 }

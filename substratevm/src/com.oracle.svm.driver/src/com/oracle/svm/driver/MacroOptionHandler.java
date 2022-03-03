@@ -116,8 +116,9 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         enabledOption.forEachPropertyValue(config, "JavaArgs", nativeImage::addImageBuilderJavaArgs);
         String origin = enabledOption.getOption().getDescription(true);
+        origin += "@" + enabledOption.getOption().getOptionDirectory().toUri();
         if (argumentOrigin != null) {
-            origin += " from " + argumentOrigin;
+            origin += "@" + argumentOrigin;
         }
         NativeImage.NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor(origin);
         enabledOption.forEachPropertyValue(config, "Args", args);
