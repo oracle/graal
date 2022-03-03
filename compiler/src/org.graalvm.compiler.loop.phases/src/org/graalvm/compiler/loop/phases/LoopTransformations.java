@@ -96,17 +96,21 @@ public abstract class LoopTransformations {
 
     public static LoopFragmentInside peel(LoopEx loop) {
         loop.detectCounted();
-        double frequencyBefore = -1D;
-        AbstractBeginNode countedExit = null;
+        double frequencyBefore = loop.localLoopFrequency();
+        AbstractBeginNode mainExit = null;
         if (loop.isCounted()) {
-            frequencyBefore = loop.localLoopFrequency();
-            countedExit = loop.counted().getCountedExit();
+            mainExit = loop.counted().getCountedExit();
+        } else if (loop.loopBegin().loopExits().count() == 1) {
+            mainExit = loop.loopBegin().loopExits().first();
+            if (!(mainExit.predecessor() instanceof IfNode)) {
+                mainExit = null;
+            }
         }
         LoopFragmentInside inside = loop.inside().duplicate();
         inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
-        if (countedExit != null) {
-            adaptCountedLoopExitProbability(countedExit, frequencyBefore - 1D);
+        if (mainExit != null) {
+            adaptCountedLoopExitProbability(mainExit, frequencyBefore - 1D);
         }
         return inside;
     }
