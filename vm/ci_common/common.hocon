@@ -290,8 +290,8 @@ ondemand_vm_darwin: ${vm_darwin} {
 }
 
 mx_vm_cmd_suffix: ["--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
-mx_vm_common: [mx, --env, "${VM_ENV}"] ${mx_vm_cmd_suffix}
-mx_vm_installables: [mx, --env, "${VM_ENV}-complete"] ${mx_vm_cmd_suffix}
+mx_vm_common: ${mx_cmd_base_no_env} [--env, "${VM_ENV}"] ${mx_vm_cmd_suffix}
+mx_vm_installables: ${mx_cmd_base_no_env} [--env, "${VM_ENV}-complete"] ${mx_vm_cmd_suffix}
 
 maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
 maven_deploy_sdk_base:               ${maven_deploy_sdk} [--tags, graalvm,                             ${binaries-repository}]
