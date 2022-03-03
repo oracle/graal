@@ -36,6 +36,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -125,32 +127,40 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     public static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet
     public static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet

@@ -40,6 +40,7 @@ import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FloatingDivTest extends GraalCompilerTest {
@@ -256,6 +257,7 @@ public class FloatingDivTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore
     public void test08() {
         String s = "snippet08";
         try {
