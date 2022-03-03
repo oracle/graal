@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 class EspressoReferenceDrainer implements ContextAccess {
     private final EspressoContext context;
     private Thread hostToGuestReferenceDrainThread;
+    private ReferenceDrain drain;
 
     private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
     private volatile StaticObject referencePendingList = StaticObject.NULL;
@@ -74,7 +75,8 @@ class EspressoReferenceDrainer implements ContextAccess {
         if (getContext().multiThreadingEnabled()) {
             if (getJavaVersion().java8OrEarlier()) {
                 // Initialize reference queue
-                this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
+
+                this.drain = new ReferenceDrain() {
                     @SuppressWarnings("rawtypes")
                     @Override
                     protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
@@ -83,10 +85,10 @@ class EspressoReferenceDrainer implements ContextAccess {
                         getVM().JVM_MonitorNotify(lock, profiler);
 
                     }
-                });
+                };
             } else if (getJavaVersion().java9OrLater()) {
                 // Initialize reference queue
-                this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
+                this.drain = new ReferenceDrain() {
                     @SuppressWarnings("rawtypes")
                     @Override
                     protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
@@ -102,13 +104,16 @@ class EspressoReferenceDrainer implements ContextAccess {
                             pLock.unlock();
                         }
                     }
-                });
+                };
             } else {
                 throw EspressoError.shouldNotReachHere();
             }
         }
+        hostToGuestReferenceDrainThread = env.createThread(drain);
         if (hostToGuestReferenceDrainThread != null) {
             hostToGuestReferenceDrainThread.setName("Reference Drain");
+        } else {
+            drain.setDrainThreadInactive();
         }
     }
 
@@ -159,6 +164,10 @@ class EspressoReferenceDrainer implements ContextAccess {
         doWaitForReferencePendingList();
     }
 
+    void triggerDrain() {
+        drain.run();
+    }
+
     @TruffleBoundary
     private void doWaitForReferencePendingList() {
         try {
@@ -206,6 +215,7 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     private abstract class ReferenceDrain implements Runnable {
 
+        private volatile boolean isDrainThreadActive = true;
         protected final SubstitutionProfiler profiler = new SubstitutionProfiler();
 
         private void safepoint() {
@@ -214,7 +224,7 @@ class EspressoReferenceDrainer implements ContextAccess {
 
         @SuppressWarnings("rawtypes")
         @Override
-        public void run() {
+        public final void run() {
             Meta meta = getMeta();
             try {
                 getVM().attachThread(Thread.currentThread());
@@ -227,7 +237,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                         EspressoReference head;
                         do {
                             safepoint();
-                            head = (EspressoReference) referenceQueue.remove();
+                            head = popQueue();
                             assert head != null;
                         } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
 
@@ -264,6 +274,18 @@ class EspressoReferenceDrainer implements ContextAccess {
                     // Ignore exceptions that arise during closing.
                     return;
                 }
+            }
+        }
+
+        private void setDrainThreadInactive() {
+            isDrainThreadActive = false;
+        }
+
+        private EspressoReference popQueue() throws InterruptedException {
+            if (isDrainThreadActive) {
+                return (EspressoReference) referenceQueue.remove();
+            } else {
+                return (EspressoReference) referenceQueue.poll();
             }
         }
 

@@ -372,6 +372,7 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.ref.Finalizer
         public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
         public static final Symbol<Name> register = StaticSymbols.putName("register");
+        public static final Symbol<Name> runFinalizer = StaticSymbols.putName("runFinalizer");
 
         // j.l.ref.Reference
         public static final Symbol<Name> discovered = StaticSymbols.putName("discovered");
@@ -521,6 +522,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_MODULE_ENTRY = StaticSymbols.putName("0HIDDEN_MODULE_ENTRY");
 
         // Reference
+        public static final Symbol<Name> processPendingReferences = StaticSymbols.putName("processPendingReferences");
+        public static final Symbol<Name> poll = StaticSymbols.putName("poll");
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
 
         // Polyglot ExceptionType
@@ -995,6 +998,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
+
+        public static final Symbol<Signature> Reference = StaticSymbols.putSignature(Type.java_lang_ref_Reference);
 
         public static final Symbol<Signature> _void_CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
 
