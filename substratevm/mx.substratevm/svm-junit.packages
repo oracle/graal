@@ -1,5 +1,4 @@
 com.oracle.mxtool.junit
-com.oracle.svm.junit
 junit.framework
 junit.runner
 org.hamcrest
