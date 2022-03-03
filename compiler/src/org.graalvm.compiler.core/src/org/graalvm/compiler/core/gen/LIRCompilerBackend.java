@@ -31,10 +31,11 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.alloc.LinearScanOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
-import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder.ComputationTime;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -142,8 +143,8 @@ public class LIRCompilerBackend {
             assert startBlock != null;
             assert startBlock.getPredecessorCount() == 0;
 
-            ComputeBlockOrder<?> blockOrder = backend.newBlockOrder(blocks.length, startBlock);
-            AbstractBlockBase<?>[] linearScanOrder = blockOrder.computeLinearScanOrder();
+            CodeEmissionOrder<?> blockOrder = backend.newBlockOrder(blocks.length, startBlock);
+            AbstractBlockBase<?>[] linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
             LIR lir = new LIR(schedule.getCFG(), linearScanOrder, graph.getOptions(), graph.getDebug());
             if (ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(graph.getOptions())) {
                 lir.setCodeEmittingOrder(blockOrder.computeCodeEmittingOrder(graph.getOptions(), ComputationTime.BEFORE_CONTROL_FLOW_OPTIMIZATIONS));
@@ -175,7 +176,7 @@ public class LIRCompilerBackend {
     }
 
     private static LIRGenerationResult emitLowLevel(TargetDescription target, LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen, LIRSuites lirSuites,
-                    RegisterAllocationConfig registerAllocationConfig, ComputeBlockOrder<?> blockOrder) {
+                    RegisterAllocationConfig registerAllocationConfig, CodeEmissionOrder<?> blockOrder) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
         lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, preAllocOptContext);

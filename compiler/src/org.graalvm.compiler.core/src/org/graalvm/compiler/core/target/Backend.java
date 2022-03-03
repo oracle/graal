@@ -29,10 +29,10 @@ import java.util.ArrayList;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.alloc.BasicBlockOrder;
+import org.graalvm.compiler.core.common.alloc.DefaultCodeEmissionOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
@@ -121,8 +121,8 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
     /**
      * Creates a new instance of a block ordering computation.
      */
-    public <T extends AbstractBlockBase<T>> ComputeBlockOrder<T> newBlockOrder(int originalBlockCount, T startBlock) {
-        return new BasicBlockOrder<>(originalBlockCount, startBlock);
+    public <T extends AbstractBlockBase<T>> CodeEmissionOrder<T> newBlockOrder(int originalBlockCount, T startBlock) {
+        return new DefaultCodeEmissionOrder<>(originalBlockCount, startBlock);
     }
 
     /**

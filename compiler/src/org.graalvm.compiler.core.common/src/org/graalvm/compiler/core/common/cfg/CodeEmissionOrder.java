@@ -27,20 +27,13 @@ package org.graalvm.compiler.core.common.cfg;
 
 import org.graalvm.compiler.options.OptionValues;
 
-public interface ComputeBlockOrder<T extends AbstractBlockBase<T>> {
+public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
 
     /** Specify when the code emitting order is computed. */
     enum ComputationTime {
         BEFORE_CONTROL_FLOW_OPTIMIZATIONS,
         AFTER_CONTROL_FLOW_OPTIMIZATIONS
     }
-
-    /**
-     * Computes the block order used for the linear scan register allocator.
-     *
-     * @return sorted list of blocks
-     */
-    AbstractBlockBase<?>[] computeLinearScanOrder();
 
     /**
      * Computes the block order used for code emission.

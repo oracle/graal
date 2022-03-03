@@ -29,7 +29,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder.ComputationTime;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
 import org.graalvm.compiler.options.Option;
