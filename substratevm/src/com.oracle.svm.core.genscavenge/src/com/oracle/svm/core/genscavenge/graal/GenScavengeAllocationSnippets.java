@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
@@ -94,7 +93,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getInstanceSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
-        return formatObject(objectHeader, WordFactory.nullPointer(), size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
+        return formatObject(objectHeader, size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
     }
 
     @Snippet
@@ -104,7 +103,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        Object obj = formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, fillStartOffset,
+        Object obj = formatArray(objectHeader, size, length, memory, fillContents, fillStartOffset,
                         false, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
         if (probability(SLOW_PATH_PROBABILITY, Continuation.isSupported() && hub == DynamicHub.fromClass(StoredContinuation.class))) {
             finishFormatStoredContinuation(obj);
@@ -120,7 +119,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     @Snippet
     public Object allocateStoredContinuationInstance(@Snippet.NonNullParameter DynamicHub hub, int size, @ConstantParameter AllocationProfilingData profilingData) {
         int baseOffset = StoredContinuationImpl.PAYLOAD_OFFSET;
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, baseOffset, 0,
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), size, baseOffset, 0,
                         FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED, baseOffset, false, false, false, false, profilingData);
         finishFormatStoredContinuation(result);
         emitMemoryBarrierIf(true);
@@ -132,7 +131,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Override
-    public void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
+    public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArray) {
         Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader);
     }
 

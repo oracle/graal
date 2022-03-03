@@ -435,6 +435,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int markWordNoHashInPlace = getConstant(markWordField("no_hash_in_place"), Integer.class);
     public final int markWordNoLockInPlace = getConstant(markWordField("no_lock_in_place"), Integer.class);
 
+    public long defaultPrototypeMarkWord() {
+        return this.markWordNoHashInPlace | this.markWordNoLockInPlace;
+    }
+
     private static String markWordField(String simpleName) {
         return (JDK < 14 ? "markOopDesc::" : "markWord::") + simpleName;
     }
