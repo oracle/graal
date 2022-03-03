@@ -114,6 +114,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             return getLowerer().supportsRounding();
         }
 
+        @Override
+        public boolean integerDivisionOverflowTraps() {
+            return getLowerer().integerDivisionOverflowTraps();
+        }
+
     }
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, allowedUsageTypes = {Guard, InputType.Anchor})

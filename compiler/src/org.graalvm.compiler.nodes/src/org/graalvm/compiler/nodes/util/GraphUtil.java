@@ -1061,6 +1061,15 @@ public class GraphUtil {
                 return false;
             }
         }
+
+        @Override
+        public boolean integerDivisionOverflowTraps() {
+            if (getLowerer() != null) {
+                return getLowerer().integerDivisionOverflowTraps();
+            } else {
+                return false;
+            }
+        }
     }
 
     public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {

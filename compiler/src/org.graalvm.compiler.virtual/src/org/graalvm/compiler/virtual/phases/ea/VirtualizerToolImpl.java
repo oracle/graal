@@ -383,4 +383,12 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     public boolean supportsRounding() {
         return getLowerer().supportsRounding();
     }
+
+    @Override
+    public boolean integerDivisionOverflowTraps() {
+        if (getLowerer() != null) {
+            return getLowerer().integerDivisionOverflowTraps();
+        }
+        return true;
+    }
 }

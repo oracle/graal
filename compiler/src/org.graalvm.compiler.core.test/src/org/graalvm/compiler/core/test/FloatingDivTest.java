@@ -144,7 +144,12 @@ public class FloatingDivTest extends GraalCompilerTest {
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
         String s = "snippet2";
         test(opt, s, 100, 5, 3);
-        checkHighTierGraph(s, 4, 0, 4, 0);
+        if (isArchitecture("aarch64")) {
+            // overflow does not trap on aarch
+            checkHighTierGraph(s, 4, 0, 0, 2);
+        } else if (isArchitecture("AMD64")) {
+            checkHighTierGraph(s, 4, 0, 4, 0);
+        }
         checkFinalGraph(s, 4, 0, 0);
     }
 
@@ -177,7 +182,12 @@ public class FloatingDivTest extends GraalCompilerTest {
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
         String s = "snippet4";
         test(opt, s, 10, 3);
-        checkHighTierGraph(s, 1, 1, 1, 1);
+        if (isArchitecture("aarch64")) {
+            // overflow does not trap on aarch
+            checkHighTierGraph(s, 1, 1, 0, 2);
+        } else if (isArchitecture("AMD64")) {
+            checkHighTierGraph(s, 1, 1, 1, 1);
+        }
         checkFinalGraph(s, 1, 0, 0);
     }
 
@@ -193,7 +203,12 @@ public class FloatingDivTest extends GraalCompilerTest {
         String s = "snippet5";
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
         test(opt, s, 10, 3);
-        checkHighTierGraph(s, 2, 0, 2, 0);
+        if (isArchitecture("aarch64")) {
+            // overflow does not trap on aarch
+            checkHighTierGraph(s, 2, 0, 0, 1);
+        } else if (isArchitecture("AMD64")) {
+            checkHighTierGraph(s, 2, 0, 2, 0);
+        }
         checkFinalGraph(s, 2, 0, 0);
     }
 

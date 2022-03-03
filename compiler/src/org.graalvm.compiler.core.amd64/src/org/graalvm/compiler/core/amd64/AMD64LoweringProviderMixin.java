@@ -46,6 +46,11 @@ import jdk.vm.ci.meta.JavaKind;
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
 
     @Override
+    default boolean integerDivisionOverflowTraps() {
+        return true;
+    }
+
+    @Override
     default Integer smallestCompareWidth() {
         return 8;
     }

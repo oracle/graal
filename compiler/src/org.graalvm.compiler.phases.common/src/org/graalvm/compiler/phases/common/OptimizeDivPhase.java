@@ -115,13 +115,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         ValueNode div = findDivForRem((ValueNode) rem);
         ValueNode mul = BinaryArithmeticNode.mul(graph, div, rem.getY(), NodeView.DEFAULT);
         ValueNode result = BinaryArithmeticNode.sub(graph, rem.getX(), mul, NodeView.DEFAULT);
-        if (rem instanceof IntegerDivRemNode) {
-            // PiNode insertion explained in javadoc for this class
-            graph.replaceFixedWithFloating((FixedWithNextNode) rem, preserveOriginalStamp(graph, result, (ValueNode) rem));
-        } else {
-            // PiNode insertion explained in javadoc for this class
-            ((ValueNode) rem).replaceAndDelete(preserveOriginalStamp(graph, result, (ValueNode) rem));
-        }
+        replacePreserveOriginalStamp(graph, (ValueNode) rem, result);
     }
 
     private ValueNode findDivForRem(ValueNode val) {
@@ -217,16 +211,8 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         }
 
         StructuredGraph graph = ((ValueNode) div).graph();
-        if (div instanceof SignedDivNode) {
-            // PiNode insertion explained in javadoc for this class
-            graph.replaceFixed((FixedWithNextNode) div, preserveOriginalStamp(graph, value, (ValueNode) div));
-        } else if (div instanceof SignedFloatingIntegerDivNode) {
-            // PiNode insertion explained in javadoc for this class
-            ((SignedFloatingIntegerDivNode) div).replaceAndDelete(preserveOriginalStamp(graph, value, (ValueNode) div));
-        } else {
-            throw GraalError.shouldNotReachHere("Unknown or invalid div:" + div);
-        }
-
+        assert div instanceof SignedDivNode || div instanceof SignedFloatingIntegerDivNode : "Unknown or invalid div:" + div;
+        replacePreserveOriginalStamp(graph, (ValueNode) div, value);
     }
 
     /**
@@ -235,9 +221,14 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
      * limitations in the current integer stamp representation. This phase injects "magic" knowledge
      * about two's complement division into the graph that cannot be expressed otherwise.
      */
-    private static ValueNode preserveOriginalStamp(StructuredGraph graph, ValueNode value, ValueNode oldStampValue) {
-        Stamp oldStamp = oldStampValue.stamp(NodeView.DEFAULT);
-        return graph.addOrUniqueWithInputs(PiNode.create(value, oldStamp));
+    private static void replacePreserveOriginalStamp(StructuredGraph graph, ValueNode originalNode, ValueNode replacement) {
+        Stamp oldStamp = originalNode.stamp(NodeView.DEFAULT);
+        ValueNode replacementWrapped = graph.addOrUniqueWithInputs(PiNode.create(replacement, oldStamp));
+        if (originalNode instanceof FixedNode) {
+            graph.replaceFixed((FixedWithNextNode) originalNode, replacementWrapped);
+        } else {
+            originalNode.replaceAndDelete(replacementWrapped);
+        }
     }
 
     /**

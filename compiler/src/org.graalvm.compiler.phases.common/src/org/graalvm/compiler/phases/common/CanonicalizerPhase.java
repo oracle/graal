@@ -706,6 +706,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             public Stamp stamp(ValueNode node) {
                 return nodeView.stamp(node);
             }
+
+            @Override
+            public boolean integerDivisionOverflowTraps() {
+                return context.getLowerer().integerDivisionOverflowTraps();
+            }
         }
     }
 

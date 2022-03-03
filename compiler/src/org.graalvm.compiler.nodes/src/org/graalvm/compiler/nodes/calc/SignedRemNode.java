@@ -79,6 +79,11 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool) {
+        return canonical(self, forX, forY, zeroCheck, stamp, view, tool, true/* be pessimistic */);
+    }
+
+    private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool,
+                    boolean integerDivisionOverflowTraps) {
         if (forX.isConstant() && forY.isConstant()) {
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
@@ -109,8 +114,12 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             // a: division of a/0 traps
             // b: division of Integer.MIN_VALUE / -1 overflows
-            if (!yStamp.contains(0) && !SignedDivNode.divCanOverflow(forX, forY)) {
-                return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck);
+            if (!yStamp.contains(0) && !SignedDivNode.divCanOverflow(forX, forY, integerDivisionOverflowTraps)) {
+                ValueNode nonTrappingVersion = SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck);
+                if (!integerDivisionOverflowTraps && nonTrappingVersion instanceof NonTrappingIntegerDivRemNode<?>) {
+                    ((NonTrappingIntegerDivRemNode<?>) nonTrappingVersion).setDividendOverflowChecked();
+                }
+                return nonTrappingVersion;
             }
         }
 

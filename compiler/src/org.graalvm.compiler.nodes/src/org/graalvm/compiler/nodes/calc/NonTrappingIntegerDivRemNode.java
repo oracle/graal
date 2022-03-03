@@ -87,10 +87,8 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
     }
 
     public boolean canOverflow() {
-        if (dividendOverflowChecked) {
-            return false;
-        }
-        return SignedDivNode.divCanOverflow(x, y);
+        // dividendOverflowChecked -> div can not trap
+        return SignedDivNode.divCanOverflow(x, y, !dividendOverflowChecked);
     }
 
     @Override

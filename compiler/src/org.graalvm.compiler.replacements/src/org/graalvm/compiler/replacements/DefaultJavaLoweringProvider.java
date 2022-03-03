@@ -1277,19 +1277,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return;
         }
 
-        long minValue = NumUtil.minValue(dividendStamp.getBits());
-        if (dividendStamp.contains(minValue)) {
-            /*
-             * The dividend may contain NumUtil.minValue(dividendStamp.getBits()) which can lead to
-             * an overflow of the division. Thus, also check if the divisor contains -1, in such
-             * case we can only start to float if we actually create 2 guards (one min check for the
-             * dividend and the 0 check for the divisor), this is only beneficial if we actually
-             * have at least 2 equivalent divisions. Thus, we do not perform this optimization at
-             * the moment, this may change in the future.
-             */
-            if (divisorStamp.contains(-1)) {
-                return;
+        boolean integerDivOverflowTraps = tool.getLowerer().integerDivisionOverflowTraps();
+        if (integerDivOverflowTraps) {
+            long minValue = NumUtil.minValue(dividendStamp.getBits());
+            if (dividendStamp.contains(minValue)) {
+                /*
+                 * The dividend may contain NumUtil.minValue(dividendStamp.getBits()) which can lead
+                 * to an overflow of the division. Thus, also check if the divisor contains -1, in
+                 * such case we can only start to float if we actually create 2 guards (one min
+                 * check for the dividend and the 0 check for the divisor), this is only beneficial
+                 * if we actually have at least 2 equivalent divisions. Thus, we do not perform this
+                 * optimization at the moment, this may change in the future.
+                 */
+                if (divisorStamp.contains(-1)) {
+                    return;
 
+                }
             }
         }
 
@@ -1309,8 +1312,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
         divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
 
-        boolean dividendChecked = false;
-        if (SignedDivNode.divCanOverflow(dividend, divisor)) {
+        boolean dividendChecked = !integerDivOverflowTraps;
+        if (SignedDivNode.divCanOverflow(dividend, divisor, integerDivOverflowTraps)) {
             ConstantNode minVal = ConstantNode.forIntegerBits(divisorStamp.getBits(), NumUtil.minValue(divisorStamp.getBits()));
             LogicNode conditionDividend = graph.addOrUniqueWithInputs(CompareNode.createAnyCompareNode(Condition.GT, n.getX(), minVal, tool.getConstantReflection()));
             GuardingNode guard2 = tool.createGuard(n, conditionDividend, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, false,
@@ -1318,7 +1321,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             int bits = divisorStamp.getBits();
             IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
             dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
-            assert !SignedDivNode.divCanOverflow(dividend, divisor);
+            assert !SignedDivNode.divCanOverflow(dividend, divisor, integerDivOverflowTraps);
             guard = MultiGuardNode.combine(guard2, guard);
         } else {
             dividendChecked = true;

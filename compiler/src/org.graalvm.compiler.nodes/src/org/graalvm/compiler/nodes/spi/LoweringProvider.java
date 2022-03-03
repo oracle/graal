@@ -86,4 +86,9 @@ public interface LoweringProvider {
      */
     TargetDescription getTarget();
 
+    /**
+     * Indicates whether this target platform creates a trap on an integer division overflow.
+     */
+    boolean integerDivisionOverflowTraps();
+
 }

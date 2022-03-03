@@ -311,6 +311,11 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         public OptionValues getOptions() {
             return tool.getOptions();
         }
+
+        @Override
+        public boolean integerDivisionOverflowTraps() {
+            return tool.integerDivisionOverflowTraps();
+        }
     }
 
     private static LogicNode simplifyComparison(LogicNode forX, LogicNode forY) {

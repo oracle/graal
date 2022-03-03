@@ -67,7 +67,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroGuard(), view);
+        return canonical(this, forX, forY, getZeroGuard(), view, tool.integerDivisionOverflowTraps());
     }
 
     /**
@@ -80,6 +80,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view) {
+        return canonical(self, forX, forY, zeroCheck, view, true/* be pessimistic */);
+    }
+
+    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view, boolean integerDivisionOverflowTraps) {
         Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
         Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
         if (forX.isConstant() && forY.isConstant()) {
@@ -116,8 +120,12 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             // a: division of a/0 traps
             // b: division of Integer.MIN_VALUE / -1 overflows
-            if (!yStamp.contains(0) && !divCanOverflow(forX, forY)) {
-                return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck);
+            if (!yStamp.contains(0) && !divCanOverflow(forX, forY, integerDivisionOverflowTraps)) {
+                ValueNode nonTrappingVersion = SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck);
+                if (!integerDivisionOverflowTraps && nonTrappingVersion instanceof NonTrappingIntegerDivRemNode<?>) {
+                    ((NonTrappingIntegerDivRemNode<?>) nonTrappingVersion).setDividendOverflowChecked();
+                }
+                return nonTrappingVersion;
             }
         }
 
@@ -131,7 +139,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return self != null ? self : new SignedDivNode(forX, forY, zeroCheck);
     }
 
-    public static boolean divCanOverflow(ValueNode dividend, ValueNode divisor) {
+    public static boolean divCanOverflow(ValueNode dividend, ValueNode divisor, boolean divisionCanOverflow) {
+        if (!divisionCanOverflow) {
+            return false;
+        }
         IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
         IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
         assert dividendStamp.getBits() == divisorStamp.getBits();

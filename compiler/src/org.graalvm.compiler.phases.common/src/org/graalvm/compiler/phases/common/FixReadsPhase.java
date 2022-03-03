@@ -197,6 +197,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 return getBestStamp(node);
             }
 
+            @Override
+            public boolean integerDivisionOverflowTraps() {
+                return true;
+            }
+
         }
 
         public RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess, boolean replaceInputsWithConstants) {

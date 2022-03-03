@@ -72,4 +72,9 @@ public interface CanonicalizerTool extends CoreProviders {
 
     OptionValues getOptions();
 
+    /**
+     * Indicates whether this target platform creates a trap on an integer division overflow.
+     */
+    boolean integerDivisionOverflowTraps();
+
 }
