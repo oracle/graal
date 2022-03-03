@@ -540,6 +540,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
+    private void pushAtomicGroup() {
+        if (!silent) {
+            astBuilder.pushAtomicGroup();
+        }
+    }
+
     private void pushCaptureGroup() {
         if (!silent) {
             astBuilder.pushCaptureGroup();
@@ -2286,10 +2292,11 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     break;
 
                 case '>':
-                    if (!inSource.getOptions().isIgnoreAtomicGroups()) {
-                        bailOut("atomic groups are not supported");
+                    if (inSource.getOptions().isIgnoreAtomicGroups()) {
+                        group(false);
+                    } else {
+                        atomicGroup();
                     }
-                    group(false);
                     break;
 
                 case '(':
@@ -2406,6 +2413,21 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (match(")")) {
             popGroup();
             lastTerm = TermCategory.LookAroundAssertion;
+        } else {
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+        }
+    }
+
+    /**
+     * Parses an atomic group, assuming that the opening parantheses and '(?>' prefix have already
+     * been parsed.
+     */
+    private void atomicGroup() {
+        pushAtomicGroup();
+        disjunction();
+        if (match(")")) {
+            popGroup();
+            lastTerm = TermCategory.Atom;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }

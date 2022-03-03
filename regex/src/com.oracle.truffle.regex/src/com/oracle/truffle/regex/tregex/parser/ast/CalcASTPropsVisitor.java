@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
@@ -99,13 +100,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * </li>
  * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all
  * caret/dollar {@link PositionAssertion} that are not dead are added to these lists.</li>
- * <li>{@link RegexAST#getLookArounds()}}: all reachable {@link LookAroundAssertion}s are added to
+ * <li>{@link RegexAST#getSubtrees()}}: all reachable {@link RegexASTSubtreeRootNode}s are added to
  * these lists.</li>
  * </ul>
  *
  * @see RegexAST#getReachableCarets()
  * @see RegexAST#getReachableDollars()
- * @see RegexAST#getLookArounds()
+ * @see RegexAST#getSubtrees()
  * @see RegexASTNode#hasCaret()
  * @see RegexASTNode#hasDollar()
  * @see RegexASTNode#startsWithCaret()
@@ -172,11 +173,11 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(Group group) {
-        if (group.getParent() instanceof Sequence) {
+        if (group.getParent().isSequence() || group.getParent().isAtomicGroup()) {
             group.setMinPath(group.getParent().getMinPath());
             group.setMaxPath(group.getParent().getMaxPath());
         } else {
-            assert group.getParent() instanceof RegexASTSubtreeRootNode;
+            assert group.getParent().isLookAroundAssertion() || group.getParent().isRoot();
             group.setMinPath(0);
             group.setMaxPath(0);
         }
@@ -259,7 +260,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         group.setFlags(flags, CHANGED_FLAGS);
         group.setMinPath(minPath);
         group.setMaxPath(maxPath);
-        if (group.getParent() instanceof Sequence) {
+        if (group.getParent().isSequence() || group.getParent().isAtomicGroup()) {
             group.getParent().setMinPath(minPath);
             group.getParent().setMaxPath(maxPath);
         }
@@ -347,15 +348,35 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         leaveLookAroundAssertion(assertion);
     }
 
-    public void leaveLookAroundAssertion(LookAroundAssertion assertion) {
+    @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        atomicGroup.setMinPath(atomicGroup.getParent().getMinPath());
+        atomicGroup.setMaxPath(atomicGroup.getParent().getMaxPath());
+    }
+
+    @Override
+    protected void leave(AtomicGroup atomicGroup) {
+        if (isForward() && !atomicGroup.isDead()) {
+            ast.getProperties().setAtomicGroups();
+            ast.getSubtrees().add(atomicGroup);
+        }
+        leaveSubtreeRootNode(atomicGroup, CHANGED_FLAGS);
+        atomicGroup.getParent().setMinPath(atomicGroup.getMinPath());
+        atomicGroup.getParent().setMaxPath(atomicGroup.getMaxPath());
+    }
+
+    private void leaveLookAroundAssertion(LookAroundAssertion assertion) {
         if (isForward() && !assertion.isDead()) {
-            ast.getLookArounds().add(assertion);
+            ast.getSubtrees().add(assertion);
         }
         if (assertion.hasCaptureGroups()) {
             ast.getProperties().setCaptureGroupsInLookAroundAssertions();
         }
-        int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS | RegexASTNode.FLAG_DEAD) : assertion.getFlags(CHANGED_FLAGS);
-        assertion.getParent().setFlags(flags | assertion.getParent().getFlags(CHANGED_FLAGS), CHANGED_FLAGS);
+        leaveSubtreeRootNode(assertion, assertion.isNegated() || assertion.isLookBehindAssertion() ? OR_FLAGS | RegexASTNode.FLAG_DEAD : CHANGED_FLAGS);
+    }
+
+    private static void leaveSubtreeRootNode(RegexASTSubtreeRootNode subtreeRootNode, int flagMask) {
+        subtreeRootNode.getParent().setFlags(subtreeRootNode.getFlags(flagMask) | subtreeRootNode.getParent().getFlags(flagMask), flagMask);
     }
 
     @Override
@@ -407,5 +428,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && term.getQuantifier().getZeroWidthIndex() < 0) {
             ast.registerZeroWidthQuantifiable(term);
         }
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        throw CompilerDirectives.shouldNotReachHere("subexpression calls should be expanded by the parser");
     }
 }

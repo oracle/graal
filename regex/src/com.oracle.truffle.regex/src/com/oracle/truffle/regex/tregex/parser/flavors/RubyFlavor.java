@@ -87,10 +87,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * in ECMAScript or in the TRegex engine. Furthermore, Ruby allows backreferences to access captured
  * groups on different levels (of the call stack), so as we don't support subexpression calls, we
  * also don't support those backreferences.</li>
- * <li>(?>....) atomic groups: This construct allows control over the matcher's backtracking by
- * making committed choices which can't be undone. This is not something we can support using
- * ECMAScript regexes, however these is an option ({@code IgnoreAtomicGroups}), that lets atomic
- * groups be treated like any other groups.</li>
  * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
  * which uses atomic groups, and it is therefore not supported.</li>
  * <li>possessive quantifiers, e.g. a*+: Possessive quantifiers are quantifiers which consume

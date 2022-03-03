@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 
@@ -194,5 +195,10 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
             }
             index += ast.getEncoding().getEncodedSize(cp);
         }
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        throw CompilerDirectives.shouldNotReachHere("subexpression calls should be expanded by the parser");
     }
 }

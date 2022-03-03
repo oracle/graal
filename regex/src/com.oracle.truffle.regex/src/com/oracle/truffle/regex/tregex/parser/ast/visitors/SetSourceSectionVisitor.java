@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -50,6 +51,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 
 /**
  * This visitor is used for setting the {@link SourceSection} of AST subtrees that are copied into
@@ -106,7 +108,17 @@ public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVi
     }
 
     @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        ast.addSourceSection(atomicGroup, token);
+    }
+
+    @Override
     protected void visit(CharacterClass characterClass) {
         ast.addSourceSection(characterClass, token);
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        ast.addSourceSection(subexpressionCall, token);
     }
 }

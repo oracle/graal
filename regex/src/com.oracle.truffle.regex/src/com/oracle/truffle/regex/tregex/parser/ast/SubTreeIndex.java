@@ -42,15 +42,15 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public final class LookAroundIndex extends SimpleStateIndex<LookAroundAssertion> {
+public final class SubTreeIndex extends SimpleStateIndex<RegexASTSubtreeRootNode> {
 
     @Override
-    protected int getStateId(LookAroundAssertion state) {
+    protected int getStateId(RegexASTSubtreeRootNode state) {
         return state.getSubTreeId();
     }
 
     @Override
-    protected void setStateId(LookAroundAssertion state, int id) {
+    protected void setStateId(RegexASTSubtreeRootNode state, int id) {
         state.setSubTreeId(id);
     }
 }

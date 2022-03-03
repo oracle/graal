@@ -96,7 +96,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private Group wrappedRoot;
     private Group[] captureGroups;
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
-    private final LookAroundIndex lookArounds = new LookAroundIndex();
+    private final SubTreeIndex subtrees = new SubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
@@ -250,8 +250,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return wrappedRoot;
     }
 
-    public LookAroundIndex getLookArounds() {
-        return lookArounds;
+    public SubTreeIndex getSubtrees() {
+        return subtrees;
     }
 
     public List<PositionAssertion> getReachableCarets() {
@@ -310,6 +310,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return register(assertion);
     }
 
+    public AtomicGroup createAtomicGroup() {
+        final AtomicGroup atomicGroup = new AtomicGroup();
+        createNFAHelperNodes(atomicGroup);
+        return register(atomicGroup);
+    }
+
     public void createNFAHelperNodes(RegexASTSubtreeRootNode rootNode) {
         nodeCount.inc(4);
         PositionAssertion anchored = new PositionAssertion(PositionAssertion.Type.CARET);
@@ -357,6 +363,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     public LookBehindAssertion register(LookBehindAssertion lookBehindAssertion) {
         nodeCount.inc();
         return lookBehindAssertion;
+    }
+
+    public AtomicGroup register(AtomicGroup atomicGroup) {
+        nodeCount.inc();
+        return atomicGroup;
     }
 
     public PositionAssertion register(PositionAssertion positionAssertion) {
@@ -435,10 +446,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             return;
         }
         int prefixLength = 0;
-        for (LookAroundAssertion lb : lookArounds) {
-            if (lb instanceof LookAheadAssertion) {
+        for (RegexASTSubtreeRootNode subtreeRootNode : subtrees) {
+            if (!subtreeRootNode.isLookBehindAssertion()) {
                 continue;
             }
+            LookBehindAssertion lb = subtreeRootNode.asLookBehindAssertion();
             int minPath = lb.getMinPath();
             RegexASTSubtreeRootNode laParent = lb.getSubTreeParent();
             while (!(laParent instanceof RegexASTRootNode)) {

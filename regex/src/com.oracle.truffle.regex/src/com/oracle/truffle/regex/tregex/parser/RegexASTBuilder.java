@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -241,6 +242,17 @@ public final class RegexASTBuilder {
         pushLookBehindAssertion(null, negate);
     }
 
+    public void pushAtomicGroup(Token token) {
+        AtomicGroup atomicGroup = ast.createAtomicGroup();
+        ast.addSourceSection(atomicGroup, token);
+        addTerm(atomicGroup);
+        pushGroup(token, false, atomicGroup);
+    }
+
+    public void pushAtomicGroup() {
+        pushAtomicGroup(null);
+    }
+
     private Group pushGroup(Token token, boolean capture, RegexASTSubtreeRootNode parent) {
         Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
         if (parent != null) {
@@ -276,7 +288,7 @@ public final class RegexASTBuilder {
             ast.addSourceSection(curGroup.getParent(), token);
         }
         RegexASTNode parent = curGroup.getParent();
-        if (parent.isLookAroundAssertion()) {
+        if (parent.isSubtreeRoot()) {
             curTerm = (Term) parent;
             curSequence = parent.getParent().asSequence();
         } else {

@@ -46,8 +46,7 @@ import java.util.Deque;
 
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundIndex;
+import com.oracle.truffle.regex.tregex.parser.ast.SubTreeIndex;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
@@ -73,18 +72,18 @@ public final class PureNFAGenerator {
         ast.hidePrefix();
         PureNFAGenerator gen = new PureNFAGenerator(ast);
         PureNFA root = gen.createNFA(ast.getRoot().getSubTreeParent());
-        PureNFAIndex lookArounds = mapLookArounds(gen, ast.getLookArounds());
+        PureNFAIndex subtrees = mapSubtrees(gen, ast.getSubtrees());
         ast.unhidePrefix();
-        return new PureNFAMap(ast, root, lookArounds);
+        return new PureNFAMap(ast, root, subtrees);
     }
 
-    private static PureNFAIndex mapLookArounds(PureNFAGenerator gen, LookAroundIndex lookArounds) {
-        if (lookArounds.isEmpty()) {
+    private static PureNFAIndex mapSubtrees(PureNFAGenerator gen, SubTreeIndex subtrees) {
+        if (subtrees.isEmpty()) {
             return PureNFAIndex.getEmptyInstance(gen.ast.getLanguage());
         }
-        PureNFAIndex map = new PureNFAIndex(lookArounds.getNumberOfStates());
-        for (LookAroundAssertion la : lookArounds) {
-            map.add(gen.createNFA(la));
+        PureNFAIndex map = new PureNFAIndex(subtrees.getNumberOfStates());
+        for (RegexASTSubtreeRootNode subtreeRootNode : subtrees) {
+            map.add(gen.createNFA(subtreeRootNode));
         }
         return map;
     }

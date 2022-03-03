@@ -421,4 +421,10 @@ public class RubyTests extends RegexTestBase {
         testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
         testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
     }
+
+    @Test
+    public void atomicGroups() {
+        test("(?>foo)(?>bar)", "", "foobar", 0, true, 0, 6);
+        test("(?>foo*)obar", "", "foooooooobar", 0, false);
+    }
 }

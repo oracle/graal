@@ -197,17 +197,17 @@ public final class TRegexCompilationRequest {
         assert ast != null;
         pureNFA = PureNFAGenerator.mapToNFA(ast);
         debugPureNFA();
-        TRegexExecutorNode[] lookAroundExecutors = pureNFA.getLookArounds().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_LOOK_AROUND_EXECUTORS
-                        : new TRegexExecutorNode[pureNFA.getLookArounds().size()];
-        for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
-            PureNFA lookAround = pureNFA.getLookArounds().get(i);
-            if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
-                lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
+        TRegexExecutorNode[] subExecutors = pureNFA.getSubtrees().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_SUB_EXECUTORS
+                        : new TRegexExecutorNode[pureNFA.getSubtrees().size()];
+        for (int i = 0; i < pureNFA.getSubtrees().size(); i++) {
+            PureNFA subNFA = pureNFA.getSubtrees().get(i);
+            if (pureNFA.getASTSubtree(subNFA).isLookAroundAssertion() && pureNFA.getASTSubtree(subNFA).asLookAroundAssertion().isLiteral()) {
+                subExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(subNFA).asLookAroundAssertion(), compilationBuffer);
             } else {
-                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, false, compilationBuffer);
+                subExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, subNFA, subExecutors, false, compilationBuffer);
             }
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
     }
 
     @TruffleBoundary
@@ -278,7 +278,8 @@ public final class TRegexCompilationRequest {
                                         p.hasNegativeLookAheadAssertions() ||
                                         p.hasNonLiteralLookBehindAssertions() ||
                                         p.hasNegativeLookBehindAssertions() ||
-                                        ast.getRoot().hasQuantifiers()) &&
+                                        ast.getRoot().hasQuantifiers() ||
+                                        p.hasAtomicGroups()) &&
                         couldCalculateLastGroup;
     }
 
@@ -310,6 +311,9 @@ public final class TRegexCompilationRequest {
         }
         if (ast.getRoot().hasQuantifiers()) {
             sb.add("could not unroll all quantifiers");
+        }
+        if (p.hasAtomicGroups()) {
+            sb.add("regex has atomic groups");
         }
         return sb.toString();
     }

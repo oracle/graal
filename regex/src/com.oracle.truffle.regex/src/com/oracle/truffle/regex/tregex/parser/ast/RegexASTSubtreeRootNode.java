@@ -47,9 +47,9 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
 /**
- * A common supertype to the root node and look-ahead and look-behind assertions. Every AST subtree
- * contains a {@link Group} which contains the syntactic subtree, as well as a {@link MatchFound}
- * node, which is needed for NFA-like traversal of the AST, see
+ * A common supertype to the root node, lookahead and lookbehind assertions and atomic groups. Every
+ * AST subtree contains a {@link Group} which contains the syntactic subtree, as well as a
+ * {@link MatchFound} node, which is needed for NFA-like traversal of the AST, see
  * {@link com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor}.
  */
 public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVisitorIterable {
