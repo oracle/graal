@@ -55,6 +55,8 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import org.graalvm.collections.Pair;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -514,7 +516,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         plantMethodMemberName(memberName, resolutionKlass, methodName, sig, refKind, callerKlass, doAccessChecks, doConstraintsChecks, meta);
                     }
                     flags = flagField.getInt(memberName);
-                    refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
+                    refKind = getRefKind(flags);
                     meta.HIDDEN_VMINDEX.setHiddenObject(memberName, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
                     break;
                 case MN_IS_FIELD:
@@ -545,7 +547,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     Klass callerKlass,
                     boolean accessCheck, boolean constraintsChecks,
                     Meta meta) {
-        Method target = resolutionKlass.lookupMethod(name, sig, callerKlass);
+        Method target = doMethodLookup(resolutionKlass, name, sig, callerKlass);
         if (target == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, cat("Failed lookup for method ", resolutionKlass.getName(), "#", name, ":", sig));
         }
@@ -577,7 +579,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     Klass callerKlass,
                     boolean constraintsCheck,
                     Meta meta) {
-        Field field = resolutionKlass.lookupField(name, type);
+        Field field = doFieldLookup(resolutionKlass, name, type);
         if (field == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, cat("Failed lookup for field ", resolutionKlass.getName(), "#", name, ":", type));
         }
@@ -620,6 +622,43 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
         }
         return res;
+    }
+
+    private static Method doMethodLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
+                    Klass callerKlass) {
+        if (CompilerDirectives.isPartialEvaluationConstant(resolutionKlass)) {
+            return lookupMethod(resolutionKlass, name, sig, callerKlass);
+        } else {
+            return lookupMethodBoundary(resolutionKlass, name, sig, callerKlass);
+        }
+    }
+
+    private static Method lookupMethod(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
+                    Klass callerKlass) {
+        return resolutionKlass.lookupMethod(name, sig, callerKlass);
+    }
+
+    @TruffleBoundary
+    private static Method lookupMethodBoundary(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
+                    Klass callerKlass) {
+        return lookupMethod(resolutionKlass, name, sig, callerKlass);
+    }
+
+    private static Field doFieldLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {
+        if (CompilerDirectives.isPartialEvaluationConstant(resolutionKlass)) {
+            return lookupField(resolutionKlass, name, sig);
+        } else {
+            return lookupFieldBoundary(resolutionKlass, name, sig);
+        }
+    }
+
+    private static Field lookupField(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {
+        return resolutionKlass.lookupField(name, sig);
+    }
+
+    @TruffleBoundary
+    private static Field lookupFieldBoundary(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {
+        return lookupField(resolutionKlass, name, sig);
     }
 
     // endregion MemberName planting
