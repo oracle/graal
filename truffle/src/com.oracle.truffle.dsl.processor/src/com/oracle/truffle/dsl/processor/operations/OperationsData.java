@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
@@ -26,7 +27,8 @@ public class OperationsData extends Template {
         PRIM_STORE_LOCAL("StoreLocal"),
         PRIM_LOAD_ARGUMENT("LoadArgument"),
         PRIM_RETURN("Return"),
-        PRIM_BRANCH("Branch", 0);
+        PRIM_BRANCH("Branch", 0),
+        PRIM_LABEL("Label", 0);
 
         final String name;
         final int numOpcodes;
@@ -46,16 +48,18 @@ public class OperationsData extends Template {
         final List<? extends TypeMirror> arguments;
         final int children;
         final TypeElement typeElement;
+        final ExecutableElement mainMethod;
         final boolean returnsValue;
 
         CodeVariableElement typeConstant;
         CodeVariableElement[] opcodeConstant;
 
-        Operation(OperationType type, List<? extends TypeMirror> arguments, int children, TypeElement typeElement, boolean returnsValue) {
+        Operation(OperationType type, List<? extends TypeMirror> arguments, int children, TypeElement typeElement, ExecutableElement mainMethod, boolean returnsValue) {
             this.type = type;
             this.arguments = arguments;
             this.children = children;
             this.typeElement = typeElement;
+            this.mainMethod = mainMethod;
             this.returnsValue = returnsValue;
         }
 
@@ -84,6 +88,9 @@ public class OperationsData extends Template {
         }
 
         public CodeVariableElement[] getOpcodeConstant() {
+            if (opcodeConstant == null) {
+                throw new IllegalArgumentException("Opcode constant not defined for " + type);
+            }
             return opcodeConstant;
         }
 
@@ -108,6 +115,7 @@ public class OperationsData extends Template {
                 case PRIM_IF_THEN_ELSE:
                 case PRIM_WHILE:
                 case PRIM_RETURN:
+                case PRIM_LABEL:
                     return List.of();
                 default:
                     throw new IllegalArgumentException("bad type: " + type);

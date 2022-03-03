@@ -33,18 +33,90 @@ class OperationsBytecodeCodeGenerator {
     private int labelCounter = 0;
     private int backrefCounter = 0;
 
-    private final DeclaredType byteArraySupportType;
-
     private final CodeTree leBytes;
 
     OperationsBytecodeCodeGenerator(TruffleTypes types, ProcessorContext context) {
         this.types = types;
         this.context = context;
 
-        byteArraySupportType = context.getDeclaredType("com.oracle.truffle.api.memory.ByteArraySupport");
-        leBytes = CodeTreeBuilder.createBuilder() //
-                        .startCall(CodeTreeBuilder.singleType(byteArraySupportType), "littleEndian") //
-                        .end().build();
+        leBytes = CodeTreeBuilder.singleString("LE_BYTES");
+    }
+
+    private CodeTree castToLabel(String arg) {
+        return CodeTreeBuilder.createBuilder().cast(types.BuilderOperationLabel, CodeTreeBuilder.singleString(arg)).build();
+    }
+
+    private static final int RV_ALWAYS = 0;
+    private static final int RV_NEVER = 1;
+    private static final int RV_DIVERGES = 2;
+
+    class ReturnsValueChecker {
+        private final CodeTreeBuilder builder;
+
+        public ReturnsValueChecker(CodeTreeBuilder builder) {
+            this.builder = builder;
+        }
+
+        public void buildOperation(OperationsData.Operation operation) {
+            switch (operation.type) {
+                case CUSTOM:
+                    buildSimple(operation, operation.returnsValue ? RV_ALWAYS : RV_NEVER);
+                    break;
+                case PRIM_STORE_LOCAL:
+                case PRIM_LABEL:
+                    buildSimple(operation, RV_NEVER);
+                    break;
+                case PRIM_CONST_OBJECT:
+                case PRIM_LOAD_LOCAL:
+                case PRIM_LOAD_ARGUMENT:
+                    buildSimple(operation, RV_ALWAYS);
+                    break;
+                case PRIM_BRANCH:
+                case PRIM_RETURN:
+                    buildSimple(operation, RV_DIVERGES);
+                    break;
+                case PRIM_IF_THEN:
+                case PRIM_WHILE:
+                    buildCondAndBody();
+                    break;
+                case PRIM_IF_THEN_ELSE:
+                    buildIfThenElse();
+                    break;
+                case PRIM_BLOCK:
+                    buildBlock();
+                    break;
+                default:
+                    throw new UnsupportedOperationException("unknown operation type: " + operation.type);
+            }
+        }
+
+        private void buildSimple(OperationsData.Operation operation, int rv) {
+            for (int i = 0; i < operation.children; i++) {
+                builder.startAssert().string("children[" + i + "].returnsValue != " + RV_NEVER).end();
+            }
+
+            builder.statement("this.returnsValue = " + rv);
+        }
+
+        private void buildCondAndBody() {
+            builder.startAssert().string("children[0].returnsValue != " + RV_NEVER).end();
+            builder.statement("this.returnsValue = " + RV_NEVER);
+        }
+
+        private void buildIfThenElse() {
+            builder.startAssert().string("children[0].returnsValue != " + RV_NEVER).end();
+            builder.startIf().string("children[1].returnsValue != " + RV_NEVER + " && children[2].returnsValue != " + RV_NEVER).end();
+            builder.startBlock();
+            builder.statement("this.returnsValue = " + RV_ALWAYS);
+            builder.end();
+            builder.startElseBlock();
+            builder.statement("this.returnsValue = " + RV_NEVER);
+            builder.end();
+        }
+
+        private void buildBlock() {
+            builder.statement("this.returnsValue = children[children.length - 1].returnsValue");
+        }
     }
 
     class Builder {
@@ -77,21 +149,29 @@ class OperationsBytecodeCodeGenerator {
                 case PRIM_WHILE:
                     buildWhile();
                     break;
-                default:
-                    // TODO
+                case PRIM_LABEL:
+                    buildLabel();
                     break;
+                case PRIM_BRANCH:
+                    buildBranch();
+                    break;
+                default:
+                    throw new IllegalArgumentException("unknown operation type: " + operation.type);
             }
         }
 
         private void buildSimple(Operation operation) {
             for (int i = 0; i < operation.children; i++) {
+                builder.lineComment("child" + i);
                 buildChildCall(i);
             }
 
+            builder.lineComment("opcode");
             buildOp(operation, 0);
 
             int argIdx = 0;
             for (TypeMirror argType : operation.getArguments(types, context)) {
+                builder.lineComment("argument" + argIdx + ": " + argType.toString());
                 switch (argType.getKind()) {
                     case BYTE:
                         putByte("(byte) arguments[" + argIdx + "]");
@@ -112,12 +192,9 @@ class OperationsBytecodeCodeGenerator {
                         putLong("(long) arguments[" + argIdx + "]");
                         break;
                     default:
-                        if (argType.equals(types.OperationLabel)) {
-                            // TODO: resolve
-                        } else {
-                            // TODO: constant pool
-                        }
-                        putShort("(short) 0");
+                        builder.declaration("short", "index", "(short) constPool.size()");
+                        builder.statement("constPool.add(arguments[" + argIdx + "])");
+                        putShort("index");
                         break;
                 }
                 argIdx++;
@@ -133,6 +210,11 @@ class OperationsBytecodeCodeGenerator {
 
             buildChildCall("i");
 
+            builder.startIf().string("i != children.length - 1").end();
+            builder.startBlock();
+            buildPopChild("i");
+            builder.end();
+
             builder.end();
         }
 
@@ -143,6 +225,7 @@ class OperationsBytecodeCodeGenerator {
             int afterBackref = reserveDestination();
 
             buildChildCall(1);
+            buildPopChild(1);
 
             fillReservedDestination(afterBackref);
         }
@@ -155,12 +238,22 @@ class OperationsBytecodeCodeGenerator {
 
             buildChildCall(1);
 
+            builder.startIf().string("returnsValue != " + RV_ALWAYS).end();
+            builder.startBlock();
+            buildPopChild(1);
+            builder.end();
+
             buildCommonOp(COMMON_OP_PRIM_JUMP_UNCOND);
             int afterBackref = reserveDestination();
 
             fillReservedDestination(elseBackref);
 
             buildChildCall(2);
+
+            builder.startIf().string("returnsValue != " + RV_ALWAYS).end();
+            builder.startBlock();
+            buildPopChild(2);
+            builder.end();
 
             fillReservedDestination(afterBackref);
         }
@@ -174,11 +267,25 @@ class OperationsBytecodeCodeGenerator {
             int afterBackref = reserveDestination();
 
             buildChildCall(1);
+            buildPopChild(1);
 
             buildCommonOp(COMMON_OP_PRIM_JUMP_UNCOND);
             fillSavedLabel(startLabel);
 
             fillReservedDestination(afterBackref);
+        }
+
+        private void buildLabel() {
+            builder.declaration(types.BuilderOperationLabel, "label", CodeTreeBuilder.createBuilder().cast(types.BuilderOperationLabel,
+                            CodeTreeBuilder.singleString("arguments[0]")));
+            builder.startStatement().startCall("label", "resolve").string("bc").string("bci").end(2);
+        }
+
+        private void buildBranch() {
+            buildCommonOp(COMMON_OP_PRIM_JUMP_UNCOND);
+            builder.declaration(types.BuilderOperationLabel, "lbl", castToLabel("arguments[0]"));
+            builder.startStatement().startCall("lbl", "putValue").string("bc").string("bci").end(2);
+            builder.statement("bci += " + BC_CONSTS_TARGET_LENGTH);
         }
 
         private void buildChildCall(int id) {
@@ -191,7 +298,22 @@ class OperationsBytecodeCodeGenerator {
             builder.startCall("children[" + id + "]", builder.findMethod());
             builder.string("bc");
             builder.string("bci");
+            builder.string("constPool");
             builder.end();
+            builder.end();
+        }
+
+        private void buildPopChild(int id) {
+            buildPopChild("" + id);
+        }
+
+        private void buildPopChild(String id) {
+            builder.startIf();
+            builder.string("children[" + id + "].returnsValue == " + RV_ALWAYS);
+            builder.end();
+
+            builder.startBlock();
+            buildCommonOp(COMMON_OP_PRIM_POP);
             builder.end();
         }
 
@@ -244,8 +366,7 @@ class OperationsBytecodeCodeGenerator {
 
         private void fillLabel(String dest, String label) {
             builder.startStatement();
-            CodeTree le = CodeTreeBuilder.createBuilder().startCall(CodeTreeBuilder.singleType(byteArraySupportType), "littleEndian").end().build();
-            builder.startCall(le, "putShort");
+            builder.startCall(leBytes, "putShort");
             builder.string("bc");
             builder.string(dest);
             builder.string("(short) " + label);
@@ -431,9 +552,21 @@ class OperationsBytecodeCodeGenerator {
 
             // TODO: read all arguments
 
-            // TODO: invoke
+            builder.startStatement();
+            if (op.returnsValue) {
+                builder.string("Object result = ");
+            }
+            builder.startStaticCall(op.mainMethod);
 
-            // TODO: push result
+            for (int i = 0; i < op.children; i++) {
+                builder.string("value" + i);
+            }
+
+            builder.end(2);
+
+            if (op.returnsValue) {
+                pushValue("result");
+            }
 
             gotoRelative(1);
         }
@@ -442,7 +575,7 @@ class OperationsBytecodeCodeGenerator {
         protected void buildConstObject(Operation op) {
 
             getShort("int index", "1");
-            pushValue("locals[index]");
+            pushValue("constPool[index]");
 
             gotoRelative(1 + 2);
         }
@@ -515,7 +648,7 @@ class OperationsBytecodeCodeGenerator {
         protected void buildJumpFalseOperation() {
             appendOpcode("brfalse");
             getShort("int dest", "1");
-            append("dest");
+            appendHexa("dest");
             gotoRelative(1 + BC_CONSTS_TARGET_LENGTH);
         }
 
@@ -523,7 +656,7 @@ class OperationsBytecodeCodeGenerator {
         protected void buildJumpUncondOperation() {
             appendOpcode("br");
             getShort("int dest", "1");
-            append("dest");
+            appendHexa("dest");
             gotoRelative(1 + BC_CONSTS_TARGET_LENGTH);
         }
 
@@ -546,6 +679,7 @@ class OperationsBytecodeCodeGenerator {
             appendOpcode("ldconst");
             getShort("int index", "1");
             append("index");
+            append("\"// (\" + constPool[index].getClass().getName() + \") \" + constPool[index]");
             gotoRelative(1 + 2);
         }
 
@@ -553,7 +687,7 @@ class OperationsBytecodeCodeGenerator {
         protected void buildLoadLocal(Operation op) {
             appendOpcode("ldloc");
             getShort("int index", "1");
-            append("index");
+            appendHexa("index");
             gotoRelative(1 + 2);
         }
 
@@ -561,7 +695,7 @@ class OperationsBytecodeCodeGenerator {
         protected void buildStoreLocal(Operation op) {
             appendOpcode("stloc");
             getShort("int index", "1");
-            appendDest("index");
+            appendHexa("index");
             gotoRelative(1 + 2);
         }
 
@@ -569,7 +703,7 @@ class OperationsBytecodeCodeGenerator {
         protected void buildLoadArgument(Operation op) {
             appendOpcode("ldarg");
             getShort("int index", "1");
-            append("index");
+            appendHexa("index");
             gotoRelative(1 + 2);
         }
 
@@ -584,7 +718,7 @@ class OperationsBytecodeCodeGenerator {
             append("\"" + opPadded + "\"");
         }
 
-        private void appendDest(String code) {
+        private void appendHexa(String code) {
             append("String.format(\"%04x\", " + code + ")");
         }
 

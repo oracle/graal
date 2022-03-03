@@ -221,12 +221,14 @@ public class TruffleTypes {
     public final DeclaredType UnsupportedSpecializationException = c.getDeclaredType(UnsupportedSpecializationException_Name);
 
     // Operations DSL API
+    public static final String BuilderOperationLabel_Name = "com.oracle.truffle.api.operation.BuilderOperationLabel";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
     public static final String OperationsBuilder_Name = "com.oracle.truffle.api.operation.OperationsBuilder";
     public static final String OperationsNode_Name = "com.oracle.truffle.api.operation.OperationsNode";
 
+    public final DeclaredType BuilderOperationLabel = c.getDeclaredType(BuilderOperationLabel_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredType(GenerateOperations_Name);
     public final DeclaredType Operation = c.getDeclaredType(Operation_Name);
     public final DeclaredType OperationLabel = c.getDeclaredType(OperationLabel_Name);

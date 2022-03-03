@@ -66,10 +66,11 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         addPrimitiveOperation(data, OperationType.PRIM_LOAD_ARGUMENT, 0, true);
         addPrimitiveOperation(data, OperationType.PRIM_RETURN, 1, true);
         addPrimitiveOperation(data, OperationType.PRIM_BRANCH, 0, false);
+        addPrimitiveOperation(data, OperationType.PRIM_LABEL, 0, false);
     }
 
     private static void addPrimitiveOperation(OperationsData data, OperationType type, int numChildren, boolean returnsValue) {
-        data.getOperations().add(new OperationsData.Operation(type, List.of(), numChildren, null, returnsValue));
+        data.getOperations().add(new OperationsData.Operation(type, List.of(), numChildren, null, null, returnsValue));
     }
 
     private void processOperation(OperationsData data, TypeElement te) {
@@ -105,7 +106,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
         }
 
-        data.getOperations().add(new OperationsData.Operation(OperationType.CUSTOM, arguments, numChildren, te, true));
+        data.getOperations().add(new OperationsData.Operation(OperationType.CUSTOM, arguments, numChildren, te, first, true));
     }
 
     private static boolean isOperationFunction(ExecutableElement el) {

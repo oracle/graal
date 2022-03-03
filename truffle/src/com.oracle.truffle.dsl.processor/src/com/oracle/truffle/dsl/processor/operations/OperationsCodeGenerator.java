@@ -8,6 +8,7 @@ import java.util.Stack;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
@@ -20,6 +21,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.OperationsData.OperationType;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
@@ -83,10 +85,21 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             String simpleName = m.getTemplateType().getSimpleName() + "BuilderinoImpl";
             builderImplType = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, builderType.asType());
 
+            {
+                DeclaredType byteArraySupportType = context.getDeclaredType("com.oracle.truffle.api.memory.ByteArraySupport");
+                CodeVariableElement leBytes = new CodeVariableElement(
+                                Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL),
+                                byteArraySupportType, "LE_BYTES");
+                CodeTreeBuilder builder = leBytes.createInitBuilder();
+                builder.startStaticCall(byteArraySupportType, "littleEndian").end();
+                builderImplType.add(leBytes);
+            }
+
             createBuilderNodeTypeConstants();
             createBuilderNodeOpcodeConstants();
 
             createBuilderImplNode();
+
             createBuilderLabelImpl();
             createBuilderBytecodeNode();
 
@@ -142,12 +155,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             builder.declaration(arrayOf(builderNodeType.asType()), "operations", "childStack.get(0).toArray(new " + builderNodeType.getSimpleName() + "[0])");
             builder.declaration(builderNodeType.asType(), "rootNode", "new " + builderNodeType.getSimpleName() + "(TYPE_PRIM_BLOCK, new Object[0], operations)");
             builder.declaration("byte[]", "bc", "new byte[65535]");
-            builder.declaration("int", "len", "rootNode.build(bc, 0)");
+            builder.declaration("ArrayList<Object>", "constPool", "new ArrayList<>()");
+            builder.declaration("int", "len", "rootNode.build(bc, 0, constPool)");
             builder.declaration("byte[]", "bcCopy", "java.util.Arrays.copyOf(bc, len)");
+            builder.declaration("Object[]", "cpCopy", "constPool.toArray(new Object[0])");
 
             builder.startReturn();
             builder.startNew(builderBytecodeNodeType.asType());
             builder.string("bcCopy");
+            builder.string("cpCopy");
             builder.end(2);
 
             builderImplType.add(mBuild);
@@ -156,8 +172,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         private void createBuilderLabelImpl() {
             String simpleName = builderImplType.getSimpleName() + "Label";
-            builderLabelImplType = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, types.OperationLabel);
-
+            builderLabelImplType = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, types.BuilderOperationLabel);
             builderImplType.add(builderLabelImplType);
         }
 
@@ -178,6 +193,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 builder.startNew(builderLabelImplType.asType());
                 builder.end(2);
             }
+
+            {
+                CodeTreeBuilder builder = mMarkLabel.getBuilder();
+                builder.declaration(builderLabelImplType.asType(), "lbl", "(" + builderLabelImplType.getSimpleName() + ") label");
+                builder.startStatement().startCall("lbl", "setMarked").end(2);
+                builder.startStatement().startCall("doEmitOperation").string("TYPE_PRIM_LABEL").string("lbl").end(2);
+            }
         }
 
         /**
@@ -191,7 +213,38 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             builderNodeType = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, null);
 
             createBuilderNodeFields();
-            builderNodeType.add(GeneratorUtils.createConstructorUsingFields(Set.of(), builderNodeType));
+
+            {
+                CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderNodeType);
+
+                CodeTreeBuilder builder = ctor.getBuilder();
+
+                OperationsBytecodeCodeGenerator.ReturnsValueChecker gen = bytecodeBuilderGenerator.new ReturnsValueChecker(builder);
+
+                builder.startSwitch().string("type").end();
+                builder.startBlock();
+
+                for (OperationsData.Operation op : m.getOperations()) {
+                    builder.startCase().string(op.getTypeConstant().getName()).end();
+                    builder.startBlock();
+
+                    gen.buildOperation(op);
+
+                    builder.statement("break");
+                    builder.end();
+                }
+
+                builder.caseDefault();
+                builder.startCaseBlock();
+                builder.tree(GeneratorUtils.createShouldNotReachHere(""));
+                builder.end(2);
+
+                builder.end();
+
+                builderNodeType.add(ctor);
+            }
+
+            builderNodeType.add(new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), context.getType(int.class), "returnsValue"));
 
             createBuilderNodeBuildMethod();
 
@@ -208,7 +261,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         private void createBuilderNodeBuildMethod() {
             CodeVariableElement bc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
             CodeVariableElement startBci = new CodeVariableElement(context.getType(int.class), "startBci");
-            CodeExecutableElement method = new CodeExecutableElement(Set.of(), context.getType(int.class), "build", bc, startBci);
+            CodeVariableElement constPool = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), context.getType(Object.class)), "constPool");
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(), context.getType(int.class), "build", bc, startBci, constPool);
             CodeTreeBuilder builder = method.getBuilder();
 
             builder.declaration("int", "bci", "startBci");
@@ -242,9 +296,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         /**
          * Create the node type constants.
-         *
-         * Instead of having a proper hierarchy of node types, we just use one BuilderNode class,
-         * with this type representing which node it is.
          */
         private void createBuilderNodeTypeConstants() {
             int i = 0;
@@ -305,6 +356,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             builderBytecodeNodeType = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, types.OperationsNode);
 
             builderBytecodeNodeType.add(new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), arrayOf(context.getType(byte.class)), "bc"));
+            builderBytecodeNodeType.add(new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), arrayOf(context.getType(Object.class)), "constPool"));
             builderBytecodeNodeType.add(GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType));
 
             createBuilderBytecodeNodeExecute();
@@ -448,17 +500,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 CodeTreeBuilder builder = doBeginOperationMethod.getBuilder();
 
-                builder.startStatement();
-                builder.string("typeStack.add(type)");
-                builder.end();
-
-                builder.startStatement();
-                builder.string("childStack.add(new ArrayList<>())");
-                builder.end();
-
-                builder.startStatement();
-                builder.string("argumentStack.add(arguments)");
-                builder.end();
+                builder.statement("typeStack.add(type)");
+                builder.statement("childStack.add(new ArrayList<>())");
+                builder.statement("argumentStack.add(arguments)");
 
                 builderImplType.add(doBeginOperationMethod);
             }
@@ -469,17 +513,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 CodeTreeBuilder builder = doEndOperationMethod.getBuilder();
 
-                builder.startStatement();
-                builder.string("int topType = typeStack.pop()");
-                builder.end();
+                builder.statement("int topType = typeStack.pop()");
 
                 builder.startAssert();
                 builder.string("topType == type");
                 builder.end();
 
-                builder.startStatement();
-                builder.string("Object[] args = argumentStack.pop()");
-                builder.end();
+                builder.statement("Object[] args = argumentStack.pop()");
 
                 builder.declaration(new ArrayCodeTypeMirror(builderNodeType.asType()), "children",
                                 "childStack.pop().toArray(new " + builderNodeType.getSimpleName() + "[0])");
@@ -487,9 +527,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 builder.declaration(builderNodeType.asType(), "result",
                                 "new " + builderNodeType.getSimpleName() + "(type, args, children)");
 
-                builder.startStatement();
-                builder.string("childStack.peek().add(result)");
-                builder.end();
+                builder.statement("childStack.peek().add(result)");
 
                 builderImplType.add(doEndOperationMethod);
 
@@ -521,6 +559,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
          * @param isAbstract
          */
         private void createBeginEnd(CodeTypeElement target, OperationsData.Operation operation, boolean isAbstract) {
+
+            if (operation.type == OperationType.PRIM_LABEL)
+                return;
+
             Set<Modifier> mods = isAbstract ? Set.of(Modifier.PUBLIC, Modifier.ABSTRACT) : Set.of(Modifier.PUBLIC);
 
             if (operation.children == 0) {
