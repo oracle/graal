@@ -318,6 +318,11 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledClassSetDifference() {
+        return false;
+    }
+
+    @Override
     protected CodePointSet getDotCodePointSet() {
         return getLocalFlags().isDotAll() ? Constants.DOT_ALL : PYTHON_DOT;
     }
@@ -413,9 +418,14 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
+    protected Token handleBoundedQuantifierEmptyOrMissingMin() throws RegexSyntaxException {
         position = getLastTokenPosition() + 1;
         return literalChar('{');
+    }
+
+    @Override
+    protected Token handleBoundedQuantifierInvalidCharacter() {
+        return handleBoundedQuantifierEmptyOrMissingMin();
     }
 
     @Override
@@ -459,11 +469,6 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleEmptyGroupName() {
-        return syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
-    }
-
-    @Override
     protected void handleGroupRedefinition(String name, int newId, int oldId) {
         throw syntaxErrorAtRel(PyErrorMessages.redefinitionOfGroupName(name, newId, oldId), name.length() + 1);
     }
@@ -474,18 +479,13 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleInvalidBackReference(int reference) {
+    protected Token handleInvalidBackReference(int reference) {
         String ref = Integer.toString(reference);
         throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(ref), ref.length());
     }
 
     @Override
-    protected void handleInvalidBackReference(String reference) {
-        throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(reference), reference.length());
-    }
-
-    @Override
-    protected RegexSyntaxException handleInvalidCharInCharClass() {
+    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -735,9 +735,8 @@ public final class PythonRegexLexer extends RegexLexer {
                 break;
             case valid:
                 // group referenced by name
-                if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
-                    assert namedCaptureGroups.get(result.groupName).size() == 1;
-                    groupNumber = namedCaptureGroups.get(result.groupName).get(0);
+                if (namedCaptureGroups.containsKey(result.groupName)) {
+                    groupNumber = getSingleNamedGroupNumber(result.groupName);
                     namedReference = true;
                 } else {
                     throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
@@ -870,7 +869,7 @@ public final class PythonRegexLexer extends RegexLexer {
             case invalidRest:
                 throw handleBadCharacterInGroupName(result);
             case valid:
-                if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
+                if (namedCaptureGroups.containsKey(result.groupName)) {
                     assert namedCaptureGroups.get(result.groupName).size() == 1;
                     return Token.createBackReference(namedCaptureGroups.get(result.groupName).get(0), true);
                 } else {

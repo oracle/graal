@@ -202,6 +202,11 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledClassSetDifference() {
+        return false;
+    }
+
+    @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
         CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode);
     }
@@ -285,10 +290,15 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
+    protected Token handleBoundedQuantifierEmptyOrMissingMin() throws RegexSyntaxException {
         // invalid bounded quantifiers are treated as string literals
         position = getLastTokenPosition() + 1;
         return literalChar('{');
+    }
+
+    @Override
+    protected Token handleBoundedQuantifierInvalidCharacter() {
+        return handleBoundedQuantifierEmptyOrMissingMin();
     }
 
     @Override
@@ -322,11 +332,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleEmptyGroupName() {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
     protected void handleGroupRedefinition(String name, int newId, int oldId) {
         throw CompilerDirectives.shouldNotReachHere();
     }
@@ -337,17 +342,12 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleInvalidBackReference(int reference) {
+    protected Token handleInvalidBackReference(int reference) {
         throw syntaxError(OracleDBErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
     }
 
     @Override
-    protected void handleInvalidBackReference(String reference) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
-    protected RegexSyntaxException handleInvalidCharInCharClass() {
+    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
