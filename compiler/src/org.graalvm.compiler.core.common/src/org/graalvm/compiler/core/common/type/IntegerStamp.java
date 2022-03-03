@@ -86,12 +86,9 @@ public final class IntegerStamp extends PrimitiveStamp {
         assert (upMask & CodeUtil.mask(bits)) == upMask : this;
         // Check for valid masks or the empty encoding
         assert (downMask & ~upMask) == 0 || (upMask == 0 && downMask == CodeUtil.mask(bits)) : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
-        /*
-         * Can be zero should only be set explicitly since it will take part in all the logic of
-         * meet and join. Thus, we cannot automatically infer it as it will "override" the actual
-         * knowledge of the stamp based on the flag.
-         */
-        this.canBeZero = canBeZero;
+        // use ctor param because canBeZero is not set yet
+        this.canBeZero = contains(0, canBeZero);
+        assert !this.canBeZero || contains(0) : " Stamp " + this + " either has canBeZero set to false or needs to contain 0";
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
@@ -333,7 +330,11 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public boolean contains(long value) {
-        if (value == 0 && !canBeZero) {
+        return contains(value, canBeZero);
+    }
+
+    private boolean contains(long value, boolean isCanBeZero) {
+        if (value == 0 && !isCanBeZero) {
             return false;
         }
         return value >= lowerBound && value <= upperBound && (value & downMask) == downMask && (value & upMask) == (value & CodeUtil.mask(getBits()));
