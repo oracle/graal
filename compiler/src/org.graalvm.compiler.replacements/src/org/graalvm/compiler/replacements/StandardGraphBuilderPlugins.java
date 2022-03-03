@@ -105,6 +105,7 @@ import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BoxNode.TrustedBoxedValue;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.CacheWritebackNode;
 import org.graalvm.compiler.nodes.extended.CacheWritebackSyncNode;
@@ -460,6 +461,46 @@ public class StandardGraphBuilderPlugins {
         return (kind == JavaKind.Object && !isSunMiscUnsafe && !(JavaVersionUtil.JAVA_SPEC == 11)) ? "Reference" : kind.name();
     }
 
+    public static class AllocateUninitializedArrayPlugin extends InvocationPlugin {
+
+        private final boolean lengthCheck;
+
+        public AllocateUninitializedArrayPlugin(String name, boolean lengthCheck) {
+            super(name, Receiver.class, Class.class, int.class);
+            this.lengthCheck = lengthCheck;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
+            /*
+             * For simplicity, we only intrinsify if the componentType is a compile-time constant.
+             * That also allows us to constant-fold the required check that the component type is a
+             * primitive type.
+             */
+            if (!componentTypeNode.isJavaConstant() || componentTypeNode.asJavaConstant().isNull()) {
+                return false;
+            }
+            ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
+            if (componentType == null || !componentType.isPrimitive() || componentType.getJavaKind() == JavaKind.Void) {
+                return false;
+            }
+            /* Emits a null-check for the otherwise unused receiver. */
+            unsafe.get();
+
+            ValueNode checkedLength = lengthNode;
+            if (lengthCheck) {
+                /*
+                 * Note that allocateUninitializedArray must throw a IllegalArgumentException, and
+                 * not a NegativeArraySizeException, when the length is negative.
+                 */
+                checkedLength = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
+            }
+            b.addPush(JavaKind.Object, new NewArrayNode(componentType, checkedLength, false));
+            return true;
+
+        }
+    }
+
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
         registerUnsafePlugins0(new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks);
 
@@ -482,21 +523,7 @@ public class StandardGraphBuilderPlugins {
         registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndSet", new String[]{""}, supportedJavaKinds);
         registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{""}, supportedJavaKinds);
 
-        r.register(new InvocationPlugin("allocateUninitializedArray0", Receiver.class, Class.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentType, ValueNode length) {
-                // we only intrinsify if the componentType is a compile-time constant.
-                if (componentType.isConstant()) {
-                    ResolvedJavaType constantComponentType = b.getConstantReflection().asJavaType(componentType.asConstant());
-                    if (constantComponentType.isPrimitive() && constantComponentType.getJavaKind() != JavaKind.Void) {
-                        unsafe.get();
-                        b.addPush(JavaKind.Object, new NewArrayNode(constantComponentType, length, false));
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
+        r.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray0", false));
     }
 
     private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders,
