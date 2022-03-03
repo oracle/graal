@@ -19,7 +19,7 @@ Follow these steps to install GraalVM Community on the macOS operating system:
 1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for macOS, and download.
 2. Unzip the archive.
   ```shell
-   tar -xzf graalvm-ce-java<version>-darvin-amd64-<version>.tar.gz
+   tar -xzf graalvm-ce-java<version>-darwin-amd64-<version>.tar.gz
   ```
   Alternatively, open the file in Finder.
   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute. See [Installation Notes](#installation-notes) below.
