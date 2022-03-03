@@ -105,8 +105,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     }
 
     /**
-     * Numbers all instructions in all blocks. The numbering follows the {@linkplain DefaultCodeEmissionOrder
-     * linear scan order}.
+     * Numbers all instructions in all blocks.
      */
     protected void numberInstructions() {
 

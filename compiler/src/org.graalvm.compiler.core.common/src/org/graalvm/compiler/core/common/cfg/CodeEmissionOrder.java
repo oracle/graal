@@ -27,6 +27,9 @@ package org.graalvm.compiler.core.common.cfg;
 
 import org.graalvm.compiler.options.OptionValues;
 
+/**
+ * Interface to computes an ordering of the blocks that can be used by the machine code generator.
+ */
 public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
 
     /** Specify when the code emitting order is computed. */

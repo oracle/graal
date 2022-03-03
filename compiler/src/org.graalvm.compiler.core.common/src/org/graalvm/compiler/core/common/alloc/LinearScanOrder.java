@@ -6,6 +6,15 @@ import java.util.PriorityQueue;
 import org.graalvm.compiler.core.common.alloc.BasicBlockOrderUtils.BlockList;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 
+/**
+ * Computes an ordering of the blocks that can be used by the linear scan register allocator.
+ *
+ * The linear scan register allocator order has an mechanism that prevents merge nodes from being
+ * scheduled if there is at least one highly likely predecessor still unscheduled. This increases
+ * the probability that the merge node and the corresponding predecessor are more closely together
+ * in the schedule thus decreasing the probability for inserted phi moves. Also, the algorithm sets
+ * the linear scan order number of the block that corresponds to its index in the linear scan order.
+ */
 public final class LinearScanOrder {
     /**
      * Divisor used for degrading the probability of the current path versus unscheduled paths at a
