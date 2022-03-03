@@ -227,7 +227,8 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         private void loadClassesFromPath(Path path) {
             if (ClasspathUtils.isJar(path)) {
                 try {
-                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
+                    URI container = path.toAbsolutePath().toUri();
+                    URI jarURI = new URI("jar:" + container);
                     FileSystem probeJarFileSystem;
                     try {
                         probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
@@ -237,7 +238,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(jarFileSystem.getPath("/"), Collections.emptySet());
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), Collections.emptySet());
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -246,13 +247,14 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                loadClassesFromPath(path, excludeDirectories);
+                URI container = path.toUri();
+                loadClassesFromPath(container, path, excludeDirectories);
             }
         }
 
         protected static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(Path root, Set<Path> excludes) {
+        private void loadClassesFromPath(URI container, Path root, Set<Path> excludes) {
             FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
 
@@ -269,7 +271,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
                     String fileName = root.relativize(file).toString();
                     if (fileName.endsWith(CLASS_EXTENSION)) {
-                        executor.execute(() -> handleClassFileName(root.toUri(), null, fileName, fileSystemSeparatorChar));
+                        executor.execute(() -> handleClassFileName(container, null, fileName, fileSystemSeparatorChar));
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -312,7 +314,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             return result.substring(0, result.length() - CLASS_EXTENSION.length());
         }
 
-        protected void handleClassFileName(URI location, Object module, String fileName, char fileSystemSeparatorChar) {
+        protected void handleClassFileName(URI container, Object module, String fileName, char fileSystemSeparatorChar) {
             String strippedClassFileName = strippedClassFileName(fileName);
             if (strippedClassFileName.equals("module-info")) {
                 return;
@@ -320,20 +322,20 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
             String className = strippedClassFileName.replace(fileSystemSeparatorChar, '.');
             synchronized (classes) {
-                EconomicSet<String> classNames = classes.get(location);
+                EconomicSet<String> classNames = classes.get(container);
                 if (classNames == null) {
                     classNames = EconomicSet.create();
-                    classes.put(location, classNames);
+                    classes.put(container, classNames);
                 }
                 classNames.add(className);
             }
             int packageSep = className.lastIndexOf('.');
             String packageName = packageSep > 0 ? className.substring(0, packageSep) : "";
             synchronized (packages) {
-                EconomicSet<String> packageNames = packages.get(location);
+                EconomicSet<String> packageNames = packages.get(container);
                 if (packageNames == null) {
                     packageNames = EconomicSet.create();
-                    packages.put(location, packageNames);
+                    packages.put(container, packageNames);
                 }
                 packageNames.add(packageName);
             }
