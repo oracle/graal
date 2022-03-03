@@ -65,10 +65,10 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
 
     abstract boolean canReplaceCondition(LogicNode condition, IfNode ifNode);
 
-    abstract boolean useAddressOptimization(AddressNode adr);
+    abstract boolean useAddressOptimization(AddressNode adr, LowTierContext context);
 
     abstract DeoptimizingFixedWithNextNode tryReplaceExisting(StructuredGraph graph, AbstractBeginNode nonTrappingContinuation, AbstractBeginNode trappingContinuation, LogicNode condition,
-                    IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation);
+                    IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation, LowTierContext context);
 
     abstract DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation);
 
@@ -78,7 +78,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
 
     abstract void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
 
-    protected void tryUseTrappingVersion(MetaAccessProvider metaAccessProvider, DynamicDeoptimizeNode deopt) {
+    protected void tryUseTrappingVersion(MetaAccessProvider metaAccessProvider, DynamicDeoptimizeNode deopt, LowTierContext context) {
         Node predecessor = deopt.predecessor();
         if (predecessor instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) predecessor;
@@ -140,13 +140,13 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
                 }
                 DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asJavaConstant());
                 Speculation speculationConstant = metaAccessProvider.decodeSpeculation(thisSpeculation.asJavaConstant(), deopt.graph().getSpeculationLog());
-                tryUseTrappingVersion(deopt, endPredecesssor, deoptimizationReason, speculationConstant, thisReason.asJavaConstant(), thisSpeculation.asJavaConstant());
+                tryUseTrappingVersion(deopt, endPredecesssor, deoptimizationReason, speculationConstant, thisReason.asJavaConstant(), thisSpeculation.asJavaConstant(), context);
             }
         }
     }
 
     protected void tryUseTrappingVersion(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason, Speculation speculation, JavaConstant deoptReasonAndAction,
-                    JavaConstant deoptSpeculation) {
+                    JavaConstant deoptSpeculation, LowTierContext context) {
         assert predecessor != null;
         if (!GraalServices.supportsArbitraryImplicitException() && !isSupportedReason(deoptimizationReason)) {
             deopt.getDebug().log(DebugContext.INFO_LEVEL, "Not a null check / unreached / arithmetic %s", predecessor);
@@ -167,17 +167,17 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
             AbstractMergeNode merge = (AbstractMergeNode) pred;
             if (merge.phis().isEmpty()) {
                 for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
-                    checkPredecessor(deopt, end.predecessor(), deoptReasonAndAction, deoptSpeculation);
+                    checkPredecessor(deopt, end.predecessor(), deoptReasonAndAction, deoptSpeculation, context);
                 }
             }
         } else if (pred instanceof AbstractBeginNode) {
-            checkPredecessor(deopt, pred, deoptReasonAndAction, deoptSpeculation);
+            checkPredecessor(deopt, pred, deoptReasonAndAction, deoptSpeculation, context);
         } else {
             deopt.getDebug().log(DebugContext.INFO_LEVEL, "Not a Begin or Merge %s", pred);
         }
     }
 
-    protected void checkPredecessor(AbstractDeoptimizeNode deopt, Node predecessor, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+    protected void checkPredecessor(AbstractDeoptimizeNode deopt, Node predecessor, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation, LowTierContext context) {
         Node current = predecessor;
         AbstractBeginNode branch = null;
         while (current instanceof AbstractBeginNode) {
@@ -201,18 +201,19 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
             }
             LogicNode condition = ifNode.condition();
             if (canReplaceCondition(condition, ifNode)) {
-                replaceWithTrappingVersion(deopt, ifNode, condition, deoptReasonAndAction, deoptSpeculation);
+                replaceWithTrappingVersion(deopt, ifNode, condition, deoptReasonAndAction, deoptSpeculation, context);
             }
         }
     }
 
-    protected void replaceWithTrappingVersion(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+    protected void replaceWithTrappingVersion(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation,
+                    LowTierContext context) {
         DebugContext debug = deopt.getDebug();
         StructuredGraph graph = deopt.graph();
         AbstractBeginNode nonTrappingContinuation = trueSuccessorIsDeopt() ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
         AbstractBeginNode trappingContinuation = trueSuccessorIsDeopt() ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
         DeoptimizingFixedWithNextNode trappingVersionNode = null;
-        trappingVersionNode = tryReplaceExisting(graph, nonTrappingContinuation, trappingContinuation, condition, ifNode, deopt, deoptReasonAndAction, deoptSpeculation);
+        trappingVersionNode = tryReplaceExisting(graph, nonTrappingContinuation, trappingContinuation, condition, ifNode, deopt, deoptReasonAndAction, deoptSpeculation, context);
         if (trappingVersionNode == null) {
             // Need to add a null check node.
             trappingVersionNode = createImplicitNode(graph, condition, deoptReasonAndAction, deoptSpeculation);

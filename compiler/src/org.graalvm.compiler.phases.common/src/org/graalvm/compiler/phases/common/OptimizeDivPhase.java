@@ -59,11 +59,6 @@ import jdk.vm.ci.code.CodeUtil;
 /**
  * Phase that optimizes integer division operation by using various mathematical foundations to
  * express it in faster, equivalent, arithmetic.
- *
- * Note on stamps: When this phase replaces a node with a faster computed version we inject a pi
- * node with the old stamp. This is done to ensure a stamp never gets worse, compensating for
- * limitations in the current integer stamp representation.. This phase injects "magic" knowledge
- * about two's complement division into the graph that cannot be expressed otherwise.
  */
 public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     protected final CanonicalizerPhase canon;
@@ -122,10 +117,10 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         ValueNode result = BinaryArithmeticNode.sub(graph, rem.getX(), mul, NodeView.DEFAULT);
         if (rem instanceof IntegerDivRemNode) {
             // PiNode insertion explained in javadoc for this class
-            graph.replaceFixedWithFloating((FixedWithNextNode) rem, wrapInOldStamp(graph, result, (ValueNode) rem));
+            graph.replaceFixedWithFloating((FixedWithNextNode) rem, preserveOriginalStamp(graph, result, (ValueNode) rem));
         } else {
             // PiNode insertion explained in javadoc for this class
-            ((ValueNode) rem).replaceAndDelete(graph.maybeAddOrUnique(wrapInOldStamp(graph, result, (ValueNode) rem)));
+            ((ValueNode) rem).replaceAndDelete(preserveOriginalStamp(graph, result, (ValueNode) rem));
         }
     }
 
@@ -224,17 +219,23 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         StructuredGraph graph = ((ValueNode) div).graph();
         if (div instanceof SignedDivNode) {
             // PiNode insertion explained in javadoc for this class
-            graph.replaceFixed((FixedWithNextNode) div, wrapInOldStamp(graph, value, (ValueNode) div));
+            graph.replaceFixed((FixedWithNextNode) div, preserveOriginalStamp(graph, value, (ValueNode) div));
         } else if (div instanceof SignedFloatingIntegerDivNode) {
             // PiNode insertion explained in javadoc for this class
-            ((SignedFloatingIntegerDivNode) div).replaceAndDelete(wrapInOldStamp(graph, value, (ValueNode) div));
+            ((SignedFloatingIntegerDivNode) div).replaceAndDelete(preserveOriginalStamp(graph, value, (ValueNode) div));
         } else {
             throw GraalError.shouldNotReachHere("Unknown or invalid div:" + div);
         }
 
     }
 
-    private static ValueNode wrapInOldStamp(StructuredGraph graph, ValueNode value, ValueNode oldStampValue) {
+    /**
+     * When this phase replaces a node with a faster computed version we have to inject a pi node
+     * with the old stamp. This is done to ensure a stamp never gets worse, compensating for
+     * limitations in the current integer stamp representation. This phase injects "magic" knowledge
+     * about two's complement division into the graph that cannot be expressed otherwise.
+     */
+    private static ValueNode preserveOriginalStamp(StructuredGraph graph, ValueNode value, ValueNode oldStampValue) {
         Stamp oldStamp = oldStampValue.stamp(NodeView.DEFAULT);
         return graph.addOrUniqueWithInputs(PiNode.create(value, oldStamp));
     }

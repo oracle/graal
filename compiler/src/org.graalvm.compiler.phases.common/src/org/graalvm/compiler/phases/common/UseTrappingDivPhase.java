@@ -147,13 +147,13 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         }
 
         @Override
-        public boolean useAddressOptimization(AddressNode adr) {
+        public boolean useAddressOptimization(AddressNode adr, LowTierContext context) {
             return false;
         }
 
         @Override
         public DeoptimizingFixedWithNextNode tryReplaceExisting(StructuredGraph graph, AbstractBeginNode nonTrappingContinuation, AbstractBeginNode trappingContinuation, LogicNode condition,
-                        IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+                        IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation, LowTierContext context) {
             return null;
         }
 
@@ -196,10 +196,10 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
             for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
                 tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(),
                                 deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
-                                deopt.getSpeculation(metaAccessProvider).asJavaConstant());
+                                deopt.getSpeculation(metaAccessProvider).asJavaConstant(), context);
             }
             for (DynamicDeoptimizeNode deopt : graph.getNodes(DynamicDeoptimizeNode.TYPE)) {
-                tryUseTrappingVersion(metaAccessProvider, deopt);
+                tryUseTrappingVersion(metaAccessProvider, deopt, context);
             }
 
         }

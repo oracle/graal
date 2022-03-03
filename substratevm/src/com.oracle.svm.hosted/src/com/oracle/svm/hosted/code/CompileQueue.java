@@ -1440,7 +1440,7 @@ public class CompileQueue {
             FixReadsPhase fixReads = (FixReadsPhase) it.previous();
             it.remove();
             boolean replaceInputsWithConstants = false;
-            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase(), fixReads.getCanonicalizerPhase()));
+            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase()));
         }
     }
 

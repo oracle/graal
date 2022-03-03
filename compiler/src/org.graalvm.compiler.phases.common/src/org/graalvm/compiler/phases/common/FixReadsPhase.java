@@ -102,7 +102,6 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     protected final boolean replaceInputsWithConstants;
     protected final BasePhase<? super CoreProviders> schedulePhase;
-    protected final CanonicalizerPhase canonicalizerPhase;
 
     @Override
     public float codeSizeIncrease() {
@@ -592,10 +591,9 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     }
 
-    public FixReadsPhase(boolean replaceInputsWithConstants, BasePhase<? super CoreProviders> schedulePhase, CanonicalizerPhase canonicalizerPhase) {
+    public FixReadsPhase(boolean replaceInputsWithConstants, BasePhase<? super CoreProviders> schedulePhase) {
         this.replaceInputsWithConstants = replaceInputsWithConstants;
         this.schedulePhase = schedulePhase;
-        this.canonicalizerPhase = canonicalizerPhase;
     }
 
     @Override
@@ -614,7 +612,6 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
 
         }
-        canonicalizerPhase.apply(graph, context);
     }
 
     public static class RawCEPhase extends BasePhase<LowTierContext> {
@@ -679,7 +676,4 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         return schedulePhase;
     }
 
-    public CanonicalizerPhase getCanonicalizerPhase() {
-        return canonicalizerPhase;
-    }
 }
