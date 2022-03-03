@@ -362,6 +362,8 @@ deploy_graalvm_linux_amd64: {
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} ${vm_profiles} [--quiet, --no-warning, graalvm-home]],
+  ] ${check_graalvm_base_build} [
     ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
@@ -384,6 +386,8 @@ deploy_graalvm_linux_aarch64: {
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} ${vm_profiles} [--quiet, --no-warning, graalvm-home]],
+  ] ${check_graalvm_base_build} [
     ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
@@ -398,6 +402,8 @@ deploy_graalvm_base_darwin_amd64: {
   run: ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} ${vm_profiles} [--quiet, --no-warning, graalvm-home]],
+  ] ${check_graalvm_base_build} [
     ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
@@ -427,6 +433,8 @@ deploy_graalvm_base_windows_amd64: {
     [set-export, VM_ENV, "${VM_ENV}-win"]
     ${mx_vm_common} [graalvm-show]
     ${mx_vm_common} [build]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]],
+  ] ${check_graalvm_base_build} [
     ${mx_vm_common} ${record_file_sizes}
     ${upload_file_sizes}
     ${mx_vm_common} ${maven_deploy_sdk_base}
@@ -455,9 +463,10 @@ deploy_graalvm_ruby: {
     [set-export, VM_ENV, "${VM_ENV}-ruby"]
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} ${vm_profiles} [--quiet, --no-warning, graalvm-home]],
+  ] ${check_graalvm_base_build} [
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
   notify_emails: ["benoit.daloze@oracle.com", "gilles.m.duboscq@oracle.com"]
@@ -530,6 +539,8 @@ builds += [
     run: [
       ${mx_vm_installables} [graalvm-show]
       ${mx_vm_installables} [build]
+      [set-export, GRAALVM_HOME, ${mx_vm_installables} [--quiet, --no-warning, graalvm-home]],
+    ] ${check_graalvm_base_build} [
       ${mx_vm_installables} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
@@ -542,6 +553,8 @@ builds += [
     run: [
       ${mx_vm_installables} [graalvm-show]
       ${mx_vm_installables} [build]
+      [set-export, GRAALVM_HOME, ${mx_vm_installables} [--quiet, --no-warning, graalvm-home]],
+    ] ${check_graalvm_base_build} [
       ${mx_vm_installables} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
