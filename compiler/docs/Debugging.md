@@ -213,11 +213,9 @@ since metric registration is lazy.  For example, to see all the metrics availabl
 In addition to logging, there is support for generating (or dumping) more detailed
 visualizations of certain compiler data structures. Currently, there is support for dumping:
 
-* HIR graphs (i.e., instances of
-  [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
-  [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer) (IGV), and
-* LIR register allocation and generated code to the
-  [C1Visualizer](https://java.net/projects/c1visualizer/)
+* HIR graphs (i.e., instances of [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
+  [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md), and
+* LIR register allocation and generated code to the [C1Visualizer](https://github.com/zakkak/c1visualizer)
 
 Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer
 output will also generate output for LIR graphs if the `-Dgraal.PrintCFG=true` option is specified
