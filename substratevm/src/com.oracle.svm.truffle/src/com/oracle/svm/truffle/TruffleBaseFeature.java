@@ -784,6 +784,9 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 final class Target_java_lang_ProcessBuilder {
 }
 
+/*
+ * Ensure ProcessBuilder is not reachable through the enclosing class of Redirect.
+ */
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "Redirect", onlyWith = {TruffleBaseFeature.IsEnabled.class,
                 TruffleBaseFeature.IsCreateProcessDisabled.class})

@@ -67,13 +67,13 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
@@ -99,12 +99,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<Executable> registeredMethods = ConcurrentHashMap.newKeySet();
     private final Set<Field> registeredFields = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, Object[]> registeredRecordComponents = new ConcurrentHashMap<>();
+    private final Set<DynamicHub> heapDynamicHubs = ConcurrentHashMap.newKeySet();
     private final Set<AccessibleObject> heapReflectionObjects = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
 
     private final Set<Class<?>> processedClasses = new HashSet<>();
     private final Set<Type> processedTypes = new HashSet<>();
-    private final Set<AnalysisType> processedAnalysisTypes = new HashSet<>();
+    private final Set<DynamicHub> processedDynamicHubs = new HashSet<>();
     private final Map<AnalysisMethod, Set<AnalysisType>> processedHidingMethods = new HashMap<>();
     private final Set<AccessibleObject> processedHeapReflectionObjects = new HashSet<>();
 
@@ -136,12 +137,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerMethods(boolean queriedOnly, Executable[] methods) {
         for (Executable method : methods) {
-            if (reflectionMethods.containsKey(method) && reflectionMethods.get(method) == ExecutableAccessibility.Accessed) {
-                /* Do not downgrade a method already registered as accessed */
-                continue;
-            }
-            ExecutableAccessibility newValue = queriedOnly ? ExecutableAccessibility.QueriedOnly : ExecutableAccessibility.Accessed;
-            ExecutableAccessibility oldValue = reflectionMethods.put(method, newValue);
+            ExecutableAccessibility oldValue;
+            ExecutableAccessibility newValue;
+            do {
+                newValue = queriedOnly ? ExecutableAccessibility.QueriedOnly : ExecutableAccessibility.Accessed;
+                oldValue = reflectionMethods.get(method);
+                if (oldValue != null) {
+                    newValue = ExecutableAccessibility.max(oldValue, newValue);
+                }
+            } while (oldValue == null ? reflectionMethods.putIfAbsent(method, newValue) != null : !reflectionMethods.replace(method, oldValue, newValue));
             if (oldValue != newValue) {
                 modifiedClasses.add(method.getDeclaringClass());
             }
@@ -249,10 +253,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      * See {@link ReflectionMetadataEncoderImpl} for details.
      */
     protected void processMethodMetadata(DuringAnalysisAccessImpl access) {
-        for (AnalysisType type : access.getUniverse().getTypes()) {
-            if (!processedAnalysisTypes.contains(type) && type.isReachable() && !SubstitutionReflectivityFilter.shouldExclude(type.getJavaClass(), access.getMetaAccess(), access.getUniverse())) {
-                registerTypesForClass(access, type, type.getJavaClass());
-                processedAnalysisTypes.add(type);
+        for (DynamicHub hub : heapDynamicHubs) {
+            if (!processedDynamicHubs.contains(hub)) {
+                AnalysisType type = access.getHostVM().lookupType(hub);
+                if (!SubstitutionReflectivityFilter.shouldExclude(type.getJavaClass(), access.getMetaAccess(), access.getUniverse())) {
+                    registerTypesForClass(access, type, type.getJavaClass());
+                    processedDynamicHubs.add(hub);
+                }
             }
         }
         for (Field reflectField : reflectionFields) {
@@ -463,6 +470,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (JavaType paramType : analysisMethod.toParameterTypes()) {
             makeAnalysisTypeReachable(access, (AnalysisType) paramType);
         }
+        makeAnalysisTypeReachable(access, (AnalysisType) analysisMethod.getSignature().getReturnType(null));
     }
 
     private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
@@ -472,10 +480,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
         } catch (TypeNotPresentException e) {
             /* Hash code computation can trigger an exception if the type is missing */
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                return;
-            }
-            throw e;
+            return;
         }
         processedTypes.add(type);
         if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
@@ -524,11 +529,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static void registerTypesForAnnotation(DuringAnalysisAccessImpl accessImpl, Annotation annotation) {
-        /*
-         * Don't make annotation types reachable unless they have a chance of being queried.
-         */
-        accessImpl.registerReachabilityHandler((access) -> registerTypesForAnnotationValue((DuringAnalysisAccessImpl) access, annotation.annotationType(), annotation), annotation.annotationType());
+    private static void registerTypesForAnnotation(DuringAnalysisAccessImpl access, Annotation annotation) {
+        registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
     }
 
     @SuppressWarnings("unchecked")
@@ -785,6 +787,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    public void registerHeapDynamicHub(Object hub) {
+        assert !sealed;
+        heapDynamicHubs.add((DynamicHub) hub);
+    }
+
+    @Override
+    public Set<DynamicHub> getHeapDynamicHubs() {
+        assert sealed;
+        return Collections.unmodifiableSet(heapDynamicHubs);
+    }
+
+    @Override
     public void registerHeapReflectionObject(AccessibleObject object) {
         assert !sealed;
         heapReflectionObjects.add(object);
@@ -813,6 +827,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private enum ExecutableAccessibility {
         QueriedOnly,
-        Accessed
+        Accessed;
+
+        static ExecutableAccessibility max(ExecutableAccessibility a, ExecutableAccessibility b) {
+            return a == Accessed || b == Accessed ? Accessed : QueriedOnly;
+        }
     }
 }

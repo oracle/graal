@@ -505,7 +505,7 @@ public class ProgressReporter {
             }
             long metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-method-metadata"), metadataByteLength);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-reflection-metadata"), metadataByteLength);
                 remainingBytes -= metadataByteLength;
             }
             if (graphEncodingByteLength > 0) {

@@ -60,7 +60,7 @@ public final class DynamicProxyFeature implements Feature {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport();
+        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader);
         ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);

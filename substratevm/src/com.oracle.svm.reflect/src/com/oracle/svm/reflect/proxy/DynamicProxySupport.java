@@ -77,9 +77,11 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
+    private final ClassLoader classLoader;
     private final Map<ProxyCacheKey, Object> proxyCache;
 
-    public DynamicProxySupport() {
+    public DynamicProxySupport(ClassLoader classLoader) {
+        this.classLoader = classLoader;
         this.proxyCache = new ConcurrentHashMap<>();
     }
 
@@ -95,9 +97,13 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         proxyCache.computeIfAbsent(key, k -> {
             Class<?> clazz;
             try {
-                clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
+                clazz = getJdkProxyClass(classLoader, intfs);
             } catch (Throwable e) {
-                return e;
+                try {
+                    clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
+                } catch (Throwable e2) {
+                    return e;
+                }
             }
 
             /*

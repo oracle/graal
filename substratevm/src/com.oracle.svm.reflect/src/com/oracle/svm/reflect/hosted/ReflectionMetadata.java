@@ -65,19 +65,15 @@ public class ReflectionMetadata {
 
     static class ClassMetadata extends AnnotatedElementMetadata {
         final HostedType[] classes;
-        final HostedType enclosingMethodDeclaringClass;
-        final String enclosingMethodName;
-        final String enclosingMethodDescriptor;
+        final Object[] enclosingMethodInfo;
         final RecordComponentMetadata[] recordComponents;
         final HostedType[] permittedSubclasses;
 
-        ClassMetadata(HostedType[] classes, HostedType enclosingMethodDeclaringClass, String enclosingMethodName, String enclosingMethodDescriptor, RecordComponentMetadata[] recordComponents,
-                        HostedType[] permittedSubclasses, Annotation[] annotations, TypeAnnotation[] typeAnnotations) {
+        ClassMetadata(HostedType[] classes, Object[] enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, Annotation[] annotations,
+                        TypeAnnotation[] typeAnnotations) {
             super(annotations, typeAnnotations);
             this.classes = classes;
-            this.enclosingMethodDeclaringClass = enclosingMethodDeclaringClass;
-            this.enclosingMethodName = enclosingMethodName;
-            this.enclosingMethodDescriptor = enclosingMethodDescriptor;
+            this.enclosingMethodInfo = enclosingMethodInfo;
             this.recordComponents = recordComponents;
             this.permittedSubclasses = permittedSubclasses;
         }

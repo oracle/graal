@@ -35,7 +35,8 @@ public interface ReadableJavaField extends ResolvedJavaField {
         if (javaField instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) javaField;
             if (!readableField.isValueAvailable()) {
-                return SubstrateObjectConstant.forObject(null);
+                assert !readableField.allowConstantFolding() && readableField.isUnknown();
+                return JavaConstant.forIllegal();
             }
             return readableField.readValue(metaAccess, javaConstant);
         } else {
@@ -63,5 +64,9 @@ public interface ReadableJavaField extends ResolvedJavaField {
         } else {
             return false;
         }
+    }
+
+    default boolean isUnknown() {
+        return false;
     }
 }

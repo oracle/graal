@@ -63,6 +63,10 @@ public interface RuntimeReflectionSupport extends ReflectionRegistry {
 
     Object[] getRecordComponents(Class<?> type);
 
+    void registerHeapDynamicHub(Object hub);
+
+    Set<?> getHeapDynamicHubs();
+
     void registerHeapReflectionObject(AccessibleObject object);
 
     Set<AccessibleObject> getHeapReflectionObjects();

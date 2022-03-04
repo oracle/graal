@@ -47,65 +47,13 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl;
 
 /**
- * The metadata for methods in the image is split into two arrays: one for the index and the other
- * for data. The index contains an array of integers pointing to offsets in the data, and indexed by
- * type ID. The data array contains arrays of method metadata, ordered by type ID, such that all
- * methods declared by a class are stored consecutively, in the following format:
+ * This class performs the parsing of reflection metadata at runtime. The encoding formats are
+ * specified as comments above each parsing method.
  *
- * <pre>
- * {
- *     int queriedMethodsCount;
- *     ReflectMethodEncoding[] queriedMethods[queriedMethodsCount];
- *     int hidingMethodsCount;
- *     SimpleMethodEncoding[] hidingMethods[hidingMethodsCount];
- *     int declaringTypeIndex;             // index in frameInfoSourceClasses
- *     int reachableMethodsCount;
- *     SimpleMethodEncoding[] reachableMethods[reachableMethodsCount];
- * } TypeEncoding;
- * </pre>
- *
- * The declaring class is encoded before the reachable methods to avoid having to be decoded when
- * getting the queried and hiding methods, in which case the declaring class is available as an
- * argument and doesn't need to be retrieved from the encoding.
- *
- * The data for a queried method is stored in the following format:
- *
- * <pre>
- * {
- *     int methodNameIndex;                // index in frameInfoSourceMethodNames ("<init>" for constructors)
- *     int paramCount;
- *     int[] paramTypeIndices[paramCount]; // index in frameInfoSourceClasses
- *     int modifiers;
- *     int returnTypeIndex;                // index in frameInfoSourceClasses (void for constructors)
- *     int exceptionTypeCount;
- *     int[] exceptionTypeIndices[exceptionTypeCount]; // index in frameInfoSourceClasses
- *     int signatureIndex;                 // index in frameInfoSourceMethodNames
- *     int annotationsEncodingLength;
- *     byte[] annotationsEncoding[annotationsEncodingLength];
- *     int parameterAnnotationsEncodingLength;
- *     byte[] parameterAnnotationsEncoding[parameterAnnotationsEncodingLength];
- *     int typeAnnotationsEncodingLength;
- *     byte[] typeAnnotationsEncoding[typeAnnotationsEncodingLength];
- *     boolean hasRealParameterData;
- *     int reflectParameterCount;          // only if hasRealParameterData is true
- *     {
- *         int reflectParameterNameIndex;  // index in frameInfoSourceMethodNames
- *         int reflectParameterModifiers;
- *     } reflectParameters[reflectParameterCount];
- * } ReflectMethodEncoding;
- * </pre>
- *
- * The data for a hiding or reachable method is stored as follows:
- *
- * <pre>
- * {
- *     int methodNameIndex;                // index in frameInfoSourceMethodNames ("<init>" for constructors)
- *     int paramCount;
- *     int[] paramTypeIndices[paramCount]; // index in frameInfoSourceClasses
- * } SimpleMethodEncoding;
- * </pre>
+ * See {@link ReflectionMetadataEncoderImpl} for details about the emission of the metadata.
  */
 public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
     public static final int NO_METHOD_METADATA = -1;
@@ -121,6 +69,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
     }
 
+    /**
+     * Fields encoding.
+     * 
+     * <pre>
+     * FieldMetadata[] fields
+     * </pre>
+     */
     @Override
     public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -128,6 +83,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return decodeArray(reader, Field.class, (i) -> decodeField(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
     }
 
+    /**
+     * Methods encoding.
+     * 
+     * <pre>
+     * MethodMetadata[] methods
+     * </pre>
+     */
     @Override
     public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -135,6 +97,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return decodeArray(reader, Method.class, (i) -> decodeMethod(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
     }
 
+    /**
+     * Constructors encoding.
+     * 
+     * <pre>
+     * ConstructorMetadata[] constructors
+     * </pre>
+     */
     @Override
     public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -142,6 +111,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return decodeArray(reader, Constructor.class, (i) -> decodeConstructor(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
     }
 
+    /**
+     * Inner classes encoding.
+     * 
+     * <pre>
+     * ClassIndex[] innerClasses
+     * </pre>
+     */
     @Override
     public Class<?>[] parseClasses(int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -149,6 +125,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return decodeArray(reader, Class.class, (i) -> decodeType(reader, codeInfo));
     }
 
+    /**
+     * Record components encoding.
+     * 
+     * <pre>
+     * RecordComponentMetadata[] recordComponents
+     * </pre>
+     */
     @Override
     public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -156,6 +139,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, codeInfo, DynamicHub.toClass(declaringType)));
     }
 
+    /**
+     * Parameters encoding for executables.
+     * 
+     * <pre>
+     * ParameterMetadata[] parameters
+     * </pre>
+     */
     @Override
     public Parameter[] parseReflectParameters(Executable executable, byte[] encoding) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -163,6 +153,17 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return decodeArray(reader, Parameter.class, (i) -> decodeReflectParameter(reader, codeInfo, executable, i));
     }
 
+    /**
+     * Class enclosing method information. {@link Class#getEnclosingMethod()}
+     *
+     * <pre>
+     * EnclosingMethodInfo {
+     *     ClassIndex  declaringClass
+     *     StringIndex name
+     *     StringIndex descriptor
+     * }
+     * </pre>
+     */
     @Override
     public Object[] parseEnclosingMethod(int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
@@ -189,6 +190,42 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
     }
 
+    /**
+     *
+     * Complete field encoding.
+     *
+     * <pre>
+     * CompleteFieldMetadata : FieldMetadata {
+     *     int         modifiers               (including COMPLETE flag)
+     *     StringIndex name
+     *     ClassIndex  type
+     *     boolean     trustedFinal            (only on JDK 17 and later)
+     *     StringIndex signature
+     *     byte[]      annotationsEncoding
+     *     byte[]      typeAnnotationsEncoding
+     *     int         offset
+     *     StringIndex deletedReason
+     * }
+     * </pre>
+     * <p>
+     * Heap field encoding.
+     *
+     * <pre>
+     * HeapFieldMetadata : FieldMetadata {
+     *     int         modifiers   (including IN_HEAP flag)
+     *     ObjectIndex fieldObject
+     * }
+     * </pre>
+     * <p>
+     * Partial field encoding.
+     *
+     * <pre>
+     * PartialFieldMetadata : FieldMetadata {
+     *     int         modifiers
+     *     StringIndex name
+     * }
+     * </pre>
+     */
     private static Field decodeField(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
@@ -238,10 +275,83 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return SubstrateUtil.cast(field, Field.class);
     }
 
+    /**
+     * Complete method encoding.
+     *
+     * <pre>
+     * CompleteMethodMetadata : MethodMetadata {
+     *     int          modifiers                    (including COMPLETE flag)
+     *     StringIndex  name
+     *     ClassIndex[] parameterTypes
+     *     ClassIndex   returnType
+     *     StringIndex  signature
+     *     byte[]       annotationsEncoding
+     *     byte[]       parameterAnnotationsEncoding
+     *     byte[]       annotationDefaultEncoding    (annotation methods only)
+     *     byte[]       typeAnnotationsEncoding
+     *     byte[]       reflectParametersEncoding    ({@link #decodeReflectParameter(UnsafeArrayTypeReader, CodeInfo, Executable, int)})
+     *     ObjectIndex  accessor                     (null if registered as queried only)
+     * }
+     * </pre>
+     *
+     * Heap method encoding.
+     *
+     * <pre>
+     * HeapMethodMetadata : MethodMetadata {
+     *     int         modifiers    (including IN_HEAP flag)
+     *     ObjectIndex methodObject
+     * }
+     * </pre>
+     *
+     * Partial method encoding.
+     *
+     * <pre>
+     * PartialMethodMetadata : MethodMetadata {
+     *     int          modifiers
+     *     StringIndex  name
+     *     ClassIndex[] parameterTypes
+     *     ClassIndex   returnType
+     * }
+     * </pre>
+     */
     private static Method decodeMethod(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
         return (Method) decodeExecutable(buf, info, declaringClass, publicOnly, reflectOnly, true);
     }
 
+    /**
+     * Complete constructor encoding.
+     *
+     * <pre>
+     * CompleteConstructorMetadata : ConstructorMetadata {
+     *     int          modifiers                    (including COMPLETE flag)
+     *     ClassIndex[] parameterTypes
+     *     StringIndex  signature
+     *     byte[]       annotationsEncoding
+     *     byte[]       parameterAnnotationsEncoding
+     *     byte[]       typeAnnotationsEncoding
+     *     byte[]       reflectParametersEncoding    ({@link #parseReflectParameters(Executable, byte[])})
+     *     ObjectIndex  accessor                     (null if registered as queried only)
+     * }
+     * </pre>
+     *
+     * Heap constructor encoding.
+     *
+     * <pre>
+     * HeapConstructorMetadata : ConstructorMetadata {
+     *     int         modifiers         (including IN_HEAP flag)
+     *     ObjectIndex constructorObject
+     * }
+     * </pre>
+     *
+     * Partial constructor encoding.
+     *
+     * <pre>
+     * PartialConstructorMetadata : ConstructorMetadata {
+     *     int          modifiers
+     *     ClassIndex[] parameterTypes
+     * }
+     * </pre>
+     */
     private static Constructor<?> decodeConstructor(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
         return (Constructor<?>) decodeExecutable(buf, info, declaringClass, publicOnly, reflectOnly, false);
     }
@@ -258,11 +368,12 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
+        assert !(complete && hiding);
         modifiers &= ~COMPLETE_FLAG_MASK;
 
         String name = isMethod ? decodeName(buf, info) : null;
         Class<?>[] parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
-        Class<?> returnType = isMethod && hiding ? decodeType(buf, info) : null;
+        Class<?> returnType = isMethod ? decodeType(buf, info) : null;
         if (!complete) {
             if (reflectOnly != hiding) {
                 /*
@@ -282,8 +393,6 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 return SubstrateUtil.cast(constructor, Executable.class);
             }
         }
-        assert !hiding;
-        returnType = isMethod ? decodeType(buf, info) : null;
         Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
         String signature = decodeName(buf, info);
         byte[] annotations = decodeByteArray(buf);
@@ -313,6 +422,20 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return SubstrateUtil.cast(executable, Executable.class);
     }
 
+    /**
+     * Record component encoding.
+     *
+     * <pre>
+     * RecordComponentMetadata {
+     *     StringIndex name
+     *     ClassIndex  type
+     *     StringIndex signature
+     *     ObjectIndex accessor
+     *     byte[]      annotations
+     *     byte[]      typeAnnotations
+     * }
+     * </pre>
+     */
     private static Target_java_lang_reflect_RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass) {
         String name = decodeName(buf, info);
         Class<?> type = decodeType(buf, info);
@@ -332,6 +455,17 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return recordComponent;
     }
 
+    /**
+     * Parameter encoding for executables.
+     *
+     * <pre>
+     * ParameterMetadata {
+     *     StringIndex name
+     *     int         modifiers
+     * }
+     * </pre>
+     */
+
     private static Parameter decodeReflectParameter(UnsafeArrayTypeReader buf, CodeInfo info, Executable executable, int i) {
         String name = decodeName(buf, info);
         int modifiers = buf.getUVInt();
@@ -341,6 +475,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return SubstrateUtil.cast(parameter, Parameter.class);
     }
 
+    /**
+     * Types are encoded as indices in the frame info source classes array.
+     */
     private static Class<?> decodeType(UnsafeArrayTypeReader buf, CodeInfo info) {
         int classIndex = buf.getSVInt();
         if (classIndex == NO_METHOD_METADATA) {
@@ -349,6 +486,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), classIndex);
     }
 
+    /**
+     * Names are encoded as indices in the frame info source method names array.
+     */
     private static String decodeName(UnsafeArrayTypeReader buf, CodeInfo info) {
         int nameIndex = buf.getSVInt();
         String name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), nameIndex);
@@ -356,6 +496,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return name == null ? null : name.intern();
     }
 
+    /**
+     * Objects (method accessors and reflection objects in the heap) are encoded as indices in the
+     * frame info object constants array.
+     */
     private static Object decodeObject(UnsafeArrayTypeReader buf, CodeInfo info) {
         int objectIndex = buf.getSVInt();
         if (objectIndex == NULL_OBJECT) {
@@ -364,6 +508,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), objectIndex);
     }
 
+    /**
+     * Arrays are encoded by their length followed by the elements encoded one after the other.
+     */
     @SuppressWarnings("unchecked")
     private static <T> T[] decodeArray(UnsafeArrayTypeReader buf, Class<T> elementType, Function<Integer, T> elementDecoder) {
         int length = buf.getUVInt();
@@ -380,7 +527,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     private static byte[] decodeByteArray(UnsafeArrayTypeReader buf) {
         int length = buf.getUVInt();
-        if (length == 0) {
+        if (length == NO_DATA) {
             return null;
         }
         byte[] result = new byte[length];
