@@ -20,6 +20,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   common: sulong_deps.common + {
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
+      MX_PYTHON_VERSION: "3",
     },
     setup+: [
       ['cd', base.suite_name],

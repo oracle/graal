@@ -300,6 +300,7 @@ mx.update_commands(_suite, {
 # Build configs
 def register_espresso_envs(suite):
     # pylint: disable=bad-whitespace
+    # pylint: disable=line-too-long
     tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
     if LLVM_JAVA_HOME:
         mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'                                           , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm-llvm')
