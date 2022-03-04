@@ -112,36 +112,34 @@ public final class StoredContinuationImpl {
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static boolean checkOffset(StoredContinuation f, int offset) {
-        boolean result = true;
-        assert result &= offset % 4 == 0;
+        assert offset % 4 == 0;
         if (offset >= 0) {
-            assert result &= offset < readSize(f);
+            assert offset < readSize(f);
         } else {
-            assert result &= offset >= VALID_OFFSET_START;
+            assert offset >= VALID_OFFSET_START;
         }
-        return result;
+        return true;
     }
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static boolean checkPayloadOffset(StoredContinuation f, int offset) {
-        boolean valid = true;
-        assert valid &= offset % 4 == 0;
-        assert valid &= offset >= 0;
-        assert valid &= offset < readSize(f);
-        return valid;
+        assert offset % 4 == 0;
+        assert offset >= 0;
+        assert offset < readSize(f);
+        return true;
     }
 
     // read/write functions
 
     @Uninterruptible(reason = "read StoredContinuation")
     private static int readPayloadInt(StoredContinuation f, int offset) {
-        checkOffset(f, offset);
+        assert checkOffset(f, offset);
         return payloadLocation(f).readInt(offset);
     }
 
     @Uninterruptible(reason = "write StoredContinuation")
     private static void writePayloadInt(StoredContinuation f, int offset, int value) {
-        checkPayloadOffset(f, offset);
+        assert checkPayloadOffset(f, offset);
         payloadLocation(f).writeInt(offset, value);
     }
 
