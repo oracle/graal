@@ -691,6 +691,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @Override
     public final EspressoContext getContext() {
+        if (!CompilerDirectives.isPartialEvaluationConstant(this)) {
+            CompilerAsserts.neverPartOfCompilation("Klass.getContext() does not return a constant context.");
+        }
         return context;
     }
 
