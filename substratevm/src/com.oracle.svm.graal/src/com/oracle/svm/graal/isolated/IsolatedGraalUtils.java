@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -65,6 +66,14 @@ public final class IsolatedGraalUtils {
         long addressSpaceSize = SubstrateOptions.CompilationIsolateAddressSpaceSize.getValue();
         if (addressSpaceSize > 0) {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
+        }
+        /*
+         * if protection keys are used, the compilation isolate needs to use the same protection
+         * domain as the client, otherwise it cannot access the client's code cache
+         */
+        if (MemoryProtectionKeyProvider.isAvailable()) {
+            int domain = MemoryProtectionKeyProvider.singleton().getProtectionDomain();
+            builder.setProtectionDomain(domain);
         }
         // Compilation isolates do the reference handling manually to avoid the extra thread.
         builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false));

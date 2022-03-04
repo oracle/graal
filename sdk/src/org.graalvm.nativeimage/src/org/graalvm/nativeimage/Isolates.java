@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,6 +94,7 @@ public final class Isolates {
             private String auxiliaryImagePath;
             private UnsignedWord auxiliaryImageReservedSpaceSize;
             private final List<String> arguments;
+            private int protectionDomain;
 
             /**
              * Creates a new builder with default values.
@@ -150,13 +151,24 @@ public final class Isolates {
             }
 
             /**
+             * Sets the protection domain for an isolate, to be used by an implementation of
+             * {@code MemoryProtectionKeyProvider}.
+             *
+             * @since 22.1
+             */
+            public Builder setProtectionDomain(int domain) {
+                this.protectionDomain = domain;
+                return this;
+            }
+
+            /**
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, arguments);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, arguments, protectionDomain);
             }
         }
 
@@ -175,12 +187,14 @@ public final class Isolates {
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
         private final List<String> arguments;
+        private int protectionDomain;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments, int protectionDomain) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
             this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
             this.arguments = arguments;
+            this.protectionDomain = protectionDomain;
         }
 
         /**
@@ -219,6 +233,15 @@ public final class Isolates {
          */
         public List<String> getArguments() {
             return Collections.unmodifiableList(arguments);
+        }
+
+        /**
+         * Returns the memory protection domain to be used for an isolate.
+         *
+         * @since 22.1
+         */
+        public int getProtectionDomain() {
+            return protectionDomain;
         }
     }
 
