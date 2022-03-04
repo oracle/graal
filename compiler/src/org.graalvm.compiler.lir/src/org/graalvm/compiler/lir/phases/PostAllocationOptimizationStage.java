@@ -26,7 +26,6 @@ package org.graalvm.compiler.lir.phases;
 
 import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ComputeCodeEmissionOrder;
 import org.graalvm.compiler.lir.ControlFlowOptimizer;
 import org.graalvm.compiler.lir.EdgeMoveOptimizer;
@@ -82,11 +81,8 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         if (Options.LIRProfileMethods.getValue(options)) {
             appendPhase(new MethodProfilingPhase());
         }
-        if (ComputeCodeEmissionOrder.Options.LateCodeEmissionOrder.getValue(options)) {
+        if (!ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(options)) {
             appendPhase(new ComputeCodeEmissionOrder());
-        } else {
-            GraalError.guarantee(ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(options),
-                            "no code emission order computation enabled, specify at least one of EarlyCodeEmissionOrder=true or LateCodeEmissionOrder=true");
         }
     }
 }

@@ -45,11 +45,8 @@ public final class ComputeCodeEmissionOrder extends PostAllocationOptimizationPh
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Enable early code emission order computation")
+        @Option(help = "Enable early code emission order computation instead of late code emission order computation")
         public static final OptionKey<Boolean> EarlyCodeEmissionOrder = new OptionKey<>(false);
-
-        @Option(help = "Enable late code emission order computation")
-        public static final OptionKey<Boolean> LateCodeEmissionOrder = new OptionKey<>(true);
         // @formatter:on
     }
 
