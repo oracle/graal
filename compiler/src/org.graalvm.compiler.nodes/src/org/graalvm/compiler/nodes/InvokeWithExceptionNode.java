@@ -28,9 +28,6 @@ import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static org.graalvm.compiler.nodes.Invoke.CYCLES_UNKNOWN_RATIONALE;
 import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
@@ -41,6 +38,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -249,20 +247,12 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
+    public NodeCycles estimatedNodeCycles() {
+        return InvokeNode.estimatedNodeCycles(callTarget);
+    }
+
+    @Override
     public NodeSize estimatedNodeSize() {
-        if (callTarget == null) {
-            return SIZE_UNKNOWN;
-        }
-        switch (callTarget.invokeKind()) {
-            case Interface:
-                return SIZE_64;
-            case Special:
-            case Static:
-                return SIZE_2;
-            case Virtual:
-                return SIZE_8;
-            default:
-                return SIZE_UNKNOWN;
-        }
+        return InvokeNode.estimatedNodeSize(callTarget);
     }
 }
