@@ -6,7 +6,9 @@ local sulong_deps = composable((import "../../common.json").sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
 
-local _graal_host_jvm_config(env) = if std.endsWith(env, '-ce') then 'graal-core' else 'graal-enterprise';
+local _base_env(env) = if std.endsWith(env, '-llvm') then std.substr(env, 0, std.length(env) - 5) else env;
+
+local _graal_host_jvm_config(env) = if std.endsWith(_base_env(env), '-ce') then 'graal-core' else 'graal-enterprise';
 
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
@@ -163,7 +165,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   + (if timelimit != null then {timelimit: timelimit} else {})
   + (if name != null then {name: name} else {}),
 
-  host_jvm(env, java_version): 'graalvm-espresso-' + env + _version_suffix(java_version),
+  host_jvm(env, java_version): 'graalvm-espresso-' + _base_env(env) + _version_suffix(java_version),
   host_jvm_config(env): if std.startsWith(env, 'jvm') then 'jvm' else 'native',
 
   espresso_benchmark(env, suite, host_jvm=null, host_jvm_config=null, guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
@@ -209,7 +211,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.scala_dacapo_fast,
       guest_jvm_config=guest_jvm_config,
       extra_args=extra_args,
-      timelimit=if std.endsWith(env, 'ce') then '7:00:00' else '5:00:00'
+      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:00:00' else '5:00:00'
     ),
 
   dacapo_benchmark(env, guest_jvm_config='single-tier', extra_args=[]):
@@ -218,7 +220,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.dacapo_stable(env),
       guest_jvm_config=guest_jvm_config,
       extra_args=extra_args,
-      timelimit=if std.endsWith(env, 'ce') then '7:00:00' else '5:00:00'
+      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:00:00' else '5:00:00'
     ),
 
 
