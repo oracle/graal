@@ -455,6 +455,13 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return templates.indexOfUnsafe;
             }
         });
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
+                        "indexOfLatin1Unsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {
+                return templates.indexOfLatin1Unsafe;
+            }
+        });
         r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {

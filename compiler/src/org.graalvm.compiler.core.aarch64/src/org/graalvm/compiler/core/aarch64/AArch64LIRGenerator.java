@@ -519,15 +519,23 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
+        append(new AArch64ArrayEqualsOp(this, kind, kind, array1BaseOffset, array2BaseOffset, result,
                         asAllocatable(array1), null, asAllocatable(array2), null, asAllocatable(length)));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, kind1, kind2, array1BaseOffset, array2BaseOffset, result,
+                        asAllocatable(array1), asAllocatable(offset1), asAllocatable(array2), asAllocatable(offset2), asAllocatable(length)));
         return result;
     }
 
     @Override
     public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
+        append(new AArch64ArrayEqualsOp(this, kind, kind, array1BaseOffset, array2BaseOffset, result,
                         asAllocatable(array1), asAllocatable(offset1), asAllocatable(array2), asAllocatable(offset2), asAllocatable(length)));
         return result;
     }
