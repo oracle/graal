@@ -24,7 +24,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     setup+: [
       ['cd', base.suite_name],
     ],
-    with_llvm: self.os == 'linux' && self.arch == 'amd64',
   },
 
   linux: self.common + sulong_deps.linux + graal_common.linux_amd64 + {
@@ -138,7 +137,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   // shared functions
-  _mx(env, args): ['mx', '--env', if self.with_llvm then env + '-llvm' else env] + args,
+  _mx(env, args): ['mx', '--env', env] + args,
 
   build_espresso(env, debug=false): {
     run+: [

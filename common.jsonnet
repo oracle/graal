@@ -88,10 +88,10 @@
   "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
-  "labsjdk-ce-11-llvm"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11-llvm"] }},
-  "labsjdk-ee-11-llvm"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11-llvm"] }},
-  "labsjdk-ce-17-llvm"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
-  "labsjdk-ee-17-llvm"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
+  "labsjdk-ce-11-llvm"::      jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-11-llvm"] }},
+  "labsjdk-ee-11-llvm"::      jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-11-llvm"] }},
+  "labsjdk-ce-17-llvm"::      jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
+  "labsjdk-ee-17-llvm"::      jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
 
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
