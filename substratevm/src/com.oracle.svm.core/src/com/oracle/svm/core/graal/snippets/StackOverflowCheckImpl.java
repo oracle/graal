@@ -161,7 +161,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void makeYellowZoneAvailable() {
-        setState(yellowZoneStateTL.get() + 1);
+        // Performance-sensitive: intentionally not calling setState(yellowZoneStateTL.get() + 1)
+        int oldState = yellowZoneStateTL.get();
+        int newState = oldState + 1;
+        yellowZoneStateTL.set(newState);
+        onYellowZoneMadeAvailable(oldState, newState);
     }
 
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
@@ -201,7 +205,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void protectYellowZone() {
-        setState(yellowZoneStateTL.get() - 1);
+        // Performance-sensitive: intentionally not calling setState(yellowZoneStateTL.get() - 1)
+        int oldState = yellowZoneStateTL.get();
+        int newState = oldState - 1;
+        yellowZoneStateTL.set(newState);
+        onYellowZoneProtected(oldState, newState);
     }
 
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
