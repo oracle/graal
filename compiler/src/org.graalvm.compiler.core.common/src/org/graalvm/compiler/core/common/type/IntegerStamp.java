@@ -326,7 +326,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public boolean isUnrestricted() {
-        return lowerBound == CodeUtil.minValue(getBits()) && upperBound == CodeUtil.maxValue(getBits()) && downMask == 0 && upMask == CodeUtil.mask(getBits());
+        return lowerBound == CodeUtil.minValue(getBits()) && upperBound == CodeUtil.maxValue(getBits()) && downMask == 0 && upMask == CodeUtil.mask(getBits()) && canBeZero;
     }
 
     public boolean contains(long value) {
@@ -485,6 +485,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         result = prime * result + (int) (upperBound ^ (upperBound >>> 32));
         result = prime * result + (int) (downMask ^ (downMask >>> 32));
         result = prime * result + (int) (upMask ^ (upMask >>> 32));
+        result = prime * result + Boolean.hashCode(canBeZero);
         return result;
     }
 
