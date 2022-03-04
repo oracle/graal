@@ -298,7 +298,15 @@ public abstract class PartialEvaluator {
         return callInlined;
     }
 
+    /**
+     * Periodically checks the size of the graph during PE and bails out if the graph gets too big
+     * (> MaximumGraalGraphSize).
+     */
     private static final class GraphSizeListener extends Graph.NodeEventListener {
+
+        /**
+         * Assume all nodes are of this size when deciding whether to compute the actual graph size.
+         */
         static final int NODE_SIZE_ESTIMATE = 8;
 
         private int lastComputedSize;
@@ -323,7 +331,11 @@ public abstract class PartialEvaluator {
             }
         }
 
-        public boolean shouldCheck(int currentNodeCount) {
+        /**
+         * Uses a heuristic which assumes all nodes are of size NODE_SIZE_ESTIMATE and decides
+         * whether it is worth calculating the actual size of the graph.
+         */
+        private boolean shouldCheck(int currentNodeCount) {
             // Don't bother checking small graphs, i.e. assume every node has a fixed size of
             // NODE_SIZE_ESTIMATE and if the graph size under this assumption is not over the limit
             // assume it's fine.
