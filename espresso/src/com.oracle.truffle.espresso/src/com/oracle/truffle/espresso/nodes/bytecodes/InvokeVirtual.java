@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -31,6 +32,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -168,17 +170,24 @@ public abstract class InvokeVirtual extends EspressoNode {
         @Specialization
         @ReportPolymorphism.Megamorphic
         Object callIndirect(Object[] args,
+                        @Cached BranchProfile error,
                         @Cached IndirectCallNode indirectCallNode) {
             StaticObject receiver = (StaticObject) args[0];
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
-            Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
+            Method.MethodVersion target = genericMethodLookup(EspressoContext.get(this), resolutionSeed, receiver.getKlass(), error);
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
 
     static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
+        CompilerAsserts.neverPartOfCompilation();
+        return genericMethodLookup(receiverKlass.getContext(), resolutionSeed, receiverKlass, BranchProfile.getUncached());
+    }
+
+    static Method.MethodVersion genericMethodLookup(EspressoContext context, Method resolutionSeed, Klass receiverKlass,
+                    BranchProfile error) {
         if (resolutionSeed.isRemovedByRedefition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
@@ -198,7 +207,8 @@ public abstract class InvokeVirtual extends EspressoNode {
             target = receiverKlass.vtableLookup(vtableIndex).getMethodVersion();
         }
         if (!target.getMethod().hasCode()) {
-            Meta meta = receiverKlass.getMeta();
+            error.enter();
+            Meta meta = context.getMeta();
             throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
         return target;
@@ -242,10 +252,11 @@ public abstract class InvokeVirtual extends EspressoNode {
             @ReportPolymorphism.Megamorphic
             @Specialization(replaces = "doCached")
             Object doGeneric(Method resolutionSeed, Object[] args,
+                            @Cached BranchProfile error,
                             @Cached IndirectCallNode indirectCallNode) {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
+                Method.MethodVersion target = genericMethodLookup(EspressoContext.get(this), resolutionSeed, receiver.getKlass(), error);
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }
