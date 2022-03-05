@@ -37,7 +37,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -114,8 +113,8 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
-import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
@@ -148,8 +147,6 @@ public final class JNIFunctions {
     /*
      * jint GetVersion(JNIEnv *env);
      */
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.NotPublished)
@@ -449,7 +446,7 @@ public final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         Object instance;
         try {
-            instance = UNSAFE.allocateInstance(clazz);
+            instance = Unsafe.getUnsafe().allocateInstance(clazz);
         } catch (InstantiationException e) {
             instance = null;
         }

@@ -27,7 +27,6 @@ package com.oracle.svm.core.classinitialization;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -39,7 +38,7 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -52,8 +51,6 @@ import sun.misc.Unsafe;
  */
 @InternalVMMethod
 public final class ClassInitializationInfo {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * Singleton for classes that are already initialized during image building and do not need
@@ -344,7 +341,7 @@ public final class ClassInitializationInfo {
             this.initState = state;
             this.initThread = null;
             /* Make sure previous stores are all done, notably the initState. */
-            UNSAFE.storeFence();
+            Unsafe.getUnsafe().storeFence();
 
             if (initCondition != null) {
                 initCondition.signalAll();

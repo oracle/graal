@@ -177,7 +177,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-import sun.misc.Unsafe;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.
@@ -449,48 +448,60 @@ public class StandardGraphBuilderPlugins {
         return kind == JavaKind.Object ? Object.class : kind.toJavaClass();
     }
 
-    private static String getKindName(boolean isSunMiscUnsafe, JavaKind kind) {
-        return (kind == JavaKind.Object && !isSunMiscUnsafe && !(JavaVersionUtil.JAVA_SPEC == 11)) ? "Reference" : kind.name();
+    private static String[] getKindNames(boolean isSunMiscUnsafe, JavaKind kind) {
+        if (kind == JavaKind.Object && !isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17) {
+            /*
+             * JDK 17 renamed all Object-type-related methods in jdk.internal.misc.Unsafe from
+             * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
+             * intrinsify both variants, to avoid problems with Uninterruptible methods in Native
+             * Image.
+             */
+            return new String[]{"Object", "Reference"};
+        } else {
+            return new String[]{kind.name()};
+        }
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
-        registerUnsafePlugins0(new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks);
+        Registration sunMiscUnsafe = new Registration(plugins, "sun.misc.Unsafe");
+        registerUnsafePlugins0(sunMiscUnsafe, true, explicitUnsafeNullChecks);
 
         JavaKind[] supportedJavaKinds = {JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        registerUnsafeGetAndOpPlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks, supportedJavaKinds, "Object");
-        registerUnsafeAtomicsPlugins(new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks, "compareAndSwap", new String[]{""},
+        registerUnsafeGetAndOpPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", new String[]{""},
                         supportedJavaKinds);
 
-        Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
+        Registration jdkInternalMiscUnsafe = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
 
-        registerUnsafePlugins0(r, false, explicitUnsafeNullChecks);
-        registerUnsafeUnalignedPlugins(r, explicitUnsafeNullChecks);
+        registerUnsafePlugins0(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks);
+        registerUnsafeUnalignedPlugins(jdkInternalMiscUnsafe, explicitUnsafeNullChecks);
 
         supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        registerUnsafeGetAndOpPlugins(r, explicitUnsafeNullChecks, supportedJavaKinds, JavaVersionUtil.JAVA_SPEC > 11 ? "Reference" : "Object");
-        registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "weakCompareAndSet", new String[]{"", "Acquire", "Release", "Plain"}, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{"Acquire", "Release"}, supportedJavaKinds);
+        registerUnsafeGetAndOpPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "weakCompareAndSet", new String[]{"", "Acquire", "Release", "Plain"}, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{"Acquire", "Release"}, supportedJavaKinds);
 
         supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
-        registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndSet", new String[]{""}, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{""}, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndSet", new String[]{""}, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{""}, supportedJavaKinds);
     }
 
     private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders,
                     JavaKind[] supportedJavaKinds) {
         for (JavaKind kind : supportedJavaKinds) {
             Class<?> javaClass = getJavaClass(kind);
-            String kindName = getKindName(isSunMiscUnsafe, kind);
-            boolean isLogic = true;
-            JavaKind returnKind = JavaKind.Boolean.getStackKind();
-            if (casPrefix.startsWith("compareAndExchange")) {
-                isLogic = false;
-                returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
-            }
-            for (String memoryOrderString : memoryOrders) {
-                MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
-                r.register(new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks,
-                                casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass));
+            for (String kindName : getKindNames(isSunMiscUnsafe, kind)) {
+                boolean isLogic = true;
+                JavaKind returnKind = JavaKind.Boolean.getStackKind();
+                if (casPrefix.startsWith("compareAndExchange")) {
+                    isLogic = false;
+                    returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
+                }
+                for (String memoryOrderString : memoryOrders) {
+                    MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
+                    r.register(new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks,
+                                    casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass));
+                }
             }
         }
     }
@@ -513,30 +524,31 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerUnsafeGetAndOpPlugins(Registration r, boolean explicitUnsafeNullChecks, JavaKind[] unsafeJavaKinds, String objectKindName) {
+    private static void registerUnsafeGetAndOpPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, JavaKind[] unsafeJavaKinds) {
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-            String kindName = kind == JavaKind.Object ? objectKindName : kind.name();
-            r.register(new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks, "getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
-                    // Emits a null-check for the otherwise unused receiver
-                    unsafe.get();
-                    createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc));
-                    return true;
-                }
-            });
-
-            if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
-                r.register(new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks, "getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass) {
+            for (String kindName : getKindNames(isSunMiscUnsafe, kind)) {
+                r.register(new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks, "getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass) {
                     @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
-                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc));
+                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc));
                         return true;
                     }
                 });
+
+                if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
+                    r.register(new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks, "getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass) {
+                        @Override
+                        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
+                            // Emits a null-check for the otherwise unused receiver
+                            unsafe.get();
+                            createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc));
+                            return true;
+                        }
+                    });
+                }
             }
         }
     }
@@ -545,35 +557,36 @@ public class StandardGraphBuilderPlugins {
         for (JavaKind kind : JavaKind.values()) {
             if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                 Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-                String kindName = getKindName(sunMiscUnsafe, kind);
-                String getName = "get" + kindName;
-                String putName = "put" + kindName;
-                // Object-based accesses
-                r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, getName, Receiver.class, Object.class, long.class));
-                r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, putName, Receiver.class, Object.class, long.class, javaClass));
-                // Volatile object-based accesses
-                r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, getName + "Volatile", Receiver.class, Object.class, long.class));
-                r.register(new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, putName + "Volatile", Receiver.class, Object.class, long.class, javaClass));
-                // Ordered object-based accesses
-                if (sunMiscUnsafe) {
-                    if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
+                for (String kindName : getKindNames(sunMiscUnsafe, kind)) {
+                    String getName = "get" + kindName;
+                    String putName = "put" + kindName;
+                    // Object-based accesses
+                    r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, getName, Receiver.class, Object.class, long.class));
+                    r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, putName, Receiver.class, Object.class, long.class, javaClass));
+                    // Volatile object-based accesses
+                    r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, getName + "Volatile", Receiver.class, Object.class, long.class));
+                    r.register(new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, putName + "Volatile", Receiver.class, Object.class, long.class, javaClass));
+                    // Ordered object-based accesses
+                    if (sunMiscUnsafe) {
+                        if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
+                            r.register(new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE, explicitUnsafeNullChecks,
+                                            "putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass));
+                        }
+                    } else {
                         r.register(new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE, explicitUnsafeNullChecks,
-                                        "putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass));
+                                        "put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass));
+                        r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.ACQUIRE, explicitUnsafeNullChecks,
+                                        "get" + kindName + "Acquire", Receiver.class, Object.class, long.class));
+                        r.register(new UnsafePutPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks,
+                                        "put" + kindName + "Opaque", Receiver.class, Object.class, long.class, javaClass));
+                        r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks,
+                                        "get" + kindName + "Opaque", Receiver.class, Object.class, long.class));
                     }
-                } else {
-                    r.register(new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE, explicitUnsafeNullChecks,
-                                    "put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass));
-                    r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.ACQUIRE, explicitUnsafeNullChecks,
-                                    "get" + kindName + "Acquire", Receiver.class, Object.class, long.class));
-                    r.register(new UnsafePutPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks,
-                                    "put" + kindName + "Opaque", Receiver.class, Object.class, long.class, javaClass));
-                    r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks,
-                                    "get" + kindName + "Opaque", Receiver.class, Object.class, long.class));
-                }
-                if (kind != JavaKind.Boolean && kind != JavaKind.Object) {
-                    // Raw accesses to memory addresses
-                    r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, getName, Receiver.class, long.class));
-                    r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, putName, Receiver.class, long.class, kind.toJavaClass()));
+                    if (kind != JavaKind.Boolean && kind != JavaKind.Object) {
+                        // Raw accesses to memory addresses
+                        r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, getName, Receiver.class, long.class));
+                        r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, putName, Receiver.class, long.class, kind.toJavaClass()));
+                    }
                 }
             }
         }

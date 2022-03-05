@@ -25,14 +25,12 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.hotspot.CompilationContext;
@@ -44,7 +42,6 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
@@ -61,22 +58,21 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.heap.Heap;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import sun.misc.Unsafe;
 
 /**
  * Entry points in libgraal corresponding to native methods in {@link LibGraalScope} and
  * {@code CompileTheWorld}.
  */
 public final class LibGraalEntryPoints {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider#execute
@@ -126,7 +122,7 @@ public final class LibGraalEntryPoints {
         CachedOptions options = cachedOptions.get();
         if (options == null || options.hash != hash) {
             byte[] buffer = new byte[size];
-            UNSAFE.copyMemory(null, address, buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
+            Unsafe.getUnsafe().copyMemory(null, address, buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
             int actualHash = Arrays.hashCode(buffer);
             if (actualHash != hash) {
                 throw new IllegalArgumentException(actualHash + " != " + hash);
@@ -248,8 +244,8 @@ public final class LibGraalEntryPoints {
             t.printStackTrace(new PrintStream(baos));
             byte[] stackTrace = baos.toByteArray();
             int length = Math.min(stackTraceCapacity - Integer.BYTES, stackTrace.length);
-            UNSAFE.putInt(stackTraceAddress, length);
-            UNSAFE.copyMemory(stackTrace, ARRAY_BYTE_BASE_OFFSET, null, stackTraceAddress + Integer.BYTES, length);
+            Unsafe.getUnsafe().putInt(stackTraceAddress, length);
+            Unsafe.getUnsafe().copyMemory(stackTrace, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, stackTraceAddress + Integer.BYTES, length);
             return 0L;
         } finally {
             /*

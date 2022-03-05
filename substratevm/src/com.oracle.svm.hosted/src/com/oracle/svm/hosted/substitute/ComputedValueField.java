@@ -43,7 +43,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -63,6 +62,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -70,7 +70,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * Wraps a field whose value is recomputed when added to an image.
@@ -80,7 +79,6 @@ import sun.misc.Unsafe;
  */
 public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
@@ -422,7 +420,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         // search the declared fields for a field with a matching offset
         for (Field f : tclass.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = UNSAFE.objectFieldOffset(f);
+                long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = (HostedField) metaAccess.lookupJavaField(f);
                     guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));

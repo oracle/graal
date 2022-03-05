@@ -27,7 +27,6 @@ package com.oracle.svm.core.thread;
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.IsolateThread;
@@ -40,7 +39,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.util.ReflectionUtil;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 public final class LoomSupport {
     public static final int YIELD_SUCCESS = 0;
@@ -111,7 +110,6 @@ public final class LoomSupport {
     }
 
     public static class CompatibilityUtil {
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final Field FIELDHOLDER_STATUS_FIELD = (ImageInfo.inImageCode() && isEnabled()) ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus") : null;
         private static final Field THREAD_STATUS_FIELD = (ImageInfo.inImageCode() && !isEnabled()) ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus") : null;
 
@@ -133,9 +131,9 @@ public final class LoomSupport {
 
         static boolean compareAndSetThreadStatus(Target_java_lang_Thread tjlt, int expectedStatus, int newStatus) {
             if (isEnabled()) {
-                return UNSAFE.compareAndSwapInt(tjlt.holder, UNSAFE.objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
+                return Unsafe.getUnsafe().compareAndSetInt(tjlt.holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
             } else {
-                return UNSAFE.compareAndSwapInt(tjlt, UNSAFE.objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
+                return Unsafe.getUnsafe().compareAndSetInt(tjlt, Unsafe.getUnsafe().objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
             }
         }
 
