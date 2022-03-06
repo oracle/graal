@@ -131,7 +131,7 @@ public final class BootClassRegistry extends ClassRegistry {
         return StaticObject.NULL;
     }
 
-    private ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
+    private static ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
         if (Types.isPrimitive(type)) {
             return null;
         }
