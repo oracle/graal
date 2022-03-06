@@ -40,18 +40,22 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
 /**
  * An implementation of the Ruby regex flavor.
  *
  * <p>
- * This implementation supports translating all Ruby regular expressions to ECMAScript regular
- * expressions with the exception of the following features:
+ * This implementation supports all Ruby regular expressions with the exception of the following
+ * features:
  * </p>
  * <ul>
  * <li>case-insensitive backreferences: In Ruby, case-insensitive matching has to be implemented by
@@ -132,7 +136,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * 
  * This is solved in {@link TRegexBacktrackingNFAExecutorNode}, by the introduction of the
  * {@code backrefWithNullTargetSucceeds} field, which controls how backreferences to unmatched
- * capture groups are resolved. Also, in {@link RegexParser}, an optimization that drops forward
+ * capture groups are resolved. Also, in {@link JSRegexParser}, an optimization that drops forward
  * references and nested references from ECMAScript regular expressions is turned off for Ruby
  * regular expressions.</li>
  *
@@ -203,11 +207,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * we need fine-grained information about capture group updates and so we include this information
  * in the transition guards by {@link QuantifierGuard#createUpdateCG}.
  *
- * In unrolled loops, we disable empty checks altogether (in {@link RegexParser}, in the calls to
+ * In unrolled loops, we disable empty checks altogether (in {@link JSRegexParser}, in the calls to
  * {@code RegexParser#createOptional}). This is correct since Ruby's empty checks terminate a loop
  * only when it reaches a fixed point w.r.t. to any observable state. Finally, also in
- * {@link RegexParser}. we also disable an optimization that drops zero-width groups and lookaround
- * assertions with optional quantifiers.</li>
+ * {@link JSRegexParser}. we also disable an optimization that drops zero-width groups and
+ * lookaround assertions with optional quantifiers.</li>
  *
  * <li>failing the empty check should lead to matching the sequel of the quantified expression
  * instead of backtracking: In ECMAScript, when a loop fails the empty check (an iteration matches
@@ -247,8 +251,12 @@ public final class RubyFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexFlavorProcessor forRegex(RegexSource source) {
-        return new RubyFlavorProcessor(source);
+    public RegexValidator createValidator(RegexSource source) {
+        return RubyRegexParser.createValidator(source);
     }
 
+    @Override
+    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return RubyRegexParser.createParser(language, source, compilationBuffer);
+    }
 }

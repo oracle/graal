@@ -139,6 +139,10 @@ public abstract class RegexTestBase {
         }
     }
 
+    void testUnsupported(String pattern, String flags) {
+        Assert.assertTrue(compileRegex(pattern, flags).isNull());
+    }
+
     private static Charset encodingToCharSet(Encodings.Encoding encoding) {
         switch (encoding.getName()) {
             case "UTF-8":

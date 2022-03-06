@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -343,13 +344,32 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return LLVMNativeConvertNode.createFromNative(type.getReturnType());
     }
 
-    @Specialization(guards = {"foreigns.isForeign(receiver)"})
+    @Specialization(guards = {"foreigns.isForeign(receiver)", "interopLibrary.isExecutable(foreignFunction)"})
     @GenerateAOT.Exclude
-    protected Object doForeign(Object receiver, Object[] arguments,
-                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+    protected Object doForeignExecutable(Object receiver, Object[] arguments,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") NativeTypeLibrary natives,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
+                    @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
-        return lookupDispatchForeignNode.execute(foreigns.asForeign(receiver), natives.getNativeType(receiver), arguments);
+        return lookupDispatchForeignNode.execute(foreignFunction, natives.getNativeType(receiver), arguments);
+    }
+
+    @Specialization(guards = {"foreigns.isForeign(receiver)", "!interopLibrary.isExecutable(foreignFunction)",
+                    "interopLibrary.isPointer(foreignFunction)"})
+    @GenerateAOT.Exclude
+    protected Object doForeignPointer(@SuppressWarnings("unused") Object receiver, Object[] arguments,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
+                    @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
+                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode,
+                    @Cached BranchProfile exception) {
+        try {
+            return dispatchNode.executeDispatch(LLVMNativePointer.create(interopLibrary.asPointer(foreignFunction)), arguments);
+        } catch (UnsupportedMessageException | IllegalStateException e) {
+            exception.enter();
+            throw new LLVMNativePointerException(dispatchNode, "Invalid native function pointer", e);
+        }
     }
 
     @Specialization(guards = "haveNativeCtxExt()")
@@ -410,6 +430,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             try {
                 Object[] args = getForeignArguments(dataEscapeNodes, arguments, functionType, exception);
                 Object ret;
+
                 ret = crossLanguageCall.execute(function, args);
                 if (!isVoidReturn && functionType != null) {
                     LLVMInteropType retType = functionType.getReturnType();

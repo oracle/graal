@@ -101,6 +101,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Compile
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface com.oracle.truffle.api.CompilerOptions
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public abstract boolean supportsOption(java.lang.String)
 meth public abstract void setOption(java.lang.String,java.lang.Object)
 
@@ -572,12 +573,12 @@ meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String implementationName()
+meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
-meth public abstract java.lang.String name()
 
 CLSS public final com.oracle.truffle.api.TruffleLogger
 meth public <%0 extends java.lang.Throwable> {%%0} throwing(java.lang.String,java.lang.String,{%%0})
@@ -632,16 +633,14 @@ fld public final static java.lang.String TraceRewritesFilterClass
 supr java.lang.Object
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntime
+meth public <%0 extends java.lang.Object> {%%0} iterateFrames(com.oracle.truffle.api.frame.FrameInstanceVisitor<{%%0}>)
+meth public <%0 extends java.lang.Object> {%%0} iterateFrames(com.oracle.truffle.api.frame.FrameInstanceVisitor<{%%0}>,int)
 meth public abstract <%0 extends java.lang.Object> {%%0} getCapability(java.lang.Class<{%%0}>)
-meth public abstract <%0 extends java.lang.Object> {%%0} iterateFrames(com.oracle.truffle.api.frame.FrameInstanceVisitor<{%%0}>)
 meth public abstract boolean isProfilingEnabled()
 meth public abstract com.oracle.truffle.api.Assumption createAssumption()
 meth public abstract com.oracle.truffle.api.Assumption createAssumption(java.lang.String)
-meth public abstract com.oracle.truffle.api.CompilerOptions createCompilerOptions()
 meth public abstract com.oracle.truffle.api.RootCallTarget createCallTarget(com.oracle.truffle.api.nodes.RootNode)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public abstract com.oracle.truffle.api.frame.FrameInstance getCallerFrame()
-meth public abstract com.oracle.truffle.api.frame.FrameInstance getCurrentFrame()
 meth public abstract com.oracle.truffle.api.frame.MaterializedFrame createMaterializedFrame(java.lang.Object[])
 meth public abstract com.oracle.truffle.api.frame.MaterializedFrame createMaterializedFrame(java.lang.Object[],com.oracle.truffle.api.frame.FrameDescriptor)
 meth public abstract com.oracle.truffle.api.frame.VirtualFrame createVirtualFrame(java.lang.Object[],com.oracle.truffle.api.frame.FrameDescriptor)
@@ -650,6 +649,12 @@ meth public abstract com.oracle.truffle.api.nodes.IndirectCallNode createIndirec
 meth public abstract com.oracle.truffle.api.nodes.LoopNode createLoopNode(com.oracle.truffle.api.nodes.RepeatingNode)
 meth public abstract java.lang.String getName()
 meth public abstract void notifyTransferToInterpreter()
+meth public com.oracle.truffle.api.CompilerOptions createCompilerOptions()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public com.oracle.truffle.api.frame.FrameInstance getCallerFrame()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public com.oracle.truffle.api.frame.FrameInstance getCurrentFrame()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess
 meth public abstract com.oracle.truffle.api.TruffleRuntime getRuntime()
@@ -660,10 +665,12 @@ cons protected init(com.oracle.truffle.api.impl.Accessor$EngineSupport)
 innr public abstract interface static CompiledInterruptible
 innr public abstract interface static Interrupter
 innr public abstract interface static Interruptible
-meth public abstract <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.lang.Runnable)
+meth public abstract <%0 extends java.lang.Object> void setBlockedWithException(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.util.function.Consumer<java.lang.Throwable>)
 meth public abstract boolean hasPendingSideEffectingActions()
 meth public abstract boolean setAllowActions(boolean)
 meth public abstract boolean setAllowSideEffects(boolean)
+meth public final <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.lang.Runnable)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static <%0 extends java.lang.Object> void setBlockedThreadInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0})
 meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()
 meth public static void poll(com.oracle.truffle.api.nodes.Node)
@@ -1336,6 +1343,7 @@ meth public boolean isCaptureFramesForTrace()
 meth public boolean isCloningAllowed()
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.CompilerOptions getCompilerOptions()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public final com.oracle.truffle.api.RootCallTarget getCallTarget()
 meth public final com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()

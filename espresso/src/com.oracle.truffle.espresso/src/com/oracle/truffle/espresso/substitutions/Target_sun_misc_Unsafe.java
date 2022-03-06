@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
@@ -1261,8 +1262,10 @@ public final class Target_sun_misc_Unsafe {
      */
     @Throws(InstantiationException.class)
     @Substitution(hasReceiver = true)
-    public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz) {
-        return InterpreterToVM.newObject(clazz.getMirrorKlass(), false);
+    @TruffleBoundary
+    public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
+                    @Inject Meta meta) {
+        return InterpreterToVM.newObject(clazz.getMirrorKlass(meta), false);
     }
 
     /**
@@ -1343,7 +1346,7 @@ public final class Target_sun_misc_Unsafe {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
-        InterpreterToVM.monitorUnsafeEnter(object.getLock());
+        InterpreterToVM.monitorUnsafeEnter(object.getLock(meta.getContext()));
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
@@ -1353,7 +1356,7 @@ public final class Target_sun_misc_Unsafe {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
-        InterpreterToVM.monitorUnsafeExit(object.getLock());
+        InterpreterToVM.monitorUnsafeExit(object.getLock(meta.getContext()));
     }
 
     @Substitution(hasReceiver = true, isTrivial = true)
@@ -1371,6 +1374,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true)
+    @SuppressWarnings("try")
     public static void park(@JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
                     @Inject Meta meta) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
@@ -1385,19 +1389,18 @@ public final class Target_sun_misc_Unsafe {
         }
 
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        meta.getThreadAccess().fromRunnable(thread, time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
-        Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
-        StaticObject guestBlocker = parkBlocker.getObject(thread);
-        // LockSupport.park(/* guest blocker */);
-        if (!StaticObject.isNull(guestBlocker)) {
-            unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
+        State state = time > 0 ? State.TIMED_WAITING : State.WAITING;
+        try (Transition transition = Transition.transition(context, state)) {
+            Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
+            StaticObject guestBlocker = parkBlocker.getObject(thread);
+            // LockSupport.park(/* guest blocker */);
+            if (!StaticObject.isNull(guestBlocker)) {
+                unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
+            }
+            parkBoundary(self, isAbsolute, time, meta);
         }
-
-        parkBoundary(self, isAbsolute, time, meta);
-
-        meta.getThreadAccess().toRunnable(thread);
         unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
@@ -1508,7 +1511,7 @@ public final class Target_sun_misc_Unsafe {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
-        return InterpreterToVM.monitorTryLock(object.getLock());
+        return InterpreterToVM.monitorTryLock(object.getLock(meta.getContext()));
     }
 
     /**

@@ -37,6 +37,7 @@ public class SubstitutionHelper {
     final boolean hasMetaInjection;
     final boolean hasProfileInjection;
     final boolean hasContextInjection;
+    final boolean skipSafepoint;
 
     // Target of the substitution, cab be a public static method or a node.
     private final Element target;
@@ -61,6 +62,7 @@ public class SubstitutionHelper {
         this.hasMetaInjection = processor.hasMetaInjection(targetMethod);
         this.hasProfileInjection = processor.hasProfileInjection(targetMethod);
         this.hasContextInjection = processor.hasContextInjection(targetMethod);
+        this.skipSafepoint = processor.skipsSafepoint(target);
     }
 
     public boolean isNodeTarget() {

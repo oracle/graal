@@ -712,7 +712,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     if not isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
                         _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
-                if not stage1 and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                if not stage1 and isinstance(_library_config, mx_sdk.LanguageLibraryConfig) and _library_config.launchers:
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(PolyglotConfig.project_name(_library_config)), _component)
                     # add native launchers for language libraries
                     for _executable in _library_config.launchers:
@@ -1276,10 +1276,9 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += ['--language:' + image_config.language, '--tool:all']
 
             if isinstance(image_config, mx_sdk.LanguageLibraryConfig):
-                build_args += [
-                    '-Dorg.graalvm.launcher.class=' + image_config.main_class,
-                    '-H:+EnableSignalAPI',
-                ]
+                build_args += ['-H:+EnableSignalAPI']
+                if image_config.main_class:
+                    build_args += ['-Dorg.graalvm.launcher.class=' + image_config.main_class]
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
@@ -1290,6 +1289,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
                 ]
 
+            if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
+                build_args += [
+                    '--install-exit-handlers',
+                    '-H:+AllowVMInspection',
+                ]
+
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):
                 if image_config.is_sdk_launcher:
                     launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
@@ -1297,10 +1302,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     if isinstance(image_config, mx_sdk.LauncherConfig):
                         build_args += ['-H:-ParseRuntimeOptions']
 
-                build_args += [
-                    '--install-exit-handlers',
-                    '-H:+AllowVMInspection'
-                ]
                 if has_component('svmee', stage1=True):
                     build_args += [
                         '-R:-UsePerfData'
@@ -2345,7 +2346,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
-            extra_installable_qualifiers += [component.short_name for component in other_involved_components]
+            extra_installable_qualifiers += [c.short_name for c in other_involved_components]
         if extra_installable_qualifiers:
             name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
@@ -2388,6 +2389,10 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svmee')
+        for _component in involved_components:
+            other_comp_names += _component.extra_installable_qualifiers
+
+        other_comp_names = sorted(other_comp_names)
 
         self.main_comp_dir_name = component.dir_name
 
@@ -2770,7 +2775,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     assert with_svm
                     register_project(GraalVmNativeProperties(component, library_config))
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
-                if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
                     launcher_project = NativeLibraryLauncherProject(component, library_config)
                     register_project(launcher_project)
                     polyglot_config_project = PolyglotConfig(component, library_config)

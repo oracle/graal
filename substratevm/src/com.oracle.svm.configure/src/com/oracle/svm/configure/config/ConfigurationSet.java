@@ -26,10 +26,13 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -51,6 +54,7 @@ public class ConfigurationSet {
     private final Set<URI> resourceConfigPaths = new LinkedHashSet<>();
     private final Set<URI> serializationConfigPaths = new LinkedHashSet<>();
     private final Set<URI> predefinedClassesConfigPaths = new LinkedHashSet<>();
+    private Set<URI> lockFilePaths;
 
     public void addDirectory(Path path) {
         jniConfigPaths.add(path.resolve(ConfigurationFile.JNI.getFileName()).toUri());
@@ -59,20 +63,43 @@ public class ConfigurationSet {
         resourceConfigPaths.add(path.resolve(ConfigurationFile.RESOURCES.getFileName()).toUri());
         serializationConfigPaths.add(path.resolve(ConfigurationFile.SERIALIZATION.getFileName()).toUri());
         predefinedClassesConfigPaths.add(path.resolve(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()).toUri());
+        detectAgentLock(path.resolve(ConfigurationFile.LOCK_FILE_NAME), Files::exists, Path::toUri);
+    }
+
+    private <T> void detectAgentLock(T location, Predicate<T> exists, Function<T, URI> toUri) {
+        if (exists.test(location)) {
+            if (lockFilePaths == null) {
+                lockFilePaths = new LinkedHashSet<>();
+            }
+            lockFilePaths.add(toUri.apply(location));
+        }
     }
 
     public void addDirectory(Function<String, URI> fileResolver) {
-        jniConfigPaths.add(fileResolver.apply(ConfigurationFile.JNI.getFileName()));
-        reflectConfigPaths.add(fileResolver.apply(ConfigurationFile.REFLECTION.getFileName()));
-        proxyConfigPaths.add(fileResolver.apply(ConfigurationFile.DYNAMIC_PROXY.getFileName()));
-        resourceConfigPaths.add(fileResolver.apply(ConfigurationFile.RESOURCES.getFileName()));
-        serializationConfigPaths.add(fileResolver.apply(ConfigurationFile.SERIALIZATION.getFileName()));
-        predefinedClassesConfigPaths.add(fileResolver.apply(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()));
+        add(jniConfigPaths, fileResolver, ConfigurationFile.JNI);
+        add(reflectConfigPaths, fileResolver, ConfigurationFile.REFLECTION);
+        add(proxyConfigPaths, fileResolver, ConfigurationFile.DYNAMIC_PROXY);
+        add(resourceConfigPaths, fileResolver, ConfigurationFile.RESOURCES);
+        add(serializationConfigPaths, fileResolver, ConfigurationFile.SERIALIZATION);
+        add(predefinedClassesConfigPaths, fileResolver, ConfigurationFile.PREDEFINED_CLASSES_NAME);
+        detectAgentLock(fileResolver.apply(ConfigurationFile.LOCK_FILE_NAME), Objects::nonNull, Function.identity());
+    }
+
+    private static void add(Set<URI> set, Function<String, URI> resolver, ConfigurationFile kind) {
+        URI location = resolver.apply(kind.getFileName());
+        if (location == null) {
+            throw new RuntimeException("Configuration file " + location + " does not exist.");
+        }
+        set.add(location);
     }
 
     public boolean isEmpty() {
         return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
                         resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() && predefinedClassesConfigPaths.isEmpty();
+    }
+
+    public Set<URI> getDetectedAgentLockPaths() {
+        return (lockFilePaths != null) ? lockFilePaths : Collections.emptySet();
     }
 
     public Set<URI> getJniConfigPaths() {

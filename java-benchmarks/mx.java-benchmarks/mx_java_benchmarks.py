@@ -456,9 +456,9 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_units(self):
         return 'ms'
 
-    def skip_build_assertions(self, benchmark):
-        # This method overrides NativeImageMixin.skip_build_assertions
-        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+    def build_assertions(self, benchmark, is_gate):
+        # This method overrides NativeImageMixin.build_assertions
+        return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']

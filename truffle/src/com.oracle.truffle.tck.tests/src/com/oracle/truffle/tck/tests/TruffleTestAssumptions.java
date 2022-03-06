@@ -52,4 +52,8 @@ public class TruffleTestAssumptions {
     public static boolean isWeakEncapsulation() {
         return !spawnIsolate;
     }
+
+    public static boolean isStrongEncapsulation() {
+        return spawnIsolate;
+    }
 }

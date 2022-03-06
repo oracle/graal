@@ -36,7 +36,7 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
 
     public abstract Method.MethodVersion getMethodVersion();
 
-    public boolean shouldSplit() {
+    public boolean canSplit() {
         return false;
     }
 

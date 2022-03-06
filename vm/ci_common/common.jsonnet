@@ -6,7 +6,7 @@ local devkits = common_json.devkits;
 
 {
   verify_name(build): build + {
-    expected_prefix:: std.join('-', build.targets) + '-vm',
+    expected_prefix:: std.join('-', [target for target in build.targets if target != "mach5"]) + '-vm',
     expected_suffix:: build.os + '-' + build.arch,
     assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
     assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
@@ -356,8 +356,8 @@ local devkits = common_json.devkits;
   },
 
   mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--with-debuginfo', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
-  mx_vm_common: ['mx', '--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
-  mx_vm_installables: ['mx', '--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
+  mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
+  mx_vm_installables: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
   svm_common_linux_amd64:        { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_amd64,
   svm_common_linux_aarch64:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_aarch64,
@@ -460,6 +460,8 @@ local devkits = common_json.devkits;
     ] + vm.collect_profiles + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_base_build + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -481,6 +483,8 @@ local devkits = common_json.devkits;
     ] + vm.collect_profiles + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_base_build + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -494,6 +498,8 @@ local devkits = common_json.devkits;
     run: vm.collect_profiles + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_base_build + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -522,6 +528,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
       $.mx_vm_common + ['graalvm-show'],
       $.mx_vm_common + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_base_build + [
       $.mx_vm_common + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + $.maven_deploy_sdk_base,
@@ -550,6 +558,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-ruby"],
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_base_build + [
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],

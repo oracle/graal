@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,21 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -56,6 +41,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -78,8 +64,22 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-
 import org.graalvm.collections.EconomicMap;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public final class LLVMContext {
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -174,6 +174,7 @@ public final class LLVMContext {
     @CompilationFinal Object freeGlobalsBlockFunction;
     @CompilationFinal Object allocateGlobalsBlockFunction;
     @CompilationFinal Object protectGlobalsBlockFunction;
+    @CompilationFinal SulongEngineOption.OSRMode osrMode = null;
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
@@ -483,10 +484,48 @@ public final class LLVMContext {
         return REFERENCE.get(node);
     }
 
-    void finalizeContext(LLVMFunction sulongDisposeContext) {
-        // join all created pthread - threads
-        pThreadContext.joinAllThreads();
+    /**
+     * The clean-up routine consists of guest and internal code. The clean-up guest code is invoked
+     * from the {@code exit(int)} function (see
+     * {@code projects/com.oracle.truffle.llvm.libraries.bitcode/src/exit.c}) starting with the
+     * execution of atexit handlers followed by module destructors (see
+     * {@code __sulong_destructor_functions intrinsic} and
+     * {@link com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMRunDestructorFunctions}).
+     * The guest clean-up code can be executed either explicitly by calling {@code exit(int)} or
+     * implicitly when exiting {@link LLVMContext} (via {@code sulongDisposeContext} pointing to
+     * {@code __sulong_dispose_context} delegating in turn to {@code exit(0)}).
+     *
+     * The {@link LLVMContext#cleanupNecessary} flag is set to {@code false} by
+     * {@link com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode} in the
+     * {@link LLVMExitException} catch block indicating the soft exit and the fact the atexit
+     * handlers and destructors (all guest code) have already been executed by the explicit call of
+     * {@code exit(int)}.
+     *
+     * On the other hand the internal clean-up code is responsible only for freeing non-pointer
+     * globals.
+     *
+     * The splitting the clean-up code into the guest and internal ones is important in regard to
+     * the context exit and cancelling notifications and the constraints imposed on the code that
+     * can or cannot be executed as part of a particular notification.
+     *
+     * As far as the hard and natural exit is concerned, both guest and internal clean-ups are
+     * executed from within the {@link LLVMContext#exitContext} notification. On the other hand, on
+     * cancelling only the internal clean-up code is executed from within
+     * {@link LLVMContext#finalizeContext} (within a safepoint critical section) as no guest code is
+     * allowed to be executed.
+     */
+    private void cleanUpNoGuestCode() {
+        if (language.getFreeGlobalBlocks() != null) {
+            // free the space allocated for non-pointer globals
+            language.getFreeGlobalBlocks().call();
+        }
+    }
 
+    /**
+     * This method is called from {@link LLVMContext#exitContext} only, where the guest code still
+     * can be still executed.
+     */
+    private void cleanUpGuestCode(LLVMFunction sulongDisposeContext) {
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -509,12 +548,23 @@ public final class LLVMContext {
                 // nothing needs to be done as the behavior is not defined
             }
         }
+    }
 
-        if (language.getFreeGlobalBlocks() != null) {
-            // free the space allocated for non-pointer globals
-            language.getFreeGlobalBlocks().call();
+    void exitContext(LLVMFunction sulongDisposeContext) {
+        cleanUpGuestCode(sulongDisposeContext);
+    }
+
+    void finalizeContext() {
+        // join all created pthread - threads
+        pThreadContext.joinAllThreads();
+
+        TruffleSafepoint sp = TruffleSafepoint.getCurrent();
+        boolean prev = sp.setAllowActions(false);
+        try {
+            cleanUpNoGuestCode();
+        } finally {
+            sp.setAllowActions(prev);
         }
-
     }
 
     public Object getFreeReadOnlyGlobalsBlockFunction() {
@@ -524,6 +574,14 @@ public final class LLVMContext {
             freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
         }
         return freeGlobalsBlockFunction;
+    }
+
+    public SulongEngineOption.OSRMode getOSRMode() {
+        if (osrMode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.osrMode = env.getOptions().get(SulongEngineOption.OSR_MODE);
+        }
+        return osrMode;
     }
 
     public Object getProtectReadOnlyGlobalsBlockFunction() {

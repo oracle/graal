@@ -121,15 +121,15 @@ final class TStringUnsafe {
     private static String allocateJavaString() {
         try {
             return (String) UNSAFE.allocateInstance(String.class);
-        } catch (Throwable e) {
-            throw CompilerDirectives.shouldNotReachHere("Could not allocate java string");
+        } catch (InstantiationException e) {
+            throw CompilerDirectives.shouldNotReachHere("unsafe string allocation failed", e);
         }
     }
 
     @TruffleBoundary
     static String createJavaString(byte[] bytes, int stride) {
         if (stride < 0 || stride > 1) {
-            throw CompilerDirectives.shouldNotReachHere("stride must be 0 or 1!");
+            throw new IllegalArgumentException("stride must be 0 or 1!");
         }
         String ret = allocateJavaString();
         UNSAFE.putInt(ret, javaStringHashFieldOffset, 0);

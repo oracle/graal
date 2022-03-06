@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -43,7 +42,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -85,9 +83,13 @@ public final class Resources {
         }
     }
 
+    private static String getResourceWithoutTrailingSlash(String name) {
+        return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
+    }
+
     private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data) {
         Resources support = singleton();
-        Pair<String, String> key = Pair.create(moduleName, resourceName);
+        Pair<String, String> key = Pair.create(moduleName, getResourceWithoutTrailingSlash(resourceName));
         ResourceStorageEntry entry = support.resources.get(key);
         if (entry == null) {
             entry = new ResourceStorageEntry(isDirectory);
@@ -121,21 +123,17 @@ public final class Resources {
         addEntry(moduleName, resourceDirName, true, content.getBytes());
     }
 
-    /**
-     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
-     * convert <code>resourceName</code> to canonical variant.
-     */
-    public static String toCanonicalForm(String resourceName) {
-        NativeImageResourcePath path = new NativeImageResourcePath(null, resourceName.getBytes(StandardCharsets.UTF_8), true);
-        return new String(NativeImageResourcePath.getResolved(path));
-    }
-
     public static ResourceStorageEntry get(String name) {
-        return singleton().resources.get(Pair.createRight(name));
+        return get(null, name);
     }
 
     public static ResourceStorageEntry get(String moduleName, String resourceName) {
-        return singleton().resources.get(Pair.create(moduleName, resourceName));
+        ResourceStorageEntry resourceStorageEntry = singleton().resources.get(Pair.create(moduleName, getResourceWithoutTrailingSlash(resourceName)));
+        if (resourceStorageEntry != null && (resourceStorageEntry.isDirectory() || !resourceName.endsWith("/"))) {
+            return resourceStorageEntry;
+        } else {
+            return null;
+        }
     }
 
     private static URL createURL(String moduleName, String resourceName, int index) {
@@ -156,7 +154,7 @@ public final class Resources {
             return null;
         }
 
-        Enumeration<URL> urls = createURLs(moduleName, toCanonicalForm(resourceName));
+        Enumeration<URL> urls = createURLs(moduleName, resourceName);
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
@@ -170,7 +168,7 @@ public final class Resources {
             return null;
         }
 
-        ResourceStorageEntry entry = Resources.get(moduleName, toCanonicalForm(resourceName));
+        ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
         if (entry == null) {
             return null;
         }
@@ -186,19 +184,18 @@ public final class Resources {
         if (resourceName == null) {
             return null;
         }
-        String canonicalResourceName = toCanonicalForm(resourceName);
 
         List<URL> resourcesURLs = new ArrayList<>();
 
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName == null) {
             for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                ResourceStorageEntry entry = Resources.get(module.getName(), canonicalResourceName);
-                addURLEntries(resourcesURLs, entry, module.getName(), canonicalResourceName);
+                ResourceStorageEntry entry = Resources.get(module.getName(), resourceName);
+                addURLEntries(resourcesURLs, entry, module.getName(), resourceName);
             }
         }
-        ResourceStorageEntry explicitEntry = Resources.get(moduleName, canonicalResourceName);
-        addURLEntries(resourcesURLs, explicitEntry, moduleName, canonicalResourceName);
+        ResourceStorageEntry explicitEntry = Resources.get(moduleName, resourceName);
+        addURLEntries(resourcesURLs, explicitEntry, moduleName, resourceName);
 
         if (resourcesURLs.isEmpty()) {
             return Collections.emptyEnumeration();
@@ -206,13 +203,13 @@ public final class Resources {
         return Collections.enumeration(resourcesURLs);
     }
 
-    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String resourceName) {
         if (entry == null) {
             return;
         }
         int numberOfResources = entry.getData().size();
         for (int index = 0; index < numberOfResources; index++) {
-            resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
+            resourcesURLs.add(createURL(moduleName, resourceName, index));
         }
     }
 }

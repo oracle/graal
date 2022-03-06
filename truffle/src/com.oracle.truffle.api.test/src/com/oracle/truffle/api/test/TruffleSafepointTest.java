@@ -780,7 +780,7 @@ public class TruffleSafepointTest {
     private static void lockCooperativelySafepoint(Semaphore semaphore, Node node, TruffleSafepoint safepoint) {
         boolean prevEffects = safepoint.setAllowSideEffects(false);
         try {
-            TruffleSafepoint.getCurrent().setBlocked(node, Interrupter.THREAD_INTERRUPT,
+            TruffleSafepoint.getCurrent().setBlockedWithException(node, Interrupter.THREAD_INTERRUPT,
                             (s) -> {
                                 // we want to get woken up by side-effecting actions
                                 boolean prevInner = safepoint.setAllowSideEffects(true);
@@ -797,7 +797,7 @@ public class TruffleSafepointTest {
                                 } finally {
                                     safepoint.setAllowSideEffects(condDisabled);
                                 }
-                            }, () -> {
+                            }, (t) -> {
                                 boolean condDisabled = safepoint.setAllowSideEffects(true);
                                 try {
                                     // All side-effecting events are forced to happen here.
@@ -828,7 +828,7 @@ public class TruffleSafepointTest {
                 lockBoundary(lock);
                 try {
                     while (!done.get()) {
-                        safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
+                        safepoint.setBlockedWithException(node, Interrupter.THREAD_INTERRUPT,
                                         (c) -> {
                                             // When await() is interrupted, it still needs to
                                             // reacquire the lock before the InterruptedException
@@ -840,7 +840,7 @@ public class TruffleSafepointTest {
                                             } finally {
                                                 inAwait.decrementAndGet();
                                             }
-                                        }, condition, lock::unlock, lock::lock);
+                                        }, condition, lock::unlock, (t) -> lock.lock());
                     }
                 } finally {
                     unlockBoundary(lock);

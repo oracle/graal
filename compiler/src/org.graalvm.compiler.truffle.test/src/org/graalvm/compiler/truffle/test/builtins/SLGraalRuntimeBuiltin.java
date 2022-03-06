@@ -33,7 +33,6 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -54,8 +53,9 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
      */
     @TruffleBoundary
     protected static final Set<DirectCallNode> findCallsTo(OptimizedCallTarget originalCallTarget) {
-        FrameInstance frame = Truffle.getRuntime().getCallerFrame();
-        RootNode root = frame.getCallNode().getRootNode();
+        RootNode root = Truffle.getRuntime().iterateFrames((f) -> {
+            return f.getCallNode().getRootNode();
+        }, 1);
         return findCallsTo(root, originalCallTarget);
     }
 

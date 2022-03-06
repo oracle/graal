@@ -125,6 +125,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         boolean isActive(LLVMLoadingPhase phase) {
             return phase == this || phase == ALL;
         }
+
     }
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, boolean isInternalSulongLibrary,

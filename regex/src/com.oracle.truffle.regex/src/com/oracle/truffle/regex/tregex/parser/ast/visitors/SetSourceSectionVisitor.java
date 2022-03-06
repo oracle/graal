@@ -57,7 +57,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
  * multi-line mode. It will set the source section of all nodes in the subtree to the
  * {@link SourceSection} object passed to {@link #run(Group, Token)}.
  *
- * @see com.oracle.truffle.regex.tregex.parser.RegexParser
+ * @see com.oracle.truffle.regex.tregex.parser.RegexASTBuilder
  */
 public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVisitor {
 

@@ -198,6 +198,13 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     }
 
     /**
+     * Marks this {@link Group} as non-capturing and clears its group number.
+     */
+    public void clearGroupNumber() {
+        this.groupNumber = -1;
+    }
+
+    /**
      * Gets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsLow() {

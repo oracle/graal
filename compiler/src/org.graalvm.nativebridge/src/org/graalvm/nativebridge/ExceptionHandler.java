@@ -29,6 +29,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Marks a method as an exception handler. The method is used by the annotation processor to handle
+ * exceptions passing over the isolate boundary. The method returns {@code true} if it has handled
+ * the given exception or {@code false} to perform the default exception handling.
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface ExceptionHandler {

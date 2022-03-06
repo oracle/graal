@@ -110,7 +110,6 @@ public class ProgressReporter {
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
     private Timer debugInfoTimer;
-    private boolean initializeStageEndCompleted = false;
     private boolean creationStageEndCompleted = false;
     private boolean reportStringBytes = true;
 
@@ -153,10 +152,6 @@ public class ProgressReporter {
         return ImageSingletons.lookup(ProgressReporter.class);
     }
 
-    public static boolean isInstalled() {
-        return ImageSingletons.contains(ProgressReporter.class);
-    }
-
     public ProgressReporter(OptionValues options) {
         builderIO = NativeImageSystemIOWrappers.singleton();
 
@@ -165,7 +160,8 @@ public class ProgressReporter {
             Timer.disablePrinting();
         }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS;
+        boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
+                        System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
@@ -235,16 +231,14 @@ public class ProgressReporter {
         stagePrinter.start(BuildStage.INITIALIZING);
     }
 
-    public void printInitializeEnd() {
-        if (initializeStageEndCompleted) {
-            return;
+    public void printUnsuccessfulInitializeEnd() {
+        if (stagePrinter.activeBuildStage != null) {
+            stagePrinter.end(0);
         }
-        stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
-        initializeStageEndCompleted = true;
     }
 
     public void printInitializeEnd(Collection<String> libraries) {
-        printInitializeEnd();
+        stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").println();
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription()).println();
@@ -1047,7 +1041,7 @@ public class ProgressReporter {
     /**
      * A {@link StagePrinter} that produces interactive progress bars on the command line. It should
      * only be used in rich terminals with cursor and ANSI support. It is also the only component
-     * that interacts with {@link NativeImageSystemIOWrappers#listenForNextStdioWrite}.
+     * that interacts with {@link NativeImageSystemIOWrappers#progressReporter}.
      */
     final class CharacterwiseStagePrinter extends StagePrinter<CharacterwiseStagePrinter> {
         @Override
@@ -1068,7 +1062,7 @@ public class ProgressReporter {
         @Override
         CharacterwiseStagePrinter start(BuildStage stage) {
             super.start(stage);
-            builderIO.listenForNextStdioWrite = true;
+            builderIO.progressReporter = ProgressReporter.this;
             return getThis();
         }
 
@@ -1077,22 +1071,22 @@ public class ProgressReporter {
             reprintLineIfNecessary();
             // Ensure builderIO is not listening for the next stdio write when printing progress
             // characters to stdout.
-            builderIO.listenForNextStdioWrite = false;
+            builderIO.progressReporter = null;
             super.reportProgress();
             // Now that progress has been printed and has not been stopped, make sure builderIO
             // listens for the next stdio write again.
-            builderIO.listenForNextStdioWrite = true;
+            builderIO.progressReporter = ProgressReporter.this;
         }
 
         @Override
         void end(double totalTime) {
             reprintLineIfNecessary();
-            builderIO.listenForNextStdioWrite = false;
+            builderIO.progressReporter = null;
             super.end(totalTime);
         }
 
         void reprintLineIfNecessary() {
-            if (!builderIO.listenForNextStdioWrite) {
+            if (builderIO.progressReporter == null) {
                 printLineParts();
             }
         }

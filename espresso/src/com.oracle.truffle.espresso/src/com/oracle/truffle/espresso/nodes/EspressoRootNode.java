@@ -91,12 +91,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public boolean isCloningAllowed() {
-        return getMethodNode().shouldSplit();
+        return getMethodNode().canSplit();
     }
 
     @Override
     protected boolean isCloneUninitializedSupported() {
-        return getMethodNode().shouldSplit();
+        return getMethodNode().canSplit();
     }
 
     @Override

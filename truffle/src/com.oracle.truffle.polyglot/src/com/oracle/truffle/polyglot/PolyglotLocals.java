@@ -137,7 +137,7 @@ final class PolyglotLocals {
             locations = PolyglotEngineImpl.EMPTY_LOCATIONS;
         } else {
             for (LanguageContextThreadLocal<?> local : locals) {
-                local.languageInstance = polyglotLanguageInstance;
+                local.initializeLanguageInstance(polyglotLanguageInstance);
             }
 
             locations = polyglotLanguageInstance.language.previousContextThreadLocalLocations;
@@ -348,7 +348,8 @@ final class PolyglotLocals {
     static final class LanguageContextThreadLocal<T> extends AbstractContextThreadLocal<T> {
 
         // effectively final
-        private PolyglotLanguageInstance languageInstance;
+        @CompilationFinal private PolyglotLanguageInstance languageInstance;
+        @CompilationFinal private PolyglotSharingLayer sharingLayer;
 
         private final Object factory;
 
@@ -356,17 +357,22 @@ final class PolyglotLocals {
             this.factory = factory;
         }
 
+        void initializeLanguageInstance(PolyglotLanguageInstance instance) {
+            this.languageInstance = instance;
+            this.sharingLayer = instance.sharing;
+        }
+
         @SuppressWarnings("unchecked")
         @Override
         public T get() {
             assert assertLanguageCreated(PolyglotFastThreadLocals.getContext(null), languageInstance.language);
-            return (T) PolyglotFastThreadLocals.getCurrentThread(languageInstance.sharing).getThreadLocal(location);
+            return (T) PolyglotFastThreadLocals.getCurrentThread(sharingLayer).getThreadLocal(location);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T get(Thread t) {
-            PolyglotContextImpl c = PolyglotFastThreadLocals.getContext(languageInstance.sharing);
+            PolyglotContextImpl c = PolyglotFastThreadLocals.getContext(sharingLayer);
             assert assertLanguageCreated(c, languageInstance.language);
             return (T) c.getThreadLocal(location, t);
         }

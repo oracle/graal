@@ -547,7 +547,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, reason, true);
+        registerUnsafePlugins(metaAccess, new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, reason, true);
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
         registerUnsafePlugins(metaAccess, r, snippetReflection, reason, false);
 

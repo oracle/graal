@@ -372,7 +372,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     @Override
     public boolean isVarArgs() {
-        throw unimplemented();
+        return wrapped.isVarArgs();
     }
 
     @Override

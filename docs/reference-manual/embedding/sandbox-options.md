@@ -153,7 +153,7 @@ If used together with the AST depth limit it can be used to estimate total stack
 ## Limiting the number of active threads
 
 Limits the number of threads that can be used by a context at the same point in time.
-By default, an arbitary number of threads can be used.
+By default, an arbitrary number of threads can be used.
 If a set limit is exceeded, entering the context fails with a `PolyglotException` and the polyglot context is canceled.
 Resetting resource limits does not affect thread limits.
 

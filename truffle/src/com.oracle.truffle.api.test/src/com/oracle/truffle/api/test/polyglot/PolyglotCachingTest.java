@@ -435,6 +435,18 @@ public class PolyglotCachingTest {
     public static class ReuseLanguage extends ProxyLanguage {
         public static final String ID = "ReuseLanguage";
 
+        public ReuseLanguage() {
+            /*
+             * Whenever the language is not used as a standalone language, e.g. it is used in
+             * AbstractPolyglotTest#setupEnv, or the delegation is set directly by
+             * ProxyLanguage#setDelegate, we cannot set wrapper to false for all instances, because
+             * the instance created by Truffle framework must delegate to the instance set by
+             * ProxyLanguage#setDelegate.
+             */
+            if (ProxyLanguage.getDelegate().getClass() == ProxyLanguage.class) {
+                wrapper = false;
+            }
+        }
     }
 
 }

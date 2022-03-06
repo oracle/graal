@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -110,7 +111,11 @@ public final class ObjectKlass extends Klass {
 
     private String genericSignature;
 
-    @CompilationFinal private volatile int initState = LOADED;
+    @CompilationFinal //
+    private volatile EspressoLock initLock;
+
+    @CompilationFinal //
+    private volatile int initState = LOADED;
 
     @CompilationFinal volatile KlassVersion klassVersion;
 
@@ -283,6 +288,20 @@ public final class ObjectKlass extends Klass {
 
     // region InitStatus
 
+    private EspressoLock getInitLock() {
+        EspressoLock iLock = initLock;
+        if (iLock == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                iLock = initLock;
+                if (iLock == null) {
+                    iLock = this.initLock = EspressoLock.create(getContext().getBlockingSupport());
+                }
+            }
+        }
+        return iLock;
+    }
+
     public int getState() {
         return initState;
     }
@@ -299,8 +318,11 @@ public final class ObjectKlass extends Klass {
         return initState >= LINKED;
     }
 
-    private boolean isInitializingOrInitialized() {
-        return initState >= INITIALIZING;
+    boolean isInitializingOrInitializedImpl() {
+        return (initState == INITIALIZED) ||
+                        /* Initializing thread */
+                        (initState == INITIALIZING && getInitLock().isHeldByCurrentThread()) ||
+                        (initState == ERRONEOUS);
     }
 
     boolean isInitializedImpl() {
@@ -325,10 +347,11 @@ public final class ObjectKlass extends Klass {
     @ExplodeLoop
     private void actualInit() {
         checkErroneousInitialization();
-        synchronized (this) {
+        getInitLock().lock();
+        try {
             // Double-check under lock
             checkErroneousInitialization();
-            if (isInitializingOrInitialized()) {
+            if (isInitializingOrInitializedImpl()) {
                 return;
             }
             initState = INITIALIZING;
@@ -376,6 +399,8 @@ public final class ObjectKlass extends Klass {
             checkErroneousInitialization();
             initState = INITIALIZED;
             assert isInitialized();
+        } finally {
+            getInitLock().unlock();
         }
     }
 
@@ -385,7 +410,8 @@ public final class ObjectKlass extends Klass {
      * structure.
      */
     private void prepare() {
-        synchronized (this) {
+        getInitLock().lock();
+        try {
             if (!isPrepared()) {
                 checkLoadingConstraints();
                 for (Field f : getInitialStaticFields()) {
@@ -396,11 +422,13 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                        prepareThread = getContext().getCurrentThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }
             }
+        } finally {
+            getInitLock().unlock();
         }
     }
 
@@ -503,7 +531,8 @@ public final class ObjectKlass extends Klass {
         if (!isLinked()) {
             checkErroneousVerification();
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
+            getInitLock().lock();
+            try {
                 if (!isLinkingOrLinked()) {
                     initState = LINKING;
                     if (getSuperKlass() != null) {
@@ -516,6 +545,8 @@ public final class ObjectKlass extends Klass {
                     verify();
                     initState = LINKED;
                 }
+            } finally {
+                getInitLock().unlock();
             }
             checkErroneousVerification();
         }
@@ -584,7 +615,8 @@ public final class ObjectKlass extends Klass {
     private void verify() {
         if (!isVerified()) {
             checkErroneousVerification();
-            synchronized (this) {
+            getInitLock().lock();
+            try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setVerificationStatus(VERIFYING);
@@ -596,6 +628,8 @@ public final class ObjectKlass extends Klass {
                     }
                     setVerificationStatus(VERIFIED);
                 }
+            } finally {
+                getInitLock().unlock();
             }
             checkErroneousVerification();
         }

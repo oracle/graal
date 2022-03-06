@@ -548,7 +548,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         @Override
-        public <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        public <T> void setBlockedWithException(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             assert impl.getCurrent() == this : "Cannot be used from a different thread.";
 
             /*
@@ -568,7 +568,7 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -587,7 +587,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -606,15 +606,19 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             if (beforeInterrupt != null) {
                 beforeInterrupt.run();
             }
+            Throwable t = null;
             try {
                 setBlockedImpl(location, interrupter, true);
+            } catch (Throwable e) {
+                t = e;
+                throw e;
             } finally {
                 if (afterInterrupt != null) {
-                    afterInterrupt.run();
+                    afterInterrupt.accept(t);
                 }
             }
         }

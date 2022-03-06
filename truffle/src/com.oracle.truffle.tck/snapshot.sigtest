@@ -64,12 +64,12 @@ meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String implementationName()
+meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
-meth public abstract java.lang.String name()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)

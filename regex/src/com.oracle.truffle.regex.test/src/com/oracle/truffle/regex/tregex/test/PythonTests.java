@@ -91,7 +91,7 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28905() {
-        test("\\B", "y", "abc", 0, false);
+        test("\\B", "", "PythonMethod=match", "abc", 0, false);
         test("\\B", "", "", 0, false);
         test("\\B(b.)\\B", "", "abc bcd bc abxd", 0, true, 12, 14, 12, 14, 1);
         test("\\b(b.)\\b", "a", "abcd abc bcd bx", 0, true, 13, 15, 13, 15, 1);
@@ -99,8 +99,8 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28906() {
-        test("^(\\|)?([^()]+)\\1$", "y", "a|", 0, false);
-        test("^(\\|)?([^()]+)\\1$", "y", "|a", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "", "PythonMethod=match", "a|", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "", "PythonMethod=match", "|a", 0, false);
     }
 
     @Test
@@ -160,7 +160,7 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr32018() {
-        test("\\s*(?:#\\s*)?$", "y", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
+        test("\\s*(?:#\\s*)?$", "", "PythonMethod=match", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
     }
 
     @Test

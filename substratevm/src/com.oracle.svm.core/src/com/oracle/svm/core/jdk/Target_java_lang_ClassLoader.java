@@ -74,7 +74,7 @@ public final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     private Vector<Class<?>> classes;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstanceWhenNotNull, declClass = ConcurrentHashMap.class)//
     private ConcurrentHashMap<String, Object> parallelLockMap;
 
     /**
@@ -185,12 +185,6 @@ public final class Target_java_lang_ClassLoader {
         } catch (ClassNotFoundException e) {
             return null;
         }
-    }
-
-    @Substitute //
-    @SuppressWarnings({"unused"})
-    Object getClassLoadingLock(String className) {
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.getClassLoadingLock(String)");
     }
 
     @Substitute //
