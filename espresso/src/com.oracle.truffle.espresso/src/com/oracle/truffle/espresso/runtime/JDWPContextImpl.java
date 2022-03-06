@@ -799,7 +799,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
         // detect all changes to all classes, throws if redefinition cannot be completed
         // due to the nature of the changes
-        List<ChangePacket> changePackets = classRedefinition.detectClassChanges(matchedInfos);
+        List<ChangePacket> changePackets = ClassRedefinition.detectClassChanges(matchedInfos);
 
         // We have to redefine super classes prior to subclasses
         Collections.sort(changePackets, new HierarchyComparator());
