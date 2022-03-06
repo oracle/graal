@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Arm Limited. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,25 +24,19 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 
-public class MathMultiplyHighTest extends MethodSubstitutionTest {
+public class CharIsDigitTest extends GraalCompilerTest {
 
-    private static final long[] INPUT = {Long.MIN_VALUE, Long.MIN_VALUE + 1, 0XF64543679090840EL, -1L,
-                    0L, 0X5L, 0X100L, 0X4336624L, 0x25842900000L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
-
-    public static long multiplyHigh(long m, long n) {
-        return Math.multiplyHigh(m, n);
+    public boolean isDigit(char ch) {
+        return Character.isDigit(ch);
     }
 
     @Test
-    public void testMultiplyHigh() {
-        assertInGraph(testGraph("multiplyHigh"), IntegerMulHighNode.class);
-        for (long input1 : INPUT) {
-            for (long input2 : INPUT) {
-                test("multiplyHigh", input1, input2);
-            }
-        }
+    public void testIsDigit() {
+        test("isDigit", '0');
+        test("isDigit", 'a');
+        test("isDigit", '\ubeef');
     }
 }

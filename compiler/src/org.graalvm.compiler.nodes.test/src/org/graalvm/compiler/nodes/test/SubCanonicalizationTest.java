@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Arm Limited. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.test;
+package org.graalvm.compiler.nodes.test;
 
-import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 
-public class MathMultiplyHighTest extends MethodSubstitutionTest {
+public class SubCanonicalizationTest extends GraalCompilerTest {
 
-    private static final long[] INPUT = {Long.MIN_VALUE, Long.MIN_VALUE + 1, 0XF64543679090840EL, -1L,
-                    0L, 0X5L, 0X100L, 0X4336624L, 0x25842900000L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
+    @Test
+    public void testSnippet0() {
+        test("snippet0", 0, 0);
+        test("snippet0", 0, 0xFFFFFFFF);
+        test("snippet0", 0xFFFF0000, 0xFFFFFFFF);
+        test("snippet0", 0xFFFF0000, 0x0000FFFF);
+    }
 
-    public static long multiplyHigh(long m, long n) {
-        return Math.multiplyHigh(m, n);
+    static int snippet0(int a, int b) {
+        return (a | b) - (a ^ b);
     }
 
     @Test
-    public void testMultiplyHigh() {
-        assertInGraph(testGraph("multiplyHigh"), IntegerMulHighNode.class);
-        for (long input1 : INPUT) {
-            for (long input2 : INPUT) {
-                test("multiplyHigh", input1, input2);
-            }
-        }
+    public void testSnippet1() {
+        test("snippet1", 0L, 0L);
+        test("snippet1", 0L, 0xFFFFFFFFFFFFFFFFL);
+        test("snippet1", 0xFFFFFFFF00000000L, 0xFFFFFFFFFFFFFFFFL);
+        test("snippet1", 0xFFFFFFFF00000000L, 0x00000000FFFFFFFFFL);
+    }
+
+    static long snippet1(long a, long b) {
+        return (a | b) - (a ^ b);
     }
 }

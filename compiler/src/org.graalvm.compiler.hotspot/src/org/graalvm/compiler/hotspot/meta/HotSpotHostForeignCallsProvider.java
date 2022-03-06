@@ -30,13 +30,20 @@ import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_DECRYPTBLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_ENCRYPTBLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MULTIPLY_TO_LEN;
@@ -49,12 +56,17 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCH;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
@@ -121,7 +133,6 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExcepti
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -461,12 +472,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, createDescriptor(REGISTER_FINALIZER, SAFEPOINT, NOT_REEXECUTABLE, any()), c.registerFinalizerAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD);
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD);
-            linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD);
-        } else {
-            assert c.notifyAddress == 0 : "unexpected value";
-        }
+        linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD);
@@ -499,6 +506,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(MULTIPLY_TO_LEN, c.multiplyToLen, NativeCall);
         }
 
+        if (c.md5ImplCompress != 0L) {
+            registerForeignCall(MD5_IMPL_COMPRESS, c.md5ImplCompress, NativeCall);
+        }
+        if (c.md5ImplCompressMultiBlock != 0L) {
+            registerForeignCall(MD5_IMPL_COMPRESS_MB, c.md5ImplCompressMultiBlock, NativeCall);
+        }
         if (c.useSHA1Intrinsics()) {
             registerForeignCall(SHA_IMPL_COMPRESS, c.sha1ImplCompress, NativeCall);
             registerForeignCall(SHA_IMPL_COMPRESS_MB, c.sha1ImplCompressMultiBlock, NativeCall);
@@ -511,11 +524,20 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(SHA5_IMPL_COMPRESS, c.sha512ImplCompress, NativeCall);
             registerForeignCall(SHA5_IMPL_COMPRESS_MB, c.sha512ImplCompressMultiBlock, NativeCall);
         }
+        if (c.sha3ImplCompress != 0L) {
+            registerForeignCall(SHA3_IMPL_COMPRESS, c.sha3ImplCompress, NativeCall);
+        }
+        if (c.sha3ImplCompressMultiBlock != 0L) {
+            registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
+        }
         if (c.useGHASHIntrinsics()) {
             registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall);
         }
-        if (c.useBase64Intrinsics()) {
+        if (c.base64EncodeBlock != 0L) {
             registerForeignCall(BASE64_ENCODE_BLOCK, c.base64EncodeBlock, NativeCall);
+        }
+        if (c.base64DecodeBlock != 0L) {
+            registerForeignCall(BASE64_DECODE_BLOCK, c.base64DecodeBlock, NativeCall);
         }
         if (c.useMulAddIntrinsic()) {
             registerForeignCall(MUL_ADD, c.mulAdd, NativeCall);
@@ -528,6 +550,28 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.useSquareToLenIntrinsic()) {
             registerForeignCall(SQUARE_TO_LEN, c.squareToLen, NativeCall);
+        }
+        if (c.useCRC32Intrinsics) {
+            // This stub does callee saving
+            registerForeignCall(UPDATE_BYTES_CRC32, c.updateBytesCRC32Stub, NativeCall);
+        }
+        if (c.useCRC32CIntrinsics) {
+            registerForeignCall(UPDATE_BYTES_CRC32C, c.updateBytesCRC32C, NativeCall);
+        }
+        if (c.updateBytesAdler32 != 0L) {
+            registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
+        }
+        if (c.bigIntegerLeftShiftWorker != 0L) {
+            registerForeignCall(BIGINTEGER_LEFT_SHIFT_WORKER, c.bigIntegerLeftShiftWorker, NativeCall);
+        }
+        if (c.bigIntegerRightShiftWorker != 0L) {
+            registerForeignCall(BIGINTEGER_RIGHT_SHIFT_WORKER, c.bigIntegerRightShiftWorker, NativeCall);
+        }
+        if (c.electronicCodeBookEncrypt != 0L) {
+            registerForeignCall(ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT, c.electronicCodeBookEncrypt, NativeCall);
+        }
+        if (c.electronicCodeBookDecrypt != 0L) {
+            registerForeignCall(ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT, c.electronicCodeBookDecrypt, NativeCall);
         }
 
         if (c.useAESIntrinsics) {
