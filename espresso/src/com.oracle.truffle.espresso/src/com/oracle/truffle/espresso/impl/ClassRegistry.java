@@ -144,6 +144,8 @@ public abstract class ClassRegistry {
 
     private static final DebugTimer KLASS_PROBE = DebugTimer.create("klass probe");
     private static final DebugTimer KLASS_DEFINE = DebugTimer.create("klass define");
+    private static final DebugTimer LINKED_KLASS_PROBE = DebugTimer.create("linked klass probe");
+    private static final DebugTimer LINKED_KLASS_DEFINE = DebugTimer.create("linked klass define");
     private static final DebugTimer KLASS_PARSE = DebugTimer.create("klass parse");
 
     /**
@@ -327,7 +329,9 @@ public abstract class ClassRegistry {
             }
         }
 
-        return LinkedKlass.create(env, parserKlass, superKlass, linkedInterfaces);
+        try (DebugCloseable define = LINKED_KLASS_DEFINE.scope(env.getTimers())) {
+            return LinkedKlass.create(env, parserKlass, superKlass, linkedInterfaces);
+        }
     }
 
     /**
@@ -388,16 +392,15 @@ public abstract class ClassRegistry {
      */
     @SuppressWarnings("try")
     public LinkedKlass loadLinkedKlass(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info) throws EspressoClassLoadingException {
-        if (Types.isArray(type)) {
-            // TODO (ivan-ristovic) throw (what?) or return null?
+        if (Types.isPrimitive(type) || Types.isArray(type)) {
+            throw EspressoError.shouldNotReachHere("Cannot perform loading of primitive or array types");
         }
 
-        // TODO (ivan-ristovic) should counters now only count LinkedKlass loads?
-        loadKlassCountInc();
+        loadLinkedKlassCountInc();
 
         // Double-checked locking on the symbol (globally unique).
         ClassRegistries.RegistryEntry entry;
-        try (DebugCloseable probe = KLASS_PROBE.scope(env.getTimers())) {
+        try (DebugCloseable probe = LINKED_KLASS_PROBE.scope(env.getTimers())) {
             entry = classes.get(type);
         }
         LinkedKlass linkedKlass = null;
@@ -415,7 +418,7 @@ public abstract class ClassRegistry {
             }
         } else {
             // Grabbing a lock to fetch the class is not considered a hit.
-            loadKlassCacheHitsInc();
+            loadLinkedKlassCountInc();
             linkedKlass = ((ObjectKlass) entry.klass()).getLinkedKlass();
         }
         return linkedKlass;
@@ -610,6 +613,10 @@ public abstract class ClassRegistry {
     protected abstract void loadKlassCountInc();
 
     protected abstract void loadKlassCacheHitsInc();
+
+    protected abstract void loadLinkedKlassCountInc();
+
+    protected abstract void loadLinkedKlassCacheHitsInc();
 
     public abstract @JavaType(ClassLoader.class) StaticObject getClassLoader();
 }

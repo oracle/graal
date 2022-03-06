@@ -44,6 +44,8 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     static final DebugCounter loadKlassCount = DebugCounter.create("Guest loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("Guest loadKlassCacheHits");
+    static final DebugCounter loadLinkedKlassCount = DebugCounter.create("Guest loadLinkedKlassCount");
+    static final DebugCounter loadLinkedKlassCacheHits = DebugCounter.create("Guest loadLinkedKlassCacheHits");
 
     @Override
     protected void loadKlassCountInc() {
@@ -53,6 +55,16 @@ public final class GuestClassRegistry extends ClassRegistry {
     @Override
     protected void loadKlassCacheHitsInc() {
         loadKlassCacheHits.inc();
+    }
+
+    @Override
+    protected void loadLinkedKlassCountInc() {
+        loadLinkedKlassCount.inc();
+    }
+
+    @Override
+    protected void loadLinkedKlassCacheHitsInc() {
+        loadLinkedKlassCacheHits.inc();
     }
 
     /**

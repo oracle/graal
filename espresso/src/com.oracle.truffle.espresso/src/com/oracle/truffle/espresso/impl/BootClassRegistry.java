@@ -46,6 +46,8 @@ public final class BootClassRegistry extends ClassRegistry {
 
     static final DebugCounter loadKlassCount = DebugCounter.create("BCL loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("BCL loadKlassCacheHits");
+    static final DebugCounter loadLinkedKlassCount = DebugCounter.create("BCL loadLinkedKlassCount");
+    static final DebugCounter loadLinkedKlassCacheHits = DebugCounter.create("BCL loadLinkedKlassCacheHits");
     private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
     public BootClassRegistry(int loaderID) {
@@ -60,6 +62,16 @@ public final class BootClassRegistry extends ClassRegistry {
     @Override
     protected void loadKlassCacheHitsInc() {
         loadKlassCacheHits.inc();
+    }
+
+    @Override
+    protected void loadLinkedKlassCountInc() {
+        loadLinkedKlassCount.inc();
+    }
+
+    @Override
+    protected void loadLinkedKlassCacheHitsInc() {
+        loadLinkedKlassCacheHits.inc();
     }
 
     private final Map<String, String> packageMap = new ConcurrentHashMap<>();

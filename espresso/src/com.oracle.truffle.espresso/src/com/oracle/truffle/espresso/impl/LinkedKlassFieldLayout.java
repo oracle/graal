@@ -75,7 +75,7 @@ final class LinkedKlassFieldLayout {
 
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
             if (hiddenField.versionRange.contains(env.getJavaVersion())) {
-                ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
+                ParserField hiddenParserField = new ParserField(ParserField.HIDDEN | hiddenField.additionalFlags, hiddenField.name, hiddenField.type, null);
                 createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
