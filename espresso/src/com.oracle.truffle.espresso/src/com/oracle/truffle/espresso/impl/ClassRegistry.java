@@ -281,6 +281,7 @@ public abstract class ClassRegistry {
         return linkedKlass;
     }
 
+    @SuppressWarnings("try")
     public LinkedKlass createLinkedKlass(ClassLoadingEnv env, ParserKlass parserKlass, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         Symbol<Type> type = parserKlass.getType();
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();

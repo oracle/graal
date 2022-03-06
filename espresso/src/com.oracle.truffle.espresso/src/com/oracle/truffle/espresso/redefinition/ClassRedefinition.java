@@ -188,7 +188,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
+    public static List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         EconomicMap<ObjectKlass, ChangePacket> temp = EconomicMap.create(1);
         EconomicSet<ObjectKlass> superClassChanges = EconomicSet.create(1);
