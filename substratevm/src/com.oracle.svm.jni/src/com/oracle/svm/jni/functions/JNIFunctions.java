@@ -1219,6 +1219,15 @@ public final class JNIFunctions {
             }
         }
 
+        static class JNIExceptionHandlerDetachAndReturnJniErr implements CEntryPoint.ExceptionHandler {
+            @Uninterruptible(reason = "exception handler")
+            static int handle(Throwable t) {
+                int error = (t instanceof OutOfMemoryError) ? JNIErrors.JNI_ENOMEM() : JNIErrors.JNI_ERR();
+                CEntryPointActions.leaveDetachThread();
+                return error;
+            }
+        }
+
         static JNIMethodId getMethodID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             DynamicHub.fromClass(clazz).ensureInitialized();
