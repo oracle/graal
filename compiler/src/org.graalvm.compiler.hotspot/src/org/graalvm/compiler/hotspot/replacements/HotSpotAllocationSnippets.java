@@ -420,7 +420,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     public final void initializeObjectHeader(Word memory, Word hub, boolean isArray) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         Word markWord;
-        if (!isArray && HotSpotReplacementsUtil.isBiasedLockingSupported(INJECTED_VMCONFIG)) {
+        if (!isArray && HotSpotReplacementsUtil.useBiasedLocking(INJECTED_VMCONFIG)) {
             markWord = klassPtr.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
         } else {
             markWord = WordFactory.signed(HotSpotReplacementsUtil.defaultPrototypeMarkWord(INJECTED_VMCONFIG));

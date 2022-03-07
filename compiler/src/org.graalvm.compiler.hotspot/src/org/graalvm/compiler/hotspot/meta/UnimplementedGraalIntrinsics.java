@@ -393,20 +393,12 @@ public final class UnimplementedGraalIntrinsics {
 
         if (arch instanceof AArch64) {
             add(toBeInvestigated,
-                            "java/lang/String.compareTo(Ljava/lang/String;)I",
                             "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
                             "java/lang/StringLatin1.inflate([BI[CII)V",
                             "java/lang/StringUTF16.compress([BI[BII)I",
                             "java/lang/StringUTF16.compress([CI[BII)I",
-                            "java/lang/StringUTF16.indexOf([BI[BII)I",
-                            "java/lang/StringUTF16.indexOf([B[B)I",
-                            "java/lang/StringUTF16.indexOfChar([BIII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
                             "java/lang/Thread.onSpinWait()V",
-                            "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                             "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
         }
 

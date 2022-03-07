@@ -667,11 +667,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean isBiasedLockingSupported(@InjectedParameter GraalHotSpotVMConfig config) {
-        return prototypeMarkWordOffset(config) != -1;
-    }
-
-    @Fold
     public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useBiasedLocking;
     }
