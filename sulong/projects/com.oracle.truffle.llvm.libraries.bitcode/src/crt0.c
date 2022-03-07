@@ -148,10 +148,8 @@ int _start(int type, char *application_path_java_byte_array, void *main) {
     char *application_path = __sulong_byte_array_to_native(application_path_java_byte_array);
     __sulong_update_application_path(application_path, argv, __auxv);
 
-#ifdef __linux__
     // setlocale(3): On startup of the main program, the portable "C" locale is selected as default.
     setlocale(LC_ALL, "C");
-#endif
 
     switch (type) {
         /* C/C++/... */
