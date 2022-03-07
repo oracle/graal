@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.2.0
+
+* GR-36557 Replaced `--engine.MaximumGraalNodeCount` with `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
+
 ## Version 22.1.0
 
 * GR-35924 Context preinitialization in combination with auxiliary engine caching now preinitializes a context for each sharing layer with the common configuration of previously created contexts.
