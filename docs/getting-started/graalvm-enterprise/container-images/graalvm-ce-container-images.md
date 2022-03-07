@@ -19,8 +19,8 @@ It is recommended that the most specific tag be used, e.g., `java17-21.3.0` or `
 
 The following GraalVM Enterprise container images are available:
 
-| Package      | Description                                                                                                                                                | Type      |
-|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Package      | Description                                        
+------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | enterprise          |  A GraalVM Enterprise Edition container image with the `gu` tool to install additional features. |
 | jdk-ee   | A size compact GraalVM Enterprise container image with the JDK pre-installed. |
 | native-image-ee | A size compact GraalVM Enterprise container image with the Native Image support. |
