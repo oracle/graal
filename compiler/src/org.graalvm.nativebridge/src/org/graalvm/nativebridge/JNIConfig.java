@@ -52,23 +52,28 @@ public final class JNIConfig {
 
     private final Map<Type, JNIHotSpotMarshaller<?>> hotSpotMarshallers;
     private final Map<Type, JNINativeMarshaller<?>> nativeMarshallers;
+    private final Map<Type, BinaryMarshaller<?>> binaryMarshallers;
     private final Map<Class<? extends Annotation>, List<Pair<Class<?>, JNIHotSpotMarshaller<?>>>> annotationHotSpotMarshallers;
     private final Map<Class<? extends Annotation>, List<Pair<Class<?>, JNINativeMarshaller<?>>>> annotationNativeMarshallers;
+    private final Map<Class<? extends Annotation>, List<Pair<Class<?>, BinaryMarshaller<?>>>> annotationBinaryMarshallers;
     private final LongUnaryOperator attachThreadAction;
     private final LongUnaryOperator detachThreadAction;
     private final LongBinaryOperator shutDownIsolateAction;
     private final LongBinaryOperator releaseNativeObjectAction;
 
     JNIConfig(Map<Type, JNIHotSpotMarshaller<?>> hotSpotMarshallers,
-                    Map<Type, JNINativeMarshaller<?>> nativeMarshallers,
+                    Map<Type, JNINativeMarshaller<?>> nativeMarshallers, Map<Type, BinaryMarshaller<?>> binaryMarshallers,
                     Map<Class<? extends Annotation>, List<Pair<Class<?>, JNIHotSpotMarshaller<?>>>> annotationHotSpotMarshallers,
                     Map<Class<? extends Annotation>, List<Pair<Class<?>, JNINativeMarshaller<?>>>> annotationNativeMarshallers,
+                    Map<Class<? extends Annotation>, List<Pair<Class<?>, BinaryMarshaller<?>>>> annotationBinaryMarshallers,
                     LongUnaryOperator attachThreadAction, LongUnaryOperator detachThreadAction,
                     LongBinaryOperator shutDownIsolateAction, LongBinaryOperator releaseNativeObjectAction) {
         this.hotSpotMarshallers = hotSpotMarshallers;
         this.nativeMarshallers = nativeMarshallers;
+        this.binaryMarshallers = binaryMarshallers;
         this.annotationHotSpotMarshallers = annotationHotSpotMarshallers;
         this.annotationNativeMarshallers = annotationNativeMarshallers;
+        this.annotationBinaryMarshallers = annotationBinaryMarshallers;
         this.attachThreadAction = attachThreadAction;
         this.detachThreadAction = detachThreadAction;
         this.shutDownIsolateAction = shutDownIsolateAction;
@@ -169,6 +174,53 @@ public final class JNIConfig {
         }
     }
 
+    /**
+     * Looks up {@link BinaryMarshaller} for the {@code type} and {@code annotationTypes}. The
+     * method first tries to find a marshaller registered for the {@code type} and some annotation
+     * from {@code annotationTypes}. If no such marshaller exists, it tries to find a marshaller
+     * registered just for the {@code type}. If there is no such a marshaller it throws the
+     * {@link UnsupportedOperationException}.
+     *
+     * @param type the parameter or return type.
+     * @param annotationTypes parameter or method annotation types.
+     * @throws UnsupportedOperationException if there is no registered marshaller for the
+     *             {@code type}.
+     */
+    @SuppressWarnings("unchecked")
+    @SafeVarargs
+    public final <T> BinaryMarshaller<T> lookupMarshaller(Class<T> type, Class<? extends Annotation>... annotationTypes) {
+        BinaryMarshaller<?> res = lookupBinaryMarshallerImpl(type, annotationTypes);
+        if (res != null) {
+            return (BinaryMarshaller<T>) res;
+        } else {
+            throw unsupported(type);
+        }
+    }
+
+    /**
+     * Looks up {@link BinaryMarshaller} for the {@code parameterizedType} and
+     * {@code annotationTypes}. The method first tries to find a marshaller registered for the
+     * {@code parameterizedType} and some annotation from {@code annotationTypes}. If no such
+     * marshaller exists, it tries to find a marshaller registered just for the
+     * {@code parameterizedType}. If there is no such a marshaller it throws the
+     * {@link UnsupportedOperationException}.
+     *
+     * @param parameterizedType the parameter or return type.
+     * @param annotationTypes parameter or method annotation types.
+     * @throws UnsupportedOperationException if there is no registered marshaller for the
+     *             {@code parameterizedType}.
+     */
+    @SuppressWarnings("unchecked")
+    @SafeVarargs
+    public final <T> BinaryMarshaller<T> lookupBinaryMarshaller(TypeLiteral<T> parameterizedType, Class<? extends Annotation>... annotationTypes) {
+        BinaryMarshaller<?> res = lookupBinaryMarshallerImpl(parameterizedType.getType(), annotationTypes);
+        if (res != null) {
+            return (BinaryMarshaller<T>) res;
+        } else {
+            throw unsupported(parameterizedType.getType());
+        }
+    }
+
     long attachThread(long isolate) {
         return attachThreadAction.applyAsLong(isolate);
     }
@@ -211,6 +263,18 @@ public final class JNIConfig {
             }
         }
         return nativeMarshallers.get(type);
+    }
+
+    @SafeVarargs
+    private final BinaryMarshaller<?> lookupBinaryMarshallerImpl(Type type, Class<? extends Annotation>... annotationTypes) {
+        for (Class<? extends Annotation> annotationType : annotationTypes) {
+            verifyAnnotation(annotationType);
+            BinaryMarshaller<?> res = lookup(annotationBinaryMarshallers, type, annotationType);
+            if (res != null) {
+                return res;
+            }
+        }
+        return binaryMarshallers.get(type);
     }
 
     private static <T> T lookup(Map<Class<? extends Annotation>, List<Pair<Class<?>, T>>> marshallers, Type type, Class<? extends Annotation> annotationType) {
@@ -273,8 +337,10 @@ public final class JNIConfig {
 
         private final Map<Type, JNIHotSpotMarshaller<?>> hotSpotMarshallers;
         private final Map<Type, JNINativeMarshaller<?>> nativeMarshallers;
+        private final Map<Type, BinaryMarshaller<?>> binaryMarshallers;
         private final Map<Class<? extends Annotation>, List<Pair<Class<?>, JNIHotSpotMarshaller<?>>>> annotationHotSpotMarshallers;
         private final Map<Class<? extends Annotation>, List<Pair<Class<?>, JNINativeMarshaller<?>>>> annotationNativeMarshallers;
+        private final Map<Class<? extends Annotation>, List<Pair<Class<?>, BinaryMarshaller<?>>>> annotationBinaryMarshallers;
         private LongUnaryOperator attachThreadAction = ATTACH_UNSUPPORTED;
         private LongUnaryOperator detachThreadAction = DETACH_UNSUPPORTED;
         private LongBinaryOperator shutDownIsolateAction = SHUTDOWN_UNSUPPORTED;
@@ -283,8 +349,12 @@ public final class JNIConfig {
         Builder() {
             this.hotSpotMarshallers = new HashMap<>();
             this.nativeMarshallers = new HashMap<>();
+            this.binaryMarshallers = new HashMap<>();
             this.annotationHotSpotMarshallers = new HashMap<>();
             this.annotationNativeMarshallers = new HashMap<>();
+            this.annotationBinaryMarshallers = new HashMap<>();
+            // Register default marshallers
+            this.binaryMarshallers.put(Throwable.class, new DefaultThrowableMarshaller());
         }
 
         /**
@@ -382,6 +452,7 @@ public final class JNIConfig {
             Objects.requireNonNull(marshaller, "Marshaller must be non null.");
             registerHotSpotMarshaller(type, new JNIHotSpotMarshallerAdapter<>(marshaller));
             registerNativeMarshaller(type, new JNINativeMarshallerAdapter<>(marshaller));
+            this.binaryMarshallers.put(type, marshaller);
             return this;
         }
 
@@ -396,6 +467,7 @@ public final class JNIConfig {
             Objects.requireNonNull(marshaller, "Marshaller must be non null.");
             registerHotSpotMarshaller(parameterizedType, new JNIHotSpotMarshallerAdapter<>(marshaller));
             registerNativeMarshaller(parameterizedType, new JNINativeMarshallerAdapter<>(marshaller));
+            this.binaryMarshallers.put(parameterizedType.getType(), marshaller);
             return this;
         }
 
@@ -413,6 +485,7 @@ public final class JNIConfig {
             Objects.requireNonNull(marshaller, "Marshaller must be non null.");
             registerHotSpotMarshaller(type, annotationType, new JNIHotSpotMarshallerAdapter<>(marshaller));
             registerNativeMarshaller(type, annotationType, new JNINativeMarshallerAdapter<>(marshaller));
+            insert(annotationBinaryMarshallers, type, annotationType, marshaller);
             return this;
         }
 
@@ -516,8 +589,8 @@ public final class JNIConfig {
          * Builds the {@link JNIConfig}.
          */
         public JNIConfig build() {
-            return new JNIConfig(hotSpotMarshallers, nativeMarshallers,
-                            annotationHotSpotMarshallers, annotationNativeMarshallers,
+            return new JNIConfig(hotSpotMarshallers, nativeMarshallers, binaryMarshallers,
+                            annotationHotSpotMarshallers, annotationNativeMarshallers, annotationBinaryMarshallers,
                             attachThreadAction, detachThreadAction, shutDownIsolateAction,
                             releaseNativeObjectAction);
         }

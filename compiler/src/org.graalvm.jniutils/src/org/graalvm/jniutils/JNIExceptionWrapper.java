@@ -70,6 +70,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
     private static final JNIMethodResolver CreateException = JNIMethodResolver.create("createException", Throwable.class, String.class);
+    private static final JNIMethodResolver CreateForeignException = JNIMethodResolver.create("createForeignException", Throwable.class, byte[].class);
     private static final JNIMethodResolver GetClassName = JNIMethodResolver.create("getClassName", String.class, Class.class);
     private static final JNIMethodResolver GetStackTrace = JNIMethodResolver.create("getStackTrace", byte[].class, Throwable.class);
     private static final JNIMethodResolver GetThrowableMessage = JNIMethodResolver.create("getThrowableMessage", String.class, Throwable.class);
@@ -390,7 +391,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * Gets the stack trace from a JNI exception.
      *
      * @param env the {@link JNIEnv}
-     * @param throwableHandle the JNI exception to get the stack trace from
+     * @param throwableHandle the JNI exception to get the stack trace from or {@link WordFactory#nullPointer() null} to capture the current stack trace.
      * @return the stack trace
      */
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
@@ -484,32 +485,40 @@ public final class JNIExceptionWrapper extends RuntimeException {
         return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
     }
 
-    private static <T extends JObject> T createExceptionOfSameType(JNIEnv env, Throwable original) {
-        WordFactory.nullPointer();
-        String className = original.getClass().getTypeName();
-        JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);
-        if (exceptionClass.isNonNull()) {
-            JNIMethod constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class, String.class));
-            if (constructor != null) {
-                JNI.JValue args = StackValue.get(1, JNI.JValue.class);
-                args.addressOf(0).setJObject(createHSString(env, original.getMessage()));
-                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
-                return res;
+    private static JThrowable createExceptionOfSameType(JNIEnv env, Throwable original) {
+        Class<? extends Throwable> originalType = original.getClass();
+        if (originalType == ForeignException.class) {
+            return callCreateForeignException(env, JNIUtil.createHSArray(env, ((ForeignException)original).toByteArray()));
+        } else {
+            String className = originalType.getTypeName();
+            JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);
+            if (exceptionClass.isNonNull()) {
+                JNIMethod constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class, String.class));
+                if (constructor != null) {
+                    JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+                    args.addressOf(0).setJObject(createHSString(env, original.getMessage()));
+                    return HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
+                }
+                constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class));
+                if (constructor != null) {
+                    return HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
+                }
             }
-            constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class));
-            if (constructor != null) {
-                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
-                return res;
-            }
+            return WordFactory.nullPointer();
         }
-        return WordFactory.nullPointer();
     }
 
     // JNI calls
-    private static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
+    private static JThrowable callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
+    }
+
+    private static JThrowable callCreateForeignException(JNIEnv env, JByteArray rawValue) {
+        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+        args.addressOf(0).setJObject(rawValue);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateForeignException.resolve(env), args);
     }
 
     private static <T extends JObject> T callUpdateStackTrace(JNIEnv env, JObject p0, JByteArray p1) {

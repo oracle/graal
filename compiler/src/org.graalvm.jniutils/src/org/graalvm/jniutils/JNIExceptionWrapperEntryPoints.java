@@ -75,6 +75,16 @@ final class JNIExceptionWrapperEntryPoints {
         return new RuntimeException(message);
     }
 
+    /**
+     * Creates a {@link ForeignException} used to throw native exception into Java code.
+     *
+     * @param rawValue marshalled original exception
+     * @return a {@link ForeignException} instance
+     */
+    static Throwable createForeignException(byte[] rawValue) {
+        return new ForeignException(rawValue);
+    }
+
     static byte[] getStackTrace(Throwable throwable) {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         try (DataOutputStream out = new DataOutputStream(bout)) {

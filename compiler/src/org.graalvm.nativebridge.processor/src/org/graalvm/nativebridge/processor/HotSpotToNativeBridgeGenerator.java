@@ -106,7 +106,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         builder.lineEnd("");
 
-        generateMarshallerFields(builder, data, typeCache.jniHotSpotMarshaller, Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC);
+        generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniHotSpotMarshaller, Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC);
         builder.line("");
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
@@ -136,6 +136,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             generateHSToNativeNativeMethod(builder, data, methodData);
         }
 
+        generateUnboxForeignException(builder);
         builder.dedent();
         builder.line("}");
     }
@@ -179,6 +180,10 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                         nativeMethodName, actualParameters.toArray(new CharSequence[actualParameters.size()])).build();
         CacheData cacheData = methodData.cachedData;
         TypeMirror returnType = methodData.type.getReturnType();
+        CharSequence foreignException = "foreignException";
+        CharSequence throwUnboxedException = new CodeBuilder(builder).write("throw")
+                .space().invoke(null, "unboxForeignException", foreignException)
+                .write(";").build();
         if (cacheData != null) {
             String cacheFieldName = cacheData.cacheFieldName;
             String resFieldName = cacheFieldName + "Result";
@@ -197,6 +202,10 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                             endPointResultVariable != null ? endPointResultVariable : nativeCall, receiverNativeObject, null);
             builder.lineStart().write(resFieldName).write(" = ").write(value).lineEnd(";");
             builder.lineStart().write(cacheSnippets.writeCache(builder, cacheFieldName, receiver, resFieldName)).lineEnd(";");
+            builder.dedent();
+            builder.lineStart("} catch (").write(typeCache.foreignException).space().write(foreignException).write(") ").lineEnd("{");
+            builder.indent();
+            builder.line(throwUnboxedException);
             builder.dedent();
             builder.line("} finally {");
             builder.indent();
@@ -223,6 +232,10 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                             endPointResultVariable != null ? endPointResultVariable : nativeCall, receiverNativeObject, null);
             builder.write(value);
             builder.lineEnd(";");
+            builder.dedent();
+            builder.lineStart("} catch (").write(typeCache.foreignException).space().write(foreignException).write(") ").lineEnd("{");
+            builder.indent();
+            builder.line(throwUnboxedException);
             builder.dedent();
             builder.line("} finally {");
             builder.indent();
@@ -256,6 +269,38 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                         methodData.type.getThrownTypes());
     }
 
+    private void generateUnboxForeignException(CodeBuilder builder) {
+        builder.lineEnd("");
+        CodeBuilder.Parameter foreignException = CodeBuilder.newParameter(typeCache.foreignException, "e");
+        builder.lineStart().annotation(typeCache.suppressWarnings, "unchecked").lineEnd("");
+        builder.lineStart().writeModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC)).spaceIfNeeded();
+        builder.write("<T").space().write("extends").space().write(typeCache.runtimeException).write(">").space();
+        builder.write("T").space().write("unboxForeignException").write("(").write(typeCache.foreignException).space().write(foreignException.name).write(") ");
+        builder.write("throws").space().write("T").space().lineEnd("{");
+        builder.indent();
+        CharSequence in = "in";
+        CharSequence arrayInit = new CodeBuilder(builder).invoke(foreignException.name, "toByteArray").build();
+        CharSequence binaryReaderInit = new CodeBuilder(builder).write(typeCache.binaryInput).space().write(in).write(" = ").invokeStatic(typeCache.binaryInput, "create", arrayInit).build();
+        builder.lineStart("try (").write(binaryReaderInit).lineEnd(") {");
+        builder.indent();
+        builder.lineStart().write(typeCache.throwable).space().write("t").lineEnd(";");
+        builder.line("try {");
+        builder.indent();
+        builder.lineStart("t = ").invoke("throwableMarshaller", "read", in).lineEnd(";");
+        builder.dedent();
+        builder.lineStart("} catch (").write(typeCache.iOException).space().write("ioe").lineEnd(") {");
+        builder.indent();
+        CharSequence message = new CodeBuilder(builder).invoke("ioe", "getMessage").build();
+        builder.lineStart("throw").space().newInstance(typeCache.assertionError, message, "ioe").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
+        builder.lineStart("throw (T) t").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
+        builder.dedent();
+        builder.line("}");
+    }
+
     private void generateHSToNativeEndPoint(CodeBuilder builder, DefinitionData data) {
         HotSpotToNativeDefinitionData hsData = ((HotSpotToNativeDefinitionData) data);
 
@@ -264,7 +309,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         builder.lineEnd("");
 
-        generateMarshallerFields(builder, data, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
         builder.line("");
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
@@ -282,6 +327,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             String entryPointSymbolName = jniCMethodSymbol(data, methodData);
             generateHSToNativeEndMethod(builder, data, methodData, entryPointSymbolName);
         }
+        generateThrowForeignExceptionMethod(builder);
         builder.dedent();
         builder.line("}");
     }
@@ -409,7 +455,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         String exceptionVariable = "e";
         builder.lineStart("} catch (").write(typeCache.throwable).space().write(exceptionVariable).lineEnd(") {");
         builder.indent();
-        CodeBuilder defaultExceptionHandler = new CodeBuilder(builder).invokeStatic(typeCache.jniExceptionWrapper, "throwInHotSpot", jniEnvVariable, exceptionVariable).write(";");
+        CodeBuilder defaultExceptionHandler = new CodeBuilder(builder).invoke(null, "throwForeignException", jniEnvVariable, exceptionVariable).write(";");
         if (data.exceptionHandler != null) {
             CharSequence[] args = new CharSequence[]{jniEnvVariable, exceptionVariable};
             builder.lineStart("if (!").invokeStatic(data.annotatedType, data.exceptionHandler.getSimpleName(), args).lineEnd(") {");
@@ -431,6 +477,34 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         if (objectReturnType) {
             builder.lineStart("return ").invoke("scope", "getObjectResult").lineEnd(";");
         }
+        builder.dedent();
+        builder.line("}");
+    }
+
+    private void generateThrowForeignExceptionMethod(CodeBuilder builder) {
+        builder.lineEnd("");
+        CodeBuilder.Parameter jniEnv = CodeBuilder.newParameter(typeCache.jniEnv, "jniEnv");
+        CodeBuilder.Parameter t = CodeBuilder.newParameter(typeCache.throwable, "t");
+        List<CodeBuilder.Parameter> params = new ArrayList<>();
+        params.add(jniEnv);
+        params.add(t);
+        builder.methodStart(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), "throwForeignException", types.getNoType(TypeKind.VOID), params, Collections.emptyList());
+        builder.indent();
+        CharSequence out = "out";
+        CharSequence binaryWriterInit = new CodeBuilder(builder).write(typeCache.byteArrayBinaryOutput).space().write(out).write(" = ").invokeStatic(typeCache.binaryOutput, "create").build();
+        builder.lineStart("try (").write(binaryWriterInit).lineEnd(") {");
+        builder.indent();
+        builder.lineStart().invoke("throwableMarshaller", "write", out, t.name).lineEnd(";");
+        CharSequence arrayInit = new CodeBuilder(builder).invoke(out, "getArray").build();
+        CharSequence foreignExceptionInit = new CodeBuilder(builder).newInstance(typeCache.foreignException, arrayInit).build();
+        builder.lineStart().invokeStatic(typeCache.jniExceptionWrapper, "throwInHotSpot", jniEnv.name, foreignExceptionInit).lineEnd(";");
+        builder.dedent();
+        builder.lineStart("} catch (").write(typeCache.iOException).space().write("ioe").lineEnd(") {");
+        builder.indent();
+        CharSequence message = new CodeBuilder(builder).invoke("ioe", "getMessage").build();
+        builder.lineStart("throw").space().newInstance(typeCache.assertionError, message, "ioe").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
         builder.dedent();
         builder.line("}");
     }

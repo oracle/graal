@@ -147,7 +147,7 @@ abstract class AbstractBridgeGenerator {
     final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data, CodeBuilder.Parameter jniConfigVariable,
                     boolean staticFields, DeclaredType marshallerType) {
         String prefix = staticFields ? "" : "this.";
-        String lookupMethod = marshallerType.equals(typeCache.jniHotSpotMarshaller) ? "lookupHotSpotMarshaller" : "lookupNativeMarshaller";
+        String legacyLookupMethod = marshallerType.equals(typeCache.jniHotSpotMarshaller) ? "lookupHotSpotMarshaller" : "lookupNativeMarshaller";
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             List<CharSequence> params = new ArrayList<>();
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
@@ -160,7 +160,8 @@ abstract class AbstractBridgeGenerator {
             }
             builder.lineStart(prefix).write(marshaller.name).write(" = ");
             CharSequence jniConfigName = jniConfigVariable == null ? "config" : jniConfigVariable.name;
-            builder.invoke(jniConfigName, lookupMethod, params.toArray(new CharSequence[params.size()])).lineEnd(";");
+            String useLookupMethod = marshaller.legacy ? legacyLookupMethod : "lookupMarshaller";
+            builder.invoke(jniConfigName, useLookupMethod, params.toArray(new CharSequence[params.size()])).lineEnd(";");
         }
     }
 
@@ -264,11 +265,12 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static void generateMarshallerFields(CodeBuilder builder, DefinitionData data, DeclaredType type, Modifier... modifiers) {
+    static void generateMarshallerFields(CodeBuilder builder, DefinitionData data, DeclaredType type, DeclaredType legacyType, Modifier... modifiers) {
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             Set<Modifier> modSet = EnumSet.noneOf(Modifier.class);
             Collections.addAll(modSet, modifiers);
-            builder.lineStart().writeModifiers(modSet).space().parameterizedType(type, marshaller.forType).space().write(marshaller.name).lineEnd(";");
+            DeclaredType useType = marshaller.legacy ? legacyType : type;
+            builder.lineStart().writeModifiers(modSet).space().parameterizedType(useType, marshaller.forType).space().write(marshaller.name).lineEnd(";");
         }
     }
 

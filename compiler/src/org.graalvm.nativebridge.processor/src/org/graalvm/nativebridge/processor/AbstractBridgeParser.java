@@ -99,10 +99,11 @@ abstract class AbstractBridgeParser {
     DefinitionData createDefinitionData(DeclaredType annotatedType, @SuppressWarnings("unused") AnnotationMirror annotation,
                     DeclaredType serviceType, Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
                     ExecutableElement customDispatchAccessor, ExecutableElement customReceiverAccessor, ExecutableElement exceptionHandler,
-                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToIgnore,
+                    VariableElement endPointHandle, DeclaredType jniConfig, MarshallerData throwableMarshaller, Set<DeclaredType> annotationsToIgnore,
                     Set<DeclaredType> annotationsForMarshallerLookup) {
         return new DefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams,
-                        customDispatchAccessor, customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, annotationsToIgnore, annotationsForMarshallerLookup);
+                        customDispatchAccessor, customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig,
+                        throwableMarshaller, annotationsToIgnore, annotationsForMarshallerLookup);
     }
 
     final DefinitionData parse(Element element) {
@@ -160,8 +161,9 @@ abstract class AbstractBridgeParser {
         if (hasErrors) {
             return null;
         } else {
+            MarshallerData throwableMarshaller = MarshallerData.marshalled(typeCache.throwable, Collections.emptyList(), false);
             DefinitionData definitionData = createDefinitionData(annotatedType, handledAnnotation, serviceType, toGenerate, constructorParams, customDispatchAccessor,
-                            customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, ignoreAnnotations, marshallerAnnotations);
+                            customReceiverAccessor, exceptionHandler, endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
             assertNoExpectedErrors(definitionData);
             return definitionData;
         }
@@ -683,8 +685,7 @@ abstract class AbstractBridgeParser {
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 annotations.stream().map(AnnotationMirror::getAnnotationType).forEach(marshallerAnnotations::add);
-                String marshallerFieldName = marshallerName(type, annotations);
-                res = MarshallerData.marshalled(type, marshallerFieldName, annotations);
+                res = MarshallerData.marshalled(type, annotations, true);
             }
         }
         return res;
@@ -1051,23 +1052,26 @@ abstract class AbstractBridgeParser {
             CUSTOM,
         }
 
-        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, true, null, null, null);
-        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, true, null, null, null);
+        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, false, true, null, null, null);
+        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, false, true, null, null, null);
 
         final Kind kind;
         final TypeMirror forType;
         final List<? extends AnnotationMirror> annotations;
         final String name;                              // only for CUSTOM
+        final boolean legacy;                           // only for CUSTOM
         final boolean useCustomReceiverAccessor;        // only for REFERENCE
         final boolean sameDirection;                    // only for REFERENCE
         final VariableElement nonDefaultReceiver;       // only for REFERENCE
         final ExecutableElement customDispatchFactory;  // only for REFERENCE
 
-        private MarshallerData(Kind kind, TypeMirror forType, String name, boolean useCustomReceiverAccessor, boolean sameDirection,
+        private MarshallerData(Kind kind, TypeMirror forType, String name, boolean legacy,
+                        boolean useCustomReceiverAccessor, boolean sameDirection,
                         List<? extends AnnotationMirror> annotations, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
             this.kind = kind;
             this.forType = forType;
             this.name = name;
+            this.legacy = legacy;
             this.useCustomReceiverAccessor = useCustomReceiverAccessor;
             this.sameDirection = sameDirection;
             this.annotations = annotations;
@@ -1094,17 +1098,18 @@ abstract class AbstractBridgeParser {
         }
 
         static MarshallerData annotatedArray(List<? extends AnnotationMirror> annotations) {
-            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, true, annotations, null, null);
+            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, false, true, annotations, null, null);
         }
 
-        static MarshallerData marshalled(TypeMirror forType, String name, List<? extends AnnotationMirror> annotations) {
-            return new MarshallerData(Kind.CUSTOM, forType, name, false, true, annotations, null, null);
+        static MarshallerData marshalled(TypeMirror forType, List<? extends AnnotationMirror> annotations, boolean legacy) {
+            String name = marshallerName(forType, annotations);
+            return new MarshallerData(Kind.CUSTOM, forType, name, legacy, false, true, annotations, null, null);
         }
 
         static MarshallerData reference(DeclaredType startPointType, AnnotationMirror annotation, boolean useCustomReceiverAccessor,
                         boolean sameDirection, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
             List<AnnotationMirror> annotations = annotation == null ? Collections.emptyList() : Collections.singletonList(annotation);
-            return new MarshallerData(Kind.REFERENCE, startPointType, null, useCustomReceiverAccessor, sameDirection, annotations, nonDefaultReceiver, customDispatchFactory);
+            return new MarshallerData(Kind.REFERENCE, startPointType, null, false, useCustomReceiverAccessor, sameDirection, annotations, nonDefaultReceiver, customDispatchFactory);
         }
     }
 
@@ -1166,13 +1171,14 @@ abstract class AbstractBridgeParser {
         final ExecutableElement exceptionHandler;
         final VariableElement endPointHandle;
         final DeclaredType jniConfig;
+        final MarshallerData throwableMarshaller;
         final Set<DeclaredType> ignoreAnnotations;
         final Set<DeclaredType> marshallerAnnotations;
 
         DefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
                         List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement customDispatchAccessor,
                         ExecutableElement customReceiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle,
-                        DeclaredType jniConfig, Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
+                        DeclaredType jniConfig, MarshallerData throwableMarshaller, Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
             this.annotatedType = annotatedType;
             this.annotatedTypeConstructorParams = annotatedTypeConstructorParams;
             this.serviceType = serviceType;
@@ -1182,6 +1188,7 @@ abstract class AbstractBridgeParser {
             this.exceptionHandler = exceptionHandler;
             this.endPointHandle = endPointHandle;
             this.jniConfig = jniConfig;
+            this.throwableMarshaller = throwableMarshaller;
             this.ignoreAnnotations = ignoreAnnotations;
             this.marshallerAnnotations = marshallerAnnotations;
         }
@@ -1189,6 +1196,7 @@ abstract class AbstractBridgeParser {
         Collection<MarshallerData> getAllCustomMarshallers() {
             SortedSet<MarshallerData> res = new TreeSet<>(Comparator.comparing(a -> a.name));
             collectAllMarshallers(res, MarshallerData.Kind.CUSTOM);
+            res.add(throwableMarshaller);
             return res;
         }
 
@@ -1217,7 +1225,12 @@ abstract class AbstractBridgeParser {
 
     abstract static class AbstractTypeCache {
 
+        final DeclaredType assertionError;
+        final DeclaredType binaryMarshaller;
+        final DeclaredType binaryInput;
+        final DeclaredType binaryOutput;
         final DeclaredType byReference;
+        final DeclaredType byteArrayBinaryOutput;
         final DeclaredType clazz;
         final DeclaredType collections;
         final DeclaredType customDispatchAccessor;
@@ -1226,11 +1239,13 @@ abstract class AbstractBridgeParser {
         final DeclaredType endPointHandle;
         final DeclaredType exceptionHandler;
         final DeclaredType expectError;
+        final DeclaredType foreignException;
         final DeclaredType generateHSToNativeBridge;
         final DeclaredType generateNativeToHSBridge;
         final DeclaredType hSObject;
         final DeclaredType idempotent;
         final DeclaredType in;
+        final DeclaredType iOException;
         final DeclaredType jBooleanArray;
         final DeclaredType jByteArray;
         final DeclaredType jCharArray;
@@ -1259,6 +1274,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType override;
         final DeclaredType rawReference;
         final DeclaredType receiverMethod;
+        final DeclaredType runtimeException;
         final DeclaredType string;
         final DeclaredType suppressWarnings;
         final DeclaredType throwable;
@@ -1267,7 +1283,12 @@ abstract class AbstractBridgeParser {
         final DeclaredType wordFactory;
 
         AbstractTypeCache(NativeBridgeProcessor processor) {
+            this.assertionError = (DeclaredType) processor.getType("java.lang.AssertionError");
+            this.binaryMarshaller = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryMarshaller");
+            this.binaryInput = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryInput");
+            this.binaryOutput = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryOutput");
             this.byReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.ByReference");
+            this.byteArrayBinaryOutput = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput");
             this.clazz = (DeclaredType) processor.getType("java.lang.Class");
             this.collections = (DeclaredType) processor.getType("java.util.Collections");
             this.customDispatchAccessor = (DeclaredType) processor.getType("org.graalvm.nativebridge.CustomDispatchAccessor");
@@ -1276,11 +1297,13 @@ abstract class AbstractBridgeParser {
             this.endPointHandle = (DeclaredType) processor.getType("org.graalvm.nativebridge.EndPointHandle");
             this.exceptionHandler = (DeclaredType) processor.getType("org.graalvm.nativebridge.ExceptionHandler");
             this.expectError = (DeclaredType) processor.getTypeOrNull("org.graalvm.nativebridge.processor.test.ExpectError");
+            this.foreignException = (DeclaredType) processor.getTypeOrNull("org.graalvm.jniutils.ForeignException");
             this.generateHSToNativeBridge = (DeclaredType) processor.getType(HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION);
             this.generateNativeToHSBridge = (DeclaredType) processor.getType(NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.idempotent = (DeclaredType) processor.getType("org.graalvm.nativebridge.Idempotent");
             this.in = (DeclaredType) processor.getType("org.graalvm.nativebridge.In");
+            this.iOException = (DeclaredType) processor.getType("java.io.IOException");
             this.jBooleanArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JBooleanArray");
             this.jByteArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JByteArray");
             this.jCharArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JCharArray");
@@ -1309,6 +1332,7 @@ abstract class AbstractBridgeParser {
             this.override = (DeclaredType) processor.getType("java.lang.Override");
             this.rawReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.RawReference");
             this.receiverMethod = (DeclaredType) processor.getType("org.graalvm.nativebridge.ReceiverMethod");
+            this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
             this.string = (DeclaredType) processor.getType("java.lang.String");
             this.suppressWarnings = (DeclaredType) processor.getType("java.lang.SuppressWarnings");
             this.throwable = (DeclaredType) processor.getType("java.lang.Throwable");

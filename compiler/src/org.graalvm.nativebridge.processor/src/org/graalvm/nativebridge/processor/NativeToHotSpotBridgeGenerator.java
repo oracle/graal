@@ -114,7 +114,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         if (data.exceptionHandler != null) {
             generateHotSpotCallsField(builder);
         }
-        generateMarshallerFields(builder, data, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
             builder.methodStart(EnumSet.of(Modifier.STATIC), null,
@@ -463,7 +463,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         builder.lineEnd("");
 
-        generateMarshallerFields(builder, data, typeCache.jniHotSpotMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniHotSpotMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
             builder.methodStart(EnumSet.of(Modifier.STATIC), null,
