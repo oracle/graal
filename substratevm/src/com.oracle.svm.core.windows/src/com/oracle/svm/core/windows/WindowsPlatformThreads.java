@@ -125,7 +125,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         @SuppressWarnings("unused")
         @Uninterruptible(reason = "prologue")
         static void enter(WindowsThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

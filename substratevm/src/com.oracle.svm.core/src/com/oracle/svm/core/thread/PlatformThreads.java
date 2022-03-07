@@ -57,7 +57,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -213,17 +212,6 @@ public abstract class PlatformThreads {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
-        Thread javaThread = currentThread.get(thread);
-        return wasStartedByCurrentIsolate(javaThread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean wasStartedByCurrentIsolate(Thread thread) {
-        return toTarget(thread).wasStartedByCurrentIsolate;
-    }
-
     /* End of accessor functions. */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -257,9 +245,11 @@ public abstract class PlatformThreads {
     static void cleanupBeforeDetach(IsolateThread thread) {
         VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
 
-        Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
-        javaThread.exit();
-        ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), currentThread.get(thread));
+        Thread javaThread = currentThread.get(thread);
+        if (javaThread != null) {
+            toTarget(javaThread).exit();
+            ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), javaThread);
+        }
     }
 
     static void join(Thread thread, long millis) throws InterruptedException {
@@ -466,10 +456,12 @@ public abstract class PlatformThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
 
         Thread thread = currentThread.get(vmThread);
-        toTarget(thread).threadData.detach();
-        toTarget(thread).isolateThread = WordFactory.nullPointer();
-        if (!thread.isDaemon()) {
-            nonDaemonThreads.decrementAndGet();
+        if (thread != null) {
+            toTarget(thread).threadData.detach();
+            toTarget(thread).isolateThread = WordFactory.nullPointer();
+            if (!thread.isDaemon()) {
+                nonDaemonThreads.decrementAndGet();
+            }
         }
     }
 
