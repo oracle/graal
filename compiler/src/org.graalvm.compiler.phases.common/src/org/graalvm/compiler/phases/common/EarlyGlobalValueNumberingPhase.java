@@ -32,6 +32,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -39,17 +40,13 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.ControlSinkNode;
-import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
@@ -63,10 +60,11 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.word.LocationIdentity;
 
-public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
+public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     public static final CounterKey earlyGVN = DebugContext.counter("EarlyGVN");
     public static final CounterKey earlyGVNLICM = DebugContext.counter("EarlyGVN_LICM");
+    public static final CounterKey earlyGVNAbort = DebugContext.counter("EarlyGVN_AbortProxy");
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
@@ -97,10 +95,9 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
         final StructuredGraph graph;
         final ControlFlowGraph cfg;
         final LoopsData ld;
-        ValueMap valueMap;
         final EconomicMap<LoopEx, EconomicSet<LocationIdentity>> killedLoopLocations;
         final NodeBitMap licmNodes;
-        final EconomicMap<Block, ValueMap> predecessorMaps;
+        final BlockMap<ValueMap> blockMaps;
 
         GVNVisitor(ControlFlowGraph cfg, LoopsData ld) {
             this.cfg = cfg;
@@ -111,7 +108,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                 killedLoopLocations.put(loop, killedLoopLocations(loop));
             }
             licmNodes = graph.createNodeBitMap();
-            predecessorMaps = EconomicMap.create();
+            blockMaps = new BlockMap<>(cfg);
         }
 
         /**
@@ -135,31 +132,50 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
          */
         @Override
         public ValueMap enter(Block b) {
-            ValueMap oldMap = null;
-            if (valueMap == null) {
-                valueMap = new ValueMap();
+            ValueMap blockMap = blockMaps.get(b);
+
+            assert blockMap == null;
+            Block dominator = b.getDominator();
+            if (dominator == null) {
+                blockMap = new ValueMap();
             } else {
-                oldMap = valueMap;
-                valueMap = oldMap.copy();
+                ValueMap dominatorMap = blockMaps.get(dominator);
+                blockMap = dominatorMap.copy();
             }
 
-            if (!b.isLoopHeader()) {
-                // apply kill effects of dominator tree siblings
-                for (Block predecessor : b.getPredecessors()) {
-                    ValueMap predMap = predecessorMaps.get(predecessor);
-                    assert predMap != null : "This block " + b.getBeginNode() + " pred block " + predecessor.getEndNode();
-                    valueMap.killAllValuesByOtherMap(predMap);
-                }
-            }
+            blockMaps.put(b, blockMap);
 
             Loop<Block> hirLoop = b.getLoop();
             EconomicSet<LocationIdentity> thisLoopKilledLocations = hirLoop == null ? null : killedLoopLocations.get(ld.loop(hirLoop));
 
+            if (!b.isLoopHeader()) {
+                // apply kill effects of dominator tree siblings
+                for (Block predecessor : b.getPredecessors()) {
+                    if (b.getDominator() == predecessor) {
+                        continue;
+                    }
+                    ValueMap predMap = blockMaps.get(predecessor);
+                    GraalError.guarantee(predMap != null, "This block " + b.getBeginNode() + " pred block " + predecessor.getEndNode());
+                    blockMap.killAllValuesByOtherMap(predMap);
+                }
+            }
+
+// else {
+// // for loop headers first kill all the stuff killed inside the loop (backedge
+// // predecessors) and kill everything from above
+// assert thisLoopKilledLocations != null;
+// for (LocationIdentity killedByBackedge : thisLoopKilledLocations) {
+// blockMap.killValuesByIdentity(killedByBackedge);
+// }
+// assert !b.getFirstPredecessor().isLoopEnd() : "First pred must not be a loop end";
+// blockMap.killAllValuesByOtherMap(blockMaps.get(b.getFirstPredecessor()));
+// }
+
             boolean insideLoop = hirLoop != null;
             boolean unconditionallyInsideLoop = true;
             if (insideLoop) {
-                // we are passing a loop, kill everything (reachable via the backedge)
-                killLoopLocations(thisLoopKilledLocations);
+// // we are passing a loop, kill everything (reachable via the backedge)
+// killLoopLocations(thisLoopKilledLocations, blockMap);
                 /*
                  * Check if LICM can be applied because we are in a tail counted loop or have code
                  * dominating the exit conditions.
@@ -181,10 +197,11 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
             // we exited a loop down this path, effects can have happened, kill everything (exit as
             // well reachable over the backedge)
             if (b.getDominator() != null && b.getDominator().getLoop() != null && b.getLoop() != b.getDominator().getLoop()) {
-                killLoopLocations(killedLoopLocations.get(ld.loop(b.getDominator().getLoop())));
+                killLoopLocations(killedLoopLocations.get(ld.loop(b.getDominator().getLoop())), blockMap);
             }
 
-            valueMap.killValuesByPotentialMemoryKill(b.getBeginNode());
+            // begin nodes can be memory kills
+            blockMap.killValuesByPotentialMemoryKill(b.getBeginNode());
             ArrayList<FixedWithNextNode> nodes = new ArrayList<>();
             // ignore single node basic blocks (loop exits)
             if (b.getBeginNode() != b.getEndNode()) {
@@ -197,16 +214,16 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                     FixedWithNextNode fwn = nodes.get(i);
                     // a previous GVN can remove this node
                     if (fwn != null) {
-                        procesNode(fwn, insideLoop, unconditionallyInsideLoop, thisLoopKilledLocations, hirLoop);
+                        procesNode(fwn, insideLoop, unconditionallyInsideLoop, thisLoopKilledLocations, hirLoop, blockMap, cfg, licmNodes, cfg.graph, ld);
                     }
                 }
             }
-            valueMap.killValuesByPotentialMemoryKill(b.getEndNode());
-            predecessorMaps.put(b, valueMap);
-            return oldMap;
+            // end nodes can be memory kills
+            blockMap.killValuesByPotentialMemoryKill(b.getEndNode());
+            return blockMap;
         }
 
-        private void killLoopLocations(EconomicSet<LocationIdentity> thisLoopKilledLocations) {
+        private static void killLoopLocations(EconomicSet<LocationIdentity> thisLoopKilledLocations, ValueMap blockMap) {
             if (thisLoopKilledLocations != null) {
                 /*
                  * Each location identity killed inside the loop prohibits a folding to the outer
@@ -215,14 +232,15 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                  * as a result of a conditional loop branch.
                  */
                 for (LocationIdentity loopKilled : thisLoopKilledLocations) {
-                    valueMap.killValuesByIdentity(loopKilled);
+                    blockMap.killValuesByIdentity(loopKilled);
                 }
             }
         }
 
-        private void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, EconomicSet<LocationIdentity> thisLoopKilledLocations, Loop<Block> hirLoop) {
+        private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, EconomicSet<LocationIdentity> thisLoopKilledLocations, Loop<Block> hirLoop,
+                        ValueMap blockMap, ControlFlowGraph cfg, NodeBitMap licmNodes, StructuredGraph graph, LoopsData ld) {
             if (MemoryKill.isMemoryKill(cur)) {
-                valueMap.killValuesByPotentialMemoryKill(cur);
+                blockMap.killValuesByPotentialMemoryKill(cur);
                 return;
             }
 
@@ -235,7 +253,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
              * all exits. This are operations that are unconditionally executed
              */
 
-            boolean canSubsitute = valueMap.hasSubstitute(cur);
+            boolean canSubsitute = blockMap.hasSubstitute(cur);
             if (canSubsitute) {
                 if (cur instanceof MemoryAccess) {
                     MemoryAccess access = (MemoryAccess) cur;
@@ -245,35 +263,37 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                         return;
                     } else {
                         // GVN node
-                        valueMap.substitute(cur, cfg, licmNodes);
+                        blockMap.substitute(cur, cfg, licmNodes);
                     }
                 } else {
                     // GVN node
                     if (canGVN(cur)) {
-                        valueMap.substitute(cur, cfg, licmNodes);
+                        blockMap.substitute(cur, cfg, licmNodes);
                     }
                 }
             } else {
                 if (unconditionallyInsideLoop && GraalOptions.EarlyLICM.getValue(graph.getOptions())) {
-                    if (cur instanceof MemoryAccess) {
-                        MemoryAccess access = (MemoryAccess) cur;
-                        if (!loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                            // LICM of node
-                            simplLoopInvariantCodeMotion(ld.loop(hirLoop), cur, licmNodes);
+                    if (!MemoryKill.isMemoryKill(cur) && canGVN(cur)) {
+                        if (cur instanceof MemoryAccess) {
+                            MemoryAccess access = (MemoryAccess) cur;
+                            if (!loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
+                                // LICM of node
+                                tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
+                            }
+                        } else {
+                            tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
                         }
-                        valueMap.rememberNodeForGVN(cur);
                     }
-                } else {
-                    if (canGVN(cur)) {
-                        valueMap.rememberNodeForGVN(cur);
-                    }
+                }
+                if (canGVN(cur)) {
+                    blockMap.rememberNodeForGVN(cur);
                 }
             }
         }
 
         @Override
         public void exit(Block b, ValueMap oldMap) {
-            valueMap = oldMap;
+
         }
 
     }
@@ -282,7 +302,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
         return !MemoryKill.isMemoryKill(n) && !(n instanceof VirtualizableAllocation);
     }
 
-    private static void simplLoopInvariantCodeMotion(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
+    private static void tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
         if (nodeCanBeLifted(n, loop, liftedNodes)) {
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "Before LICM of node %s", n);
             loop.loopBegin().getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: LICM on node %s", n);
@@ -296,28 +316,29 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
             liftedNodes.checkAndMarkInc(toLift);
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s", n);
             earlyGVNLICM.increment(loop.loopBegin().getDebug());
+            if (loop.loopBegin().getDebug().isCountEnabled()) {
+                DebugContext.counter(earlyGVNLICM.getName() + "_" + n.getClass().getSimpleName()).increment(n.graph().getDebug());
+            }
         }
 
     }
 
     private static boolean nodeCanBeLifted(Node n, LoopEx loop, NodeBitMap liftedNodes) {
-        if (n instanceof LoadFieldNode) {
-            LoadFieldNode lf = (LoadFieldNode) n;
-            if (!lf.isStatic()) {
-                assert lf.object() != null;
-                if (loop.whole().contains(lf.object()) && !liftedNodes.contains(lf.object())) {
-                    return false;
-                }
-            }
-            return true;
-        } else if (n instanceof ArrayLengthNode) {
-            ArrayLengthNode aln = (ArrayLengthNode) n;
-            return !loop.whole().contains(aln.getValue()) || liftedNodes.contains(aln.getValue());
-        } else if (!(n instanceof MemoryAccess) && !(n instanceof StateSplit) && !MemoryKill.isMemoryKill(n) && !(n instanceof DeoptimizingNode)) {
-            // LICM everything that is not a memory kill or access
-
+        /*
+         * Note that the caller has to ensure n is not a memory kill at that point
+         */
+        boolean canLICM = true;
+        for (Node input : n.inputs()) {
+            canLICM &= inputIsLoopInvariant(input, loop, liftedNodes);
         }
-        return false;
+        return canLICM;
+    }
+
+    private static boolean inputIsLoopInvariant(Node input, LoopEx loop, NodeBitMap liftedNodes) {
+        if (input == null) {
+            return true;
+        }
+        return !loop.whole().contains(input) || liftedNodes.contains(input);
     }
 
     private static boolean loopKillsLocation(EconomicSet<LocationIdentity> thisLoopKilledLocations, LocationIdentity loc) {
@@ -366,7 +387,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
 
     /**
      * A datastructure used to implement global value numbering on fixed nodes in the Graal IR. It
-     * storse all the values seen so far and exposes utility functionality to deal with memory.
+     * stores all the values seen so far and exposes utility functionality to deal with memory.
      *
      * Loop handling: We can only perform global value numbering on the fixed node graph if we know
      * the memory effect of a loop. For a loop we can statically not tell if a kill inside may be
@@ -374,7 +395,8 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
      * certain memory location.
      *
      * Loop invariant code motion: This phase will not perform speculative loop invariant code
-     * motion (this is done in mid tier on the real memory graph. Thus, we can only perform GVN
+     * motion (this is done in mid tier on the real memory graph. Thus, we can only perform a
+     * limited amount of LICM for code unconditionally executed inside a loop that is invariant).
      */
     static final class ValueMap {
 
@@ -418,6 +440,7 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
         ValueMap copy() {
             ValueMap other = new ValueMap();
             other.entries.putAll(entries);
+            other.kills.addAll(kills);
             return other;
         }
 
@@ -451,7 +474,6 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                 }
 
                 Block useBlock = cfg.blockFor(n);
-
                 Loop<Block> defLoop = defBlock.getLoop();
                 Loop<Block> useLoop = useBlock.getLoop();
 
@@ -461,16 +483,14 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
                         // we are only safe without proxies if we are included in the def loop,
                         // i.e., the def loop is a parent loop
                         if (!useLoop.isTransitiveParentOrSelf(defLoop)) {
+                            earlyGVNAbort.increment(graph.getDebug());
                             return;
                         }
                     } else {
                         // the use is not in a loop but the def is, needs proxies, fail
+                        earlyGVNAbort.increment(graph.getDebug());
                         return;
                     }
-                }
-
-                if (defBlock.getLoop() != null && useBlock.getLoop() != defBlock.getLoop()) {
-                    // avoid creating proxies for now, special case loop hea
                     return;
                 }
 
@@ -493,6 +513,9 @@ public class EarlyGlobalValueNumbering extends BasePhase<CoreProviders> {
         }
 
         public void killValuesByPotentialMemoryKill(Node n) {
+            if (((StructuredGraph) n.graph()).start() == n) {
+                return;
+            }
             if (MemoryKill.isMemoryKill(n)) {
                 if (MemoryKill.isSingleMemoryKill(n)) {
                     SingleMemoryKill singleMemoryKill = MemoryKill.asSingleMemoryKill(n);

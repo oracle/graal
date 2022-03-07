@@ -24,13 +24,28 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.test.EarlyGVNTest.NodeCount.count;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.ListIterator;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.EarlyGlobalValueNumberingPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class EarlyGVNTest extends GraalCompilerTest {
@@ -56,10 +71,12 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
         MustFold fold = graph.method().getAnnotation(MustFold.class);
-        if (fold.noLoopLeft()) {
-            assertFalse(graph.hasLoops());
-        } else {
-            assertTrue(graph.hasLoops());
+        if (fold != null) {
+            if (fold.noLoopLeft()) {
+                assertFalse(graph.hasLoops());
+            } else {
+                assertTrue(graph.hasLoops());
+            }
         }
         super.checkHighTierGraph(graph);
     }
@@ -303,4 +320,147 @@ public class EarlyGVNTest extends GraalCompilerTest {
             }
         });
     }
+
+    static class NodeCount {
+        NodeClass<?> nodeClass;
+        int count;
+
+        NodeCount(NodeClass<?> nodeClass, int count) {
+            this.nodeClass = nodeClass;
+            this.count = count;
+        }
+
+        static NodeCount count(NodeClass<?> nodeClass, int count) {
+            return new NodeCount(nodeClass, count);
+        }
+    }
+
+    private void checkHighTierGraph(String snippet, NodeCount... counts) {
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
+        PhaseSuite<HighTierContext> ht = suites.getHighTier().copy();
+        ListIterator<BasePhase<? super HighTierContext>> position = ht.findPhase(EarlyGlobalValueNumberingPhase.class);
+        position.add(new BasePhase<HighTierContext>() {
+
+            @Override
+            protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {
+                for (NodeCount count : counts) {
+                    int realCount = graph.getNodes().filter(x -> x.getNodeClass().equals(count.nodeClass)).count();
+                    Assert.assertEquals("Wrong node count for node class " + count.nodeClass, count.count, realCount);
+                }
+            }
+        });
+        ht.apply(graph, getDefaultHighTierContext());
+    }
+
+    @MustFold
+    public static void snippet11(int[] arr) {
+        int i = 0;
+        while (true) {
+            @SuppressWarnings("unused")
+            int len = arr.length;
+            if (i < 10) {
+                i++;
+                continue;
+            }
+            break;
+        }
+        while (true) {
+            @SuppressWarnings("unused")
+            int len = arr.length;
+            if (i < 10) {
+                i++;
+                continue;
+            }
+            break;
+        }
+    }
+
+    @Test
+    public void test11() {
+        String s = "snippet11";
+        test(s, new int[0]);
+        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
+    }
+
+    @MustFold
+    public static void snippet12(@SuppressWarnings("unused") int[] arr) {
+        int i = 0;
+        while (true) {
+            @SuppressWarnings("unused")
+            int len = field;
+            if (i < 10) {
+                len += field;
+                len += field;
+                len += field;
+                field2 = len;
+                i++;
+                continue;
+            }
+            break;
+        }
+        GraalDirectives.sideEffect();
+        while (true) {
+            @SuppressWarnings("unused")
+            int len = field;
+            if (i < 10) {
+                len += field;
+                len += field;
+                len += field;
+                field2 = len;
+                i++;
+                continue;
+            }
+            break;
+        }
+    }
+
+    @Test
+    public void test12() {
+        String s = "snippet12";
+        test(s, new int[0]);
+        checkHighTierGraph(s, count(LoadFieldNode.TYPE, 2));
+    }
+
+    public static int f3;
+
+    static class F {
+        int fi;
+    }
+
+    public static int snippet13(@SuppressWarnings("unused") int[] arr, F f) {
+        field = f.fi; // read once
+        b: if (arr.length > 0) {
+            if (arr.length == 123) {
+                field = 123;
+                GraalDirectives.controlFlowAnchor();
+                f.fi = arr.length;
+                if (arr.length == 1222) {
+                    break b;
+                }
+            } else {
+                field = 124;
+                GraalDirectives.controlFlowAnchor();
+            }
+            int i = 0;
+            while (true) {
+                if (i >= arr.length) {
+                    break b;
+                }
+                GraalDirectives.blackhole(i);
+                i++;
+            }
+        }
+        return f.fi;
+    }
+
+    @Test
+    public void test13() {
+        for (int i = 0; i < 100; i++) {
+            snippet13(new int[]{1}, new F());
+            snippet13(new int[0], new F());
+        }
+        test("snippet13", new int[]{123}, new F());
+    }
+
 }
