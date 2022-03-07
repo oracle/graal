@@ -26,9 +26,9 @@ package org.graalvm.compiler.core.common.alloc;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Comparator;
 import java.util.PriorityQueue;
 
-import org.graalvm.compiler.core.common.alloc.DefaultCodeEmissionOrder.BlockOrderComparator;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
 import org.graalvm.compiler.debug.GraalError;
@@ -257,6 +257,32 @@ public final class BasicBlockOrderUtils {
             if (!visitedBlocks.get(successor.getId())) {
                 visitedBlocks.set(successor.getId());
                 worklist.add(successor);
+            }
+        }
+    }
+
+    /**
+     * Comparator for sorting blocks based on loop depth and probability.
+     */
+    public static class BlockOrderComparator<T extends AbstractBlockBase<T>> implements Comparator<T> {
+        private static final double EPSILON = 1E-6;
+
+        @Override
+        public int compare(T a, T b) {
+            // Loop blocks before any loop exit block. The only exception are blocks that are
+            // (almost) impossible to reach.
+            if (a.getRelativeFrequency() > EPSILON && b.getRelativeFrequency() > EPSILON) {
+                int diff = b.getLoopDepth() - a.getLoopDepth();
+                if (diff != 0) {
+                    return diff;
+                }
+            }
+
+            // Blocks with high probability before blocks with low probability.
+            if (a.getRelativeFrequency() > b.getRelativeFrequency()) {
+                return -1;
+            } else {
+                return 1;
             }
         }
     }
