@@ -127,6 +127,8 @@
   windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
   linux_aarch64::             self.linux               + self.aarch64,
 
+  mach5_target:: {targets+: ["mach5"]},
+
   // Utils
   disable_proxies:: {
     setup+: [["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]],
