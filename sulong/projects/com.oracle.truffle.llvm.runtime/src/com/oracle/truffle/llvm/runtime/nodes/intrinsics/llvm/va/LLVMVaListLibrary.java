@@ -98,8 +98,9 @@ public abstract class LLVMVaListLibrary extends Library {
      * the Truffle runtime. This method should be used only when the frame cannot be obtained
      * otherwise.
      */
+    @SuppressWarnings("deprecation")
     public void copyWithoutFrame(Object srcVaList, Object destVaList) {
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
                 copy(srcVaList, destVaList, frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE));

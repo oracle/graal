@@ -698,10 +698,10 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public Iterable<V> getValues() {
-        return new Iterable<V>() {
+        return new Iterable<>() {
             @Override
             public Iterator<V> iterator() {
-                return new SparseMapIterator<V>() {
+                return new SparseMapIterator<>() {
                     @SuppressWarnings("unchecked")
                     @Override
                     public V next() {
@@ -735,7 +735,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public MapCursor<K, V> getEntries() {
-        return new MapCursor<K, V>() {
+        return new MapCursor<>() {
             int current = -1;
 
             @Override
@@ -851,7 +851,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public Iterator<K> iterator() {
-        return new SparseMapIterator<K>() {
+        return new SparseMapIterator<>() {
             @SuppressWarnings("unchecked")
             @Override
             public K next() {

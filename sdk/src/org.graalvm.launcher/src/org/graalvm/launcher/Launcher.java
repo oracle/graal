@@ -109,10 +109,9 @@ public abstract class Launcher {
     private PrintStream out = System.out;
     private PrintStream err = System.err;
 
-    private boolean help;
-    private boolean helpInternal;
-    private boolean helpExpert;
-    private boolean helpVM;
+    String helpArg = null;
+    boolean helpInternal;
+    boolean helpPrinted;
 
     /**
      * Path to the desired log file, or {@code null} if no log redirection is required.
@@ -554,16 +553,6 @@ public abstract class Launcher {
 
     private Path home;
 
-    private OptionCategory getHelpCategory() {
-        if (helpInternal) {
-            return OptionCategory.INTERNAL;
-        } else if (helpExpert) {
-            return OptionCategory.EXPERT;
-        } else {
-            return OptionCategory.USER;
-        }
-    }
-
     protected Path getGraalVMHome() {
         if (home == null) {
             home = HomeFinder.getInstance().getHomeFolder();
@@ -572,8 +561,8 @@ public abstract class Launcher {
     }
 
     /**
-     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin} or
-     * {@code jre/bin} directory.
+     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin}
+     * directory.
      *
      * @param binaryName binary name, without path.
      * @return OS-dependent binary filename.
@@ -585,14 +574,9 @@ public abstract class Launcher {
             throw abort("Cannot exec to GraalVM binary: could not find GraalVM home");
         }
         for (String executableName : executableNames) {
-            Path[] execPaths = new Path[]{
-                            graalVMHome.resolve("bin").resolve(executableName),
-                            graalVMHome.resolve("jre").resolve("bin").resolve(executableName)
-            };
-            for (Path execPath : execPaths) {
-                if (Files.exists(execPath)) {
-                    return execPath;
-                }
+            Path execPath = graalVMHome.resolve("bin").resolve(executableName);
+            if (Files.exists(execPath)) {
+                return execPath;
             }
         }
         throw abort("Cannot exec to GraalVM binary: could not find a '" + binaryName + "' executable");
@@ -607,22 +591,29 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean runLauncherAction() {
-        boolean printDefaultHelp = help || ((helpExpert || helpInternal) && kindAndCategory.isEmpty() && !helpVM);
-        OptionCategory hc = getHelpCategory();
-        if (printDefaultHelp) {
-            printDefaultHelp(hc);
+        if (helpArg == null) {
+            return false;
         }
-        maybePrintAdditionalHelp(hc);
-
-        if (helpVM) {
+        if ("".equals(helpArg)) {
+            helpPrinted = true;
+            printDefaultHelp(OptionCategory.EXPERT);
+        }
+        maybePrintAdditionalHelp(OptionCategory.EXPERT);
+        if ("all".equals(helpArg) || "vm".equals(helpArg)) {
+            helpPrinted = true;
+            out.println("");
             if (nativeAccess == null) {
                 printJvmHelp();
             } else {
                 nativeAccess.printNativeHelp();
             }
         }
-
-        return printAllOtherHelpCategories(printDefaultHelp);
+        if (!helpPrinted) {
+            printDefaultHelp(OptionCategory.USER);
+        }
+        out.println("");
+        out.println("See http://www.graalvm.org for more information.");
+        return true;
     }
 
     /**
@@ -670,34 +661,10 @@ public abstract class Launcher {
         kindAndCategory.add(option);
     }
 
-    private boolean printAllOtherHelpCategories(boolean printHelp) {
-        boolean print = printHelp || helpVM || !kindAndCategory.isEmpty();
-        if (!print) {
-            return false;
-        }
-        out.println();
-        for (Iterator<String> it = kindAndCategory.iterator(); it.hasNext();) {
-            String kind = it.next();
-            String opt = it.next();
-            printOtherHelpCategories0(kind, opt);
-        }
-        out.println("See http://www.graalvm.org for more information.");
-        return true;
-    }
-
-    private void printOtherHelpCategories0(String kind, String option) {
-        if (helpExpert || helpInternal) {
-            out.println("Use '" + option + "' to list user " + kind + " options.");
-        }
-        if (!helpExpert) {
-            out.println("Use '" + option + " --help:expert' to list expert " + kind + " options.");
-        }
-        if (!helpInternal) {
-            out.println("Use '" + option + " --help:internal' to list internal " + kind + " options.");
-        }
-    }
-
     static String optionsTitle(String kind, OptionCategory optionCategory) {
+        if (optionCategory == null) {
+            return kind + " options:";
+        }
         String category;
         switch (optionCategory) {
             case USER:
@@ -763,30 +730,39 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
-        switch (arg) {
-            case "--help":
-                help = true;
-                break;
-            case "--help:debug":
-                warn("--help:debug is deprecated, use --help:internal instead.");
-                helpInternal = true;
-                break;
-            case "--help:internal":
-                helpInternal = true;
-                break;
-            case "--help:expert":
-                helpExpert = true;
-                break;
-            case "--help:vm":
-                helpVM = true;
-                break;
-            case "--experimental-options":
-            case "--experimental-options=true":
-            case "--experimental-options=false":
-                // Ignore, these were already parsed before
-                break;
-            default:
-                return false;
+        // Ignore, these were already parsed before
+        if ("--experimental-options".equals(arg) || "--experimental-options=false".equals(arg) || "--experimental-options=true".equals(arg)) {
+            return true;
+        }
+        if (arg.startsWith("--help")) {
+            return parseHelpArg(arg);
+        }
+        return false;
+    }
+
+    private boolean parseHelpArg(String arg) {
+        // legacy behaviour support
+        if ("--help:expert".equals(arg)) {
+            return true;
+        }
+        if ("--help:internal".equals(arg)) {
+            helpInternal = true;
+            return true;
+        }
+        int index = arg.indexOf(':');
+        if (index < 0) {
+            helpArg = "";
+            return true;
+        }
+        String helpArgCandidate = arg.substring(index + 1);
+        index = helpArgCandidate.indexOf(':');
+        if (index < 0) {
+            helpArg = helpArgCandidate;
+            return true;
+        }
+        helpArg = helpArgCandidate.substring(0, index);
+        if (helpArgCandidate.endsWith(":internal")) {
+            helpInternal = true;
         }
         return true;
     }
@@ -866,7 +842,7 @@ public abstract class Launcher {
         try {
             descriptor.getKey().getType().convert(value);
         } catch (IllegalArgumentException e) {
-            throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
+            throw abort(String.format("Invalid argument %s specified. %s", arg, e.getMessage()));
         }
         if (descriptor.isDeprecated()) {
             String messageFormat = "Option '%s' is deprecated and might be removed from future versions.";

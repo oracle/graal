@@ -167,7 +167,7 @@ mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'dis', 'gu', 'gvm', 'lg'
 mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi-libffi', 'nfi', 'cmp', 'svm', 'svmnfi', 'llp', 'llrc', 'llrn'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'svmnfi', 'gvm', 'polynative', 'llp', 'nfi-libffi', 'nfi', 'svml', 'bgu', 'sdk', 'llrc', 'llrn', 'cmp'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'java', 'libpoly', 'sespresso', 'spolyglot', 'ejvm', 'sjsvm', 'blli', 'bnative-image', 'srubyvm', 'pynl', 'bgraalpython', 'pyn', 'bwasm', 'cmp', 'gwa', 'icu4j', 'js', 'lg', 'llp', 'nfi-libffi', 'nfi', 'ni', 'nil', 'pbm', 'pmh', 'pbi', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
+mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'java', 'libpoly', 'sjavavm', 'spolyglot', 'ejvm', 'sjsvm', 'blli', 'bnative-image', 'srubyvm', 'pynl', 'bgraalpython', 'pyn', 'bwasm', 'cmp', 'gwa', 'icu4j', 'js', 'lg', 'llp', 'nfi-libffi', 'nfi', 'ni', 'nil', 'pbm', 'pmh', 'pbi', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
 mx_sdk_vm.register_vm_config('ce', ['pbm', 'pmh', 'pbi', 'ni', 'icu4j', 'js', 'lg', 'nfi-libffi', 'nfi', 'tfl', 'svm', 'nil', 'rgx', 'sdk', 'cmp', 'tflm', 'svmnfi', 'bnative-image', 'sjsvm', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, env_file='polybench-nfi-ce')
 mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'blli', 'bnative-image', 'cmp', 'lg', 'llrc', 'llrl', 'llrn', 'nfi-libffi', 'nfi', 'ni', 'nil', 'pbm', 'pbi', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file='polybench-sulong-ce')
 
@@ -271,7 +271,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         deps=[],
                         name=project_name,
                         d=join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class),
-                        javaCompliance='1.8+',
+                        javaCompliance='11+',
                         checkstyleProj=project_name,
                         workingSets=None,
                         theLicense=None,
@@ -291,7 +291,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         path=simple_name + '.jar',
                         platformDependent=False,
                         distDependencies=[],
-                        javaCompliance='1.8+',
+                        javaCompliance='11+',
                         excludedLibs=[],
                         workingSets=None,
                         theLicense=None,

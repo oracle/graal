@@ -127,7 +127,7 @@ public class EconomicMapWrap<K, V> implements EconomicMap<K, V> {
     @Override
     public MapCursor<K, V> getEntries() {
         Iterator<Map.Entry<K, V>> iterator = map.entrySet().iterator();
-        return new MapCursor<K, V>() {
+        return new MapCursor<>() {
 
             private Map.Entry<K, V> current;
 

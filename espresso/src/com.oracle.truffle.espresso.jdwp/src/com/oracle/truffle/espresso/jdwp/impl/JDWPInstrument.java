@@ -163,7 +163,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         // The VM started event must be sent when we're ready to process commands
         // doProcessCommands method will control when events can be fired without
         // causing races, so pass on a Callable
-        Callable<Void> vmStartedJob = new Callable<Void>() {
+        Callable<Void> vmStartedJob = new Callable<>() {
             @Override
             public Void call() {
                 controller.getEventListener().vmStarted(suspend);

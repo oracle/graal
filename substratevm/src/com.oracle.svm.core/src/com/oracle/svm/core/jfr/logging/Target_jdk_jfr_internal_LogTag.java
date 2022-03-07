@@ -25,18 +25,18 @@
  */
 package com.oracle.svm.core.jfr.logging;
 
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jfr.JfrEnabled;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = JfrEnabled.class)
+@TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_LogTag {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
     volatile int tagSetLevel;

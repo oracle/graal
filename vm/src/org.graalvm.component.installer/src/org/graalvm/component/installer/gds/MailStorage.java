@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -120,5 +121,29 @@ public class MailStorage {
         try (OutputStream os = Files.newOutputStream(propertiesPath)) {
             properties.store(os, null);
         }
+    }
+
+    /**
+     * Simple regexp pattern for verifying an e-mail. Definition taken from
+     * https://www.w3.org/TR/html52/sec-forms.html#valid-e-mail-address; does not support
+     * internationalized domains well.
+     */
+    private static final Pattern EMAIL_PATTERN = Pattern
+                    .compile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$");
+
+    public static String checkEmailAddress(String mail, Feedback fb) {
+        String m;
+        if (mail == null) {
+            return null;
+        } else {
+            m = mail.trim();
+        }
+        if ("".equals(m)) {
+            return null;
+        }
+        if (!EMAIL_PATTERN.matcher(m).matches()) {
+            throw fb.failure("ERR_EmailNotValid", null, m);
+        }
+        return mail;
     }
 }

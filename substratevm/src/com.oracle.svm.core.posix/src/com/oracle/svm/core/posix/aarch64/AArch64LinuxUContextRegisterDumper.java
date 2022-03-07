@@ -46,7 +46,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 
-@Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
+@Platforms({Platform.LINUX_AARCH64_BASE.class})
 @AutomaticFeature
 class AArch64LinuxUContextRegisterDumperFeature implements Feature {
     @Override

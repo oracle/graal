@@ -648,3 +648,21 @@ end
 (gdb) hubname_indirect 0x1dc860
 0x7ffff78a52f0:	"java.lang.Class"
 ```
+
+## Debug Helper Methods
+
+On platforms where the debugging information is not fully supported, or when debugging complex issues, it can be helpful to print or query high-level information about the Native Image execution state.
+For those scenarios, Native Image provides debug helper methods that can be embedded into a native image by specifying the build-time option `-H:+IncludeDebugHelperMethods`.
+While debugging, it is then possible to invoke those debug helper methods like any normal C method.
+This functionality is compatible with pretty much any debugger.
+
+While debugging with gdb, the following command can be used to list all debug helper methods that are embedded into the native image:
+```
+(gdb) info functions svm_dbg_
+```
+
+Before invoking a method, it is best to directly look at the source code of the Java class `DebugHelper` to determine which arguments each method expects.
+For example, calling the method below prints high-level information about the Native Image execution state similar to what is printed for a fatal error:
+```
+(gdb) call svm_dbg_print_fatalErrorDiagnostics($r15, $rsp, $rip)
+```

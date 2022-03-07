@@ -63,6 +63,7 @@ public class HeapSnapshotVerifier {
     private boolean analysisModified;
 
     private final int verbosity;
+    private int iterations;
 
     public HeapSnapshotVerifier(BigBang bb, ImageHeap imageHeap, ImageHeapScanner scanner) {
         this.bb = bb;
@@ -76,6 +77,8 @@ public class HeapSnapshotVerifier {
         info("Verifying the heap snapshot...");
         analysisModified = false;
         heapPatched = false;
+        int reachableTypesBefore = bb.getUniverse().getReachableTypes();
+        iterations++;
         scannedObjects.reset();
         ObjectScanner objectScanner = new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
         executor.start();
@@ -83,17 +86,24 @@ public class HeapSnapshotVerifier {
         objectScanner.scanBootImageHeapRoots();
         executor.complete();
         executor.shutdown();
+        int verificationReachableTypes = bb.getUniverse().getReachableTypes() - reachableTypesBefore;
         if (heapPatched) {
             info("Heap verification patched the heap snapshot.");
         } else {
             info("Heap verification didn't find any heap snapshot modifications.");
         }
+        if (verificationReachableTypes > 0) {
+            info("Heap verification made " + verificationReachableTypes + " new types reachable.");
+        } else {
+            info("Heap verification didn't make any new types reachable.");
+        }
         if (analysisModified) {
             info("Heap verification modified the analysis state. Executing an additional analysis iteration.");
         } else {
-            info("Heap verification didn't modify the analysis state. Exiting analysis.");
+            info("Heap verification didn't modify the analysis state. Heap state stabilized after " + iterations + " iterations.");
+            info("Exiting analysis.");
         }
-        return analysisModified;
+        return analysisModified || verificationReachableTypes > 0;
     }
 
     protected void scanTypes(@SuppressWarnings("unused") ObjectScanner objectScanner) {
@@ -209,54 +219,65 @@ public class HeapSnapshotVerifier {
 
         @Override
         public void forScannedConstant(JavaConstant value, ScanReason reason) {
-            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(value);
             Object object = constantAsObject(bb, value);
-            if (object.getClass().equals(Class.class)) {
+            Class<?> objectClass = object.getClass();
+            if (objectClass.equals(Class.class)) {
+                /* Ensure that java.lang.Class constants are scanned. */
                 AnalysisType type = bb.getMetaAccess().lookupJavaType((Class<?>) object);
-                if (type.isReachable() && !initializationInfoComputed(type)) {
-                    /*
-                     * This means that the type has been marked as reachable during the verification
-                     * and ClassInitializationFeature.buildClassInitializationInfo() hasn't
-                     * processed it yet. Allow ClassInitializationFeature to build the
-                     * DynamicHub.classInitializationInfo.
-                     */
-                    onNoInitInfoForHub(value, reason);
-                }
-                /* Make sure the DynamicHub value is scanned. */
-                if (task == null) {
-                    onNoTaskForHub(value, reason);
-                    scanner.toImageHeapObject(value, reason, null);
-                    heapPatched = true;
-                } else {
-                    if (task.isDone()) {
-                        JavaConstant snapshot = task.guardedGet().getObject();
-                        if (!Objects.equals(snapshot, value)) {
-                            throw error(reason, "Value mismatch for hub snapshot: %s %n new value: %s %n", snapshot, value);
-                        }
-                    } else {
-                        /* If there is a task for the hub it should have been triggered. */
-                        throw error(reason, "Snapshot not yet computed for hub %n new value: %s %n", value);
+                ensureTypeScanned(value, type, reason);
+            } else {
+                /*
+                 * Ensure that the Class of any other constants are also scanned. An object replacer
+                 * can introduce new types which otherwise could be missed by the verifier. For
+                 * example com.oracle.svm.hosted.annotation.AnnotationObjectReplacer creates
+                 * annotation proxy types on the fly for constant annotation objects.
+                 */
+                AnalysisType type = bb.getMetaAccess().lookupJavaType(objectClass);
+                ensureTypeScanned(value, bb.getConstantReflectionProvider().asJavaClass(type), type, reason);
+            }
+        }
+
+        private void ensureTypeScanned(JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
+            ensureTypeScanned(null, typeConstant, type, reason);
+        }
+
+        private void ensureTypeScanned(JavaConstant object, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
+            AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable " + type.toJavaName());
+            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(typeConstant);
+            /* Make sure the DynamicHub value is scanned. */
+            if (task == null) {
+                onNoTaskForClassConstant(type, reason);
+                scanner.toImageHeapObject(typeConstant, reason, null);
+                heapPatched = true;
+            } else {
+                if (task.isDone()) {
+                    JavaConstant snapshot = task.guardedGet().getObject();
+                    if (!Objects.equals(snapshot, typeConstant)) {
+                        throw error(reason, "Value mismatch for class constant snapshot: %s %n new value: %s %n", snapshot, typeConstant);
                     }
+                } else {
+                    onTaskForClassConstantNotDone(object, type, reason);
+                    task.ensureDone();
                 }
             }
         }
     }
 
-    protected boolean initializationInfoComputed(@SuppressWarnings("unused") AnalysisType type) {
-        return true;
-    }
-
-    private void onNoInitInfoForHub(JavaConstant value, ScanReason reason) {
+    private void onNoTaskForClassConstant(AnalysisType type, ScanReason reason) {
         analysisModified = true;
         if (printAll()) {
-            warning(reason, "No initialization info computed for hub %s %n", value);
+            warning(reason, "No snapshot task found for class constant %s %n", type.toJavaName());
         }
     }
 
-    private void onNoTaskForHub(JavaConstant value, ScanReason reason) {
+    private void onTaskForClassConstantNotDone(JavaConstant object, AnalysisType type, ScanReason reason) {
         analysisModified = true;
         if (printAll()) {
-            warning(reason, "No snapshot task found for hub %s %n", value);
+            if (object != null) {
+                warning(reason, "Snapshot not yet computed for class %s of object %s %n", type.toJavaName(), object);
+            } else {
+                warning(reason, "Snapshot not yet computed for class constant %n new value: %s %n", type.toJavaName());
+            }
         }
     }
 

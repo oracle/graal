@@ -1161,7 +1161,7 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
+                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<>() {
                         @Override
                         public Object call() {
                             return method.invokeMethod(null, args);
@@ -1249,7 +1249,7 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<?> job = new ThreadJob<>(thread, new Callable<Object>() {
+                    ThreadJob<?> job = new ThreadJob<>(thread, new Callable<>() {
 
                         @Override
                         public Object call() throws Exception {
@@ -1348,7 +1348,7 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
+                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<>() {
 
                         @Override
                         public Object call() throws Exception {
@@ -1852,7 +1852,7 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
+                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<>() {
                         @Override
                         public Object call() throws Exception {
                             return method.invokeMethod(callee, args);

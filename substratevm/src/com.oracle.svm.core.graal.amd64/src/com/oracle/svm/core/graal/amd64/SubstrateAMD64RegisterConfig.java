@@ -57,7 +57,8 @@ import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
 
-import com.oracle.svm.core.OS;
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
@@ -102,7 +103,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         this.metaAccess = metaAccess;
         this.useBasePointer = useBasePointer;
 
-        if (OS.getCurrent() == OS.WINDOWS) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
             // This is the Windows 64-bit ABI for parameters.
             // Note that float parameters also "consume" a general register and vice versa.
             nativeGeneralParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
@@ -147,7 +148,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                  * rbp must be last in the list, so that it gets the location closest to the saved
                  * return address.
                  */
-                if (OS.getCurrent() == OS.WINDOWS) {
+                if (Platform.includedIn(Platform.WINDOWS.class)) {
                     calleeSaveRegisters = new RegisterArray(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
                                     xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15);
                 } else {
@@ -238,7 +239,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
             kinds[i] = kind;
 
-            if (type.nativeABI() && OS.getCurrent() == OS.WINDOWS) {
+            if (type.nativeABI() && Platform.includedIn(Platform.WINDOWS.class)) {
                 // Strictly positional: float parameters consume a general register and vice versa
                 currentGeneral = i;
                 currentXMM = i;

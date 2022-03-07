@@ -8,6 +8,7 @@
         { "name" : "org.graalvm.component.installer.persist.Bundle" },
         { "name" : "org.graalvm.component.installer.jar.Bundle" },
         { "name" : "org.graalvm.component.installer.ce.Bundle" },
-        { "name" : "org.graalvm.component.installer.gds.Bundle" }
+        { "name" : "org.graalvm.component.installer.gds.Bundle" },
+        { "name" : "org.graalvm.component.installer.gds.rest.Bundle" }
     ]
 }

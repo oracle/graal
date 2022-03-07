@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,11 +105,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
     public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
-    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class, false, JDK >= 9);
+    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
     public final boolean useAESIntrinsics = getFlag("UseAESIntrinsics", Boolean.class);
-    public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class, false, JDK >= 9);
+    public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
-    public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class, false, JDK >= 9); // JDK-8073583
+    public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
     public final boolean useThreadLocalPolling;
     {
         if (JDK >= 14) {
@@ -126,7 +126,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class);
-    private final boolean useBase64Intrinsics = getFlag("UseBASE64Intrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
     private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class);
@@ -159,10 +158,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public boolean useGHASHIntrinsics() {
         return useGHASHIntrinsics && ghashProcessBlocks != 0;
-    }
-
-    public boolean useBase64Intrinsics() {
-        return useBase64Intrinsics && base64EncodeBlock != 0;
     }
 
     public boolean useMontgomeryMultiplyIntrinsic() {
@@ -524,7 +519,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     {
         // JDK-8237497
         if (JDK < 15) {
-            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address", -1, JDK >= 10);
+            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address");
         } else if (JDK < 16) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
         } else {
@@ -570,17 +565,23 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
+    public final long md5ImplCompress = getFieldValue("StubRoutines::_md5_implCompress", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
+    public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
     public final long sha1ImplCompress = getFieldValue("StubRoutines::_sha1_implCompress", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
     public final long sha256ImplCompress = getFieldValue("StubRoutines::_sha256_implCompress", Long.class, "address");
     public final long sha256ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address");
     public final long sha512ImplCompress = getFieldValue("StubRoutines::_sha512_implCompress", Long.class, "address");
     public final long sha512ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address");
+    public final long sha3ImplCompress = getFieldValue("StubRoutines::_sha3_implCompress", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
+    public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
+
     public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address");
 
-    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L, JDK >= 9);
+    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address");
     public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address");
     public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
+    public final long base64DecodeBlock = getFieldValue("StubRoutines::_base64_decodeBlock", Long.class, "address", 0L, JDK >= 16);
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address");
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
@@ -589,6 +590,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address");
     public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address");
     public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address");
+
+    public final long bigIntegerLeftShiftWorker = getFieldValue("StubRoutines::_bigIntegerLeftShiftWorker", Long.class, "address", 0L, JDK >= 14);
+    public final long bigIntegerRightShiftWorker = getFieldValue("StubRoutines::_bigIntegerRightShiftWorker", Long.class, "address", 0L, JDK >= 14);
+
+    public final long electronicCodeBookEncrypt = getFieldValue("StubRoutines::_electronicCodeBook_encryptAESCrypt", Long.class, "address");
+    public final long electronicCodeBookDecrypt = getFieldValue("StubRoutines::_electronicCodeBook_decryptAESCrypt", Long.class, "address");
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
@@ -661,8 +668,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long exceptionHandlerForPcAddress = getAddress("JVMCIRuntime::exception_handler_for_pc");
     public final long monitorenterAddress = getAddress("JVMCIRuntime::monitorenter");
     public final long monitorexitAddress = getAddress("JVMCIRuntime::monitorexit");
-    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify", 0L, JDK >= 11);
-    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll", 0L, JDK >= 11);
+    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify");
+    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll");
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
     public final long throwClassCastExceptionAddress = getAddress("JVMCIRuntime::throw_class_cast_exception");

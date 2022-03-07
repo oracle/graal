@@ -88,6 +88,8 @@ public final class FrameDescriptor implements Cloneable {
     private volatile EconomicMap<Object, Integer> auxiliarySlotMap;
     private volatile BitSet disabledAuxiliarySlots;
 
+    private final Object descriptorInfo;
+
     /**
      * Number of entries (starting at index 0) that need to be allocated to encompass all active
      * auxiliary slots.
@@ -132,16 +134,18 @@ public final class FrameDescriptor implements Cloneable {
         this.indexedSlotTags = EMPTY_BYTE_ARRAY;
         this.indexedSlotNames = null;
         this.indexedSlotInfos = null;
+        this.descriptorInfo = null;
 
         this.defaultValue = defaultValue;
         newVersion(this);
     }
 
-    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos) {
+    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.indexedSlotTags = indexedSlotTags;
         this.indexedSlotNames = indexedSlotNames;
         this.indexedSlotInfos = indexedSlotInfos;
+        this.descriptorInfo = info;
 
         this.defaultValue = defaultValue;
         newVersion(this);
@@ -528,7 +532,7 @@ public final class FrameDescriptor implements Cloneable {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
             FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, indexedSlotTags == null ? null : indexedSlotTags.clone(),
-                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone());
+                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo);
             for (int i = 0; i < slots.size(); i++) {
                 FrameSlot slot = slots.get(i);
                 clonedFrameDescriptor.addFrameSlot(slot.getIdentifier(), slot.getInfo(), FrameSlotKind.Illegal);
@@ -837,6 +841,15 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
+     * @return the user-defined info object associated with this frame descriptor
+     *
+     * @since 22.1
+     */
+    public Object getInfo() {
+        return descriptorInfo;
+    }
+
+    /**
      * Builds a new frame descriptor with index-based frame slots.
      *
      * @since 22.0
@@ -870,6 +883,7 @@ public final class FrameDescriptor implements Cloneable {
         private Object[] names;
         private Object[] infos;
         private int size;
+        private Object descriptorInfo;
 
         private Builder(int capacity) {
             this.tags = new byte[capacity];
@@ -952,13 +966,28 @@ public final class FrameDescriptor implements Cloneable {
         }
 
         /**
+         * Adds a user-defined info object to the frame descriptor. The contents of this object are
+         * strongly referenced from the frame descriptor and can be queried using
+         * {@link FrameDescriptor#getInfo()}. They do not influence the semantics of the frame
+         * descriptor in any other way.
+         *
+         * @param info the user-defined info object
+         *
+         * @since 22.1
+         */
+        public Builder info(Object info) {
+            this.descriptorInfo = info;
+            return this;
+        }
+
+        /**
          * Uses the data provided to this builder to create a new {@link FrameDescriptor}.
          *
          * @return the newly created {@link FrameDescriptor}
          * @since 22.0
          */
         public FrameDescriptor build() {
-            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size));
+            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo);
         }
     }
 }

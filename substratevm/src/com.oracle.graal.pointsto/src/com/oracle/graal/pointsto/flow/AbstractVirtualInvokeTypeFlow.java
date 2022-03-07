@@ -71,6 +71,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         isContextInsensitive = true;
     }
 
+    @Override
     public boolean isContextInsensitive() {
         return isContextInsensitive;
     }
@@ -82,7 +83,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         return false;
     }
 
-    /** The context insensitive virual invoke returns all the locations where it is swapped in. */
+    /** The context insensitive virtual invoke returns all the locations where it is swapped in. */
     public Collection<BytecodePosition> getInvokeLocations() {
         if (isContextInsensitive) {
             return getElements(this, INVOKE_LOCATIONS_UPDATER);
@@ -110,11 +111,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
-        /* When the receiver flow saturates start observing the flow of the receiver type. */
-        replaceObservedWith(bb, receiverType);
-    }
+    public abstract void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed);
 
     protected boolean addCallee(AnalysisMethod callee) {
         boolean add = addElement(this, CALLEES_UPDATER, callee);

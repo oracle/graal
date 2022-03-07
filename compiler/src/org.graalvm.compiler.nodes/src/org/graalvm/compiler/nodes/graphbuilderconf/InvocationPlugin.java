@@ -429,7 +429,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         }
 
         @Override
-        public boolean inlineOnly() {
+        public final boolean inlineOnly() {
             return true;
         }
     }
@@ -441,7 +441,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         }
 
         @Override
-        public boolean isOptional() {
+        public final boolean isOptional() {
             return true;
         }
     }
@@ -453,7 +453,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         }
 
         @Override
-        public boolean canBeDisabled() {
+        public final boolean canBeDisabled() {
             return false;
         }
     }
@@ -465,7 +465,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         }
 
         @Override
-        public boolean inlineOnly() {
+        public final boolean inlineOnly() {
             return true;
         }
     }

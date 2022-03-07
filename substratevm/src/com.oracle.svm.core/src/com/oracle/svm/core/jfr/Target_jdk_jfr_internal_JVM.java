@@ -46,7 +46,7 @@ import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.handlers.EventHandler;
 
 @SuppressWarnings({"static-method", "unused"})
-@TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = JfrEnabled.class)
+@TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
     @Alias static Object FILE_DELTA_CHANGE;

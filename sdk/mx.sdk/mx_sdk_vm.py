@@ -206,13 +206,15 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
         """
         :param str language
         :param str main_class
         """
         kwargs.pop('destination', None)
         super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, **kwargs)
+        if not launchers:
+            assert not main_class
         self.is_sdk_launcher = is_sdk_launcher
         self.main_class = main_class
         self.language = language
@@ -482,6 +484,11 @@ def graalvm_components(opt_limit_to_suite=False):
         return [c for c in _graalvm_components.values() if c.suite.name in mx.get_opts().specific_suites]
     else:
         return list(_graalvm_components.values())
+
+
+def graalvm_home(fatalIfMissing=False):
+    import mx_sdk_vm_impl
+    return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=fatalIfMissing)
 
 
 def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
@@ -1017,8 +1024,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         out = mx.OutputCapture()
         mx.logv('[Creating CDS shared archive]')
         if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
-            mx.log(out.data)
-            mx.abort('Error generating CDS shared archive')
+            if "Shared spaces are not supported in this VM" in out.data:
+                # GR-37047: CDS support in darwin-aarch64 jdk11 is missing.
+                assert mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64' and jdk.javaCompliance == '11'
+            else:
+                mx.log(out.data)
+                mx.abort('Error generating CDS shared archive')
     else:
         # -Xshare is incompatible with --upgrade-module-path
         pass

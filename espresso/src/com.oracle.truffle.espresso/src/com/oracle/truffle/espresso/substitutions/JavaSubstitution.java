@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -82,7 +81,11 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
     }
 
     @Override
-    public JavaSubstitution split() {
-        throw EspressoError.shouldNotReachHere();
+    public boolean canSplit() {
+        return true;
     }
+
+    // Generated in substitutions' classes
+    @Override
+    public abstract JavaSubstitution split();
 }

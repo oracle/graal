@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
@@ -62,6 +63,8 @@ public class JfrTypeRepository implements JfrConstantPool {
         count += writePackages(writer, typeInfo);
         count += writeModules(writer, typeInfo);
         count += writeClassLoaders(writer, typeInfo);
+        count += writeGCCauses(writer);
+        count += writeGCNames(writer);
         return count;
     }
 
@@ -106,7 +109,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (typeInfo.getClasses().isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Class.getId());
+        writer.writeCompressedLong(JfrType.Class.getId());
         writer.writeCompressedInt(typeInfo.getClasses().size());
 
         for (Class<?> clazz : typeInfo.getClasses()) {
@@ -132,7 +135,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (packages.isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Package.getId());
+        writer.writeCompressedLong(JfrType.Package.getId());
         writer.writeCompressedInt(packages.size());
 
         for (Map.Entry<String, PackageInfo> pkgInfo : packages.entrySet()) {
@@ -154,7 +157,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (modules.isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Module.getId());
+        writer.writeCompressedLong(JfrType.Module.getId());
         writer.writeCompressedInt(modules.size());
 
         for (Map.Entry<Module, Long> modInfo : modules.entrySet()) {
@@ -177,11 +180,47 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (classLoaders.isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.ClassLoader.getId());
+        writer.writeCompressedLong(JfrType.ClassLoader.getId());
         writer.writeCompressedInt(classLoaders.size());
 
         for (Map.Entry<ClassLoader, Long> clInfo : classLoaders.entrySet()) {
             writeClassLoader(writer, clInfo.getKey(), clInfo.getValue());
+        }
+        return NON_EMPTY;
+    }
+
+    private static int writeGCCauses(JfrChunkWriter writer) {
+        // GCCauses has null entries
+        GCCause[] causes = GCCause.getGCCauses();
+        int nonNullItems = 0;
+        for (int index = 0; index < causes.length; index++) {
+            if (causes[index] != null) {
+                nonNullItems++;
+            }
+        }
+
+        assert nonNullItems > 0;
+
+        writer.writeCompressedLong(JfrType.GCCause.getId());
+        writer.writeCompressedLong(nonNullItems);
+        for (GCCause cause : causes) {
+            if (cause != null) {
+                writer.writeCompressedLong(cause.getId());
+                writer.writeString(cause.getName());
+            }
+        }
+        return NON_EMPTY;
+    }
+
+    private static int writeGCNames(JfrChunkWriter writer) {
+        JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
+        assert gcNames != null && gcNames.length > 0;
+
+        writer.writeCompressedLong(JfrType.GCName.getId());
+        writer.writeCompressedLong(gcNames.length);
+        for (JfrGCName name : gcNames) {
+            writer.writeCompressedLong(name.getId());
+            writer.writeString(name.getName());
         }
         return NON_EMPTY;
     }

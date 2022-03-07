@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "dfe1a6de62a22407036a5ff7f7521f50e84d0436",
+                "version": "c787fb1dd14fcd7dd89ed8b1634ace5d0cad0384",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "dfe1a6de62a22407036a5ff7f7521f50e84d0436",
+                "version": "c787fb1dd14fcd7dd89ed8b1634ace5d0cad0384",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "933088a2edd3fb2f50eec263098522c3d23db219",
+                "version": "128badba5e2ff0b5d66fd8ae8cd4af948a60b50e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "91b7ede06ca44ad85c7d4d452b30c5302a547a21",
+                "version": "390039e82a0b1018aff82a7a588907d3051e3974",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "cbe911aa6d09137f693705b902022fed1de6d1a9",
+                "version": "95e49873e2bfc5398cbeb0acc1e3d38fbb70587c",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -89,13 +89,14 @@ suite = {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyleVersion" : "8.36.1",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "truffle:TruffleJSON",
             ],
+            "requires" : ["java.logging"],
         },
         "org.graalvm.component.installer.test" : {
             "subDir" : "src",
@@ -104,24 +105,28 @@ suite = {
                 "mx:JUNIT",
                 "org.graalvm.component.installer"
             ],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
+            "requires" : ["java.logging"],
         },
         "org.graalvm.polybench" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
             ],
+            "requires": [
+                "java.logging",
+            ],
         },
         "org.graalvm.polybench.micro" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
@@ -134,11 +139,14 @@ suite = {
         "org.graalvm.polybench.instruments" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "truffle:TRUFFLE_API",
+            ],
+            "requires": [
+                "jdk.management",
             ],
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",

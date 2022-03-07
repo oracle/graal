@@ -67,10 +67,7 @@ public class OmitPreviousConfigTests {
                 try {
                     String resourceName = resourceDirectory + "/" + resourceFileName;
                     URL resourceURL = OmitPreviousConfigTests.class.getResource(resourceName);
-                    if (resourceURL == null) {
-                        Assert.fail("Configuration file " + resourceName + " does not exist. Make sure that the test or the config directory have not been moved.");
-                    }
-                    return resourceURL.toURI();
+                    return (resourceURL != null) ? resourceURL.toURI() : null;
                 } catch (Exception e) {
                     throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
                 }

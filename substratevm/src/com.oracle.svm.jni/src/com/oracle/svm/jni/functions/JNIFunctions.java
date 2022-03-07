@@ -37,7 +37,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -76,6 +75,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -113,8 +113,8 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
-import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
@@ -147,8 +147,6 @@ public final class JNIFunctions {
     /*
      * jint GetVersion(JNIEnv *env);
      */
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.NotPublished)
@@ -448,7 +446,7 @@ public final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         Object instance;
         try {
-            instance = UNSAFE.allocateInstance(clazz);
+            instance = Unsafe.getUnsafe().allocateInstance(clazz);
         } catch (InstantiationException e) {
             instance = null;
         }
@@ -1015,10 +1013,38 @@ public final class JNIFunctions {
         if (obj == null) {
             throw new NullPointerException();
         }
-        MonitorSupport.singleton().monitorEnter(obj);
-        assert Thread.holdsLock(obj);
-        JNIThreadOwnedMonitors.entered(obj);
-        return JNIErrors.JNI_OK();
+        boolean pinned = false;
+        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+            // Acquiring monitors via JNI associates them with the carrier thread via
+            // JNIThreadOwnedMonitors, so we must pin the virtual thread
+            try {
+                VirtualThreads.singleton().pinCurrent();
+            } catch (IllegalStateException e) { // too many pins
+                throw new IllegalMonitorStateException();
+            }
+            pinned = true;
+        }
+        boolean acquired = false;
+        try {
+            MonitorSupport.singleton().monitorEnter(obj);
+            assert Thread.holdsLock(obj);
+            acquired = true;
+
+            JNIThreadOwnedMonitors.entered(obj);
+            return JNIErrors.JNI_OK();
+        } catch (Throwable t) {
+            try {
+                if (acquired) {
+                    MonitorSupport.singleton().monitorExit(obj);
+                }
+                if (pinned) {
+                    VirtualThreads.singleton().unpinCurrent();
+                }
+            } catch (Throwable u) {
+                throw VMError.shouldNotReachHere(u);
+            }
+            throw t;
+        }
     }
 
     /*
@@ -1036,6 +1062,13 @@ public final class JNIFunctions {
         }
         MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
+        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+            try {
+                VirtualThreads.singleton().unpinCurrent();
+            } catch (IllegalStateException e) { // not pinned?
+                throw new IllegalMonitorStateException();
+            }
+        }
         return JNIErrors.JNI_OK();
     }
 

@@ -32,9 +32,6 @@ import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.strideAsPowerOf2;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
-import java.lang.reflect.Type;
-
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -43,14 +40,9 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
-import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
@@ -215,59 +207,6 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         return graph.add(AddNode.create(shifted, ConstantNode.forLong(metaAccess.getArrayBaseOffset(stride), graph.getGraph()), NodeView.DEFAULT));
     }
 
-    private abstract static class TStringAccessPlugin extends InvocationPlugin {
-
-        final boolean isNative;
-
-        protected TStringAccessPlugin(boolean isNative, String name, Type... argumentTypes) {
-            super(name, argumentTypes);
-            this.isNative = isNative;
-        }
-
-        ValueNode asChecked(GraphBuilderContext b, ValueNode array) {
-            return isNative ? array : b.nullCheckedValue(array);
-        }
-
-        LocationIdentity getLocationIdentity() {
-            return isNative ? NamedLocationIdentity.OFF_HEAP_LOCATION : getArrayLocation(JavaKind.Byte);
-        }
-    }
-
-    private static final class TStringReadPlugin extends TStringAccessPlugin {
-
-        private final JavaKind stride;
-
-        private TStringReadPlugin(JavaKind stride, boolean isNative, String name, Type... argumentTypes) {
-            super(isNative, name, argumentTypes);
-            this.stride = stride;
-        }
-
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode offset) {
-            ReadNode read = b.add(new ReadNode(new OffsetAddressNode(asChecked(b, array), offset), getLocationIdentity(), StampFactory.forInteger(stride.getBitCount()),
-                            OnHeapMemoryAccess.BarrierType.NONE));
-            if (S4.equals(stride)) {
-                b.push(stride, read);
-            } else {
-                b.addPush(JavaKind.Int, ZeroExtendNode.create(read, stride.getBitCount(), JavaKind.Int.getBitCount(), NodeView.DEFAULT));
-            }
-            return true;
-        }
-    }
-
-    private static final class TStringWritePlugin extends TStringAccessPlugin {
-
-        private TStringWritePlugin(boolean isNative, String name, Type... argumentTypes) {
-            super(isNative, name, argumentTypes);
-        }
-
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode offset, ValueNode value) {
-            b.add(new WriteNode(new OffsetAddressNode(asChecked(b, array), offset), getLocationIdentity(), value, OnHeapMemoryAccess.BarrierType.NONE));
-            return true;
-        }
-    }
-
     public static JavaKind constantStrideParam(ValueNode param) {
         if (!param.isJavaConstant()) {
             throw GraalError.shouldNotReachHere();
@@ -336,10 +275,6 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
     private static void registerTStringPlugins(AMD64 architecture, InvocationPlugins plugins, MetaAccessProvider metaAccess, Replacements replacements) {
         final ResolvedJavaType tStringOps = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.strings.TStringOps");
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, new InvocationPlugins.ResolvedJavaSymbol(tStringOps), replacements);
-        registerTStringReadPlugins(r, true);
-        registerTStringReadPlugins(r, false);
-        registerTStringWritePlugins(r, true);
-        registerTStringWritePlugins(r, false);
 
         r.register(new InvocationPlugin("runIndexOfAny1", Node.class, Object.class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
             @Override
@@ -378,7 +313,8 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
             }
         });
 
-        r.register(new InvocationPlugin("runRegionEqualsWithStride", Node.class, Object.class, long.class, int.class, boolean.class,
+        r.register(new InvocationPlugin("runRegionEqualsWithStride", Node.class,
+                        Object.class, long.class, int.class, boolean.class,
                         Object.class, long.class, int.class, boolean.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
@@ -391,7 +327,8 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
                 return true;
             }
         });
-        r.register(new InvocationPlugin("runMemCmp", Node.class, Object.class, long.class, int.class, boolean.class,
+        r.register(new InvocationPlugin("runMemCmp", Node.class,
+                        Object.class, long.class, int.class, boolean.class,
                         Object.class, long.class, int.class, boolean.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
@@ -404,7 +341,8 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
                 return true;
             }
         });
-        r.register(new InvocationPlugin("runArrayCopy", Node.class, Object.class, long.class, int.class, boolean.class,
+        r.register(new InvocationPlugin("runArrayCopy", Node.class,
+                        Object.class, long.class, int.class, boolean.class,
                         Object.class, long.class, int.class, boolean.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
@@ -487,25 +425,4 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         b.addPush(JavaKind.Int, new ArrayIndexOfNode(NONE, constStride, findTwoConsecutive, withMask, locationIdentity, array, offset, length, fromIndex, values));
         return true;
     }
-
-    private static void registerTStringReadPlugins(InvocationPlugins.Registration r, boolean isNative) {
-        String suffix = getSuffix(isNative);
-        Class<?> arrayAClass = isNative ? long.class : Object.class;
-        r.register(new TStringReadPlugin(S1, isNative, "runReadS0" + suffix, arrayAClass, long.class));
-        r.register(new TStringReadPlugin(S2, isNative, "runReadS1" + suffix, arrayAClass, long.class));
-        r.register(new TStringReadPlugin(S4, isNative, "runReadS2" + suffix, arrayAClass, long.class));
-    }
-
-    private static void registerTStringWritePlugins(InvocationPlugins.Registration r, boolean isNative) {
-        String suffix = getSuffix(isNative);
-        Class<?> arrayAClass = isNative ? long.class : byte[].class;
-        r.register(new TStringWritePlugin(isNative, "runWriteS0" + suffix, arrayAClass, long.class, byte.class));
-        r.register(new TStringWritePlugin(isNative, "runWriteS1" + suffix, arrayAClass, long.class, char.class));
-        r.register(new TStringWritePlugin(isNative, "runWriteS2" + suffix, arrayAClass, long.class, int.class));
-    }
-
-    private static String getSuffix(boolean isNative) {
-        return isNative ? "Native" : "Managed";
-    }
-
 }

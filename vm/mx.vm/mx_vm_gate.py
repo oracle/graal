@@ -48,6 +48,7 @@ _suite = mx.suite('vm')
 class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
+    substratevm_quickbuild = 'substratevm-quickbuild'
     sulong = 'sulong'
     graal_js_all = 'graal-js'
     graal_js_smoke = 'graal-js-smoke'
@@ -64,6 +65,17 @@ class VmGateTasks:
     libgraal = 'libgraal'
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
+
+def _unittest_config_participant(config):
+    vmArgs, mainClass, mainClassArgs = config
+    # This is required by org.graalvm.component.installer.CatalogIterableTest
+    vmArgs += [
+        '--add-exports=java.base/jdk.internal.loader=ALL-UNNAMED',
+        '--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED',
+    ]
+    return vmArgs, mainClass, mainClassArgs
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _check_compiler_log(compiler_log_file, expectations):
     """
@@ -272,6 +284,7 @@ def gate_body(args, tasks):
         mx.warn("Skipping libgraal tests: component not enabled")
 
     gate_substratevm(tasks)
+    gate_substratevm(tasks, quickbuild=True)
     gate_sulong(tasks)
     gate_python(tasks)
     gate_svm_sl_tck(tasks)
@@ -293,13 +306,21 @@ def graalvm_svm():
             yield native_image
     return native_image_context, svm.extensions
 
-def gate_substratevm(tasks):
-    with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
+def gate_substratevm(tasks, quickbuild=False):
+    tag = VmGateTasks.substratevm
+    name = 'Run Truffle host interop tests on SVM'
+    extra_build_args = []
+    if quickbuild:
+        tag = VmGateTasks.substratevm_quickbuild
+        name += ' with quickbuild'
+        extra_build_args = ['-Ob']
+
+    with Task(name, tasks, tags=[tag]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
             truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
                                       '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
-            args = ['--build-args'] + truffle_no_compilation + ['--'] + tests
+            args = ['--build-args'] + truffle_no_compilation + extra_build_args + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
@@ -317,7 +338,7 @@ def gate_sulong(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 # TODO Use mx_sdk_vm_impl.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_HOME
-                sulong_libs = join(mx_sdk_vm_impl.graalvm_output(), 'jre' if mx_sdk_vm.base_jdk_version() == 8 else '', 'languages', 'llvm')
+                sulong_libs = join(mx_sdk_vm_impl.graalvm_output(), 'languages', 'llvm')
                 def distribution_paths(dname):
                     path_substitutions = {
                         'SULONG_HOME': sulong_libs

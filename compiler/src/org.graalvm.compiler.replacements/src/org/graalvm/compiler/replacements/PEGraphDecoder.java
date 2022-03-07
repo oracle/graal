@@ -107,7 +107,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -420,16 +419,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
             throw unimplemented();
-        }
-
-        @Override
-        public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-            return false;
-        }
-
-        @Override
-        public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
-            return false;
         }
 
         @Override
@@ -816,7 +805,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     @SuppressWarnings("try")
     public void decode(ResolvedJavaMethod method, boolean isSubstitution, boolean trackNodeSourcePosition) {
         try (DebugContext.Scope scope = debug.scope("PEGraphDecode", graph)) {
-            EncodedGraph encodedGraph = lookupEncodedGraph(method, null, null, isSubstitution, trackNodeSourcePosition);
+            EncodedGraph encodedGraph = lookupEncodedGraph(method, null, isSubstitution, trackNodeSourcePosition);
             recordGraphElements(encodedGraph);
             PEMethodScope methodScope = createMethodScope(graph, null, null, encodedGraph, method, null, 0, null);
             decode(createInitialLoopScope(methodScope, null));
@@ -962,7 +951,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         appendInvoke(methodScope, loopScope, invokeData, callTarget);
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected MethodCallTargetNode trySimplifyCallTarget(PEMethodScope methodScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         try (DebugCloseable a = TrySimplifyCallTarget.start(debug)) {
             // attempt to devirtualize the call
@@ -1026,7 +1015,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return specialCallTarget == CACHED_NULL_VALUE ? null : (ResolvedJavaMethod) specialCallTarget;
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected boolean tryInvocationPlugin(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         try (DebugCloseable a = InvocationPluginTimer.start(debug)) {
             if (invocationPlugins == null || invocationPlugins.isEmpty()) {
@@ -1116,7 +1105,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return invocationPlugin == CACHED_NULL_VALUE ? null : (InvocationPlugin) invocationPlugin;
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         try (DebugCloseable a = TryInlineTimer.start(debug)) {
             if (!callTarget.invokeKind().isDirect()) {
@@ -1152,7 +1141,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return null;
         }
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
-        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.getPlugin(), inlineInfo.getIntrinsicBytecodeProvider(), inlineInfo.isSubstitution(), graph.trackNodeSourcePosition());
+        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.getIntrinsicBytecodeProvider(), false, graph.trackNodeSourcePosition());
         if (graphToInline == null) {
             return null;
         }
@@ -1296,8 +1285,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else if (returnNodeCount == 1) {
             ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
             returnValue = returnNode.result();
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
-            returnNode.replaceAndDelete(n);
+            BeginNode prevBegin = null;
+            if (returnNode.predecessor() instanceof BeginNode) {
+                // Try to reuse the previous begin node instead of creating another one.
+                prevBegin = (BeginNode) returnNode.predecessor();
+            }
+            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin);
+            if (n == prevBegin) {
+                // Reusing the previous BeginNode; just remove the ReturnNode.
+                returnNode.replaceAtPredecessor(null);
+                returnNode.safeDelete();
+            } else {
+                returnNode.replaceAndDelete(n);
+            }
         } else {
             AbstractMergeNode merge = graph.add(new MergeNode());
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
@@ -1388,7 +1388,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         throw new PermanentBailoutException(msg.toString());
     }
 
-    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, BeginNode prevBegin) {
+    protected FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, BeginNode prevBegin) {
         assert prevBegin == null || prevBegin.isAlive();
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
             if (prevBegin != null && getNodeClass(methodScope, loopScope, invokeData.nextOrderId) == prevBegin.getNodeClass()) {
@@ -1415,8 +1415,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition);
+    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition);
 
     @SuppressWarnings("try")
     @Override

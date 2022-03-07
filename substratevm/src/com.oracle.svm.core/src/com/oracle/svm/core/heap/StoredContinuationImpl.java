@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -49,9 +50,9 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -66,7 +67,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * <pre>
  *      +-0x0-|-0x4-|-0x8-|-0xa-+
- * 0x00 | hub | (1) | -  (2)  - | instance header: 1) number of stored frame; 2) size in bytes as long
+ * 0x00 | hub | (1) | (2) | (3) | instance header: 1) identity hash code; 2) size in words; 3) number of stored frames
  *      +-----------------------+
  * 0x10 | -  (1)  - | (2) | (3) | 8-byte shared header for all frames: 1) nonmovable address of reference map, which should be same for all frames.
  *      : more per-frame headers: 8-byte per-frame header: 2) size of frame in bytes; 3) reference map index of frame
@@ -74,12 +75,12 @@ import jdk.vm.ci.meta.JavaKind;
  * </pre>
  */
 public final class StoredContinuationImpl {
-    private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -12;
+    private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -4;
     private static final int SIZE_OFFSET_TO_PAYLOAD = -8;
 
-    private static final int VALID_OFFSET_START = FRAME_COUNT_OFFSET_TO_PAYLOAD;
+    private static final int VALID_OFFSET_START = SIZE_OFFSET_TO_PAYLOAD;
 
-    private static final int PAYLOAD_OFFSET = 16;
+    public static final int PAYLOAD_OFFSET = 16;
 
     private static final int SHARED_REFERENCE_MAP_ENCODING_OFFSET = 0;
     private static final int SHARED_REFERENCE_MAP_ENCODING_SIZE = 8;
@@ -91,18 +92,18 @@ public final class StoredContinuationImpl {
     // use for hard-coded size calculation
     private static final int HEADER_SIZE = PAYLOAD_OFFSET;
 
-    private static StoredContinuation allocate(long size) {
-        return NewStoredContinuationNode.allocate(size);
+    @Uninterruptible(reason = "in allocation of StoredContinuation instance")
+    public static void initializeNewlyAllocated(Object obj) {
+        Pointer p = Word.objectToUntrackedPointer(obj).add(PAYLOAD_OFFSET);
+        // Keep GC from taking a closer look until frames are initialized
+        p.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, 0, LocationIdentity.init());
     }
 
     /* All method calls in this function except `allocate` should be `@Uninterruptible` */
-    @Uninterruptible(reason = "allocates StoredContinuation instance", calleeMustBe = false)
-    private static StoredContinuation allocateWriteFrameCount(long payloadSize, int frameCount) {
+    private static StoredContinuation allocate(int payloadSize) {
         assert payloadSize % 8 == 0;
-        StoredContinuation f = allocate(payloadSize + HEADER_SIZE);
-        Pointer payload = payloadLocation(f);
-        payload.writeLong(SIZE_OFFSET_TO_PAYLOAD, payloadSize);
-        payload.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
+        StoredContinuation f = NewStoredContinuationNode.allocate(payloadSize);
+        assert readPayloadSize(f) == payloadSize;
         return f;
     }
 
@@ -157,19 +158,19 @@ public final class StoredContinuationImpl {
 
     // size of payload
     @Uninterruptible(reason = "read StoredContinuation")
-    private static long readPayloadSize(StoredContinuation f) {
-        return readPayloadLong(f, SIZE_OFFSET_TO_PAYLOAD);
+    private static int readPayloadSize(StoredContinuation f) {
+        return readPayloadInt(f, SIZE_OFFSET_TO_PAYLOAD);
     }
 
     // size of raw frame
     @Uninterruptible(reason = "read StoredContinuation")
-    public static long readAllFrameSize(StoredContinuation f) {
+    public static int readAllFrameSize(StoredContinuation f) {
         return readPayloadSize(f) - readFrameMetaSize(f);
     }
 
     // size of object
     @Uninterruptible(reason = "read StoredContinuation")
-    public static long readSize(StoredContinuation f) {
+    public static int readSize(StoredContinuation f) {
         return readPayloadSize(f) + HEADER_SIZE;
     }
 
@@ -214,7 +215,7 @@ public final class StoredContinuationImpl {
 
     /** A non-uninterruptible function to allocate temporary buffer. */
     public static byte[] allocateBuf(StoredContinuation f) {
-        return new byte[TypeConversion.asU4(readAllFrameSize(f))];
+        return new byte[readAllFrameSize(f)];
     }
 
     @Uninterruptible(reason = "access stack")
@@ -223,19 +224,19 @@ public final class StoredContinuationImpl {
         UnmanagedMemoryUtil.copy(frameStart, Word.objectToUntrackedPointer(buf).add(getByteArrayBaseOffset()), WordFactory.unsigned(buf.length));
     }
 
-    public static int allocateFromCurrentStack(Target_java_lang_Continuation contRef, Pointer rootSp, Pointer leafSp, CodePointer leafIp) {
-        return allocateFromStack(contRef, rootSp, leafSp, leafIp, WordFactory.nullPointer());
+    public static int allocateFromCurrentStack(Continuation cont, Pointer rootSp, Pointer leafSp, CodePointer leafIp) {
+        return allocateFromStack(cont, rootSp, leafSp, leafIp, WordFactory.nullPointer());
     }
 
-    public static int allocateFromForeignStack(Target_java_lang_Continuation contRef, Pointer rootSp, IsolateThread thread) {
-        return allocateFromStack(contRef, rootSp, WordFactory.nullPointer(), WordFactory.nullPointer(), thread);
+    public static int allocateFromForeignStack(Continuation cont, Pointer rootSp, IsolateThread thread) {
+        return allocateFromStack(cont, rootSp, WordFactory.nullPointer(), WordFactory.nullPointer(), thread);
     }
 
     /**
      * Return value follows the semantic of preempt status and pinned reason, 0 means yielding
      * successfully.
      */
-    private static int allocateFromStack(Target_java_lang_Continuation contRef, Pointer rootSp, Pointer leafSP, CodePointer leafIp, IsolateThread otherThread) {
+    private static int allocateFromStack(Continuation cont, Pointer rootSp, Pointer leafSP, CodePointer leafIp, IsolateThread otherThread) {
         boolean isCurrentThread = leafSP.isNonNull();
 
         YieldVisitor visitor = new YieldVisitor(rootSp, leafSP, leafIp);
@@ -249,38 +250,48 @@ public final class StoredContinuationImpl {
             resultLeafSP = visitor.leafSP;
         }
 
-        if (visitor.preemptStatus != JavaContinuations.YIELD_SUCCESS) {
+        if (visitor.preemptStatus != Continuation.YIELD_SUCCESS) {
             return visitor.preemptStatus;
         }
 
         if (!isCurrentThread) {
-            JavaContinuations.setIP(contRef, visitor.leafIP);
+            cont.setIP(visitor.leafIP);
         }
         VMError.guarantee(resultLeafSP.isNonNull());
 
         int frameCount = visitor.frameSizeReferenceMapIndex.size();
-        long payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + rootSp.subtract(resultLeafSP).rawValue();
+        int payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + UnsignedUtils.safeToInt(rootSp.subtract(resultLeafSP));
 
-        contRef.internalContinuation = allocateWriteFrameCount(payloadSize, frameCount);
+        cont.stored = allocate(payloadSize);
+        /*
+         * At this point, the object contains all zeros, which includes the frame count, so if we
+         * are interrupted by a GC, it will not attempt to make sense of it. Only at the end of this
+         * method we uninterruptibly initialize the frame count and copy the stack frames.
+         */
 
-        writePayloadLong(contRef.internalContinuation, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
+        writePayloadLong(cont.stored, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
 
-        long allFrameSize = 0;
+        int allFrameSize = 0;
         for (int i = 0; i < frameCount; i++) {
             Pair<Integer, Integer> frameSizeRefMapInxPair = visitor.frameSizeReferenceMapIndex.get(i);
-            writePayloadInt(contRef.internalContinuation, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
+            writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
                             frameSizeRefMapInxPair.getLeft());
-            writePayloadInt(contRef.internalContinuation, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META,
+            writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META,
                             frameSizeRefMapInxPair.getRight());
             allFrameSize += frameSizeRefMapInxPair.getLeft();
         }
 
-        Pointer frameStart = payloadFrameStart(contRef.internalContinuation);
-        long frameSize = readAllFrameSize(contRef.internalContinuation);
-        VMError.guarantee(frameSize == allFrameSize);
-        UnmanagedMemoryUtil.copy(resultLeafSP, frameStart, WordFactory.unsigned(frameSize));
+        copyUninterruptibly(cont, resultLeafSP, allFrameSize, frameCount);
+        return Continuation.YIELD_SUCCESS;
+    }
 
-        return JavaContinuations.YIELD_SUCCESS;
+    @Uninterruptible(reason = "Prevent modifications to the stack while copying.")
+    private static void copyUninterruptibly(Continuation cont, Pointer sp, int size, int frameCount) {
+        payloadLocation(cont.stored).writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
+
+        VMError.guarantee(size == readAllFrameSize(cont.stored));
+        Pointer frameStart = payloadFrameStart(cont.stored);
+        UnmanagedMemoryUtil.copy(sp, frameStart, WordFactory.unsigned(size));
     }
 
     /**
@@ -295,7 +306,7 @@ public final class StoredContinuationImpl {
         assert payloadStart.subtract(baseAddress).equal(StoredContinuationImpl.HEADER_SIZE) : "base address not pointing to frame instance";
 
         int frameCount = StoredContinuationImpl.readFrameCount(f);
-        long size = StoredContinuationImpl.readPayloadSize(f);
+        int size = StoredContinuationImpl.readPayloadSize(f);
 
         Pointer curFrame = StoredContinuationImpl.payloadFrameStart(f);
         int frameIndex = 0;
@@ -314,13 +325,14 @@ public final class StoredContinuationImpl {
         }
 
         assert frameIndex == frameCount;
-        assert curFrame.subtract(payloadStart).rawValue() == size;
+        // NOTE: frameCount can be 0 if the object has just been allocated but not filled yet
+        assert frameCount == 0 || curFrame.subtract(payloadStart).equal(size);
 
         return true;
     }
 
     private static class YieldVisitor extends StackFrameVisitor {
-        int preemptStatus = JavaContinuations.YIELD_SUCCESS;
+        int preemptStatus = Continuation.YIELD_SUCCESS;
 
         Pointer rootSP;
         Pointer leafSP;
@@ -345,7 +357,7 @@ public final class StoredContinuationImpl {
         protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             FrameInfoQueryResult frameInfo = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip).getFrameInfo();
             if (frameInfo.getSourceClass().equals(StoredContinuationImpl.class) && frameInfo.getSourceMethodName().equals("allocateFromStack")) {
-                preemptStatus = JavaContinuations.YIELDING;
+                preemptStatus = Continuation.YIELDING;
                 return false;
             }
 

@@ -2211,7 +2211,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(Env env) {
-            env.registerService(new Supplier<Object>() {
+            env.registerService(new Supplier<>() {
                 @Override
                 public Object get() {
                     return env.getPolyglotBindings();
@@ -2279,7 +2279,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 @TruffleBoundary
                 private void storeInvokedTarget(MaterializedFrame frame) {
-                    CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
+                    CallTarget callTarget = Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
                     frame.setObject(TARGET_SLOT, callTarget);
                 }
 

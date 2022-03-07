@@ -44,8 +44,12 @@ public final class JfrTicks {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long elapsedTicks() {
-        assert initialTicks > 0;
-        return System.nanoTime() - initialTicks;
+        if (HasJfrSupport.get()) {
+            assert initialTicks > 0;
+            return System.nanoTime() - initialTicks;
+        } else {
+            return 0;
+        }
     }
 
     public static long getTicksFrequency() {

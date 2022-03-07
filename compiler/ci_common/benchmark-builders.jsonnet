@@ -71,8 +71,8 @@
 
   local aarch64_builds = std.flattenArrays([
     [
-    c.weekly + hw.xgene3 + jdk + cc.libgraal + suite,
-    c.weekly + hw.xgene3 + jdk + cc.jargraal + suite
+    c.weekly + hw.a12c + jdk + cc.libgraal + suite,
+    c.weekly + hw.a12c + jdk + cc.jargraal + suite
     ]
   for jdk in cc.bench_jdks
   for suite in bench.groups.all_suites

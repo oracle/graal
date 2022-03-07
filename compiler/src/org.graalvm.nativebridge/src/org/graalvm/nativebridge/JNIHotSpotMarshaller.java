@@ -24,8 +24,21 @@
  */
 package org.graalvm.nativebridge;
 
+/**
+ * A marshaller used by the native bridge processor on the host side to marshall method parameters
+ * and results of a custom type. Marshallers are used to support types that are not directly
+ * implemented by the native bridge processor.
+ *
+ * @see JNIConfig.Builder
+ */
 public interface JNIHotSpotMarshaller<T> {
+    /**
+     * Converts the {@code object} into a form that can be transferred into the isolate.
+     */
     Object marshall(T object);
 
+    /**
+     * Converts the internal form back into an object.
+     */
     T unmarshall(Object rawObject);
 }

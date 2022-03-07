@@ -38,7 +38,7 @@ public class JfrThreadStateSerializer implements JfrConstantPool {
 
     @Override
     public int write(JfrChunkWriter writer) {
-        writer.writeCompressedLong(JfrTypes.ThreadState.getId());
+        writer.writeCompressedLong(JfrType.ThreadState.getId());
 
         JfrThreadState[] threadStates = JfrThreadState.values();
         writer.writeCompressedLong(threadStates.length);

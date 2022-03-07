@@ -569,8 +569,12 @@ static uint32_t cpu_has(const char* optional) {
 }
 
 void determineCPUFeatures(CPUFeatures* features) {
-  features->fFP = !!(cpu_has("hw.optional.floatingpoint"));
-  features->fASIMD = !!(cpu_has("hw.optional.neon"));
+  /*
+   * Note that Apple HW detection code is not accurate on older processors.
+   * All Apple devices have FP and ASIMD.
+   */
+  features->fFP = 1;
+  features->fASIMD = 1;
   features->fEVTSTRM = 0;
   features->fAES = 0;
   features->fPMULL = 0;

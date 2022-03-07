@@ -24,13 +24,12 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -45,8 +44,8 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
     TypeFlow<?> srcArrayFlow;
     TypeFlow<?> dstArrayFlow;
 
-    public ArrayCopyTypeFlow(ValueNode source, AnalysisType declaredType, TypeFlow<?> srcArrayFlow, TypeFlow<?> dstArrayFlow) {
-        super(source.getNodeSourcePosition(), declaredType);
+    public ArrayCopyTypeFlow(BytecodePosition location, AnalysisType declaredType, TypeFlow<?> srcArrayFlow, TypeFlow<?> dstArrayFlow) {
+        super(location, declaredType);
         this.srcArrayFlow = srcArrayFlow;
         this.dstArrayFlow = dstArrayFlow;
     }
@@ -181,6 +180,11 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
                 srcArrayElementsFlow.addUse(bb, dstArrayElementsFlow);
             }
         }
+    }
+
+    @Override
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
+        throw AnalysisError.shouldNotReachHere("Adding state to an ArrayCopyTypeFlow.");
     }
 
     public TypeFlow<?> source() {

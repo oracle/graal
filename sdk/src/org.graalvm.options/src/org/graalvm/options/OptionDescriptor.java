@@ -147,10 +147,56 @@ public final class OptionDescriptor {
     /**
      * Specifies a human-readable syntax describing the accepted values for this option.
      *
+     * @return null if no usage syntax should be used, the usage syntax otherwise
+     *
      * @since 22.1
      */
     public String getUsageSyntax() {
-        return usageSyntax;
+        // Empty string is considered a 'not set' value, everything else, including null, is fair
+        // game
+        if (usageSyntax == null || !usageSyntax.isEmpty()) {
+            return usageSyntax;
+        }
+        if (!key.getType().isDefaultType()) {
+            return "";
+        }
+        Object defaultValue = getKey().getDefaultValue();
+        if (Boolean.FALSE.equals(defaultValue)) {
+            return null;
+        }
+        if (Boolean.TRUE.equals(defaultValue)) {
+            return "true|false";
+        }
+        if (isOptionMap()) {
+            return "<value>";
+        }
+        Class<?> aClass = defaultValue.getClass();
+        if (Enum.class.isAssignableFrom(aClass)) {
+            return enumUsageSyntax(defaultValue, aClass);
+        }
+        return "";
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static String enumUsageSyntax(Object defaultValue, Class<?> aClass) {
+        StringBuilder sb = new StringBuilder();
+        Class<? extends Enum> enumType = (Class<? extends Enum>) aClass;
+        Enum[] enumConstants = enumType.getEnumConstants();
+        // Append the default value first
+        for (Enum constant : enumConstants) {
+            if (defaultValue.equals(constant)) {
+                sb.append(constant);
+                break;
+            }
+        }
+        // Append the other values
+        for (Enum constant : enumConstants) {
+            if (!defaultValue.equals(constant)) {
+                sb.append("|");
+                sb.append(constant.toString());
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -289,7 +335,6 @@ public final class OptionDescriptor {
          * @since 22.1
          */
         public Builder usageSyntax(@SuppressWarnings("hiding") String usageSyntax) {
-            Objects.requireNonNull(usageSyntax);
             this.usageSyntax = usageSyntax;
             return this;
         }

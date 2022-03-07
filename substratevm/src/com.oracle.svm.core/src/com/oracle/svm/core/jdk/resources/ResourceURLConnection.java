@@ -33,26 +33,15 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
 
+import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.jdk.Resources;
 
 public class ResourceURLConnection extends URLConnection {
 
-    private final URL url;
-    private final int index;
     private byte[] data;
 
     public ResourceURLConnection(URL url) {
-        this(url, 0);
-    }
-
-    public ResourceURLConnection(URL url, int index) {
         super(url);
-        this.url = url;
-        this.index = index;
-    }
-
-    private static String resolveName(String resourceName) {
-        return resourceName.startsWith("/") ? resourceName.substring(1) : resourceName;
     }
 
     @Override
@@ -62,10 +51,25 @@ public class ResourceURLConnection extends URLConnection {
         }
         connected = true;
 
-        String resourceName = resolveName(url.getPath());
-        ResourceStorageEntry entry = Resources.get(Resources.toCanonicalForm(resourceName));
+        String urlHost = url.getHost();
+        String hostNameOrNull = urlHost != null && !urlHost.isEmpty() ? urlHost : null;
+        String urlPath = url.getPath();
+        if (urlPath.isEmpty()) {
+            throw new IllegalArgumentException("Empty URL path not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
+        }
+        String resourceName = urlPath.substring(1);
+        ResourceStorageEntry entry = Resources.get(hostNameOrNull, resourceName);
         if (entry != null) {
             List<byte[]> bytes = entry.getData();
+            String urlRef = url.getRef();
+            int index = 0;
+            if (urlRef != null) {
+                try {
+                    index = Integer.valueOf(urlRef);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("URL anchor '#" + urlRef + "' not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
+                }
+            }
             if (index < bytes.size()) {
                 this.data = bytes.get(index);
             } else {
@@ -96,5 +100,4 @@ public class ResourceURLConnection extends URLConnection {
         connect();
         return data != null ? data.length : -1L;
     }
-
 }

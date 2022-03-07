@@ -25,8 +25,8 @@
 package org.graalvm.compiler.java;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 
 /**
  * Options related to {@link BytecodeParser}.
@@ -51,9 +51,6 @@ public class BytecodeParserOptions {
                    "being intrinsified and denotes semantics of the original method that " +
                    "the intrinsic does not support.", type = OptionType.Expert)
     public static final OptionKey<Boolean> InlinePartialIntrinsicExitDuringParsing = new OptionKey<>(true);
-
-    @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> InlineIntrinsicsDuringParsing = new OptionKey<>(true);
 
     @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInlineDuringParsing = new OptionKey<>(false);

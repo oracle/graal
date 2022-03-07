@@ -55,13 +55,18 @@ public class InliningPhase extends AbstractInliningPhase {
 
     private final InliningPolicy inliningPolicy;
     private final CanonicalizerPhase canonicalizer;
-    private LinkedList<Invoke> rootInvokes = null;
+    private final LinkedList<Invoke> rootInvokes;
 
-    private int maxMethodPerInlining = Integer.MAX_VALUE;
+    private final int maxMethodPerInlining = Integer.MAX_VALUE;
 
     public InliningPhase(InliningPolicy policy, CanonicalizerPhase canonicalizer) {
+        this(policy, canonicalizer, null);
+    }
+
+    public InliningPhase(InliningPolicy policy, CanonicalizerPhase canonicalizer, LinkedList<Invoke> rootInvokes) {
         this.inliningPolicy = policy;
         this.canonicalizer = canonicalizer;
+        this.rootInvokes = rootInvokes;
     }
 
     public CanonicalizerPhase getCanonicalizer() {
@@ -71,14 +76,6 @@ public class InliningPhase extends AbstractInliningPhase {
     @Override
     public float codeSizeIncrease() {
         return 10_000f;
-    }
-
-    public void setMaxMethodsPerInlining(int max) {
-        maxMethodPerInlining = max;
-    }
-
-    public void setRootInvokes(LinkedList<Invoke> rootInvokes) {
-        this.rootInvokes = rootInvokes;
     }
 
     /**

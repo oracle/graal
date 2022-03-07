@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
@@ -208,8 +209,16 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         getTruffleCompiler(compilable).compilePEGraph(graph, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, newTask());
     }
 
-    @SuppressWarnings("try")
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId) {
+        return partialEval(compilable, arguments, compilationId, null);
+    }
+
+    protected StructuredGraph partialEvalWithNodeEventListener(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId, Graph.NodeEventListener listener) {
+        return partialEval(compilable, arguments, compilationId, listener);
+    }
+
+    @SuppressWarnings("try")
+    private StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId, Graph.NodeEventListener nodeEventListener) {
         // Executed AST so that all classes are loaded and initialized.
         if (!preventProfileCalls) {
             try {
@@ -240,7 +249,9 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
                             compilationId, speculationLog,
                             new TruffleCompilerImpl.CancellableTruffleCompilationTask(newTask()));
-            return partialEvaluator.evaluate(request);
+            try (Graph.NodeEventScope nes = nodeEventListener == null ? null : request.graph.trackNodeEvents(nodeEventListener)) {
+                return partialEvaluator.evaluate(request);
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }

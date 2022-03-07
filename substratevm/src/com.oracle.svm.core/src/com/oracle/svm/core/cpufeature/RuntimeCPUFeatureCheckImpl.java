@@ -31,9 +31,6 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 
-import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.SubstrateTargetDescription;
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -54,6 +51,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -92,10 +92,9 @@ class RuntimeCPUFeatureCheckFeature implements Feature {
  * This needs to be a separate class, making this a lambda call or an anonymous class would pull the
  * {@link Feature} hierarchy into the image.
  */
-final class RuntimeCPUFeatureCheckInitializer implements Runnable {
-
+final class RuntimeCPUFeatureCheckInitializer implements RuntimeSupport.Hook {
     @Override
-    public void run() {
+    public void execute(boolean isFirstIsolate) {
         RuntimeCPUFeatureCheckImpl.instance().reinitialize();
     }
 }

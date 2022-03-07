@@ -75,16 +75,8 @@
   // JDK definitions
   // ***************
   # jdk_version is an hidden field that can be used to generate job names
-  local jdk8 =           { jdk_version:: 8},
   local jdk11 =          { jdk_version:: 11},
   local jdk17 =          { jdk_version:: 17},
-
-  oraclejdk8::           jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8,      EXTRA_JAVA_HOMES : { pathlist :[ jdks["labsjdk-ee-11"] ]} }},
-  oraclejdk8Only::       jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8 }},
-  oraclejdk8Debug::      jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8Debug, EXTRA_JAVA_HOMES : { pathlist :[ jdks["labsjdk-ee-11"] ]} }},
-  oraclejdk8OnlyDebug::  jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8Debug }},
-
-  openjdk8::             jdk8 + { downloads+: { JAVA_HOME : jdks.openjdk8 }},
 
   oraclejdk11::          jdk11 + { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
   oraclejdk17::          jdk17 + { downloads+: { JAVA_HOME : jdks.oraclejdk17 }},
@@ -134,4 +126,9 @@
   windows_amd64::             self.windows             + self.amd64,
   windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
   linux_aarch64::             self.linux               + self.aarch64,
+
+  // Utils
+  disable_proxies:: {
+    setup+: [["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]],
+  },
 }

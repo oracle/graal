@@ -205,7 +205,7 @@ public final class GraphBuilder {
             do {
                 temporaryBlocks[currentBlock].registerHandler(hPos, this);
                 currentBlock++;
-            } while (currentBlock < nBlocks && temporaryBlocks[currentBlock].end() <= handler.getEndBCI());
+            } while (currentBlock < nBlocks && temporaryBlocks[currentBlock].end() < handler.getEndBCI());
         }
     }
 
@@ -357,7 +357,7 @@ public final class GraphBuilder {
 
     private void markHandler(ExceptionHandler handler) {
         mark(handler.getStartBCI(), BLOCK_START);
-        int afterEnd = bs.nextBCI(handler.getEndBCI());
+        int afterEnd = handler.getEndBCI();
         if (afterEnd < bs.endBCI()) {
             mark(afterEnd, BLOCK_START);
         }
@@ -370,7 +370,7 @@ public final class GraphBuilder {
         // Ideally, we should handle exception handlers separately from the actual successors.
         int bci = handler.getStartBCI();
         int nextBCI;
-        while (bci <= handler.getEndBCI()) {
+        while (bci < handler.getEndBCI()) {
             nextBCI = bs.nextBCI(bci);
             if (Bytecodes.canTrap(bs.currentBC(bci))) {
                 mark(bci, BLOCK_START);

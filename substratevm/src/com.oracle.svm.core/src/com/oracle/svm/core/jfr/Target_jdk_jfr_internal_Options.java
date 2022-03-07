@@ -30,7 +30,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.jfr.internal.SecuritySupport.SafePath;
 
-@TargetClass(value = jdk.jfr.internal.Options.class, onlyWith = JfrEnabled.class)
+@TargetClass(value = jdk.jfr.internal.Options.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_Options {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static SafePath dumpPath;

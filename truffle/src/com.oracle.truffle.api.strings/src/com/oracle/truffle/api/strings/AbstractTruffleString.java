@@ -232,7 +232,8 @@ public abstract class AbstractTruffleString {
     }
 
     final boolean isCompatibleTo(int enc, int maxCompatibleCodeRange) {
-        return this.encoding() == enc || !DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && ((TruffleString) this).codeRange() < maxCompatibleCodeRange;
+        // GR-31985: workaround: the binary OR avoids unnecessary loop unswitching on this check
+        return (this.encoding() == enc) | ((!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && ((TruffleString) this).codeRange() < maxCompatibleCodeRange));
     }
 
     /**

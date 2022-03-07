@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerOptions;
-
-public class DefaultCompilerOptions implements CompilerOptions {
+@SuppressWarnings("deprecation")
+@Deprecated
+public class DefaultCompilerOptions implements com.oracle.truffle.api.CompilerOptions {
 
     public static final DefaultCompilerOptions INSTANCE = new DefaultCompilerOptions();
 

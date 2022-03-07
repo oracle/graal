@@ -218,16 +218,21 @@ innr public abstract interface static AARCH64
 innr public abstract interface static AMD64
 innr public abstract interface static ANDROID
 innr public abstract interface static DARWIN
+innr public abstract interface static DARWIN_AARCH64
+innr public abstract interface static DARWIN_AMD64
 innr public abstract interface static IOS
 innr public abstract interface static LINUX
+innr public abstract interface static LINUX_AARCH64_BASE
+innr public abstract interface static LINUX_AMD64_BASE
+innr public abstract interface static MACOS
 innr public abstract interface static WINDOWS
 innr public final static ANDROID_AARCH64
-innr public final static DARWIN_AARCH64
-innr public final static DARWIN_AMD64
 innr public final static HOSTED_ONLY
 innr public final static IOS_AARCH64
 innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
+innr public final static MACOS_AARCH64
+innr public final static MACOS_AMD64
 innr public final static WINDOWS_AARCH64
 innr public final static WINDOWS_AMD64
 innr public static LINUX_AMD64
@@ -253,28 +258,23 @@ meth public java.lang.String getOS()
 CLSS public final static org.graalvm.nativeimage.Platform$ANDROID_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
-intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$ANDROID
+intf org.graalvm.nativeimage.Platform$LINUX_AARCH64_BASE
 supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
-meth public java.lang.String getOS()
 
-CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AARCH64
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN_AARCH64
  outer org.graalvm.nativeimage.Platform
-cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$DARWIN
-supr java.lang.Object
 
-CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AMD64
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN_AMD64
  outer org.graalvm.nativeimage.Platform
-cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$DARWIN
-supr java.lang.Object
 
 CLSS public final static org.graalvm.nativeimage.Platform$HOSTED_ONLY
  outer org.graalvm.nativeimage.Platform
@@ -289,14 +289,14 @@ meth public java.lang.String getOS()
 CLSS public final static org.graalvm.nativeimage.Platform$IOS_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
-intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$DARWIN_AARCH64
 intf org.graalvm.nativeimage.Platform$IOS
 supr java.lang.Object
 
 CLSS public final static org.graalvm.nativeimage.Platform$IOS_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
-intf org.graalvm.nativeimage.Platform$AMD64
+intf org.graalvm.nativeimage.Platform$DARWIN_AMD64
 intf org.graalvm.nativeimage.Platform$IOS
 supr java.lang.Object
 
@@ -308,15 +308,44 @@ meth public java.lang.String getOS()
 CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
+intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$LINUX_AARCH64_BASE
+supr java.lang.Object
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_AARCH64_BASE
+ outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$LINUX
-supr java.lang.Object
 
 CLSS public static org.graalvm.nativeimage.Platform$LINUX_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
+intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$LINUX_AMD64_BASE
+supr java.lang.Object
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_AMD64_BASE
+ outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$LINUX
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$MACOS
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform$DARWIN
+meth public java.lang.String getOS()
+
+CLSS public final static org.graalvm.nativeimage.Platform$MACOS_AARCH64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$DARWIN_AARCH64
+intf org.graalvm.nativeimage.Platform$MACOS
+supr java.lang.Object
+
+CLSS public final static org.graalvm.nativeimage.Platform$MACOS_AMD64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$DARWIN_AMD64
+intf org.graalvm.nativeimage.Platform$MACOS
 supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS

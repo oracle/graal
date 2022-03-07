@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.oracle.svm.core.heap.Heap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
@@ -223,6 +224,11 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             t.printStackTrace(new PrintWriter(writer));
             return IsolatedCompileContext.get().createStringInClient(writer.toString());
         } finally {
+            /*
+             * Compilation isolate do not use a dedicated reference handler thread, so we trigger
+             * the reference handling manually when a compilation finishes.
+             */
+            Heap.getHeap().doReferenceHandling();
             IsolatedCompileContext.set(null);
         }
     }

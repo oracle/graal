@@ -67,6 +67,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
@@ -286,7 +287,7 @@ public abstract class TruffleLanguage<C> {
          * @return identifier of your language
          * @since 0.8 or earlier
          */
-        String name();
+        String name() default "";
 
         /**
          * Unique name of your language implementation.
@@ -622,6 +623,13 @@ public abstract class TruffleLanguage<C> {
      * for instance, finalization for standard streams should both flush and set them to unbuffered
      * mode at the end of exitContext, so that running guest code is not required to dispose the
      * streams after that point.
+     * <p>
+     * Context finalization is invoked even if a context was cancelled. In such a case, if guest
+     * code would run as part of the finalization, it would be cancelled at the next polled
+     * {@link TruffleSafepoint safepoint}. If there is guest code that always needs to run even if
+     * cancelled, e.g. to prevent resource leakage, use
+     * {@link TruffleSafepoint#setAllowActions(boolean)} to temporarily disable safepoints while
+     * executing that code.
      * <p>
      * All installed languages must remain usable after finalization. The finalization order can be
      * influenced by specifying {@link Registration#dependentLanguages() language dependencies}. By
@@ -3283,7 +3291,7 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
+         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the underlying polyglot context is already closed, the method

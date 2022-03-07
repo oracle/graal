@@ -41,6 +41,8 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -55,12 +57,12 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoLock;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -91,7 +93,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean monitorWait(EspressoLock self, long timeout) throws InterruptedException {
+    public static boolean monitorWait(EspressoLock self, long timeout) throws GuestInterruptedException {
         return self.await(timeout);
     }
 
@@ -396,11 +398,18 @@ public final class InterpreterToVM implements ContextAccess {
     // region Monitor enter/exit
 
     public static void monitorEnter(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final EspressoLock lock = obj.getLock();
+        final EspressoLock lock = obj.getLock(meta.getContext());
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
-            StaticObject thread = context.getCurrentThread();
-            meta.getThreadAccess().fromRunnable(thread, State.BLOCKED);
+            contendedMonitorEnter(obj, meta, lock, context);
+        }
+    }
+
+    @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @SuppressWarnings("try")
+    private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
+        StaticObject thread = context.getCurrentThread();
+        try (Transition transition = Transition.transition(context, State.BLOCKED)) {
             if (context.EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
@@ -418,12 +427,11 @@ public final class InterpreterToVM implements ContextAccess {
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }
-            meta.getThreadAccess().toRunnable(thread);
         }
     }
 
     public static void monitorExit(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final EspressoLock lock = obj.getLock();
+        final EspressoLock lock = obj.getLock(meta.getContext());
         if (!holdsLock(lock)) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.
@@ -725,7 +733,7 @@ public final class InterpreterToVM implements ContextAccess {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         VM.StackTrace frames = new VM.StackTrace();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             boolean first = skipFirst;
 
             @Override

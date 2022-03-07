@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.factories;
+
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
+
+import java.util.AbstractList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -95,8 +104,10 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.LLVMTruffleCanno
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsPrimitive;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsString;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotBufferInfo;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotEval;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotExportNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromBufferNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromString;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotGetArraySizeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen;
@@ -140,15 +151,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMRunDestructor
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMToolchainNodeFactory;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import java.util.AbstractList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.UnaryOperator;
-
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
 
 /**
  * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
@@ -426,6 +428,12 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("polyglot_as_float", (args, nodeFactory) -> LLVMPolyglotAsPrimitive.AsFloat.create(args.get(1)));
         add("polyglot_as_double", (args, nodeFactory) -> LLVMPolyglotAsPrimitive.AsDouble.create(args.get(1)));
         add("polyglot_as_boolean", (args, nodeFactory) -> LLVMPolyglotAsPrimitive.AsBoolean.create(args.get(1)));
+
+        add("polyglot_from_const_buffer", (args, nodeFactory) -> LLVMPolyglotFromBufferNode.create(false, args.get(1), args.get(2)));
+        add("polyglot_from_buffer", (args, nodeFactory) -> LLVMPolyglotFromBufferNode.create(true, args.get(1), args.get(2)));
+        add("polyglot_has_buffer_elements", (args, nodeFactory) -> LLVMPolyglotBufferInfo.HasBufferElements.create(args.get(1)));
+        add("polyglot_get_buffer_size", (args, nodeFactory) -> LLVMPolyglotBufferInfo.GetBufferSize.create(args.get(1)));
+        add("polyglot_is_buffer_writable", (args, nodeFactory) -> LLVMPolyglotBufferInfo.IsBufferWritable.create(args.get(1)));
 
         add("polyglot_new_instance",
                         (args, nodeFactory, language, types) -> LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(args, 2, args.size() - 2),

@@ -29,9 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLStreamHandler;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -45,9 +42,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -81,34 +76,20 @@ public final class Resources {
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
-        // TODO: Replace this with is.readAllBytes() once Java 8 support is removed
-        byte[] arr = new byte[4096];
-        int pos = 0;
         try {
-            for (;;) {
-                if (pos == arr.length) {
-                    byte[] tmp = new byte[arr.length * 2];
-                    System.arraycopy(arr, 0, tmp, 0, arr.length);
-                    arr = tmp;
-                }
-                int len = is.read(arr, pos, arr.length - pos);
-                if (len == -1) {
-                    break;
-                }
-                pos += len;
-            }
+            return is.readAllBytes();
         } catch (IOException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+    }
 
-        byte[] data = new byte[pos];
-        System.arraycopy(arr, 0, data, 0, pos);
-        return data;
+    private static String getResourceWithoutTrailingSlash(String name) {
+        return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
     }
 
     private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data) {
         Resources support = singleton();
-        Pair<String, String> key = Pair.create(moduleName, resourceName);
+        Pair<String, String> key = Pair.create(moduleName, getResourceWithoutTrailingSlash(resourceName));
         ResourceStorageEntry entry = support.resources.get(key);
         if (entry == null) {
             entry = new ResourceStorageEntry(isDirectory);
@@ -142,36 +123,26 @@ public final class Resources {
         addEntry(moduleName, resourceDirName, true, content.getBytes());
     }
 
-    /**
-     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
-     * convert <code>resourceName</code> to canonical variant.
-     */
-    public static String toCanonicalForm(String resourceName) {
-        NativeImageResourcePath path = new NativeImageResourcePath(null, resourceName.getBytes(StandardCharsets.UTF_8), true);
-        return new String(NativeImageResourcePath.getResolved(path));
-    }
-
     public static ResourceStorageEntry get(String name) {
-        return singleton().resources.get(Pair.createRight(name));
+        return get(null, name);
     }
 
     public static ResourceStorageEntry get(String moduleName, String resourceName) {
-        return singleton().resources.get(Pair.create(moduleName, resourceName));
+        ResourceStorageEntry resourceStorageEntry = singleton().resources.get(Pair.create(moduleName, getResourceWithoutTrailingSlash(resourceName)));
+        if (resourceStorageEntry != null && (resourceStorageEntry.isDirectory() || !resourceName.endsWith("/"))) {
+            return resourceStorageEntry;
+        } else {
+            return null;
+        }
     }
 
-    private static URL createURL(String resourceName, int index) {
+    private static URL createURL(String moduleName, String resourceName, int index) {
         try {
-            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, null, -1, resourceName,
-                            new URLStreamHandler() {
-                                @Override
-                                protected URLConnection openConnection(URL url) {
-                                    return new ResourceURLConnection(url, index);
-                                }
-                            });
+            String refPart = index != 0 ? '#' + Integer.toString(index) : "";
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
         }
-
     }
 
     public static URL createURL(String resourceName) {
@@ -183,7 +154,7 @@ public final class Resources {
             return null;
         }
 
-        Enumeration<URL> urls = createURLs(moduleName, toCanonicalForm(resourceName));
+        Enumeration<URL> urls = createURLs(moduleName, resourceName);
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
@@ -197,7 +168,7 @@ public final class Resources {
             return null;
         }
 
-        ResourceStorageEntry entry = Resources.get(moduleName, toCanonicalForm(resourceName));
+        ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
         if (entry == null) {
             return null;
         }
@@ -214,17 +185,32 @@ public final class Resources {
             return null;
         }
 
-        String canonicalResourceName = toCanonicalForm(resourceName);
-        ResourceStorageEntry entry = Resources.get(moduleName, canonicalResourceName);
-        if (entry == null) {
+        List<URL> resourcesURLs = new ArrayList<>();
+
+        /* If moduleName was unspecified we have to consider all modules in the image */
+        if (moduleName == null) {
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                ResourceStorageEntry entry = Resources.get(module.getName(), resourceName);
+                addURLEntries(resourcesURLs, entry, module.getName(), resourceName);
+            }
+        }
+        ResourceStorageEntry explicitEntry = Resources.get(moduleName, resourceName);
+        addURLEntries(resourcesURLs, explicitEntry, moduleName, resourceName);
+
+        if (resourcesURLs.isEmpty()) {
             return Collections.emptyEnumeration();
         }
-        int numberOfResources = entry.getData().size();
-        List<URL> resourcesURLs = new ArrayList<>(numberOfResources);
-        for (int index = 0; index < numberOfResources; index++) {
-            resourcesURLs.add(createURL(canonicalResourceName, index));
-        }
         return Collections.enumeration(resourcesURLs);
+    }
+
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String resourceName) {
+        if (entry == null) {
+            return;
+        }
+        int numberOfResources = entry.getData().size();
+        for (int index = 0; index < numberOfResources; index++) {
+            resourcesURLs.add(createURL(moduleName, resourceName, index));
+        }
     }
 }
 

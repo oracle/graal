@@ -62,8 +62,10 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
+import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64UnaryConsumer;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
@@ -83,6 +85,7 @@ import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -575,6 +578,59 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         } else {
             return binaryRead(XOR.getRMOpcode(size), size, value, access);
         }
+    }
+
+    private ComplexMatchResult emitMemoryConsumer(WriteNode write, AMD64Assembler.AMD64BinaryArithmetic arithmeticOp, ReadNode read, ValueNode value) {
+        if (getMemoryKind(write).isInteger() && !write.canDeoptimize() && !read.canDeoptimize()) {
+            OperandSize size = getMemorySize(write);
+            if (write.getAddress() == read.getAddress()) {
+                if (value.isJavaConstant()) {
+                    long valueCst = value.asJavaConstant().asLong();
+                    if (NumUtil.isInt(valueCst)) {
+                        AMD64Assembler.AMD64MOp mop = AMD64ArithmeticLIRGenerator.getMOp(arithmeticOp, (int) valueCst);
+                        if (mop != null) {
+                            return builder -> {
+                                AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
+                                builder.append(new AMD64UnaryConsumer.MemoryOp(mop, size, addressValue));
+                                return null;
+                            };
+                        } else {
+                            return builder -> {
+                                AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
+                                builder.append(new AMD64BinaryConsumer.MemoryConstOp(arithmeticOp.getMIOpcode(size, NumUtil.isByte(valueCst)), size, addressValue, (int) valueCst, state(write)));
+                                return null;
+                            };
+                        }
+                    }
+                }
+                return builder -> {
+                    AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());
+                    builder.append(new AMD64BinaryConsumer.MemoryMROp(arithmeticOp.getMROpcode(size), size, addressValue, builder.getLIRGeneratorTool().asAllocatable(operand(value)), state(write)));
+                    return null;
+                };
+            }
+        }
+        return null;
+    }
+
+    @MatchRule("(Write=write object (Add Read=read value))")
+    public ComplexMatchResult addToMemory(WriteNode write, ReadNode read, ValueNode value) {
+        return emitMemoryConsumer(write, ADD, read, value);
+    }
+
+    @MatchRule("(Write=write object (Sub Read=read value))")
+    public ComplexMatchResult subToMemory(WriteNode write, ReadNode read, ValueNode value) {
+        return emitMemoryConsumer(write, SUB, read, value);
+    }
+
+    @MatchRule("(Write=write object (Or Read=read value))")
+    public ComplexMatchResult orToMemory(WriteNode write, ReadNode read, ValueNode value) {
+        return emitMemoryConsumer(write, OR, read, value);
+    }
+
+    @MatchRule("(Write=write object (Xor Read=read value))")
+    public ComplexMatchResult xorToMemory(WriteNode write, ReadNode read, ValueNode value) {
+        return emitMemoryConsumer(write, XOR, read, value);
     }
 
     @MatchRule("(Write object Narrow=narrow)")

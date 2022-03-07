@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,8 @@ import java.lang.reflect.Method;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 
 /*
@@ -72,12 +73,12 @@ final class Management {
     private static final class ManagementAccessImpl extends ManagementAccess {
 
         @Override
-        public ExecutionListener newExecutionListener(AbstractManagementDispatch dispatch, Object receiver) {
+        public ExecutionListener newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver) {
             return new ExecutionListener(dispatch, receiver);
         }
 
         @Override
-        public ExecutionEvent newExecutionEvent(AbstractManagementDispatch dispatch, Object event) {
+        public ExecutionEvent newExecutionEvent(AbstractExecutionEventDispatch dispatch, Object event) {
             return new ExecutionEvent(dispatch, event);
         }
 
@@ -87,7 +88,7 @@ final class Management {
         }
 
         @Override
-        public AbstractManagementDispatch getDispatch(ExecutionListener executionListener) {
+        public AbstractExecutionListenerDispatch getDispatch(ExecutionListener executionListener) {
             return executionListener.dispatch;
         }
 
@@ -97,7 +98,7 @@ final class Management {
         }
 
         @Override
-        public AbstractManagementDispatch getDispatch(ExecutionEvent executionEvent) {
+        public AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent) {
             return executionEvent.dispatch;
         }
     }

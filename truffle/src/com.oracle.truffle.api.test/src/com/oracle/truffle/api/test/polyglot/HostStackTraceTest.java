@@ -181,7 +181,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
 
     @Test
     public void testExecute() {
-        Value v = context.asValue(new Supplier<Object>() {
+        Value v = context.asValue(new Supplier<>() {
             public Object get() {
                 throw new RuntimeException();
             }

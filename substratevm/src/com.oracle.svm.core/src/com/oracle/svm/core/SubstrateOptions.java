@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -54,11 +53,14 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {
 
@@ -95,7 +97,20 @@ public class SubstrateOptions {
 
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
-    public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("");
+    public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            String updatedNewValue;
+            // both darwin and macos refer to Platform.MacOS
+            if (newValue.equals("macos")) {
+                updatedNewValue = "darwin";
+            } else {
+                updatedNewValue = newValue;
+            }
+            super.onValueUpdate(values, oldValue, updatedNewValue);
+
+        }
+    };
 
     @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false) {
@@ -106,8 +121,18 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Build with Loom JDK") //
-    public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false);
+    @Option(help = "Support continuations (without requiring a Project Loom JDK)") //
+    public static final HostedOptionKey<Boolean> SupportContinuations = new HostedOptionKey<>(false);
+
+    @Option(help = "Build with Project Loom JDK") //
+    public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                SupportContinuations.update(values, true);
+            }
+        }
+    };
 
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
@@ -129,18 +154,50 @@ public class SubstrateOptions {
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
-    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
-    public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<>(2) {
+    @Option(help = "Control native-image code optimizations: b - optimize for shortest build time, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
+    public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
         @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            SubstrateOptions.IncludeNodeSourcePositions.update(values, newValue < 1);
-            SubstrateOptions.AOTInline.update(values, newValue > 0);
-            SubstrateOptions.AOTTrivialInline.update(values, newValue > 0);
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            Integer oldLevel = parseOptimizationLevel(oldValue);
+            Integer newLevel = parseOptimizationLevel(newValue);
+            SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel < 1);
+            SubstrateOptions.AOTInline.update(values, newLevel > 0);
+            SubstrateOptions.AOTTrivialInline.update(values, newLevel > 0);
             if (optimizeValueUpdateHandler != null) {
-                optimizeValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
+                optimizeValueUpdateHandler.onValueUpdate(values, oldLevel, newLevel);
             }
         }
     };
+
+    private static Integer parseOptimizationLevel(String value) {
+        if (value == null) {
+            return null;
+        }
+        // Only allow 'b' or numeric optimization levels,
+        // throw a user error otherwise.
+        if (value.equals("b")) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException nfe) {
+            throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value)", value);
+        }
+    }
+
+    @Fold
+    public static Integer optimizationLevel() {
+        return parseOptimizationLevel(Optimize.getValue());
+    }
+
+    public static boolean useEconomyCompilerConfig(OptionValues options) {
+        return "b".equals(Optimize.getValue(options));
+    }
+
+    @Fold
+    public static boolean useEconomyCompilerConfig() {
+        return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
 
     public interface ValueUpdateHandler {
         void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue);
@@ -278,7 +335,7 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
-    @Option(help = "Use new build output style", type = OptionType.User)//
+    @Option(help = "Use new build output style", type = OptionType.User, deprecated = true, deprecationMessage = "The old build output style will be removed in a future release.")//
     public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(true);
 
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
@@ -472,6 +529,9 @@ public class SubstrateOptions {
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> AllowVMInternalThreads = new HostedOptionKey<>(true);
 
+    @Option(help = "Determines if debugging-specific helper methods are embedded into the image. Those methods can be called directly from the debugger to obtain or print additional information.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> IncludeDebugHelperMethods = new HostedOptionKey<>(false);
+
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
@@ -563,7 +623,11 @@ public class SubstrateOptions {
 
         /** Use {@link ReferenceHandler#useDedicatedThread()} instead. */
         @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new RuntimeOptionKey<>(false);
+        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new ImmutableRuntimeOptionKey<>(true);
+
+        /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
+        @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
+        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new ImmutableRuntimeOptionKey<>(true);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -631,19 +695,18 @@ public class SubstrateOptions {
     public static int getPageSize() {
         int value = PageSize.getValue();
         if (value == 0) {
-            return hostPageSize;
+            try {
+                /*
+                 * On JDK 17 and later, this is just a final field access that can never fail. But
+                 * on JDK 11, it is a native method call with some corner cases that can throw an
+                 * exception.
+                 */
+                return Unsafe.getUnsafe().pageSize();
+            } catch (IllegalArgumentException e) {
+                return 4096;
+            }
         }
         return value;
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    private static int getHostPageSize() {
-        try {
-            return GraalUnsafeAccess.getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
     }
 
     @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +

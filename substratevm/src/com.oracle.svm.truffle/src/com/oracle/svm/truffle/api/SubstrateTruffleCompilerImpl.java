@@ -62,7 +62,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompilerImpl(TruffleCompilerConfiguration config) {
         super(config);
-        compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
+        compilerConfigurationName = GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

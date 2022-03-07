@@ -34,7 +34,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.internal.SecuritySupport.SafePath;
 
-@TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = JfrEnabled.class)
+@TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_SecuritySupport {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //

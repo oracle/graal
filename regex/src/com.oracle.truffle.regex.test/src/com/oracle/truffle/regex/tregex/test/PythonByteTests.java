@@ -51,7 +51,7 @@ public class PythonByteTests extends RegexTestBase {
 
     @Test
     public void gr23871() {
-        test("[^:\\s][^:\\r\\n]*", "sy", "\u00a0NonbreakSpace", 0, true, 0, 14);
+        test("[^:\\s][^:\\r\\n]*", "s", "PythonMethod=match", "\u00a0NonbreakSpace", 0, true, 0, 14);
     }
 
     @Test

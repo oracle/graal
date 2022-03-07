@@ -231,10 +231,40 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> StringSharing = new OptionKey<>(true);
 
+    public enum LivenessAnalysisMode {
+        NONE,
+        ALL,
+        AUTO // Activate liveness analysis for certain methods.
+    }
+
+    private static final OptionType<LivenessAnalysisMode> LIVENESS_ANALYSIS_MODE_OPTION_TYPE = new OptionType<>("LivenessAnalysisMode",
+                    new Function<String, LivenessAnalysisMode>() {
+                        @Override
+                        public LivenessAnalysisMode apply(String s) {
+                            // To maintain backwards compatibility with the boolean option.
+                            if ("true".equalsIgnoreCase(s)) {
+                                return LivenessAnalysisMode.ALL;
+                            }
+                            if ("false".equalsIgnoreCase(s)) {
+                                return LivenessAnalysisMode.NONE;
+                            }
+                            try {
+                                return LivenessAnalysisMode.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("--java.LivenessAnalysis can only be 'none'|'false', 'auto' or 'all'|'true'.");
+                            }
+                        }
+                    });
+
     @Option(help = "Controls static liveness analysis of bytecodes, allowing to clear local variables during execution if they become stale.\\n" + //
                     "Liveness analysis, if enabled, only affects compiled code.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
+    public static final OptionKey<LivenessAnalysisMode> LivenessAnalysis = new OptionKey<>(LivenessAnalysisMode.AUTO, LIVENESS_ANALYSIS_MODE_OPTION_TYPE);
+
+    @Option(help = "Minimum number of locals to run liveness analysis.\\n" + //
+                    "Liveness analysis, if enabled, only affects compiled code.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Integer> LivenessAnalysisMinimumLocals = new OptionKey<>(8);
 
     @Option(help = "Enable Class Hierarchy Analysis, which optimizes instanceof checks and virtual method calls by keeping track of descendants of a given class or interface.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
@@ -444,9 +474,17 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Integer> TrivialMethodSize = new OptionKey<>(18);
 
+    @Option(help = "Use the host FinalReference to implement guest finalizers. If set to false, FinalReference will fallback to WeakReference semantics.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseHostFinalReference = new OptionKey<>(true);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
+
+    // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
+    public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);
+    public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", true);
 
     private static boolean booleanProperty(String name, boolean defaultValue) {
         String value = System.getProperty(name);

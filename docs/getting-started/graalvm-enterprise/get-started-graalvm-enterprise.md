@@ -84,7 +84,8 @@ For more extensive documentation on running Java, proceed to [JVM Languages](../
 
 ### JavaScript and Node.js
 
-GraalVM Enterprise can execute plain JavaScript code, both in REPL mode and by executing script files directly:
+As mentioned above, upon the installation completion, the `<graalvm>/bin` directory already includes the `js` launcher to run JavaScript programs.
+It can execute plain JavaScript code, both in REPL mode and by executing script files directly:
 ```shell
 $JAVA_HOME/bin/js
 > 1 + 2
@@ -96,10 +97,14 @@ Node.js support is not installed by default, but can be easily added with GraalV
 ```shell
 gu install nodejs
 ```
+
+The `node` launcher becomes available in the `<graalvm>/bin` directory.
+
 ```shell
 $JAVA_HOME/bin/node -v
 v14.18.1
 ```
+
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM Enterprise, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
 To install a Node.js module, use the `npm` executable from the `<graalvm>/bin` folder, which is installed together with `node`.

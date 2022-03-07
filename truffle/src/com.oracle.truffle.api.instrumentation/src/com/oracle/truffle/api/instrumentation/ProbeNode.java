@@ -420,7 +420,7 @@ public final class ProbeNode extends Node {
     }
 
     Iterator<ExecutionEventNode> lookupExecutionEventNodes(Collection<EventBinding<? extends ExecutionEventNodeFactory>> bindings) {
-        return new Iterator<ExecutionEventNode>() {
+        return new Iterator<>() {
 
             private EventChainNode chainNode = ProbeNode.this.chain;
             private EventProviderChainNode nextNode;

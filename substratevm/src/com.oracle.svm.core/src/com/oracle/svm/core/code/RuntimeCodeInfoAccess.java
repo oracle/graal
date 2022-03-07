@@ -26,8 +26,13 @@ package com.oracle.svm.core.code;
 
 import java.util.EnumSet;
 
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -208,11 +213,11 @@ public final class RuntimeCodeInfoAccess {
 
     static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {
         InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
-        releaseMemory(info, notifyGC);
+        freePartially(info, notifyGC);
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
-    private static void releaseMemory(CodeInfo info, boolean notifyGC) {
+    private static void freePartially(CodeInfo info, boolean notifyGC) {
         CodeInfoImpl impl = cast(info);
         assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
         if (notifyGC) {
@@ -226,7 +231,7 @@ public final class RuntimeCodeInfoAccess {
         releaseCodeMemory(impl.getCodeStart(), impl.getCodeAndDataMemorySize());
         /*
          * Note that we must not null-out any CodeInfo metadata as it can be accessed in a stack
-         * walk even when CodeInfo data is already partially freed.
+         * walk even when the CodeInfo data is already partially freed.
          */
         CodeInfoAccess.setState(info, CodeInfo.STATE_PARTIALLY_FREED);
     }
@@ -236,7 +241,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
+    private static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
         CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()));
     }
 
@@ -248,12 +253,38 @@ public final class RuntimeCodeInfoAccess {
         CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
     }
 
+    @Platforms(Platform.MACOS_AARCH64.class) private static final FastThreadLocalInt jitProtectDepth = FastThreadLocalFactory.createInt("jitProtectDepth");
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void acquireThreadWriteAccess() {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
+            // Disabling write protection can be nested, for example a GC can be triggered during
+            // code installation which in turn causes walk of references in code. Both need to
+            // disable write protection, but only the outer one should enable it again.
+            if (jitProtectDepth.get() == 0) {
+                VirtualMemoryProvider.get().jitWriteProtect(false);
+            }
+            jitProtectDepth.set(jitProtectDepth.get() + 1);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void releaseThreadWriteAccess() {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
+            VMError.guarantee(jitProtectDepth.get() >= 1);
+            jitProtectDepth.set(jitProtectDepth.get() - 1);
+            if (jitProtectDepth.get() == 0) {
+                VirtualMemoryProvider.get().jitWriteProtect(true);
+            }
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     static void releaseMethodInfoOnTearDown(CodeInfo info) {
         InstalledCodeObserverSupport.removeObserversOnTearDown(getCodeObserverHandles(info));
 
         assert ((CodeInfoTether) UntetheredCodeInfoAccess.getTetherUnsafe(info)).getCount() == 1 : "CodeInfo tether must not be referenced by non-teardown code.";
-        releaseMethodInfoMemory(info, true);
+        free(info, true);
     }
 
     public interface NonmovableArrayAction {
@@ -270,15 +301,22 @@ public final class RuntimeCodeInfoAccess {
     };
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    public static void releaseMethodInfoMemory(CodeInfo info, boolean notifyGC) {
+    public static void free(CodeInfo info, boolean notifyGC) {
+        CodeInfoImpl impl = cast(info);
+        if (CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION) {
+            freePartially(info, notifyGC);
+        }
+
         if (notifyGC) {
             // Notify the GC as long as the object data is still valid.
             Heap.getHeap().getRuntimeCodeInfoGCSupport().unregisterRuntimeCodeInfo(info);
         }
 
-        if (!cast(info).getAllObjectsAreInImageHeap()) {
+        if (!impl.getAllObjectsAreInImageHeap()) {
             forEachArray(info, RELEASE_ACTION);
         }
+
+        impl.setState(CodeInfo.STATE_FREED);
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
     }
 

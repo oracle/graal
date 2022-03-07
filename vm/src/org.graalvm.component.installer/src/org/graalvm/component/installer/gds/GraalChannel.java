@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,21 +35,15 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.ComponentCatalog.DownloadInterceptor;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
-import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.SuppressFBWarnings;
 import org.graalvm.component.installer.SystemUtils;
@@ -70,32 +64,11 @@ import org.graalvm.component.installer.remote.RemotePropertiesStorage;
  * {@link #acceptsVersion}. if more versions are selected, all their components are merged, as it is
  * the case of multi-versioned catalogs (which are not actively deployed at the moment).
  * <p>
- * 
+ *
  * @author sdedic
  */
-
-public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
+public class GraalChannel extends GraalChannelBase {
     private static final Logger LOG = Logger.getLogger(GraalChannel.class.getName());
-
-    private final ComponentRegistry localRegistry;
-    private final CommandInput input;
-    private final Feedback fb;
-
-    /**
-     * URL of the relases resource. Used for relative URL resolution.
-     */
-    private URL releasesIndexURL;
-
-    /**
-     * Delay-init storage. Make lazy, as the storage calls back to the toplevel registry. Prevents
-     * stack overflow.
-     */
-    private Delayed delayedStorage = new Delayed();
-
-    /**
-     * Cached initialized storage.
-     */
-    private ComponentStorage storage;
 
     /**
      * Collected info about invalid release entries.
@@ -133,33 +106,8 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
      */
     private boolean prompted;
 
-    private String edition;
-
-    /**
-     * If true, future versions are accepted as well.
-     */
-    private boolean allowUpdates = false;
-
     public GraalChannel(CommandInput aInput, Feedback aFeedback, ComponentRegistry aRegistry) {
-        this.input = aInput;
-        this.fb = aFeedback.withBundle(GraalChannel.class);
-        this.localRegistry = aRegistry;
-    }
-
-    public String getEdition() {
-        return edition;
-    }
-
-    public void setEdition(String edition) {
-        this.edition = edition;
-    }
-
-    public boolean isAllowUpdates() {
-        return allowUpdates;
-    }
-
-    public void setAllowUpdates(boolean allowUpdates) {
-        this.allowUpdates = allowUpdates;
+        super(aInput, aFeedback.withBundle(GraalChannel.class), aRegistry);
     }
 
     void setMailStorage(MailStorage s) {
@@ -173,57 +121,10 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
         return mailStorage;
     }
 
-    URL getReleasesIndexURL() {
-        return releasesIndexURL;
-    }
-
-    public void setReleasesIndexURL(URL releasesIndexURL) {
-        this.releasesIndexURL = releasesIndexURL;
-    }
-
-    @Override
-    public ComponentStorage getStorage() throws IOException {
-        return delayedStorage;
-    }
-
-    /**
-     * Delay-init storage. As listing (downloading) the catalogs require access to the toplevel
-     * registry, the toplevel needs to finish the initialization first.
-     */
-    class Delayed implements ComponentStorage {
-        private ComponentStorage init() throws IOException {
-            if (storage == null) {
-                allowUpdates = input.getRegistry().isAllowDistUpdate();
-                storage = loadStorage();
-            }
-            return storage;
-        }
-
-        @Override
-        public Set<String> listComponentIDs() throws IOException {
-            return init().listComponentIDs();
-        }
-
-        @Override
-        public ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException {
-            return init().loadComponentFiles(ci);
-        }
-
-        @Override
-        public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
-            return init().loadComponentMetadata(id);
-        }
-
-        @Override
-        public Map<String, String> loadGraalVersionInfo() {
-            return Collections.emptyMap();
-        }
-    }
-
     /**
      * GDS will require the user to supply an e-mail that can be used collected by the GDS services.
      * Right now, the last-used e-mail is just stored in the GDS-private local storage.
-     * 
+     *
      * @param info original info
      * @param dn downloader instance
      * @return configured downloader
@@ -240,7 +141,7 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
             if (input == null) {
                 throw fb.failure("ERR_EmailAddressMissing", null);
             }
-            reportEmailAddress = checkEmailAddress(receiveEmailAddress());
+            reportEmailAddress = MailStorage.checkEmailAddress(receiveEmailAddress(), fb);
             try {
                 mailStorage.setEmailAddress(reportEmailAddress);
                 mailStorage.save();
@@ -248,11 +149,6 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
                 fb.error("WARN_CannotSaveEmailAddress", ex, ex.getLocalizedMessage());
             }
         }
-    }
-
-    @Override
-    public FileDownloader processDownloader(ComponentInfo info, FileDownloader dn) {
-        return configureDownloader(info, dn);
     }
 
     @Override
@@ -266,30 +162,6 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
         };
     }
 
-    String checkEmailAddress(String mail) {
-        String m;
-        if (mail == null) {
-            return null;
-        } else {
-            m = mail.trim();
-        }
-        if ("".equals(m)) {
-            return null;
-        }
-        if (!EMAIL_PATTERN.matcher(m).matches()) {
-            throw fb.failure("ERR_EmailNotValid", null, m);
-        }
-        return mail;
-    }
-
-    /**
-     * Simple regexp pattern for verifying an e-mail. Definition taken from
-     * https://www.w3.org/TR/html52/sec-forms.html#valid-e-mail-address; does not support
-     * internationalized domains well.
-     */
-    private static final Pattern EMAIL_PATTERN = Pattern
-                    .compile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$");
-
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "AUTO_YES is a special tag value instance")
     String receiveEmailAddress() {
         String mail = input.optValue(GdsCommands.OPTION_EMAIL_ADDRESS);
@@ -300,7 +172,7 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
             fb.output("MSG_EmailAddressEntry");
             fb.outputPart("PROMPT_EmailAddressEntry");
             mail = fb.acceptLine(true);
-            if (mail == Feedback.AUTO_YES) {
+            if (Feedback.AUTO_YES == mail) {
                 mail = null;
             }
             prompted = true;
@@ -308,57 +180,9 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
         return mail;
     }
 
-    static final class NullStorage implements ComponentStorage {
-        @Override
-        public Set<String> listComponentIDs() throws IOException {
-            return Collections.emptySet();
-        }
-
-        @Override
-        public ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException {
-            return null;
-        }
-
-        @Override
-        public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
-            return Collections.emptySet();
-        }
-
-        @Override
-        public Map<String, String> loadGraalVersionInfo() {
-            return Collections.emptyMap();
-        }
-    }
-
-    /**
-     * On first invocation, throws an exception (will be caught by catalog builder). On subsequent
-     * invocations, returns a dummy no-component storage.
-     * 
-     * @return empty storage
-     */
-    ComponentStorage throwEmptyStorage() {
-        if (storage != null) {
-            return storage;
-        }
-        Map<String, String> caps = localRegistry.getGraalCapabilities();
-        String os = caps.get(CommonConstants.CAP_OS_NAME);
-        String arch = caps.get(CommonConstants.CAP_OS_ARCH);
-        storage = new NullStorage();
-        throw new IncompatibleException(fb.l10n("OLDS_IncompatibleRelease",
-                        SystemUtils.normalizeOSName(os, arch),
-                        SystemUtils.normalizeArchitecture(os, arch),
-                        localRegistry.getJavaVersion()));
-    }
-
-    /**
-     * Initializes the component storage. Loads the releases index, selects matching releases and
-     * creates {@link WebCatalog} for each of the catalogs. Merges using {@link MergeStorage}.
-     * 
-     * @return merged storage.
-     * @throws IOException in case of an I/O error.
-     */
-    ComponentStorage loadStorage() throws IOException {
-        FileDownloader dn = new FileDownloader(fb.l10n("OLDS_ReleaseFile"), releasesIndexURL, fb);
+    @Override
+    protected ComponentStorage loadStorage() throws IOException {
+        FileDownloader dn = new FileDownloader(fb.l10n("OLDS_ReleaseFile"), getIndexURL(), fb);
         dn.download();
         Path storagePath = dn.getLocalFile().toPath();
         List<ReleaseEntry> releases = loadReleasesIndex(storagePath);
@@ -403,21 +227,8 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
     }
 
     /**
-     * Filters mismatched releases. At this point, accepts only the exactly same release version.
-     * Could be changed to accept future versions as well, allowing for upgrades.
-     * 
-     * @param graalVersion current version
-     * @param vers the version from the release entry
-     * @return true, if the release matches the current installation
-     */
-    private boolean acceptsVersion(Version graalVersion, Version vers) {
-        int c = graalVersion.installVersion().compareTo(vers.installVersion());
-        return allowUpdates ? c <= 0 : c == 0;
-    }
-
-    /**
      * Loads the release index. Must be loaded from a local file.
-     * 
+     *
      * @param releasesIndexPath path to the downloaded releases index.
      * @return list of entries in the index
      * @throws IOException in case of I/O error.
@@ -466,12 +277,12 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
     }
 
     private URL resolveURL(String u) throws MalformedURLException {
-        return releasesIndexURL == null ? new URL(u) : new URL(releasesIndexURL, u);
+        return getIndexURL() == null ? new URL(u) : new URL(getIndexURL(), u);
     }
 
     /**
      * Filters out different OS/Architecture.
-     * 
+     *
      * @param rk entry id prefix, for diagnostic purposes.
      * @param bp package object
      * @return true, if the base package is OK for the current release.
@@ -496,7 +307,7 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
 
     /**
      * Reads JSON object into {@link ReleaseEntry}.
-     * 
+     *
      * @param rk release id in the index; diagnostics.
      * @param jo the JSON object to convert
      * @return Release entry or {@code null} if the entry is for a different release / os / arch
@@ -571,7 +382,7 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
 
     /**
      * Deserializes JSON object to {@link ReleaseEntry.BasePackage}.
-     * 
+     *
      * @param s package id
      * @param jo json input
      * @return Package object or {@code null} if invalid arch/os

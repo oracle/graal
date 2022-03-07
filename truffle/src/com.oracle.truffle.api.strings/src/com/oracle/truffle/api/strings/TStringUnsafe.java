@@ -43,6 +43,7 @@ package com.oracle.truffle.api.strings;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import sun.misc.Unsafe;
@@ -67,16 +68,18 @@ final class TStringUnsafe {
     private static final sun.misc.Unsafe UNSAFE = getUnsafe();
     private static final long javaStringValueFieldOffset;
     private static final long javaStringCoderFieldOffset;
+    private static final long javaStringHashFieldOffset;
 
     static {
-        Field valueField = getStringDeclaredField("value");
-        javaStringValueFieldOffset = UNSAFE.objectFieldOffset(valueField);
         if (JAVA_SPEC <= 8) {
-            javaStringCoderFieldOffset = 0;
-        } else {
-            Field coderField = getStringDeclaredField("coder");
-            javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
+            throw new RuntimeException("TruffleString requires Java version > 8");
         }
+        Field valueField = getStringDeclaredField("value");
+        Field coderField = getStringDeclaredField("coder");
+        Field hashField = getStringDeclaredField("hash");
+        javaStringValueFieldOffset = UNSAFE.objectFieldOffset(valueField);
+        javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
+        javaStringHashFieldOffset = UNSAFE.objectFieldOffset(hashField);
     }
 
     @TruffleBoundary
@@ -103,14 +106,7 @@ final class TStringUnsafe {
         }
     }
 
-    static char[] getJavaStringArrayJDK8(String str) {
-        assert JAVA_SPEC <= 8;
-        Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
-        assert value instanceof char[];
-        return (char[]) value;
-    }
-
-    static byte[] getJavaStringArrayJDK9(String str) {
+    static byte[] getJavaStringArray(String str) {
         assert JAVA_SPEC > 8;
         Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
         assert value instanceof byte[];
@@ -118,7 +114,39 @@ final class TStringUnsafe {
     }
 
     static int getJavaStringStride(String s) {
-        return JAVA_SPEC <= 8 ? 1 : UNSAFE.getByte(s, javaStringCoderFieldOffset);
+        return UNSAFE.getByte(s, javaStringCoderFieldOffset);
+    }
+
+    @TruffleBoundary
+    private static String allocateJavaString() {
+        try {
+            return (String) UNSAFE.allocateInstance(String.class);
+        } catch (InstantiationException e) {
+            throw CompilerDirectives.shouldNotReachHere("unsafe string allocation failed", e);
+        }
+    }
+
+    @TruffleBoundary
+    static String createJavaString(byte[] bytes, int stride) {
+        if (stride < 0 || stride > 1) {
+            throw new IllegalArgumentException("stride must be 0 or 1!");
+        }
+        String ret = allocateJavaString();
+        UNSAFE.putInt(ret, javaStringHashFieldOffset, 0);
+        UNSAFE.putByte(ret, javaStringCoderFieldOffset, (byte) stride);
+        UNSAFE.putObjectVolatile(ret, javaStringValueFieldOffset, bytes);
+        assert checkUnsafeStringResult(bytes, stride, ret);
+        return ret;
+    }
+
+    @TruffleBoundary
+    private static boolean checkUnsafeStringResult(byte[] bytes, int stride, String ret) {
+        int length = bytes.length >> stride;
+        char[] chars = new char[length];
+        for (int i = 0; i < length; i++) {
+            chars[i] = (char) TStringOps.readFromByteArray(bytes, stride, i);
+        }
+        return new String(chars).equals(ret);
     }
 
     static byte getByteManaged(Object array, long byteOffset) {

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.thread.Safepoint;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -35,6 +38,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.RingBuffer;
+import org.graalvm.word.UnsignedWord;
 
 public class RuntimeCodeInfoHistory {
     private static final RingBuffer.Consumer<CodeCacheLogEntry> PRINT_WITH_JAVA_HEAP_DATA = RuntimeCodeInfoHistory::printEntryWithJavaHeapData;
@@ -68,20 +72,23 @@ public class RuntimeCodeInfoHistory {
         assert VMOperation.isInProgressAtSafepoint();
 
         traceCodeCache(kind, info, true);
-        recentOperations.next().setValues(kind, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+        recentOperations.next().setValues(kind, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info),
+                        RuntimeCodeInfoAccess.getInstalledCode(info));
     }
 
     public void logFree(CodeInfo info) {
         assert VMOperation.isInProgressAtSafepoint() || VMThreads.isTearingDown();
 
         traceCodeCache("Freed", info, false);
-        recentOperations.next().setValues("Freed", info, CodeInfoAccess.getState(info), null, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+        recentOperations.next().setValues("Freed", info, CodeInfoAccess.getState(info), null, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info),
+                        RuntimeCodeInfoAccess.getInstalledCode(info));
     }
 
     private static void traceCodeCache(String kind, CodeInfo info, boolean allowJavaHeapAccess) {
         if (RuntimeCodeCache.Options.TraceCodeCache.getValue()) {
             Log.log().string(kind).string(" method: ");
             CodeInfoAccess.printCodeInfo(Log.log(), info, allowJavaHeapAccess);
+            Log.log().newline();
         }
     }
 
@@ -112,13 +119,20 @@ public class RuntimeCodeInfoHistory {
         private int codeInfoState;
         private CodePointer codeStart;
         private CodePointer codeEnd;
+        private HasInstalledCode hasInstalledCode;
+        private long installedCodeAddress;
+        private long installedCodeEntryPoint;
+        private UnsignedWord safepointId;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         CodeCacheLogEntry() {
         }
 
-        public void setValues(String kind, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd) {
+        public void setValues(String kind, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd, SubstrateInstalledCode installedCode) {
+            assert VMOperation.isInProgressAtSafepoint();
             assert Heap.getHeap().isInImageHeap(kind);
+
+            this.safepointId = Safepoint.Master.singleton().getSafepointId();
             this.timestamp = System.currentTimeMillis();
             this.kind = kind;
             this.codeInfo = codeInfo;
@@ -126,13 +140,23 @@ public class RuntimeCodeInfoHistory {
             this.codeName = codeName;
             this.codeStart = codeStart;
             this.codeEnd = codeEnd;
+            if (installedCode != null) {
+                hasInstalledCode = HasInstalledCode.Yes;
+                installedCodeAddress = installedCode.getAddress();
+                installedCodeEntryPoint = installedCode.getEntryPoint();
+            } else {
+                hasInstalledCode = HasInstalledCode.No;
+                installedCodeAddress = 0;
+                installedCodeEntryPoint = 0;
+            }
         }
 
         public void print(Log log, boolean allowJavaHeapAccess) {
             if (kind != null) {
                 log.unsigned(timestamp).string(" - ").string(kind).spaces(1);
                 String name = allowJavaHeapAccess ? codeName : null;
-                CodeInfoAccess.printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd);
+                CodeInfoAccess.printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd, hasInstalledCode, installedCodeAddress, installedCodeEntryPoint);
+                log.string(", safepointId: ").unsigned(safepointId).newline();
             }
         }
     }

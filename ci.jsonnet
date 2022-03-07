@@ -13,6 +13,9 @@ local regex = import 'regex/ci.jsonnet';
 # SDK
 local sdk = import 'sdk/ci.jsonnet';
 
+# SubstrateVM
+local substratevm = import 'substratevm/ci.jsonnet';
+
 # Sulong
 local sulong = import 'sulong/ci.jsonnet';
 
@@ -47,6 +50,7 @@ local add_excludes_guard(build) = build + {
     espresso.builds +
     regex.builds +
     sdk.builds +
+    substratevm.builds +
     sulong.builds +
     tools.builds +
     truffle.builds +

@@ -236,8 +236,6 @@ This tool must first be built with:
 native-image --macro:native-image-configure-launcher
 ```
 
-> Note: The Native Image Configure Tool is only available if [`native-image` is built via `mx`](https://github.com/oracle/graal/blob/master/substratevm/SubstrateVM.md). This configuration tool is not part of any GraalVM distribution by default.
-
 Then, the tool can be used to merge sets of configuration files as follows:
 ```shell
 native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/

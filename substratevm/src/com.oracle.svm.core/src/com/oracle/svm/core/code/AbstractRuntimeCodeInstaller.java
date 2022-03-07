@@ -66,10 +66,11 @@ public class AbstractRuntimeCodeInstaller {
         JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
             try {
                 assert !installedCode.isValid() && !installedCode.isAlive();
-                CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
                 CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                platformHelper().performCodeSynchronization(codeInfo);
                 installedCode.setAddress(codeStart.rawValue(), method);
+
+                CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
+                platformHelper().performCodeSynchronization(codeInfo);
             } catch (Throwable e) {
                 errorBox[0] = e;
             }

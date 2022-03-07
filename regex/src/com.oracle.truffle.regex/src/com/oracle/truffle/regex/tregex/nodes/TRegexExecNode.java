@@ -90,10 +90,10 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
         this.nfaNode = new NFARegexSearchNode(createEntryNode(nfaExecutor));
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
-        this.regressionTestMode = !backtrackingMode && ast.getSource().getOptions().isRegressionTestMode();
+        this.regressionTestMode = !backtrackingMode && ast.getOptions().isRegressionTestMode();
         this.sticky = ast.getFlags().isSticky();
         this.runnerNode = nfaNode;
-        if (this.regressionTestMode || ast.getSource().getOptions().isGenerateDFAImmediately()) {
+        if (this.regressionTestMode || ast.getOptions().isGenerateDFAImmediately()) {
             switchToLazyDFA();
         }
         if (this.regressionTestMode) {

@@ -400,7 +400,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic inlining of guest language call targets (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
-    @Option(help = "Maximum depth for recursive inlining (default: 2).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
+    @Option(help = "Maximum depth for recursive inlining (default: 2).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     // Splitting

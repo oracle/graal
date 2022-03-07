@@ -72,7 +72,6 @@ import java.util.ArrayList;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
@@ -156,8 +155,12 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          * https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms
          *
          * https://docs.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions
+         *
+         * Android uses r18 for maintaining a shadow call stack:
+         *
+         * https://developer.android.com/ndk/guides/abis#arm64-v8a
          */
-        if (OS.DARWIN.isCurrent() || OS.WINDOWS.isCurrent()) {
+        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
         }
         allocatableRegs = new RegisterArray(regs);

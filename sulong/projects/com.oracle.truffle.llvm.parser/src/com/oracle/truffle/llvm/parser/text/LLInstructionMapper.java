@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,7 +61,6 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.options.TargetStream;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLInstructionMapper {
@@ -224,12 +223,11 @@ final class LLInstructionMapper {
         }
     }
 
-    static void setSourceLocations(LLSourceMap sourceMap, FunctionDefinition functionDefinition, LLVMParserRuntime runtime, LLVMContext context) {
+    static void setSourceLocations(LLSourceMap sourceMap, FunctionDefinition functionDefinition, LLVMParserRuntime runtime) {
         final LLSourceMap.Function function = sourceMap.getFunction(functionDefinition.getName());
         if (function == null) {
-            TargetStream stream = context.llDebugVerboseStream();
-            if (stream != null) {
-                stream.println("Cannot find .ll source for function " + functionDefinition.getName());
+            if (LLVMContext.llDebugWarningEnabled()) {
+                LLVMContext.llDebugWarningLog("Cannot find .ll source for function " + functionDefinition.getName());
             }
             return;
         }

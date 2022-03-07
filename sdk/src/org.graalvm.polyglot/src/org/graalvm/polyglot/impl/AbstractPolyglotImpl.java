@@ -116,17 +116,17 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract ExecutionListener newExecutionListener(AbstractManagementDispatch dispatch, Object receiver);
+        public abstract ExecutionListener newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver);
 
-        public abstract ExecutionEvent newExecutionEvent(AbstractManagementDispatch dispatch, Object event);
+        public abstract ExecutionEvent newExecutionEvent(AbstractExecutionEventDispatch dispatch, Object event);
 
         public abstract Object getReceiver(ExecutionListener executionListener);
 
-        public abstract AbstractManagementDispatch getDispatch(ExecutionListener executionListener);
+        public abstract AbstractExecutionListenerDispatch getDispatch(ExecutionListener executionListener);
 
         public abstract Object getReceiver(ExecutionEvent executionEvent);
 
-        public abstract AbstractManagementDispatch getDispatch(ExecutionEvent executionEvent);
+        public abstract AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent);
     }
 
     public abstract static class IOAccess {
@@ -368,9 +368,19 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractManagementDispatch extends AbstractDispatchClass {
+    public abstract static class AbstractExecutionListenerDispatch extends AbstractDispatchClass {
 
-        protected AbstractManagementDispatch(AbstractPolyglotImpl polyglotImpl) {
+        protected AbstractExecutionListenerDispatch(AbstractPolyglotImpl polyglotImpl) {
+            Objects.requireNonNull(polyglotImpl);
+        }
+
+        public abstract void closeExecutionListener(Object impl);
+
+    }
+
+    public abstract static class AbstractExecutionEventDispatch extends AbstractDispatchClass {
+
+        protected AbstractExecutionEventDispatch(AbstractPolyglotImpl polyglotImpl) {
             Objects.requireNonNull(polyglotImpl);
         }
 
@@ -387,8 +397,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isExecutionEventStatement(Object impl);
 
         public abstract boolean isExecutionEventRoot(Object impl);
-
-        public abstract void closeExecutionListener(Object impl);
 
         public abstract PolyglotException getExecutionEventException(Object impl);
 
@@ -1081,6 +1089,18 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultFileSystem();
     }
 
+    public ProcessHandler newDefaultProcessHandler() {
+        return getNext().newDefaultProcessHandler();
+    }
+
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return getNext().isDefaultProcessHandler(processHandler);
+    }
+
+    public ThreadScope createThreadScope() {
+        return getNext().createThreadScope();
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
@@ -1104,6 +1124,24 @@ public abstract class AbstractPolyglotImpl {
      */
     protected OptionDescriptors createEngineOptionDescriptors() {
         return OptionDescriptors.EMPTY;
+    }
+
+    public final AbstractPolyglotImpl getRootImpl() {
+        AbstractPolyglotImpl current = this;
+        while (current.prev != null) {
+            current = current.prev;
+        }
+        return current;
+    }
+
+    public abstract static class ThreadScope implements AutoCloseable {
+
+        protected ThreadScope(AbstractPolyglotImpl engineImpl) {
+            Objects.requireNonNull(engineImpl);
+        }
+
+        @Override
+        public abstract void close();
     }
 
 }

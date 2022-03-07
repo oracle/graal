@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.commands;
 
 import java.util.Optional;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -59,7 +60,7 @@ public final class Params {
         JSONArray args = new JSONArray();
         if (text != null) {
             JSONObject outObject = new JSONObject();
-            if (text instanceof String) {
+            if (InteropLibrary.getUncached().isString(text)) {
                 outObject.put("type", "string");
             } else if (text instanceof Number) {
                 outObject.put("type", "number");

@@ -24,7 +24,6 @@
  */
 package org.graalvm.component.installer.remote;
 
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -116,7 +115,7 @@ public final class GraalEditionList implements CatalogFactory {
      * {@link CommonConstants#CAP_CATALOG_PREFIX}; strings having lower precedence than any any
      * number. Two nonnumeric strings are compared alphabetically.
      */
-    private static final Comparator<String> CHANNEL_KEY_COMPARATOR = new Comparator<String>() {
+    private static final Comparator<String> CHANNEL_KEY_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(String o1, String o2) {
             int i1 = Integer.MAX_VALUE;
@@ -232,14 +231,10 @@ public final class GraalEditionList implements CatalogFactory {
             id = targetGraal.getGraalCapabilities().get(CommonConstants.CAP_EDITION);
         }
         for (String s : parts) {
-            try {
-                SoftwareChannelSource chs = new SoftwareChannelSource(s);
-                chs.setPriority(priority);
-                chs.setParameter("edition", id);
-                sources.add(chs);
-            } catch (MalformedURLException ex) {
-                feedback.error("REMOTE_FailedToParseParameter", ex, s); // NOI18N
-            }
+            SoftwareChannelSource chs = new SoftwareChannelSource(s);
+            chs.setPriority(priority);
+            chs.setParameter("edition", id);
+            sources.add(chs);
             priority++;
         }
         return sources;

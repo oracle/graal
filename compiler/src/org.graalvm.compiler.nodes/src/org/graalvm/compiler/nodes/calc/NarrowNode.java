@@ -39,6 +39,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -154,11 +155,13 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
         } else if (forValue instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
             IntegerConvertNode<?> other = (IntegerConvertNode<?>) forValue;
-            if (other.getValue().hasExactlyOneUsage() && other.hasMoreThanOneUsage()) {
-                // Do not perform if this will introduce a new live value.
-                // If the original value's usage count is > 1, there is already another user.
-                // If the convert's usage count is <=1, it will be dead code eliminated.
-                return this;
+            if (tool.allUsagesAvailable()) {
+                if ((graph() == null || graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) && other.getValue().hasExactlyOneUsage() && other.hasMoreThanOneUsage()) {
+                    // Do not perform if this will introduce a new live value.
+                    // If the original value's usage count is > 1, there is already another user.
+                    // If the convert's usage count is <=1, it will be dead code eliminated.
+                    return this;
+                }
             }
             if (getResultBits() == other.getInputBits()) {
                 // xxxx -(extend)-> yyyy xxxx -(narrow)-> xxxx

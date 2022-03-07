@@ -165,16 +165,17 @@ abstract class AbstractBridgeGenerator {
     }
 
     final CacheSnippets cacheSnippets(DefinitionData data) {
-        if (data.hasExplicitReceiver()) {
-            return CacheSnippets.explicitReceiver(types, typeCache);
+        if (data.hasCustomDispatch()) {
+            return CacheSnippets.customDispatch(types, typeCache);
         } else {
-            return CacheSnippets.implicitReceiver(types, typeCache);
+            return CacheSnippets.standardDispatch(types, typeCache);
         }
     }
 
-    final CodeBuilder overrideMethod(CodeBuilder builder, MethodData methodData) {
+    final CodeBuilder overrideMethod(CodeBuilder builder, DefinitionData data, MethodData methodData) {
         for (AnnotationMirror mirror : methodData.element.getAnnotationMirrors()) {
-            if (Utilities.contains(parser.copyAnnotations, mirror.getAnnotationType(), types)) {
+            if (!Utilities.contains(data.ignoreAnnotations, mirror.getAnnotationType(), types) &&
+                            !Utilities.contains(data.marshallerAnnotations, mirror.getAnnotationType(), types)) {
                 builder.lineStart().annotation(mirror.getAnnotationType(), null).lineEnd("");
             }
         }
@@ -345,6 +346,16 @@ abstract class AbstractBridgeGenerator {
         void postUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName, CharSequence resultVariableName) {
         }
 
+        @SuppressWarnings("unused")
+        CharSequence preMarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+            return null;
+        }
+
         abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName);
 
         abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName);
@@ -363,6 +374,106 @@ abstract class AbstractBridgeGenerator {
 
         final AnnotationMirror findOut(List<? extends AnnotationMirror> annotations) {
             return find(annotations, cache.out);
+        }
+
+        final CharSequence unmarshallHotSpotToNativeProxyInNative(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
+            TypeMirror receiverType = marshallerData.useCustomReceiverAccessor ? data.customReceiverAccessor.getParameters().get(0).asType() : parameterType;
+            CharSequence classLiteral = new CodeBuilder(builder).classLiteral(receiverType).build();
+            CodeBuilder result = new CodeBuilder(builder).invokeStatic(cache.nativeObjectHandles, "resolve", parameterName, classLiteral);
+            if (marshallerData.useCustomReceiverAccessor) {
+                result = new CodeBuilder(result).invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(), result.build());
+            }
+            return result.build();
+        }
+
+        final CharSequence unmarshallNativeToHotSpotProxyInNative(CodeBuilder builder, CharSequence parameterName, CharSequence jniEnvFieldName) {
+            List<CharSequence> args = Arrays.asList(jniEnvFieldName, parameterName);
+            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
+            boolean isHSObject = types.isSubtype(marshallerData.forType, cache.hSObject);
+            if (hasGeneratedFactory && !isHSObject) {
+                DeclaredType receiverType = (DeclaredType) marshallerData.nonDefaultReceiver.asType();
+                List<CharSequence> newArgs = new ArrayList<>();
+                newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[args.size()])).build());
+                newArgs.add(jniEnvFieldName);
+                args = newArgs;
+            }
+            CharSequence proxy = createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            if (marshallerData.customDispatchFactory != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
+                                marshallerData.customDispatchFactory.getSimpleName(), proxy);
+                proxy = factory.build();
+            }
+            CodeBuilder result = new CodeBuilder(builder);
+            result.invoke(parameterName, "isNonNull").write(" ? ").write(proxy).write(" : ").write("null");
+            return result.build();
+        }
+
+        final CharSequence unmarshallHotSpotToNativeProxyInHotSpot(CodeBuilder builder, CharSequence parameterName, CharSequence currentIsolateSnippet) {
+            List<CharSequence> args = Arrays.asList(currentIsolateSnippet, parameterName);
+            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
+            boolean isNativeObject = types.isSubtype(marshallerData.forType, cache.nativeObject);
+            if (hasGeneratedFactory && !isNativeObject) {
+                args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[args.size()])).build());
+            }
+            CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            if (marshallerData.customDispatchFactory != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
+                                marshallerData.customDispatchFactory.getSimpleName(), proxy);
+                proxy = factory.build();
+            }
+            CodeBuilder result = new CodeBuilder(builder);
+            result.write(parameterName).write(" != 0L ? ").write(proxy).write(" : ").write("null");
+            return result.build();
+        }
+
+        final CharSequence unmarshallNativeToHotSpotProxyInHotSpot(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
+            TypeMirror receiverType = marshallerData.useCustomReceiverAccessor ? data.customReceiverAccessor.getParameters().get(0).asType() : parameterType;
+            CharSequence result = parameterName;
+            if (!types.isSubtype(parameterType, receiverType)) {
+                result = new CodeBuilder(builder).cast(receiverType, parameterName).build();
+            }
+            if (marshallerData.useCustomReceiverAccessor) {
+                result = new CodeBuilder(builder).invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(), result).build();
+            }
+            return result;
+        }
+
+        private CharSequence createProxy(CodeBuilder builder, CharSequence factoryMethod, List<CharSequence> args) {
+            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
+            if (hasGeneratedFactory) {
+                CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
+                return new CodeBuilder(builder).invoke(type,
+                                factoryMethod, args.toArray(new CharSequence[args.size()])).build();
+            } else {
+                return new CodeBuilder(builder).newInstance((DeclaredType) types.erasure(marshallerData.forType),
+                                args.toArray(new CharSequence[args.size()])).build();
+            }
+        }
+
+        final CharSequence marshallHotSpotToNativeProxyInNative(CodeBuilder builder, CharSequence parameterName) {
+            return new CodeBuilder(builder).invokeStatic(cache.nativeObjectHandles, "create", parameterName).build();
+        }
+
+        final CharSequence marshallNativeToHotSpotProxyInNative(CodeBuilder builder, CharSequence parameterName) {
+            CodeBuilder receiver;
+            if (types.isSubtype(marshallerData.forType, cache.hSObject)) {
+                receiver = new CodeBuilder(builder).cast(cache.hSObject, parameterName, true);
+            } else {
+                CharSequence cast = new CodeBuilder(builder).cast(marshallerData.forType, parameterName).build();
+                receiver = new CodeBuilder(builder).memberSelect(cast, marshallerData.nonDefaultReceiver.getSimpleName(), true);
+            }
+            return new CodeBuilder(builder).write(parameterName).write(" != null ? ").invoke(receiver.build(), "getHandle").write(" : ").invokeStatic(cache.wordFactory, "nullPointer").build();
+        }
+
+        final CharSequence marshallHotSpotToNativeProxyInHotSpot(CodeBuilder builder, CharSequence parameterName) {
+            CodeBuilder receiver;
+            if (types.isSubtype(marshallerData.forType, cache.nativeObject)) {
+                receiver = new CodeBuilder(builder).write("((").write(cache.nativeObject).write(")").write(parameterName).write(")");
+            } else {
+                CharSequence cast = new CodeBuilder(builder).cast(marshallerData.forType, parameterName).build();
+                receiver = new CodeBuilder(builder).memberSelect(cast, marshallerData.nonDefaultReceiver.getSimpleName(), true);
+            }
+            return new CodeBuilder(builder).write(parameterName).write(" != null ? ").invoke(receiver.build(), "getHandle").write(" : 0L").build();
         }
 
         static boolean trimToResult(AnnotationMirror annotation) {
@@ -408,17 +519,17 @@ abstract class AbstractBridgeGenerator {
 
         abstract CharSequence writeCache(CodeBuilder currentBuilder, CharSequence cacheField, CharSequence receiver, CharSequence value);
 
-        static CacheSnippets implicitReceiver(Types types, AbstractTypeCache cache) {
-            return new ImplicitReceiver(types, cache);
+        static CacheSnippets standardDispatch(Types types, AbstractTypeCache cache) {
+            return new StandardDispatch(types, cache);
         }
 
-        static CacheSnippets explicitReceiver(Types types, AbstractTypeCache cache) {
-            return new ExplicitReceiver(types, cache);
+        static CacheSnippets customDispatch(Types types, AbstractTypeCache cache) {
+            return new CustomDispatch(types, cache);
         }
 
-        private static final class ImplicitReceiver extends CacheSnippets {
+        private static final class StandardDispatch extends CacheSnippets {
 
-            ImplicitReceiver(Types types, AbstractTypeCache cache) {
+            StandardDispatch(Types types, AbstractTypeCache cache) {
                 super(types, cache);
             }
 
@@ -448,9 +559,9 @@ abstract class AbstractBridgeGenerator {
             }
         }
 
-        private static final class ExplicitReceiver extends CacheSnippets {
+        private static final class CustomDispatch extends CacheSnippets {
 
-            ExplicitReceiver(Types type, AbstractTypeCache cache) {
+            CustomDispatch(Types type, AbstractTypeCache cache) {
                 super(type, cache);
             }
 
