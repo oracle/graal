@@ -67,17 +67,12 @@ add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 add_library(sulong SHARED)
 
 if(WIN32)
-    if(NOT LLVM_LINK)
-        message(FATAL_ERROR "LLVM_LINK needs to be set")
-    endif()
     target_sources(sulong PRIVATE
       src/crt0.c
       src/exit.c
       src/sulong_dispose_context.c
-    )
-    # link to bitcode
-    set(CMAKE_BC_CREATE_SHARED_LIBRARY "${LLVM_LINK} <OBJECTS> -o <TARGET>")
-    set_target_properties(sulong PROPERTIES LINKER_LANGUAGE BC)
+      sulong.def
+      )
 else()
     target_sources(sulong PRIVATE
       src/abort.c

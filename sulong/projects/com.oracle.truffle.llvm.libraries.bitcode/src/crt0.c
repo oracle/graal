@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,6 +54,18 @@ static Elf64_auxv_t *__auxv;
 long *__sulong_start_arguments = NULL;
 
 __attribute__((visibility("hidden"))) const size_t _DYNAMIC[1];
+
+uint64_t polyglot_get_array_size(const void* v) {
+  return 0;
+}
+
+int8_t polyglot_as_i8(const void *v) {
+  return 0;
+}
+
+void* polyglot_get_array_element(const void* array, int i) {
+  return 0;
+}
 
 char *__sulong_byte_array_to_native(void *java_byte_array) {
     int length = polyglot_get_array_size(java_byte_array);
@@ -127,15 +139,19 @@ int _start(int type, char *application_path_java_byte_array, void *main) {
         envc++;
     }
 
+#ifndef _WIN32
     environ = envp;
+#endif
     __auxv = (Elf64_auxv_t *) (envp + envc + 1);
 
     // update the application path now that we know it
     char *application_path = __sulong_byte_array_to_native(application_path_java_byte_array);
     __sulong_update_application_path(application_path, argv, __auxv);
 
+#ifdef __linux__
     // setlocale(3): On startup of the main program, the portable "C" locale is selected as default.
     setlocale(LC_ALL, "C");
+#endif
 
     switch (type) {
         /* C/C++/... */

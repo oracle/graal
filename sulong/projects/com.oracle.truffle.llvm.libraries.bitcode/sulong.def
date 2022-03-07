@@ -1,0 +1,5 @@
+EXPORTS
+  exit=__sulong_exit
+  _start
+  __sulong_init_context
+  __sulong_dispose_context

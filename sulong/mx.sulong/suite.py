@@ -670,11 +670,12 @@ suite = {
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+        "CMAKE_BUILD_TYPE" : "Release",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
-        "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
         "MX_OS" : "<os>",
         "MX_ARCH" : "<arch>",
       },
@@ -724,7 +725,9 @@ suite = {
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+        "CMAKE_BUILD_TYPE" : "Release",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
       },
@@ -749,7 +752,10 @@ suite = {
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+        "CMAKE_BUILD_TYPE" : "Release",
         "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
+
+          "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
         "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
       },
