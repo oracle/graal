@@ -27,7 +27,6 @@ package org.graalvm.compiler.phases.common;
 import java.util.ArrayList;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -47,6 +46,9 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRLoop;
+import org.graalvm.compiler.nodes.cfg.LocationSet;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
@@ -95,7 +97,6 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
         final StructuredGraph graph;
         final ControlFlowGraph cfg;
         final LoopsData ld;
-        final EconomicMap<LoopEx, EconomicSet<LocationIdentity>> killedLoopLocations;
         final NodeBitMap licmNodes;
         final BlockMap<ValueMap> blockMaps;
 
@@ -103,10 +104,6 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             this.cfg = cfg;
             this.ld = ld;
             this.graph = cfg.graph;
-            this.killedLoopLocations = EconomicMap.create();
-            for (LoopEx loop : ld.loops()) {
-                killedLoopLocations.put(loop, killedLoopLocations(loop));
-            }
             licmNodes = graph.createNodeBitMap();
             blockMaps = new BlockMap<>(cfg);
         }
@@ -143,39 +140,32 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                 blockMap = dominatorMap.copy();
             }
 
+            // preserve for dominated and successors
             blockMaps.put(b, blockMap);
 
             Loop<Block> hirLoop = b.getLoop();
-            EconomicSet<LocationIdentity> thisLoopKilledLocations = hirLoop == null ? null : killedLoopLocations.get(ld.loop(hirLoop));
+            LocationSet thisLoopKilledLocations = hirLoop == null ? null : ((HIRLoop) hirLoop).getKillLocations();
 
             if (!b.isLoopHeader()) {
-                // apply kill effects of dominator tree siblings
+                // apply kill effects of dominator tree siblings (not the dominator itself)
                 for (Block predecessor : b.getPredecessors()) {
                     if (b.getDominator() == predecessor) {
+                        // dominator already handled when creating the map, don't re-kill everything
+                        // already killed there.
                         continue;
                     }
                     ValueMap predMap = blockMaps.get(predecessor);
                     GraalError.guarantee(predMap != null, "This block " + b.getBeginNode() + " pred block " + predecessor.getEndNode());
                     blockMap.killAllValuesByOtherMap(predMap);
                 }
+            } else {
+                // kill everything by the backedge kills
+                killLoopLocations(thisLoopKilledLocations, blockMap);
             }
-
-// else {
-// // for loop headers first kill all the stuff killed inside the loop (backedge
-// // predecessors) and kill everything from above
-// assert thisLoopKilledLocations != null;
-// for (LocationIdentity killedByBackedge : thisLoopKilledLocations) {
-// blockMap.killValuesByIdentity(killedByBackedge);
-// }
-// assert !b.getFirstPredecessor().isLoopEnd() : "First pred must not be a loop end";
-// blockMap.killAllValuesByOtherMap(blockMaps.get(b.getFirstPredecessor()));
-// }
 
             boolean insideLoop = hirLoop != null;
             boolean unconditionallyInsideLoop = true;
             if (insideLoop) {
-// // we are passing a loop, kill everything (reachable via the backedge)
-// killLoopLocations(thisLoopKilledLocations, blockMap);
                 /*
                  * Check if LICM can be applied because we are in a tail counted loop or have code
                  * dominating the exit conditions.
@@ -197,7 +187,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             // we exited a loop down this path, effects can have happened, kill everything (exit as
             // well reachable over the backedge)
             if (b.getDominator() != null && b.getDominator().getLoop() != null && b.getLoop() != b.getDominator().getLoop()) {
-                killLoopLocations(killedLoopLocations.get(ld.loop(b.getDominator().getLoop())), blockMap);
+                killLoopLocations(((HIRLoop) b.getDominator().getLoop()).getKillLocations(), blockMap);
             }
 
             // begin nodes can be memory kills
@@ -223,7 +213,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             return blockMap;
         }
 
-        private static void killLoopLocations(EconomicSet<LocationIdentity> thisLoopKilledLocations, ValueMap blockMap) {
+        private static void killLoopLocations(LocationSet thisLoopKilledLocations, ValueMap blockMap) {
             if (thisLoopKilledLocations != null) {
                 /*
                  * Each location identity killed inside the loop prohibits a folding to the outer
@@ -231,13 +221,13 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                  * dominator tree can have paths where a location is not killed while it is killed
                  * as a result of a conditional loop branch.
                  */
-                for (LocationIdentity loopKilled : thisLoopKilledLocations) {
+                for (LocationIdentity loopKilled : thisLoopKilledLocations.getCopyAsList()) {
                     blockMap.killValuesByIdentity(loopKilled);
                 }
             }
         }
 
-        private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, EconomicSet<LocationIdentity> thisLoopKilledLocations, Loop<Block> hirLoop,
+        private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, LocationSet thisLoopKilledLocations, Loop<Block> hirLoop,
                         ValueMap blockMap, ControlFlowGraph cfg, NodeBitMap licmNodes, StructuredGraph graph, LoopsData ld) {
             if (MemoryKill.isMemoryKill(cur)) {
                 blockMap.killValuesByPotentialMemoryKill(cur);
@@ -273,7 +263,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                 }
             } else {
                 if (unconditionallyInsideLoop && GraalOptions.EarlyLICM.getValue(graph.getOptions())) {
-                    if (!MemoryKill.isMemoryKill(cur) && canGVN(cur)) {
+                    if (canGVN(cur)) {
                         if (cur instanceof MemoryAccess) {
                             MemoryAccess access = (MemoryAccess) cur;
                             if (!loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
@@ -299,7 +289,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
     }
 
     private static boolean canGVN(Node n) {
-        return !MemoryKill.isMemoryKill(n) && !(n instanceof VirtualizableAllocation);
+        return !MemoryKill.isMemoryKill(n) && !(n instanceof VirtualizableAllocation) && !(n instanceof ControlFlowAnchored);
     }
 
     private static void tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
@@ -341,48 +331,11 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
         return !loop.whole().contains(input) || liftedNodes.contains(input);
     }
 
-    private static boolean loopKillsLocation(EconomicSet<LocationIdentity> thisLoopKilledLocations, LocationIdentity loc) {
+    private static boolean loopKillsLocation(LocationSet thisLoopKilledLocations, LocationIdentity loc) {
         if (thisLoopKilledLocations == null) {
             return false;
         }
-        for (LocationIdentity killed : thisLoopKilledLocations) {
-            if (killed.overlaps(loc)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static EconomicSet<LocationIdentity> killedLoopLocations(LoopEx loop) {
-        EconomicSet<LocationIdentity> killedLocations = EconomicSet.create();
-        for (Node n : loop.inside().nodes()) {
-            if (MemoryKill.isMemoryKill(n)) {
-                if (MemoryKill.isSingleMemoryKill(n)) {
-                    SingleMemoryKill singleKill = MemoryKill.asSingleMemoryKill(n);
-                    if (killedLocation(singleKill.getKilledLocationIdentity(), killedLocations)) {
-                        return killedLocations;
-                    }
-                } else if (MemoryKill.isMultiMemoryKill(n)) {
-                    MultiMemoryKill multiKill = MemoryKill.asMultiMemoryKill(n);
-                    for (LocationIdentity ld : multiKill.getKilledLocationIdentities()) {
-                        if (killedLocation(ld, killedLocations)) {
-                            return killedLocations;
-                        }
-                    }
-                }
-            }
-        }
-        return killedLocations;
-    }
-
-    private static boolean killedLocation(LocationIdentity ld, EconomicSet<LocationIdentity> killedLocations) {
-        if (ld.equals(LocationIdentity.ANY_LOCATION)) {
-            killedLocations.clear();
-            killedLocations.add(LocationIdentity.ANY_LOCATION);
-            return true;
-        }
-        killedLocations.add(ld);
-        return false;
+        return thisLoopKilledLocations.containsOrOverlaps(loc);
     }
 
     /**
@@ -401,11 +354,11 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
     static final class ValueMap {
 
         private final EconomicMap<Node, Node> entries;
-        private final EconomicSet<LocationIdentity> kills;
+        private final LocationSet kills;
 
         private ValueMap() {
             this.entries = EconomicMap.create(new ValueMapEquivalence());
-            this.kills = EconomicSet.create();
+            this.kills = new LocationSet();
         }
 
         static class ValueMapEquivalence extends Equivalence {
@@ -445,7 +398,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
         }
 
         public void killAllValuesByOtherMap(ValueMap predMap) {
-            for (LocationIdentity otherKills : predMap.kills) {
+            for (LocationIdentity otherKills : predMap.kills.getCopyAsList()) {
                 killValuesByIdentity(otherKills);
             }
         }
