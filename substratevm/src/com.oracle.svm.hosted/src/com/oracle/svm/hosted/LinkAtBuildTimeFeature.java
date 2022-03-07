@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted;
 
+import java.io.File;
 import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.file.Path;
@@ -37,12 +38,14 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -60,6 +63,10 @@ public final class LinkAtBuildTimeFeature implements Feature {
         @APIOption(name = "link-at-build-time", defaultValue = "")//
         @Option(help = "Require types to be fully defined at image build-time. If used without args, all classes in scope of the option are required to be fully defined.")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTime = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+        @APIOption(name = "link-at-build-time-paths")//
+        @Option(help = "Require all types in given class or module-path entries to be fully defined at image build-time.")//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTimePaths = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     private final String javaIdentifier = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
@@ -97,12 +104,13 @@ public final class LinkAtBuildTimeFeature implements Feature {
          */
         requireCompletePackageOrClass.put("jdk.internal.reflect", null);
 
-        Options.LinkAtBuildTime.getValue().getValuesWithOrigins().forEach(this::extractOptionValue);
+        Options.LinkAtBuildTime.getValue().getValuesWithOrigins().forEach(this::extractLinkAtBuildTimeOptionValue);
+        Options.LinkAtBuildTimePaths.getValue().getValuesWithOrigins().forEach(this::extractLinkAtBuildTimePathsOptionValue);
 
         ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(this));
     }
 
-    private void extractOptionValue(Pair<String, OptionOrigin> valueOrigin) {
+    private void extractLinkAtBuildTimeOptionValue(Pair<String, OptionOrigin> valueOrigin) {
         var value = valueOrigin.getLeft();
         OptionOrigin origin = valueOrigin.getRight();
         URI container = origin.container();
@@ -130,6 +138,30 @@ public final class LinkAtBuildTimeFeature implements Feature {
                     throw UserError.abort("Entry '%s' in option '%s' provided by %s is neither a package nor a fully qualified classname.",
                                     entry, SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
                 }
+            }
+        }
+    }
+
+    private void extractLinkAtBuildTimePathsOptionValue(Pair<String, OptionOrigin> valueOrigin) {
+        var value = valueOrigin.getLeft();
+        OptionOrigin origin = valueOrigin.getRight();
+        if (!origin.commandLineLike()) {
+            throw UserError.abort("Using '%s' is only allowed on command line.",
+                            SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTimePaths, value), origin);
+        }
+        if (value.isEmpty()) {
+            throw UserError.abort("Using '%s' requires directory or jar-file path arguments.",
+                            SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTimePaths, value), origin);
+        }
+        for (String pathStr : SubstrateUtil.split(value, File.pathSeparator)) {
+            Path path = Path.of(pathStr);
+            EconomicSet<String> packages = imageClassLoader.packages(path.toAbsolutePath().normalize().toUri());
+            if (imageClassLoader.noEntryForURI(packages)) {
+                throw UserError.abort("Option '%s' provided by %s contains entry '%s'. No such entry exists on class or module-path.",
+                                SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTimePaths, value), origin, pathStr);
+            }
+            for (String pkg : packages) {
+                requireCompletePackageOrClass.put(pkg, Collections.singleton(origin));
             }
         }
     }

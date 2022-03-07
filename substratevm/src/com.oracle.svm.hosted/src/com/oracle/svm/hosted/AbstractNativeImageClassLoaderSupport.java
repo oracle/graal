@@ -149,6 +149,10 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         return packages.get(container, emptySet);
     }
 
+    public boolean noEntryForURI(EconomicSet<String> set) {
+        return set == emptySet;
+    }
+
     protected abstract void processClassLoaderOptions();
 
     public abstract void propagateQualifiedExports(String fromTargetModule, String toTargetModule);
