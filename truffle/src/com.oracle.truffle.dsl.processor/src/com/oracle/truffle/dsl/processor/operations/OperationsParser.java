@@ -1,7 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -10,10 +9,8 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.operations.OperationsData.OperationType;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class OperationsParser extends AbstractParser<OperationsData> {
@@ -26,6 +23,9 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         }
         return null;
     }
+
+    private int opId = 0;
+    private int opcodeId = 1;
 
     @Override
     protected OperationsData parse(Element element, List<AnnotationMirror> mirror) {
@@ -55,22 +55,27 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         return data;
     }
 
-    private static void addPrimitives(OperationsData data) {
-        addPrimitiveOperation(data, OperationType.PRIM_BLOCK, -1, true);
-        addPrimitiveOperation(data, OperationType.PRIM_IF_THEN, 2, true);
-        addPrimitiveOperation(data, OperationType.PRIM_IF_THEN_ELSE, 3, true);
-        addPrimitiveOperation(data, OperationType.PRIM_WHILE, 2, false);
-        addPrimitiveOperation(data, OperationType.PRIM_CONST_OBJECT, 0, true);
-        addPrimitiveOperation(data, OperationType.PRIM_LOAD_LOCAL, 0, true);
-        addPrimitiveOperation(data, OperationType.PRIM_STORE_LOCAL, 1, false);
-        addPrimitiveOperation(data, OperationType.PRIM_LOAD_ARGUMENT, 0, true);
-        addPrimitiveOperation(data, OperationType.PRIM_RETURN, 1, true);
-        addPrimitiveOperation(data, OperationType.PRIM_BRANCH, 0, false);
-        addPrimitiveOperation(data, OperationType.PRIM_LABEL, 0, false);
+    private void addPrimitives(OperationsData data) {
+        Instruction[] commonOpcodes = Operation.createCommonOpcodes(opcodeId);
+        opcodeId += commonOpcodes.length;
+
+        addPrimitive(data, commonOpcodes, new Operation.Block(opId++));
+        addPrimitive(data, commonOpcodes, new Operation.IfThen(opId++));
+        addPrimitive(data, commonOpcodes, new Operation.IfThenElse(opId++));
+        addPrimitive(data, commonOpcodes, new Operation.While(opId++));
+        addPrimitive(data, commonOpcodes, new Operation.Label(opId++));
+        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("LoadLocal", opId++, new Instruction.LoadLocal(opcodeId++)));
+        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("StoreLocal", opId++, new Instruction.StoreLocal(opcodeId++)));
+        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("LoadArgument", opId++, new Instruction.LoadArgument(opcodeId++)));
+        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("ConstObject", opId++, new Instruction.ConstObject(opcodeId++)));
+        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("Return", opId++, new Instruction.Return(opcodeId++)));
+        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("Branch", opId++, commonOpcodes[Operation.COMMON_OPCODE_JUMP_UNCOND]));
+
     }
 
-    private static void addPrimitiveOperation(OperationsData data, OperationType type, int numChildren, boolean returnsValue) {
-        data.getOperations().add(new OperationsData.Operation(type, List.of(), numChildren, null, null, returnsValue));
+    private static void addPrimitive(OperationsData data, Instruction[] commonOpcodes, Operation op) {
+        op.setCommonInstructions(commonOpcodes);
+        data.getOperations().add(op);
     }
 
     private void processOperation(OperationsData data, TypeElement te) {
@@ -106,7 +111,8 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
         }
 
-        data.getOperations().add(new OperationsData.Operation(OperationType.CUSTOM, arguments, numChildren, te, first, true));
+        Operation op = new Operation.CustomOperation(te.getSimpleName().toString(), opId++, new Instruction.Custom(opcodeId++, te, first));
+        data.getOperations().add(op);
     }
 
     private static boolean isOperationFunction(ExecutableElement el) {

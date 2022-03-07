@@ -148,6 +148,10 @@ public class CodeTreeBuilder {
         return createBuilder().type(s).build();
     }
 
+    public static CodeTree singleVariable(VariableElement s) {
+        return createBuilder().variable(s).build();
+    }
+
     private CodeTreeBuilder push(CodeTreeKind kind) {
         return push(new BuilderCodeTree(currentElement, kind, null, null), kind == NEW_LINE);
     }
@@ -237,6 +241,10 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startCall(String callSite) {
         return startCall((CodeTree) null, callSite);
+    }
+
+    public CodeTreeBuilder startCall(VariableElement receiver, String callSite) {
+        return startCall(receiver.getSimpleName().toString(), callSite);
     }
 
     public CodeTreeBuilder startCall(String receiver, ExecutableElement method) {
@@ -981,6 +989,14 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startAssign(String receiver, VariableElement field) {
         return startStatement().field(receiver, field).string(" = ");
+    }
+
+    public CodeTreeBuilder startAssign(VariableElement variable) {
+        return startStatement().string(variable.getSimpleName().toString()).string(" = ");
+    }
+
+    public CodeTreeBuilder variable(VariableElement variable) {
+        return string(variable.getSimpleName().toString());
     }
 
     public CodeTreeBuilder field(String receiver, VariableElement field) {

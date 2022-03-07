@@ -74,6 +74,7 @@ public class TestOperationsGenTest {
     @Test
     public void testAdd() {
         runTest(TestOperationsGenTest::parseAdd, 42L, 20L, 22L);
+        runTest(TestOperationsGenTest::parseAdd, "foobar", "foo", "bar");
     }
 
     @Test
@@ -94,9 +95,12 @@ public class TestOperationsGenTest {
     }
 
     private static void runTest(Consumer<SlOperationsBuilderino> parse, Object expectedResult, Object... args) {
+        System.out.println("------------------------------------");
         SlOperationsBuilderino b = SlOperationsBuilderino.createBuilder();
         parse.accept(b);
+        System.out.println(" building");
         OperationsNode executable = b.build();
+        System.out.println(" dumping");
         System.out.println(executable.dump());
         b.reset();
         System.out.println(executable);
@@ -202,7 +206,7 @@ public class TestOperationsGenTest {
 
         b.endWhile();
 
-        b.markLabel(breakLbl);
+        b.emitLabel(breakLbl);
 
         b.beginReturn();
         b.emitLoadLocal((short) 0);

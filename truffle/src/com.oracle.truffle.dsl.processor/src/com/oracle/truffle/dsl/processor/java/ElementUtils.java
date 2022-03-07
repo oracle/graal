@@ -99,7 +99,10 @@ public class ElementUtils {
 
     public static ExecutableElement findMethod(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
-        TypeElement typeElement = context.getTypeElement(type);
+        return findMethod(context.getTypeElement(type), methodName);
+    }
+
+    public static ExecutableElement findMethod(TypeElement typeElement, String methodName) {
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
             if (method.getSimpleName().toString().equals(methodName)) {
                 return method;

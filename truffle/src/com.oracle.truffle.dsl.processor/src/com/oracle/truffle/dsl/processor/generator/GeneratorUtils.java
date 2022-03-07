@@ -352,6 +352,16 @@ public class GeneratorUtils {
         return CodeExecutableElement.clone(method);
     }
 
+    public static CodeExecutableElement overrideImplement(TypeElement typeElement, String methodName) {
+        ExecutableElement method = ElementUtils.findMethod(typeElement, methodName);
+        if (method == null) {
+            return null;
+        }
+        CodeExecutableElement result = CodeExecutableElement.clone(method);
+        result.getModifiers().remove(Modifier.ABSTRACT);
+        return result;
+    }
+
     public static void addThrownExceptions(CodeExecutableElement executable, List<? extends TypeMirror> thrownTypes) {
         outer: for (TypeMirror thrownType : thrownTypes) {
             for (TypeMirror type : executable.getThrownTypes()) {
