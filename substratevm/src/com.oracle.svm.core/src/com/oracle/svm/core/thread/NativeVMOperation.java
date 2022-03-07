@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.VMOperationInfo;
 
 /**
  * An immutable VM operation that lives in the image heap. All mutable state is kept in native
@@ -37,8 +38,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  */
 public abstract class NativeVMOperation extends VMOperation {
     @Platforms(value = Platform.HOSTED_ONLY.class)
-    protected NativeVMOperation(String name, SystemEffect systemEffect) {
-        super(name, systemEffect);
+    protected NativeVMOperation(VMOperationInfo info) {
+        super(info);
     }
 
     public void enqueue(NativeVMOperationData data) {

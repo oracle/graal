@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,46 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
-
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 
-import java.util.Collection;
+public final class VMOperationInfo {
+    private final int id;
+    private final String name;
+    private final SystemEffect systemEffect;
 
-public class JfrVMOperations {
-    private Class<?>[] vmOperations;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrVMOperations() {
-        vmOperations = new Class<?>[0];
-    }
-
-    @Fold
-    public static JfrVMOperations singleton() {
-        return ImageSingletons.lookup(JfrVMOperations.class);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addVMOperations(Collection<Class<?>> vmOps) {
-        vmOperations = vmOps.toArray(new Class<?>[vmOps.size()]);
+    VMOperationInfo(int id, String name, SystemEffect systemEffect) {
+        this.id = id;
+        this.name = name;
+        this.systemEffect = systemEffect;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getVMOperationId(Class<?> clazz) {
-        for (int id = 0; id < vmOperations.length; id++) {
-            if (vmOperations[id] == clazz) {
-                return id + 1;    // id starts with 1
-            }
-        }
-        return 0;
+    public int getId() {
+        return id;
     }
 
-    public Class<?>[] getVMOperations() {
-        return vmOperations;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getName() {
+        return name;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean getCausesSafepoint() {
+        return SystemEffect.getCausesSafepoint(systemEffect);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isBlocking() {
+        return true;
     }
 }

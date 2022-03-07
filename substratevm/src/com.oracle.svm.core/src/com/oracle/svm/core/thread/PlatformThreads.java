@@ -64,6 +64,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
@@ -690,25 +691,16 @@ public abstract class PlatformThreads {
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         assert !isVirtual(thread);
-        StackTraceElement[][] result = new StackTraceElement[1][0];
-        JavaVMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
-            if (thread.isAlive()) {
-                result[0] = getStackTrace(getIsolateThread(thread));
-            } else {
-                result[0] = Target_java_lang_Thread.EMPTY_STACK_TRACE;
-            }
-        });
-        return result[0];
+
+        GetStackTraceOperation vmOp = new GetStackTraceOperation(thread);
+        vmOp.enqueue();
+        return vmOp.result;
     }
 
     static Map<Thread, StackTraceElement[]> getAllStackTraces() {
-        Map<Thread, StackTraceElement[]> result = new HashMap<>();
-        JavaVMOperation.enqueueBlockingSafepoint("getAllStackTraces", () -> {
-            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.put(PlatformThreads.fromVMThread(cur), getStackTrace(cur));
-            }
-        });
-        return result;
+        GetAllStackTracesOperation vmOp = new GetAllStackTracesOperation();
+        vmOp.enqueue();
+        return vmOp.result;
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -869,6 +861,41 @@ public abstract class PlatformThreads {
         return (ThreadData) toTarget(Thread.currentThread()).threadData;
     }
 
+    private static class GetStackTraceOperation extends JavaVMOperation {
+        private final Thread thread;
+        private StackTraceElement[] result;
+
+        GetStackTraceOperation(Thread thread) {
+            super(VMOperationInfos.get(GetStackTraceOperation.class, "Get stack trace", SystemEffect.SAFEPOINT));
+            this.thread = thread;
+        }
+
+        @Override
+        protected void operate() {
+            if (thread.isAlive()) {
+                result = getStackTrace(getIsolateThread(thread));
+            } else {
+                result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
+            }
+        }
+    }
+
+    private static class GetAllStackTracesOperation extends JavaVMOperation {
+        private final Map<Thread, StackTraceElement[]> result;
+
+        GetAllStackTracesOperation() {
+            super(VMOperationInfos.get(GetAllStackTracesOperation.class, "Get all stack traces", SystemEffect.SAFEPOINT));
+            result = new HashMap<>();
+        }
+
+        @Override
+        protected void operate() {
+            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
+                result.put(PlatformThreads.fromVMThread(cur), getStackTrace(cur));
+            }
+        }
+    }
+
     /**
      * Builds a list of all application threads. This must be done in a VM operation because only
      * there we are allowed to allocate Java memory while holding the {@link VMThreads#THREAD_MUTEX}
@@ -877,7 +904,7 @@ public abstract class PlatformThreads {
         private final List<Thread> list;
 
         FetchApplicationThreadsOperation(List<Thread> list) {
-            super("FetchApplicationThreads", SystemEffect.NONE);
+            super(VMOperationInfos.get(FetchApplicationThreadsOperation.class, "Fetch application threads", SystemEffect.NONE));
             this.list = list;
         }
 
@@ -912,7 +939,7 @@ public abstract class PlatformThreads {
         private boolean readyForTearDown;
 
         CheckReadyForTearDownOperation(Log trace, AtomicBoolean printLaggards) {
-            super("CheckReadyForTearDown", SystemEffect.NONE);
+            super(VMOperationInfos.get(CheckReadyForTearDownOperation.class, "Check ready for teardown", SystemEffect.NONE));
             this.trace = trace;
             this.printLaggards = printLaggards;
         }

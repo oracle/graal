@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
@@ -463,21 +464,8 @@ public abstract class VMThreads {
      * considering the immediately following tear-down.
      */
     public void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
-        JavaVMOperation.enqueueBlockingSafepoint("detachAllThreadsExceptCurrent", () -> {
-            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
-            IsolateThread thread = firstThread();
-            while (thread.isNonNull()) {
-                IsolateThread next = nextThread(thread);
-                if (thread.notEqual(currentThread)) {
-                    Thread javaThread = PlatformThreads.fromVMThread(thread);
-                    if (!PlatformThreads.wasStartedByCurrentIsolate(javaThread)) {
-                        detachThreadInSafeContext(thread);
-                        releaseThread(thread);
-                    }
-                }
-                thread = next;
-            }
-        });
+        DetachAllThreadsExceptCurrentOperation vmOp = new DetachAllThreadsExceptCurrentOperation();
+        vmOp.enqueue();
     }
 
     /**
@@ -606,6 +594,29 @@ public abstract class VMThreads {
             }
         }
         return false;
+    }
+
+    private static class DetachAllThreadsExceptCurrentOperation extends JavaVMOperation {
+        DetachAllThreadsExceptCurrentOperation() {
+            super(VMOperationInfos.get(DetachAllThreadsExceptCurrentOperation.class, "Detach all threads except current", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            IsolateThread thread = firstThread();
+            while (thread.isNonNull()) {
+                IsolateThread next = nextThread(thread);
+                if (thread.notEqual(currentThread)) {
+                    Thread javaThread = PlatformThreads.fromVMThread(thread);
+                    if (!PlatformThreads.wasStartedByCurrentIsolate(javaThread)) {
+                        detachThreadInSafeContext(thread);
+                        releaseThread(thread);
+                    }
+                }
+                thread = next;
+            }
+        }
     }
 
     /*

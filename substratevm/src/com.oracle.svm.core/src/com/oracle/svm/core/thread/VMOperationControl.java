@@ -29,8 +29,6 @@ import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -43,18 +41,21 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
@@ -139,13 +140,23 @@ public final class VMOperationControl {
 
     public static void shutdownAndDetachVMOperationThread() {
         assert useDedicatedVMOperationThread();
-        VMOperationControl control = get();
-        JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
-            control.dedicatedVMOperationThread.shutdown();
-        });
+
+        StopVMOperationThread vmOp = new StopVMOperationThread();
+        vmOp.enqueue();
 
         waitUntilVMOperationThreadDetached();
-        assert control.mainQueues.isEmpty();
+        assert get().mainQueues.isEmpty();
+    }
+
+    private static class StopVMOperationThread extends JavaVMOperation {
+        StopVMOperationThread() {
+            super(VMOperationInfos.get(StopVMOperationThread.class, "Stop VM operation thread", VMOperation.SystemEffect.NONE));
+        }
+
+        @Override
+        protected void operate() {
+            VMOperationControl.get().dedicatedVMOperationThread.shutdown();
+        }
     }
 
     @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called during teardown")

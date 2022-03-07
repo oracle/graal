@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.core.heap.VMOperationInfos;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -227,14 +228,13 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     private static int writeVMOperations(JfrChunkWriter writer) {
-        Class<?>[] vmOperations = JfrVMOperations.singleton().getVMOperations();
-
-        assert vmOperations.length > 0;
+        String[] vmOperationNames = VMOperationInfos.getNames();
+        assert vmOperationNames.length > 0;
         writer.writeCompressedLong(JfrType.VMOperation.getId());
-        writer.writeCompressedLong(vmOperations.length);
-        for (int id = 0; id < vmOperations.length; id++) {
-            writer.writeCompressedLong(id + 1);  // id starts with 1
-            writer.writeString(vmOperations[id].getCanonicalName());
+        writer.writeCompressedLong(vmOperationNames.length);
+        for (int id = 0; id < vmOperationNames.length; id++) {
+            writer.writeCompressedLong(id + 1); // id starts with 1
+            writer.writeString(vmOperationNames[id]);
         }
 
         return NON_EMPTY;
