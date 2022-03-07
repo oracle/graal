@@ -13,10 +13,10 @@ Example:
 For deserializing lambda classes, the capturing class of the lambda needs to be specified in a separate section of the configuration file, for example:
 
     [
-      types: [
+      "types": [
         {"name":"java.lang.Object"}
       ],
-      lambdaCapturingTypes: [
+      "lambdaCapturingTypes": [
         {"name":"java.util.Comparator"}
       ]
     ]
