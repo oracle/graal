@@ -61,11 +61,11 @@ public final class LinkAtBuildTimeFeature implements Feature {
 
     static final class Options {
         @APIOption(name = "link-at-build-time", defaultValue = "")//
-        @Option(help = "Require types to be fully defined at image build-time. If used without args, all classes in scope of the option are required to be fully defined.")//
+        @Option(help = "file:doc-files/LinkAtBuildTimeHelp.txt")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTime = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
         @APIOption(name = "link-at-build-time-paths")//
-        @Option(help = "Require all types in given class or module-path entries to be fully defined at image build-time.")//
+        @Option(help = "file:doc-files/LinkAtBuildTimePathsHelp.txt")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTimePaths = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
