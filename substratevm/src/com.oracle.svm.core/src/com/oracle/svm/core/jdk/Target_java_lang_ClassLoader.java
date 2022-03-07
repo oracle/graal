@@ -349,16 +349,20 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
     private native void load(String name, boolean isBuiltin);
 
     @Delete
+    @TargetElement(onlyWith = Load0With2Args.class)
+    private native boolean load0(String name, boolean isBuiltin);
+
+    @Delete
+    @TargetElement(onlyWith = Load0With3Args.class)
+    private native boolean load0(String name, boolean isBuiltin, boolean throwExceptionIfFail);
+
+    @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private native long find(String name);
 
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private native void unload(String name, boolean isBuiltin);
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private native boolean load0(String name, boolean isBuiltin);
 
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
