@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.NonTrappingIntegerDivRemNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -56,13 +56,13 @@ public class FloatingDivTest extends GraalCompilerTest {
             @Override
             protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {
                 Assert.assertEquals(fixedDivsBeforeLowering, graph.getNodes().filter(IntegerDivRemNode.class).count());
-                Assert.assertEquals(floatingDivsBeforeLowering, graph.getNodes().filter(NonTrappingIntegerDivRemNode.class).count());
+                Assert.assertEquals(floatingDivsBeforeLowering, graph.getNodes().filter(FloatingIntegerDivRemNode.class).count());
             }
         });
         ht.apply(graph, getDefaultHighTierContext());
 
         Assert.assertEquals(fixedDivAfterLowering, graph.getNodes().filter(IntegerDivRemNode.class).count());
-        Assert.assertEquals(floatingDivAfterLowering, graph.getNodes().filter(NonTrappingIntegerDivRemNode.class).count());
+        Assert.assertEquals(floatingDivAfterLowering, graph.getNodes().filter(FloatingIntegerDivRemNode.class).count());
     }
 
     private void checkFinalGraph(String snippet, int fixedDivs, int floatingDivs, int zeroChecks) {
@@ -81,11 +81,11 @@ public class FloatingDivTest extends GraalCompilerTest {
         suites.getLowTier().apply(graph, getDefaultLowTierContext());
 
         Assert.assertEquals(fixedDivs, graph.getNodes().filter(IntegerDivRemNode.class).count());
-        Assert.assertEquals(floatingDivs, graph.getNodes().filter(NonTrappingIntegerDivRemNode.class).count());
+        Assert.assertEquals(floatingDivs, graph.getNodes().filter(FloatingIntegerDivRemNode.class).count());
         int ie = 0;
         for (IntegerEqualsNode ieq : graph.getNodes().filter(IntegerEqualsNode.class)) {
             if (ieq.getY().isConstant() && ieq.getY().asJavaConstant().asLong() == 0) {
-                if (ieq.getY().usages().filter(NonTrappingIntegerDivRemNode.class).isNotEmpty()) {
+                if (ieq.getY().usages().filter(FloatingIntegerDivRemNode.class).isNotEmpty()) {
                     ie++;
                 }
             }

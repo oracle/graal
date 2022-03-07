@@ -41,7 +41,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.NonTrappingIntegerDivRemNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
 import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * @see UseTrappingNullChecksPhase for details
  *
  *      This phase tries to find {@code =0} checks that can be folded together with a
- *      {@link NonTrappingIntegerDivRemNode} to save the explicit check.
+ *      {@link FloatingIntegerDivRemNode} to save the explicit check.
  */
 public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
@@ -85,9 +85,9 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         if (!GraalServices.supportsArbitraryImplicitException()) {
             return;
         }
-        EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets = null;
+        EconomicMap<IntegerEqualsNode, FloatingIntegerDivRemNode<?>> trappingReplaceTargets = null;
         ScheduleResult sched = null;
-        for (NonTrappingIntegerDivRemNode<?> divRem : graph.getNodes(NonTrappingIntegerDivRemNode.TYPE)) {
+        for (FloatingIntegerDivRemNode<?> divRem : graph.getNodes(FloatingIntegerDivRemNode.TYPE)) {
             ValueNode divisor = divRem.getY();
             ValueNode dividend = divRem.getX();
             if (divRem.getGuard() instanceof MultiGuardNode) {
@@ -129,9 +129,9 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
     static class Instance extends UseTrappingOperationPhase {
 
-        final EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets;
+        final EconomicMap<IntegerEqualsNode, FloatingIntegerDivRemNode<?>> trappingReplaceTargets;
 
-        Instance(EconomicMap<IntegerEqualsNode, NonTrappingIntegerDivRemNode<?>> trappingReplaceTargets) {
+        Instance(EconomicMap<IntegerEqualsNode, FloatingIntegerDivRemNode<?>> trappingReplaceTargets) {
             this.trappingReplaceTargets = trappingReplaceTargets;
         }
 
@@ -163,7 +163,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         public DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
             assert condition instanceof IntegerEqualsNode;
             IntegerEqualsNode ieq = (IntegerEqualsNode) condition;
-            NonTrappingIntegerDivRemNode<?> divRem = trappingReplaceTargets.get(ieq);
+            FloatingIntegerDivRemNode<?> divRem = trappingReplaceTargets.get(ieq);
             ValueNode dividend = divRem.getX();
             ValueNode divisor = divRem.getY();
             IntegerDivRemNode divRemFixed = null;

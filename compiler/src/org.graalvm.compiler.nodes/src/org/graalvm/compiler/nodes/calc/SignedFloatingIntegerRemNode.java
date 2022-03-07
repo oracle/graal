@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1, shortName = "%")
-public class SignedFloatingIntegerRemNode extends NonTrappingIntegerDivRemNode<BinaryOp.Rem> {
+public class SignedFloatingIntegerRemNode extends FloatingIntegerDivRemNode<BinaryOp.Rem> {
 
     public static final NodeClass<SignedFloatingIntegerRemNode> TYPE = NodeClass.create(SignedFloatingIntegerRemNode.class);
 

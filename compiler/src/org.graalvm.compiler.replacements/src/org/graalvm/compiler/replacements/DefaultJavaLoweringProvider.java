@@ -86,7 +86,7 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.NonTrappingIntegerDivRemNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
@@ -1253,7 +1253,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     /**
      * Lower ({@link FixedNode}) {@link IntegerDivRemNode} nodes to a {@link GuardingNode}
      * (potentially 2 guards if an overflow is possible) and a floating division
-     * {@link NonTrappingIntegerDivRemNode}. This enabled global value numbering for non-constant
+     * {@link FloatingIntegerDivRemNode}. This enabled global value numbering for non-constant
      * division operations. Later on in the backend we can combine certain divs again with their
      * checks to avoid explicit 0 and overflow checks.
      */
@@ -1350,8 +1350,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         n.replaceAtUsages(divRem);
         graph.replaceFixedWithFloating(n, divRem);
-        if (dividendChecked && divRem instanceof NonTrappingIntegerDivRemNode<?>) {
-            ((NonTrappingIntegerDivRemNode<?>) divRem).setDividendOverflowChecked();
+        if (dividendChecked && divRem instanceof FloatingIntegerDivRemNode<?>) {
+            ((FloatingIntegerDivRemNode<?>) divRem).setDividendOverflowChecked();
         }
     }
 

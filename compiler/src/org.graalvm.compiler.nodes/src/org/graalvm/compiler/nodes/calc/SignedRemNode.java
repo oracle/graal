@@ -116,8 +116,8 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
             // b: division of Integer.MIN_VALUE / -1 overflows
             if (!yStamp.contains(0) && !SignedDivNode.divCanOverflow(forX, forY, integerDivisionOverflowTraps)) {
                 ValueNode nonTrappingVersion = SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck);
-                if (!integerDivisionOverflowTraps && nonTrappingVersion instanceof NonTrappingIntegerDivRemNode<?>) {
-                    ((NonTrappingIntegerDivRemNode<?>) nonTrappingVersion).setDividendOverflowChecked();
+                if (!integerDivisionOverflowTraps && nonTrappingVersion instanceof FloatingIntegerDivRemNode<?>) {
+                    ((FloatingIntegerDivRemNode<?>) nonTrappingVersion).setDividendOverflowChecked();
                 }
                 return nonTrappingVersion;
             }

@@ -38,6 +38,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -71,7 +73,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
             return Integer.MIN_VALUE;
         }
-        return safeDiv(x, y);
+        return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
     }
 
     @Snippet
@@ -82,7 +84,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
             return Long.MIN_VALUE;
         }
-        return safeDiv(x, y);
+        return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
     }
 
     @Snippet
@@ -93,7 +95,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
             return 0;
         }
-        return safeRem(x, y);
+        return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
     }
 
     @Snippet
@@ -104,7 +106,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
             return 0;
         }
-        return safeRem(x, y);
+        return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
     }
 
     @Snippet

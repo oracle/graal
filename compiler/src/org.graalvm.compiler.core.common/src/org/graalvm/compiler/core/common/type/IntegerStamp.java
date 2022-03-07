@@ -66,6 +66,12 @@ public final class IntegerStamp extends PrimitiveStamp {
     private final long upperBound;
     private final long downMask;
     private final long upMask;
+    /**
+     * Determines if this stamp can contain the value {@code 0}. If this is {@code true} the stamp
+     * is a typical stamp without holes. If the stamp ranges over zero but {@code canBeZero==false}
+     * it means the stamp contains a "hole", i.e., all values in the range except zero. We typically
+     * cannot express holes in our Stamp system, thus we have the special logic for {@code 0}.
+     */
     private final boolean canBeZero;
 
     private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask) {
@@ -139,17 +145,6 @@ public final class IntegerStamp extends PrimitiveStamp {
         }
 
         return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask, canBeZero);
-    }
-
-    /**
-     * Determines if this stamp can contain the value {@code 0}. If this returns {@code true} the
-     * stamp is a typical stamp without holes. If the stamp ranges over zero but
-     * {@code canBeZero()==false} it means the stamp contains a "hole", i.e., all values in the
-     * range except zero. We typically cannot express holes in our Stamp system, thus we have the
-     * special logic for {@code 0}.
-     */
-    public boolean canBeZero() {
-        return canBeZero;
     }
 
     private static long significantBit(long bits, long value) {

@@ -40,25 +40,38 @@ import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 
 /**
  * {@link FloatingNode} version of {@link IntegerDivRemNode} if it is known that this node cannot
- * trap nor overflow. We distinguish between two reasons to trap: a division by zero or an overflow
- * of MIN_VALUE/-1. The division by 0 is typically checked with a zeroGuard. The knowledge about the
+ * trap nor overflow (if these concepts exist with respect to the target architecture's division
+ * operation). We distinguish between two reasons to trap: a division by zero or an overflow of
+ * MIN_VALUE/-1. The division by 0 is typically checked with a zeroGuard. The knowledge about the
  * dividend containing MIN_VALUE is either guaranteed by its stamp or externally injected by a
  * guard.
  */
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode {
+public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode {
 
-    @SuppressWarnings("rawtypes") public static final NodeClass<NonTrappingIntegerDivRemNode> TYPE = NodeClass.create(NonTrappingIntegerDivRemNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<FloatingIntegerDivRemNode> TYPE = NodeClass.create(FloatingIntegerDivRemNode.class);
 
-    protected NonTrappingIntegerDivRemNode(NodeClass<? extends NonTrappingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode zeroGuard) {
+    /**
+     * Construct a new FloatingIntegerDivRemNode.
+     *
+     * @param c the concrete subclass for this node
+     * @param op the division operation of this node
+     * @param x the dividend
+     * @param y the divisor
+     * @param floatingReason the guard (potentially a {@link MultiGuardNode}) that represents all
+     *            necessary pre-conditions to allow a floating of the previously fixed
+     *            {@link IntegerDivRemNode}
+     */
+    protected FloatingIntegerDivRemNode(NodeClass<? extends FloatingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode floatingReason) {
         super(c, op, x, y);
-        this.zeroGuard = zeroGuard;
+        this.floatingReason = floatingReason;
     }
 
-    @OptionalInput(InputType.Guard) protected GuardingNode zeroGuard;
+    @OptionalInput(InputType.Guard) protected GuardingNode floatingReason;
 
     /**
      * Determines if an external guard (or external knowledge) proves the dividend to be checked for
@@ -68,7 +81,7 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @Override
     public GuardingNode getGuard() {
-        return zeroGuard;
+        return floatingReason;
     }
 
     public void setDividendOverflowChecked() {
@@ -77,11 +90,15 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsagesInterface(this.zeroGuard, guard);
-        this.zeroGuard = guard;
+        updateUsagesInterface(this.floatingReason, guard);
+        this.floatingReason = guard;
     }
 
-    private boolean canTrap() {
+    /**
+     * Determine if ths division operation can potentially be a division by zero, i.e., the divisor
+     * stamp can contain the value {@code 0}.
+     */
+    private boolean canDivideByZero() {
         IntegerStamp yStamp = (IntegerStamp) y.stamp(NodeView.DEFAULT);
         return yStamp.contains(0);
     }
@@ -93,7 +110,7 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @Override
     public boolean verify() {
-        GraalError.guarantee((!canTrap() && !canOverflow()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never trap");
+        GraalError.guarantee((!canDivideByZero() && !canOverflow()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never trap");
         return super.verify();
     }
 }
