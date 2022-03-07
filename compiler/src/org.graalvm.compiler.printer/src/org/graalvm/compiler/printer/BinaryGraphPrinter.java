@@ -65,6 +65,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -302,6 +303,10 @@ public class BinaryGraphPrinter implements
         }
         if (MemoryKill.isMultiMemoryKill(node)) {
             props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
+        }
+
+        if (node instanceof MemoryAccess) {
+            props.put("locationIdentity", ((MemoryAccess) node).getLocationIdentity());
         }
 
         if (getSnippetReflectionProvider() != null) {
