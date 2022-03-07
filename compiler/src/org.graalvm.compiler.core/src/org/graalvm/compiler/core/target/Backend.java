@@ -119,7 +119,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
     public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo);
 
     /**
-     * Creates a new instance of a block ordering computation.
+     * Creates a new instance of a code emission ordering computation.
      */
     public <T extends AbstractBlockBase<T>> CodeEmissionOrder<T> newBlockOrder(int originalBlockCount, T startBlock) {
         return new DefaultCodeEmissionOrder<>(originalBlockCount, startBlock);
