@@ -656,6 +656,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ArithmeticException = StaticSymbols.putType("Ljava/lang/ArithmeticException;");
         public static final Symbol<Type> java_lang_IllegalMonitorStateException = StaticSymbols.putType("Ljava/lang/IllegalMonitorStateException;");
         public static final Symbol<Type> java_lang_IllegalArgumentException = StaticSymbols.putType("Ljava/lang/IllegalArgumentException;");
+        public static final Symbol<Type> java_lang_IllegalStateException = StaticSymbols.putType("Ljava/lang/IllegalStateException;");
         public static final Symbol<Type> java_lang_ClassNotFoundException = StaticSymbols.putType("Ljava/lang/ClassNotFoundException;");
         public static final Symbol<Type> java_lang_NoClassDefFoundError = StaticSymbols.putType("Ljava/lang/NoClassDefFoundError;");
         public static final Symbol<Type> java_lang_InterruptedException = StaticSymbols.putType("Ljava/lang/InterruptedException;");

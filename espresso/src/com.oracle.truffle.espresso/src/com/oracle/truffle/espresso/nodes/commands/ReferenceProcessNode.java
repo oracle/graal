@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * Node for triggering reference processing in single threaded contexts.
  */
 public class ReferenceProcessNode extends RootNode {
-    public static final String EVAL_NAME = "<ReferenceDrain>";
+    public static final String EVAL_NAME = "<ProcessReferences>";
 
     private final EspressoContext context;
     private final DirectCallNode processPendingReferences;
@@ -53,30 +53,26 @@ public class ReferenceProcessNode extends RootNode {
 
         Method processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Symbol.Name.processPendingReferences, Symbol.Signature._void,
                         Klass.LookupMode.STATIC_ONLY);
-        assert processPendingReferenceMethod != null;
         this.processPendingReferences = DirectCallNode.create(processPendingReferenceMethod.getCallTargetForceInit());
 
         Field queue = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredField(Symbol.Name.queue, Symbol.Type.java_lang_ref_ReferenceQueue);
-        assert queue != null;
         this.finalizerQueue = queue.getObject(context.getMeta().java_lang_ref_Finalizer.tryInitializeAndGetStatics());
 
         Method poll = finalizerQueue.getKlass().lookupMethod(Symbol.Name.poll, Symbol.Signature.Reference);
-        assert poll != null;
         this.queuePoll = DirectCallNode.create(poll.getCallTargetForceInit());
 
         Method runFinalizerMethod = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredMethod(Symbol.Name.runFinalizer, Symbol.Signature._void_JavaLangAccess, Klass.LookupMode.INSTANCE_ONLY);
-        assert runFinalizerMethod != null;
         this.runFinalizer = DirectCallNode.create(runFinalizerMethod.getCallTargetForceInit());
 
         Field javaLangAccess = context.getMeta().jdk_internal_access_SharedSecrets.lookupDeclaredField(Symbol.Name.javaLangAccess, Symbol.Type.jdk_internal_access_JavaLangAccess);
-        assert javaLangAccess != null;
         jla = javaLangAccess.getObject(context.getMeta().jdk_internal_access_SharedSecrets.tryInitializeAndGetStatics());
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         if (context.multiThreadingEnabled()) {
-            return StaticObject.NULL;
+            throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_IllegalStateException,
+                            "Manual reference processing was requested, but the context is not in single-threaded mode.");
         }
         context.triggerDrain();
         processPendingReferences();
