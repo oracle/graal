@@ -94,7 +94,7 @@ public final class Isolates {
             private String auxiliaryImagePath;
             private UnsignedWord auxiliaryImageReservedSpaceSize;
             private final List<String> arguments;
-            private int protectionDomain;
+            private ProtectionDomain protectionDomain = ProtectionDomain.NO_DOMAIN;
 
             /**
              * Creates a new builder with default values.
@@ -151,12 +151,11 @@ public final class Isolates {
             }
 
             /**
-             * Sets the protection domain for an isolate, to be used by an implementation of
-             * {@code MemoryProtectionKeyProvider}.
+             * Sets the {@link ProtectionDomain} for an isolate.
              *
              * @since 22.1
              */
-            public Builder setProtectionDomain(int domain) {
+            public Builder setProtectionDomain(ProtectionDomain domain) {
                 this.protectionDomain = domain;
                 return this;
             }
@@ -187,9 +186,10 @@ public final class Isolates {
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
         private final List<String> arguments;
-        private int protectionDomain;
+        private ProtectionDomain protectionDomain;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments, int protectionDomain) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments,
+                        ProtectionDomain protectionDomain) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
             this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
@@ -240,9 +240,35 @@ public final class Isolates {
          *
          * @since 22.1
          */
-        public int getProtectionDomain() {
+        public ProtectionDomain getProtectionDomain() {
             return protectionDomain;
         }
+    }
+
+    /**
+     * Identifies a protection domain for an isolate. A protection domain may be used by a
+     * {@code MemoryProtectionKeyProvider} in connection with underlying MMU hardware such as Memory
+     * Protection Keys.
+     *
+     * @since 22.1
+     *
+     */
+    public interface ProtectionDomain {
+        /**
+         * Do not use a protection domain.
+         *
+         * @since 22.1
+         */
+        ProtectionDomain NO_DOMAIN = new ProtectionDomain() {
+        };
+
+        /**
+         * Creates a new protection domain if passed to the {@link Builder}.
+         *
+         * @since 22.1
+         */
+        ProtectionDomain NEW_DOMAIN = new ProtectionDomain() {
+        };
     }
 
     /**

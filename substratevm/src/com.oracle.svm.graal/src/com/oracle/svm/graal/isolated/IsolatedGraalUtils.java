@@ -39,6 +39,7 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
+import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -52,7 +53,7 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
+import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -71,8 +72,8 @@ public final class IsolatedGraalUtils {
          * if protection keys are used, the compilation isolate needs to use the same protection
          * domain as the client, otherwise it cannot access the client's code cache
          */
-        if (MemoryProtectionKeyProvider.isAvailable()) {
-            int domain = MemoryProtectionKeyProvider.singleton().getProtectionDomain();
+        if (MemoryProtectionProvider.isAvailable()) {
+            ProtectionDomain domain = MemoryProtectionProvider.singleton().getProtectionDomain();
             builder.setProtectionDomain(domain);
         }
         // Compilation isolates do the reference handling manually to avoid the extra thread.

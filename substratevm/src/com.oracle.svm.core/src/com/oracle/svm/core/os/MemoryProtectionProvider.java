@@ -26,18 +26,21 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.word.PointerBase;
 
-public interface MemoryProtectionKeyProvider {
+import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+
+public interface MemoryProtectionProvider {
 
     @Fold
-    static MemoryProtectionKeyProvider singleton() {
-        return ImageSingletons.lookup(MemoryProtectionKeyProvider.class);
+    static MemoryProtectionProvider singleton() {
+        return ImageSingletons.lookup(MemoryProtectionProvider.class);
     }
 
     @Fold
     static boolean isAvailable() {
-        return ImageSingletons.contains(MemoryProtectionKeyProvider.class);
+        return ImageSingletons.contains(MemoryProtectionProvider.class);
     }
 
     /**
@@ -60,9 +63,19 @@ public interface MemoryProtectionKeyProvider {
     void printSignalInfo(PointerBase sigInfo);
 
     /**
-     * Retrieve the protection domain of the isolate.
+     * Retrieve the protection domain implemented by this provider.
      *
      * @return the protection domain
      */
-    int getProtectionDomain();
+    ProtectionDomain getProtectionDomain();
+
+    /**
+     * Apply the given protection domain to the {@link CEntryPointCreateIsolateParameters}.
+     *
+     * @param domain memory protection domain
+     *
+     * @param nativeParameters native isolate creation parameters, which will be modified to reflect
+     *            the given protection domain
+     */
+    void applyProtectionDomain(ProtectionDomain domain, CEntryPointCreateIsolateParameters nativeParameters);
 }

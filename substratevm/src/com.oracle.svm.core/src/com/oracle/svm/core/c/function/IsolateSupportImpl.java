@@ -44,6 +44,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.os.MemoryProtectionProvider;
 
 public final class IsolateSupportImpl implements IsolateSupport {
     private static final String ISOLATES_DISABLED_MESSAGE = "Spawning of multiple isolates is disabled, use " +
@@ -67,8 +68,11 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setProtectionKey(parameters.getProtectionDomain());
             params.setVersion(3);
+
+            if (MemoryProtectionProvider.isAvailable()) {
+                MemoryProtectionProvider.singleton().applyProtectionDomain(parameters.getProtectionDomain(), params);
+            }
 
             // Prepare argc and argv.
             List<String> args = parameters.getArguments();
