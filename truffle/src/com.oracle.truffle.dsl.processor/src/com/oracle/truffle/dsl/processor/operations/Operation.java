@@ -30,10 +30,25 @@ abstract class Operation {
             this.children = children;
             this.arguments = arguments;
         }
+    }
 
+    static class CtorVariables {
+        final CodeVariableElement children;
+        final CodeVariableElement arguments;
+        final CodeVariableElement returnsValue;
+
+        public CtorVariables(CodeVariableElement children, CodeVariableElement arguments, CodeVariableElement returnsValue) {
+            this.children = children;
+            this.arguments = arguments;
+            this.returnsValue = returnsValue;
+        }
     }
 
     public static final int VARIABLE_CHILDREN = -1;
+
+    public static final int RETURNS_VALUE_NEVER = 0;
+    public static final int RETURNS_VALUE_ALWAYS = 1;
+    public static final int RETURNS_VALUE_DIVERGE = 2;
 
     protected final String name;
     protected final int type;
@@ -90,6 +105,8 @@ abstract class Operation {
         return type;
     }
 
+    public abstract CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars);
+
     public abstract CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars);
 
     static class SimpleOperation extends Operation {
@@ -113,6 +130,21 @@ abstract class Operation {
             }
 
             b.tree(instructions[0].createEmitterCode(types, vars, arguments));
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            for (int i = 0; i < children; i++) {
+                b.startAssert().variable(vars.children).string("[" + i + "].").variable(vars.returnsValue).string(" != " + RETURNS_VALUE_NEVER).end();
+            }
+
+            b.startAssign("this", vars.returnsValue);
+            b.string(this.instructions[0].stackPushes > 0 ? "" + RETURNS_VALUE_ALWAYS : "" + RETURNS_VALUE_NEVER);
+            b.end();
 
             return b.build();
         }
@@ -153,6 +185,25 @@ abstract class Operation {
             return b.build();
         }
 
+        @Override
+        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startIf().variable(vars.children).string(".length > 0").end();
+            b.startBlock();
+
+            b.startAssign("this", vars.returnsValue);
+            b.variable(vars.children).string("[").variable(vars.children).string(".length - 1].").variable(vars.returnsValue);
+            b.end(2);
+
+            b.startElseBlock();
+
+            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER);
+            b.end(2);
+
+            return b.build();
+        }
+
     }
 
     static class IfThen extends PseudoOperation {
@@ -177,6 +228,15 @@ abstract class Operation {
 
             // end:
             OperationGeneratorUtils.buildWriteForwardReference(b, "fwdref_end", vars.bc, vars.bci);
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
 
             return b.build();
         }
@@ -220,6 +280,22 @@ abstract class Operation {
             return b.build();
         }
 
+        @Override
+        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startAssert().variable(vars.children).string("[0].").variable(vars.returnsValue).string("!= " + RETURNS_VALUE_NEVER).end();
+
+            b.declaration("int", "rv_1", "children[1].returnsValue");
+            b.declaration("int", "rv_2", "children[2].returnsValue");
+
+            b.startIf().string("rv_1 == " + RETURNS_VALUE_NEVER + " || rv_2 == " + RETURNS_VALUE_NEVER).end();
+            b.startBlock().startAssign(vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end(2);
+            b.startElseBlock().startAssign(vars.returnsValue).string("" + RETURNS_VALUE_ALWAYS).end(2);
+
+            return b.build();
+        }
+
     }
 
     static class While extends PseudoOperation {
@@ -254,6 +330,15 @@ abstract class Operation {
 
             return b.build();
         }
+
+        @Override
+        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
+
+            return b.build();
+        }
     }
 
     static class Label extends PseudoOperation {
@@ -274,6 +359,15 @@ abstract class Operation {
         @Override
         public TypeMirror[] getBuilderArgumentTypes(ProcessorContext context, TruffleTypes types) {
             return new TypeMirror[]{types.OperationLabel};
+        }
+
+        @Override
+        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
+
+            return b.build();
         }
     }
 

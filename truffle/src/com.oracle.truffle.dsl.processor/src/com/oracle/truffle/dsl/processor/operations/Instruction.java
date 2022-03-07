@@ -18,26 +18,24 @@ abstract class Instruction {
         CodeVariableElement nextBci;
         CodeVariableElement bc;
         CodeVariableElement consts;
-        CodeVariableElement stack;
         CodeVariableElement sp;
-        CodeVariableElement locals;
         CodeVariableElement funArgs;
+        CodeVariableElement frame;
         CodeVariableElement returnValue;
 
         CodeVariableElement[] arguments;
         CodeVariableElement[] children;
         CodeVariableElement result;
 
-        public ExecutorVariables(CodeVariableElement bci, CodeVariableElement nextBci, CodeVariableElement bc, CodeVariableElement consts, CodeVariableElement stack, CodeVariableElement sp,
-                        CodeVariableElement locals, CodeVariableElement funArgs, CodeVariableElement returnValue) {
+        public ExecutorVariables(CodeVariableElement bci, CodeVariableElement nextBci, CodeVariableElement bc, CodeVariableElement consts, CodeVariableElement sp, CodeVariableElement funArgs,
+                        CodeVariableElement frame, CodeVariableElement returnValue) {
             this.bci = bci;
             this.nextBci = nextBci;
             this.bc = bc;
             this.consts = consts;
-            this.stack = stack;
             this.sp = sp;
-            this.locals = locals;
             this.funArgs = funArgs;
+            this.frame = frame;
             this.returnValue = returnValue;
             this.arguments = null;
             this.children = null;
@@ -129,13 +127,13 @@ abstract class Instruction {
                     b.string("]");
                     break;
                 case LOCAL:
-                    b.variable(vars.locals);
-                    b.string("[");
+                    b.startCall(CodeTreeBuilder.singleVariable(vars.frame), "getValue");
+                    b.startGroup();
+                    b.string("32 + ");
                     b.startCall("LE_BYTES", "getShort");
                     b.variable(vars.bc);
                     b.tree(offset);
-                    b.end();
-                    b.string("]");
+                    b.end(3);
                     break;
                 default:
                     throw new IllegalArgumentException(this.toString());
@@ -277,9 +275,10 @@ abstract class Instruction {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startStatement();
-            b.variable(vars.locals).string("[").variable(vars.arguments[0]).string("] =");
+            b.startCall(CodeTreeBuilder.singleVariable(vars.frame), "setObject");
+            b.startGroup().string("32 + ").variable(vars.arguments[0]).end();
             b.variable(vars.children[0]);
-            b.end();
+            b.end(2);
 
             return b.build();
         }

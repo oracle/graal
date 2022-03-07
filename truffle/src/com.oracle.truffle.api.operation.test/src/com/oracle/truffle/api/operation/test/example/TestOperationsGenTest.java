@@ -16,22 +16,6 @@ import com.oracle.truffle.api.operation.OperationsNode;
 @RunWith(JUnit4.class)
 public class TestOperationsGenTest {
 
-    private static class OperationsRootNode extends RootNode {
-
-        @Child private OperationsNode executable;
-
-        protected OperationsRootNode(OperationsNode executable) {
-            super(null);
-            this.executable = executable;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return this.executable.execute(frame);
-        }
-
-    }
-
     private static void parseAdd(SlOperationsBuilderino b) {
         // simple test:
         // function foo(a, b) {
@@ -104,7 +88,7 @@ public class TestOperationsGenTest {
         System.out.println(executable.dump());
         b.reset();
         System.out.println(executable);
-        CallTarget target = new OperationsRootNode(executable).getCallTarget();
+        CallTarget target = executable.getCallTarget();
         Object result = target.call(args);
         Assert.assertEquals(expectedResult, result);
     }

@@ -21,7 +21,7 @@ public class SlOperations {
         @Specialization
         public static String addStrings(String lhs, String rhs) {
             return lhs + rhs;
-        } 
+        }
     }
 
     @Operation

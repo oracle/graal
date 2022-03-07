@@ -174,6 +174,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startReturn();
             b.startNew(builderBytecodeNodeType.asType());
+            b.string("32");
+            b.string("32");
             b.string("bcCopy");
             b.string("cpCopy");
             b.end(2);
@@ -330,7 +332,32 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         builderNodeType.add(ctor);
 
         CodeVariableElement fldReturnsValue = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), context.getType(int.class), "returnsValue");
-        // builderNodeType.add(fldReturnsValue);
+        builderNodeType.add(fldReturnsValue);
+
+        {
+            CodeTreeBuilder b = ctor.getBuilder();
+
+            b.startSwitch().field("this", fldType).end().startBlock();
+
+            for (Operation op : m.getOperations()) {
+                b.startCase().string("" + op.getType() + " /* " + op.getName() + " */").end();
+
+                b.startBlock();
+
+                Operation.CtorVariables vars = new Operation.CtorVariables(fldChildren, fldArguments, fldReturnsValue);
+
+                b.tree(op.createReturnsValueCode(types, vars));
+
+                b.startStatement().string("break").end();
+                b.end();
+            }
+
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere());
+            b.end(); // default case block
+
+            b.end();
+        }
 
         {
             CodeVariableElement argBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
@@ -414,14 +441,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mContinueAt.getBuilder();
 
-            CodeVariableElement varStack = new CodeVariableElement(arrayOf(context.getType(Object.class)), "stack");
-            CodeVariableElement varLocals = new CodeVariableElement(arrayOf(context.getType(Object.class)), "locals");
             CodeVariableElement varFunArgs = new CodeVariableElement(arrayOf(context.getType(Object.class)), "funArgs");
             CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
             CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
 
-            b.declaration("final Object[]", varStack.getName(), "new Object[1024]");
-            b.declaration("final Object[]", varLocals.getName(), "new Object[1024]");
             b.declaration("final Object[]", varFunArgs.getName(), "frame.getArguments()");
             b.declaration("int", varSp.getName(), "0");
             b.declaration("int", varBci.getName(), "0");
@@ -438,7 +461,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startSwitch().string("bc[bci]").end();
             b.startBlock();
 
-            ExecutorVariables vars = new ExecutorVariables(varBci, varNextBci, fldBc, fldConsts, varStack, varSp, varLocals, varFunArgs, varReturnValue);
+            ExecutorVariables vars = new ExecutorVariables(varBci, varNextBci, fldBc, fldConsts, varSp, varFunArgs, argFrame, varReturnValue);
 
             for (Instruction op : m.getInstructions()) {
 
@@ -449,7 +472,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 CodeVariableElement[] pops = new CodeVariableElement[op.stackPops];
                 for (int i = op.stackPops - 1; i >= 0; i--) {
                     pops[i] = new CodeVariableElement(context.getType(Object.class), "value" + i);
-                    b.declaration("Object", pops[i].getName(), varStack.getName() + "[--" + varSp.getName() + "]");
+                    b.declaration("Object", pops[i].getName(), argFrame.getName() + ".getValue(--" + varSp.getName() + ")");
                 }
 
                 CodeVariableElement[] args = new CodeVariableElement[op.arguments.length];
@@ -471,7 +494,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.tree(op.createExecutorCode(types, vars));
 
                 if (op.stackPushes > 0) {
-                    b.statement(varStack.getName() + "[" + varSp.getName() + "++] = " + vars.result.getName());
+                    b.statement(argFrame.getName() + ".setObject(" + varSp.getName() + "++, " + vars.result.getName() + ")");
                 }
 
                 if (!op.isDivergent()) {
