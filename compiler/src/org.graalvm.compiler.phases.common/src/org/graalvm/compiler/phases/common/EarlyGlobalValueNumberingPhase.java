@@ -43,12 +43,16 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
+import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
@@ -62,6 +66,56 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * Optimization phase that performs global value numbering and loop invariant code motion on a high
+ * tier graph. It only considers {@link FixedNode} nodes, floating nodes are handled automatically
+ * via their representation in the IR as {@link FloatingNode}.
+ *
+ * Note on loop invariant code motion: This phase only performs loop invariant code motion for
+ * instructions unconditionally executed inside a loop. A standard example is a loop iterating until
+ * an array length
+ *
+ * <pre>
+ * for (int i = 0; i < arr.length; i++) {
+ * // body
+ * }
+ * </pre>
+ *
+ * In a more IR focused notation this code looks like
+ *
+ * *
+ *
+ * <pre>
+ * int i = 0;
+ * while (true) {
+ *     int len = arr.length;
+ *     if (i < len) {
+ *         // body
+ *         i++;
+ *     }
+ *     break;
+ * }
+ * </pre>
+ *
+ * The length of the array is read in every iteration of the loop. However, it is loop invariant and
+ * the array length {@link LocationIdentity} is immutable. Thus, the read can be moved out of the
+ * loop as it is loop-invariant.
+ *
+ * The algorithm is based on a dominator tree traversal of the {@link ControlFlowGraph} where
+ * dominated blocks are visited before post dominated blocks. This means if a {@link Block} starts
+ * with a {@link MergeNode} all its predecessor blocks have already been visited. This is important
+ * to properly track {@link MemoryKill} nodes.
+ *
+ * The algorithm uses {@link MemoryKill} and {@link MemoryAccess} to reason about memory effects.
+ *
+ * The algorithm does not create {@link ProxyNode}. Thus, if a node is defined inside a loop and
+ * another value equal node is outside of this loop, value numbering will not happen (for the sake
+ * of simplicity of the algorthim).
+ *
+ * @see <a href="https://en.wikipedia.org/wiki/Value_numbering">Global Value Numbering</a>
+ * @see <a href="https://en.wikipedia.org/wiki/Loop-invariant_code_motion">Loop-invariant code
+ *      motion</a>
+ */
 public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     public static final CounterKey earlyGVN = DebugContext.counter("EarlyGVN");
@@ -70,14 +124,6 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-
-        /*
-         *
-         * process the dominator tree with deferring loop exits
-         *
-         * if a loop is visited, use the memory state visitor to kill
-         *
-         */
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         LoopsData ld = context.getLoopsDataProvider().getLoopsData(graph);
         cfg.visitDominatorTreeDefault(new GVNVisitor(cfg, ld));
@@ -155,7 +201,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                         continue;
                     }
                     ValueMap predMap = blockMaps.get(predecessor);
-                    GraalError.guarantee(predMap != null, "This block " + b.getBeginNode() + " pred block " + predecessor.getEndNode());
+                    GraalError.guarantee(predMap != null, "This block %s pred block %s", b.getBeginNode(), predecessor.getEndNode());
                     blockMap.killAllValuesByOtherMap(predMap);
                 }
             } else {
@@ -288,10 +334,31 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     }
 
+    /**
+     * Method to decide if a node can be GVNed or LICM-moved.
+     *
+     * We exclude
+     *
+     * {@link MemoryKill} memory kills must not be touched, their effects are observable.
+     *
+     * {@link VirtualizableAllocation} allocations must not be GVNed, though they are no side effect
+     * they have identity
+     *
+     * {@link ControlFlowAnchored} special nodes used to model control flow paths that must not be
+     * changed
+     *
+     * {@link AnchoringNode} nodes used to mark an anchor, i.e., a place for floating usages above
+     * which they must not float
+     */
     private static boolean canGVN(Node n) {
-        return !MemoryKill.isMemoryKill(n) && !(n instanceof VirtualizableAllocation) && !(n instanceof ControlFlowAnchored);
+        return !MemoryKill.isMemoryKill(n) && !(n instanceof VirtualizableAllocation) && !(n instanceof ControlFlowAnchored) && !(n instanceof AnchoringNode);
     }
 
+    /**
+     * Perform loop invariant code motion of the given node. Determine if the node is actually loop
+     * invariant based on its inputs (data fields of the node including indirect loop variant
+     * dependencies like the memory graph are checked by the caller).
+     */
     private static void tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
         if (nodeCanBeLifted(n, loop, liftedNodes)) {
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "Before LICM of node %s", n);
@@ -339,7 +406,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
     }
 
     /**
-     * A datastructure used to implement global value numbering on fixed nodes in the Graal IR. It
+     * A data structure used to implement global value numbering on fixed nodes in the Graal IR. It
      * stores all the values seen so far and exposes utility functionality to deal with memory.
      *
      * Loop handling: We can only perform global value numbering on the fixed node graph if we know
@@ -352,7 +419,6 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
      * limited amount of LICM for code unconditionally executed inside a loop that is invariant).
      */
     static final class ValueMap {
-
         private final EconomicMap<Node, Node> entries;
         private final LocationSet kills;
 
@@ -361,8 +427,15 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             this.kills = new LocationSet();
         }
 
+        /**
+         * Equivalence strategy for global value numbering.
+         */
         static class ValueMapEquivalence extends Equivalence {
 
+            /**
+             * Determine if two nodes are equal with respect to global value numbering. Tihs means
+             * their inputs are equal, their node classes are equal and their data fields.
+             */
             @Override
             public boolean equals(Object a, Object b) {
                 if (a instanceof Node && b instanceof Node) {
@@ -403,11 +476,18 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             }
         }
 
+        /**
+         * Determine if there is a node that is equal to the given one.
+         */
         public boolean hasSubstitute(Node n) {
             Node edgeDataEqual = entries.get(n);
             return edgeDataEqual != null;
         }
 
+        /**
+         * Perform actual global value numbering. Replace node {@code n} with an equal node (inputs
+         * and data fields) up in the dominance chain.
+         */
         public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes) {
             Node edgeDataEqual = entries.get(n);
             if (edgeDataEqual != null) {
@@ -460,6 +540,9 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             }
         }
 
+        /**
+         * Preserve a node for global value numbering in dominated code.
+         */
         public void rememberNodeForGVN(Node n) {
             GraalError.guarantee(!entries.containsKey(n), "Must GVN before adding a new node");
             entries.put(n, n);
@@ -482,6 +565,9 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             }
         }
 
+        /**
+         * Kill all remembered nodes based on the given memory location.
+         */
         private void killValuesByIdentity(LocationIdentity loc) {
             kills.add(loc);
             MapCursor<Node, Node> cursor = entries.getEntries();
