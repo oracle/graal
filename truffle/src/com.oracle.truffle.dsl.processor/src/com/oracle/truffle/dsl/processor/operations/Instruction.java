@@ -129,7 +129,7 @@ abstract class Instruction {
                 case LOCAL:
                     b.startCall(CodeTreeBuilder.singleVariable(vars.frame), "getValue");
                     b.startGroup();
-                    b.string("32 + ");
+                    b.string("maxStack + ");
                     b.startCall("LE_BYTES", "getShort");
                     b.variable(vars.bc);
                     b.tree(offset);
@@ -276,7 +276,7 @@ abstract class Instruction {
 
             b.startStatement();
             b.startCall(CodeTreeBuilder.singleVariable(vars.frame), "setObject");
-            b.startGroup().string("32 + ").variable(vars.arguments[0]).end();
+            b.startGroup().string("maxStack + ").variable(vars.arguments[0]).end();
             b.variable(vars.children[0]);
             b.end(2);
 

@@ -1,6 +1,7 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -10,6 +11,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.Instruction.ArgumentType;
 
 abstract class Operation {
 
@@ -36,11 +38,15 @@ abstract class Operation {
         final CodeVariableElement children;
         final CodeVariableElement arguments;
         final CodeVariableElement returnsValue;
+        final CodeVariableElement maxStack;
+        final CodeVariableElement maxLocals;
 
-        public CtorVariables(CodeVariableElement children, CodeVariableElement arguments, CodeVariableElement returnsValue) {
+        public CtorVariables(CodeVariableElement children, CodeVariableElement arguments, CodeVariableElement returnsValue, CodeVariableElement maxStack, CodeVariableElement maxLocals) {
             this.children = children;
             this.arguments = arguments;
             this.returnsValue = returnsValue;
+            this.maxStack = maxStack;
+            this.maxLocals = maxLocals;
         }
     }
 
@@ -88,13 +94,22 @@ abstract class Operation {
     public TypeMirror[] getBuilderArgumentTypes(ProcessorContext context, TruffleTypes types) {
         ArrayList<TypeMirror> arr = new ArrayList<>();
 
-        for (Instruction inst : instructions) {
-            for (Instruction.ArgumentType art : inst.arguments) {
-                arr.add(art.toType(context, types));
-            }
+        for (Instruction.ArgumentType art : getArgumentTypes()) {
+            arr.add(art.toType(context, types));
         }
 
         return arr.toArray(new TypeMirror[arr.size()]);
+    }
+
+    public Collection<ArgumentType> getArgumentTypes() {
+        ArrayList<ArgumentType> arr = new ArrayList<>();
+        for (Instruction inst : instructions) {
+            for (Instruction.ArgumentType art : inst.arguments) {
+                arr.add(art);
+            }
+        }
+
+        return arr;
     }
 
     public boolean hasChildren() {
@@ -105,7 +120,11 @@ abstract class Operation {
         return type;
     }
 
-    public abstract CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars);
+    public boolean keepsChildValues() {
+        return false;
+    }
+
+    public abstract CodeTree createCtorCode(TruffleTypes types, CtorVariables vars);
 
     public abstract CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars);
 
@@ -135,8 +154,10 @@ abstract class Operation {
         }
 
         @Override
-        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            // returnsValue
 
             for (int i = 0; i < children; i++) {
                 b.startAssert().variable(vars.children).string("[" + i + "].").variable(vars.returnsValue).string(" != " + RETURNS_VALUE_NEVER).end();
@@ -147,6 +168,11 @@ abstract class Operation {
             b.end();
 
             return b.build();
+        }
+
+        @Override
+        public boolean keepsChildValues() {
+            return true;
         }
     }
 
@@ -186,7 +212,7 @@ abstract class Operation {
         }
 
         @Override
-        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startIf().variable(vars.children).string(".length > 0").end();
@@ -233,7 +259,7 @@ abstract class Operation {
         }
 
         @Override
-        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
@@ -281,7 +307,7 @@ abstract class Operation {
         }
 
         @Override
-        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startAssert().variable(vars.children).string("[0].").variable(vars.returnsValue).string("!= " + RETURNS_VALUE_NEVER).end();
@@ -292,7 +318,6 @@ abstract class Operation {
             b.startIf().string("rv_1 == " + RETURNS_VALUE_NEVER + " || rv_2 == " + RETURNS_VALUE_NEVER).end();
             b.startBlock().startAssign(vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end(2);
             b.startElseBlock().startAssign(vars.returnsValue).string("" + RETURNS_VALUE_ALWAYS).end(2);
-
             return b.build();
         }
 
@@ -332,7 +357,7 @@ abstract class Operation {
         }
 
         @Override
-        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
@@ -362,7 +387,7 @@ abstract class Operation {
         }
 
         @Override
-        public CodeTree createReturnsValueCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();

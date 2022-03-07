@@ -15,8 +15,13 @@ public abstract class OperationsNode extends RootNode {
         return b.build();
     }
 
+    protected final int maxStack;
+    protected final int maxLocals;
+
     protected OperationsNode(int maxStack, int maxLocals) {
         super(null, createFrameDescriptor(maxStack, maxLocals));
+        this.maxLocals = maxLocals;
+        this.maxStack = maxStack;
     }
 
     public abstract Object continueAt(VirtualFrame frame, OperationLabel index);

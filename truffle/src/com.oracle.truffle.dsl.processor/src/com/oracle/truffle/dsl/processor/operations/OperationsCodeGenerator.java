@@ -34,6 +34,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.operations.Instruction.ArgumentType;
 import com.oracle.truffle.dsl.processor.operations.Instruction.ExecutorVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.EmitterVariables;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
@@ -174,8 +175,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startReturn();
             b.startNew(builderBytecodeNodeType.asType());
-            b.string("32");
-            b.string("32");
+            b.string("rootNode.maxStack");
+            b.string("rootNode.maxLocals");
             b.string("bcCopy");
             b.string("cpCopy");
             b.end(2);
@@ -334,19 +335,60 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement fldReturnsValue = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), context.getType(int.class), "returnsValue");
         builderNodeType.add(fldReturnsValue);
 
+        CodeVariableElement fldMaxStack = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), context.getType(int.class), "maxStack");
+        builderNodeType.add(fldMaxStack);
+
+        CodeVariableElement fldMaxLocals = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), context.getType(int.class), "maxLocals");
+        builderNodeType.add(fldMaxLocals);
+
         {
             CodeTreeBuilder b = ctor.getBuilder();
 
             b.startSwitch().field("this", fldType).end().startBlock();
+
+            Operation.CtorVariables vars = new Operation.CtorVariables(fldChildren, fldArguments, fldReturnsValue, fldMaxStack, fldMaxLocals);
 
             for (Operation op : m.getOperations()) {
                 b.startCase().string("" + op.getType() + " /* " + op.getName() + " */").end();
 
                 b.startBlock();
 
-                Operation.CtorVariables vars = new Operation.CtorVariables(fldChildren, fldArguments, fldReturnsValue);
+                b.tree(op.createCtorCode(types, vars));
 
-                b.tree(op.createReturnsValueCode(types, vars));
+                b.statement("int maxStack_ = 1");
+                b.statement("int maxLocals_ = 0");
+
+                if (op.children == Operation.VARIABLE_CHILDREN) {
+                    b.startFor().string("int i = 0; i < children.length; i++").end();
+                    b.startBlock();
+
+                    String extra = op.keepsChildValues() ? " + i" : "";
+                    b.statement("if (maxStack_ < children[i].maxStack" + extra + ") maxStack_ = children[i].maxStack" + extra);
+
+                    b.statement("if (maxLocals_ < children[i].maxLocals) maxLocals_ = children[i].maxLocals");
+
+                    b.end();
+                } else {
+                    for (int i = 0; i < op.children; i++) {
+                        String extra = op.keepsChildValues() ? " + " + i : "";
+                        b.statement("if (maxStack_ < children[" + i + "].maxStack" + extra + ") maxStack_ = children[" + i + "].maxStack" + extra);
+
+                        b.statement("if (maxLocals_ < children[" + i + "].maxLocals) maxLocals_ = children[" + i + "].maxLocals");
+                    }
+                }
+
+                int argIdx = 0;
+                for (ArgumentType arg : op.getArgumentTypes()) {
+                    if (arg == ArgumentType.LOCAL || arg == ArgumentType.LOCAL_INDEX) {
+                        b.statement("if (maxLocals_ < (short) arguments[" + argIdx + "] + 1) maxLocals_ = (short) arguments[" + argIdx + "] + 1");
+                    }
+                    argIdx++;
+                }
+
+                b.statement("maxStack = maxStack_");
+                b.statement("maxLocals = maxLocals_");
+
+                b.statement("System.out.println(\"" + op.getName() + " \" + maxStack + \" \" + maxLocals)");
 
                 b.startStatement().string("break").end();
                 b.end();
