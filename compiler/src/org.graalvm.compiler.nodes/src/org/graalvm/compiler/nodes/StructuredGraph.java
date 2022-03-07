@@ -302,8 +302,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public Builder profileProvider(ProfileProvider flag) {
-            this.profileProvider = flag;
+        public Builder profileProvider(ProfileProvider provider) {
+            this.profileProvider = provider;
             return this;
         }
 
