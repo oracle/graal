@@ -18,7 +18,7 @@ Changes:
 * Option `--llvm.printAST` is replaced by `--llvm.printASTFilter` and accepts all functions by default. AST printing must be enabled by setting `--log.llvm.AST.level=FINEST`.
 * The function `__sulong_print_stacktrace` now prints stack traces to the `llvm.StackTrace` logs instead of stdout.
 * Introduce `polyglot_value` type to replace `void *` in `graalvm/llvm/polyglot.h`. 
-  The compiler flag `POLYGLOT_LEGACY_MODE` is introduced for backwards compatibility.
+  The compiler flag `POLYGLOT_STRICT_MODE` can be used to treat `polyglot_value` as a distinct type.
 
 # Version 22.0.0
 

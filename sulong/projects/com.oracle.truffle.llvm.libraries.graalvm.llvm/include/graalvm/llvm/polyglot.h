@@ -63,8 +63,6 @@ extern "C" {
 typedef struct __polyglot_value *polyglot_value;
 #else
 typedef void *polyglot_value;
-#pragma message(                                                                                                                                     \
-    "The polyglot_value pointer is a type alias for void*. To disable this set POLYGLOT_STRICT_MODE. This may become the default setting in the future.")
 #endif
 
 /**
