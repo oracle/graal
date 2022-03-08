@@ -152,7 +152,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @Override
     public String getName() {
-        return '<' + getClass().getSimpleName() + '>';
+        return '<' + getClass().getSimpleName() + '/' + libraryName + '/' + bitcodeID.getId() + '>';
     }
 
     @Override

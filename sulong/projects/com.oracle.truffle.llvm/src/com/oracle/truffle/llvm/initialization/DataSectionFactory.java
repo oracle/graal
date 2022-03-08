@@ -91,6 +91,10 @@ public class DataSectionFactory {
         return globalOffsets;
     }
 
+    boolean[] getGlobalIsReadOnly() {
+        return globalIsReadOnly;
+    }
+
     int[] getThreadLocalGlobalOffsets() {
         return threadLocalGlobalOffsets;
     }

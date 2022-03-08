@@ -47,37 +47,10 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMExpressionNode {
-
-        protected final LLVMSymbol symbol;
+public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNode {
 
         LLVMAccessThreadLocalSymbolNode(LLVMSymbol symbol) {
-            this.symbol = LLVMAlias.resolveAlias(symbol);
-        }
-
-        @Override
-        public abstract LLVMPointer executeGeneric(VirtualFrame frame);
-
-        @Override
-        public String toString() {
-            return getShortString("symbol");
-        }
-
-        public LLVMSymbol getSymbol() {
-            return symbol;
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private LLVMLinkerException notFound() {
-            throw new LLVMLinkerException(this, "External %s %s cannot be found.", symbol.getKind(), symbol.getName());
-        }
-
-        private LLVMPointer checkNull(LLVMPointer result, BranchProfile exception) {
-            if (result == null) {
-                exception.enter();
-                throw notFound();
-            }
-            return result;
+           super(symbol);
         }
 
         /*

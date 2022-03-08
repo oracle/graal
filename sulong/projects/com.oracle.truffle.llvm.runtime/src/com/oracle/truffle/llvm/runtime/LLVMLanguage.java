@@ -66,7 +66,9 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
@@ -207,8 +209,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static class LLVMThreadLocalValue {
 
         final LLVMContext context;
-        LLVMPointer[] pointer = new LLVMPointer[10];
+        LLVMPointer[] sections = new LLVMPointer[10];
         final WeakReference<Thread> thread;
+        LLVMStack stack;
+        LLVMPointer localStorage;
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
@@ -217,17 +221,44 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
             int index = bitcodeID.getId();
-            if (index >= pointer.length) {
+            if (index >= sections.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
-                pointer = Arrays.copyOf(pointer, newLength);
+                sections = Arrays.copyOf(sections, newLength);
             }
-            pointer[index] = sectionBase;
+            sections[index] = sectionBase;
         }
 
         public LLVMPointer getSection(BitcodeID bitcodeID) {
             int index = bitcodeID.getId();
-            assert index < pointer.length;
-            return pointer[index];
+            assert index < sections.length;
+            return sections[index];
+        }
+
+        public LLVMPointer getThreadLocalStorage() {
+            if (localStorage != null) {
+                return localStorage;
+            }
+            return LLVMNativePointer.createNull();
+        }
+
+        public void setThreadLocalStorage(LLVMPointer value) {
+            localStorage = value;
+        }
+
+        public LLVMStack getLLVMStack() {
+            assert stack != null;
+            return stack;
+        }
+
+        public void setLLVMStack(LLVMStack stack) {
+            assert this.stack == null;
+            this.stack = stack;
+        }
+
+        public LLVMStack removeLLVMStack() {
+            LLVMStack tmp = stack;
+            this.stack = null;
+            return tmp;
         }
     }
 
@@ -260,17 +291,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         // need to get the contextthreadlocal for this thread, which would call get and this would
         // trigger the factory
         getCapability(PlatformCapability.class).initializeThread(context, thread);
-
-        // put it into context
-        context.registerLiveThread(thread);
-
-        // need to duplicate the thread local value for this thread.
-        LLVMThreadLocalValue value = contextThreadLocal.get(thread);
-        List<CallTarget> globalInitializers = context.getThreadLocalGlobalInitializer();
-
-        // call the calltarget added to the context from addGlobalInitializer in initializeglobals
-
-
+        synchronized (context.threadInitLock) {
+            // need to duplicate the thread local value for this thread.
+            List<CallTarget> globalInitializers = context.getThreadLocalGlobalInitializer();
+            for (CallTarget globalInitializer : globalInitializers) {
+                globalInitializer.call(thread);
+            }
+            // put it into context
+            context.registerLiveThread(thread);
+        }
     }
 
     public static LLDBSupport getLLDBSupport() {
@@ -667,7 +696,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
 
-        // need to dispose entry into context and free globals
+        //TODO: need to dispose entry in context and free globals
     }
 
     @Override

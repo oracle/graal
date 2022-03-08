@@ -112,6 +112,7 @@ public final class LLVMContext {
     protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
     public final Object atomicInstructionsLock = new Object();
+    public final Object threadInitLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     private final List<Thread> allRunningThreads = new ArrayList<>();
@@ -139,9 +140,6 @@ public final class LLVMContext {
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
-
-    // we are not able to clean up ThreadLocals properly, so we are using maps instead
-    private final Map<Thread, LLVMPointer> tls = new ConcurrentHashMap<>();
 
     // The symbol table for storing the symbols of each bitcode library.
     // These two fields contain the same value, but have different CompilationFinal annotations:
@@ -913,25 +911,6 @@ public final class LLVMContext {
             symbolAssumptions[index] = null;
             symbolDynamicStorage[index] = null;
         }
-    }
-
-    @TruffleBoundary
-    public LLVMPointer getThreadLocalStorage() {
-        LLVMPointer value = tls.get(Thread.currentThread());
-        if (value != null) {
-            return value;
-        }
-        return LLVMNativePointer.createNull();
-    }
-
-    @TruffleBoundary
-    public void setThreadLocalStorage(LLVMPointer value) {
-        tls.put(Thread.currentThread(), value);
-    }
-
-    @TruffleBoundary
-    public void setThreadLocalStorage(LLVMPointer value, Thread thread) {
-        tls.put(thread, value);
     }
 
     @TruffleBoundary

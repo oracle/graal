@@ -93,7 +93,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
 
     @Children private final AllocSymbolNode[] allocFuncs;
     @CompilationFinal(dimensions = 1) private final LLVMSymbol[] functions;
-    @CompilationFinal(dimensions = 1) private final LLVMSymbol[] threadLocalGlobals;
+    @CompilationFinal(dimensions = 1) private LLVMSymbol[] threadLocalGlobalsArray;
 
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
@@ -118,51 +118,33 @@ public final class InitializeSymbolsNode extends LLVMNode {
         List<GlobalVariable> threadLocalGlobals = result.getThreadLocalGlobals();
         int globalsCount = definedGlobals.size();
         int threadLocalGlobalsCount = threadLocalGlobals.size();
+        this.threadLocalGlobalsArray = new LLVMSymbol[threadLocalGlobalsCount];
         //this.globalOffsets = new int[globalsCount];
-        this.globalIsReadOnly = new boolean[globalsCount];
         this.globals = new LLVMSymbol[globalsCount];
+
         //this.threadLocalPointers = new LLVMThreadLocalPointer[threadLocalGlobalsCount];
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.get(null).getCapability(LLVMIntrinsicProvider.class);
 
         this.globalOffsets = dataSectionFactory.getGlobalOffsets();
         this.threadLocalGlobalOffsets = dataSectionFactory.getThreadLocalGlobalOffsets();
+        this.globalIsReadOnly = dataSectionFactory.getGlobalIsReadOnly();
+        assert threadLocalGlobalOffsets.length == threadLocalGlobalsArray.length;
 
         // this will all be moved to a new class called from loadmodules and passed here.
-        /*for (int i = 0; i < globalsCount; i++) {
+        for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
-            Type type = global.getType().getPointeeType();
-            if (isSpecialGlobalSlot(type)) {
-                globalOffsets[i] = -1; // pointer type
-            } else {
-                // allocate at least one byte per global (to make the pointers unique)
-                if (type.getSize(dataLayout) == 0) {
-                    type = PrimitiveType.getIntegerType(8);
-                }
-                globalIsReadOnly[i] = global.isReadOnly();
-                DataSection dataSection = globalIsReadOnly[i] ? roSection : rwSection;
-                long offset = dataSection.add(global, type);
-                assert offset >= 0;
-                if (offset > Integer.MAX_VALUE) {
-                    throw CompilerDirectives.shouldNotReachHere("globals section >2GB not supported");
-                }
-                globalOffsets[i] = (int) offset;
-            }
             LLVMSymbol symbol = fileScope.get(global.getName());
+            assert symbol != null;
             globals[i] = symbol;
         }
 
         // Thread local globals
         for (int i = 0; i < threadLocalGlobalsCount; i++) {
             GlobalVariable tlGlobals = threadLocalGlobals.get(i);
-            Type type = tlGlobals.getType().getPointeeType();
-            long offset = threadLocalSection.add(tlGlobals, type);
-            assert offset >= 0;
-            if (offset > Integer.MAX_VALUE) {
-                throw CompilerDirectives.shouldNotReachHere("globals section >2GB not supported");
-            }
             LLVMSymbol symbol = fileScope.get(tlGlobals.getName());
-            threadLocalPointers[i] = new LLVMThreadLocalPointer(symbol, offset);
-        }*/
+            assert symbol != null;
+            threadLocalGlobalsArray[i] = symbol;
+        }
 
         /*
          * Functions are allocated based on whether they are intrinsic function, regular llvm
@@ -187,8 +169,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
             }
             functions[i] = function;
         }
-
-        this.threadLocalGlobals = threadLocalGlobals.toArray(LLVMSymbol.EMPTY);
 
         // this will all be moved to a new class called from loadmodules and passed here.
         //this.allocTLSection = threadLocalSection.createAllocateNode(nodeFactory, "tlglobals_struct", true);
@@ -226,7 +206,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         // create the value for the globals
         for (int i = 0; i < threadLocalGlobalOffsets.length; i++) {
             int offset = threadLocalGlobalOffsets[i];
-            LLVMThreadLocalPointer pointer = new LLVMThreadLocalPointer(threadLocalGlobals[i], offset);
+            LLVMThreadLocalPointer pointer = new LLVMThreadLocalPointer(threadLocalGlobalsArray[i], offset);
             LLVMSymbol symbol = pointer.getSymbol();
             if (symbol == null) {
                 exception.enter();
@@ -239,6 +219,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private void initializeGlobalSymbols(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
         for (int i = 0; i < globals.length; i++) {
             LLVMSymbol allocGlobal = globals[i];
+            assert allocGlobal != null;
+            assert fileScope != null;
             LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.getName());
             if (descriptor == null) {
                 exception.enter();
@@ -251,6 +233,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
                 if (globalOffsets[i] == -1) {
                     ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
                 } else {
+                    assert roBase != null && rwBase != null;
                     LLVMPointer base = globalIsReadOnly[i] ? roBase : rwBase;
                     ref = base.increment(globalOffsets[i]);
                 }
@@ -259,7 +242,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
                 list.add(descriptor);
                 context.registerSymbolReverseMap(list, ref);
             }
-
         }
     }
 

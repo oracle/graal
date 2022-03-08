@@ -182,10 +182,11 @@ public final class Module implements ParserListener {
         }
 
         long visibility = Visibility.DEFAULT.getEncodedValue();
-        long threadLocal = 0;
         if (buffer.remaining() > 0) {
             visibility = buffer.read();
         }
+
+        long threadLocal = 0;
         if (buffer.remaining() > 0) {
             threadLocal = buffer.read();
         }

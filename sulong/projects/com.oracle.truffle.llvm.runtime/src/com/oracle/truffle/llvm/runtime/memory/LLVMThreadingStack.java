@@ -41,8 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
  */
 public final class LLVMThreadingStack {
-    // we are not able to clean up a thread local properly, so we are using a map instead
-    private final Map<Thread, LLVMStack> threadMap;
+
     private final long stackSize;
     private final Thread mainThread;
     @CompilationFinal private LLVMStack mainThreadStack;
@@ -50,7 +49,6 @@ public final class LLVMThreadingStack {
     public LLVMThreadingStack(Thread mainTread, long stackSize) {
         this.mainThread = mainTread;
         this.stackSize = stackSize;
-        this.threadMap = new ConcurrentHashMap<>();
     }
 
     public LLVMStack getStack() {
@@ -75,7 +73,7 @@ public final class LLVMThreadingStack {
 
     @TruffleBoundary
     private LLVMStack getCurrentStack() {
-        return threadMap.get(Thread.currentThread());
+        return LLVMLanguage.get(null).contextThreadLocal.get().getLLVMStack();
     }
 
     @TruffleBoundary
@@ -85,8 +83,7 @@ public final class LLVMThreadingStack {
         if (currentThread == mainThread) {
             mainThreadStack = s;
         }
-        Object previous = threadMap.putIfAbsent(currentThread, s);
-        assert previous == null;
+        LLVMLanguage.get(null).contextThreadLocal.get().setLLVMStack(s);
         return s;
     }
 
@@ -108,7 +105,7 @@ public final class LLVMThreadingStack {
     }
 
     private void free(LLVMMemory memory, Thread thread) {
-        LLVMStack s = threadMap.remove(thread);
+        LLVMStack s = LLVMLanguage.get(null).contextThreadLocal.get(thread).removeLLVMStack();
         if (s != null) {
             s.free(memory);
         }

@@ -26,12 +26,14 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-       Thread thread = (Thread) frame.getArguments()[0];
-       inPlaceNode.execute(frame, thread);
-       LLVMPointer tlgBase = allocOrNull(allocTLSection);
-       assert !tlgBase.isNull();
-       contextThreadLocal.get().addSection(tlgBase, bitcodeID);
-       return null;
+        assert frame.getArguments().length > 0;
+        assert frame.getArguments()[0] instanceof Thread;
+        Thread thread = (Thread) frame.getArguments()[0];
+        LLVMPointer tlgBase = allocOrNull(allocTLSection);
+        assert !tlgBase.isNull();
+        contextThreadLocal.get().addSection(tlgBase, bitcodeID);
+        inPlaceNode.execute(frame, thread);
+        return null;
     }
 
     private static LLVMPointer allocOrNull(LLVMAllocateNode allocNode) {
@@ -40,5 +42,10 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public String getName() {
+        return "TLS" + '/' + bitcodeID.getId();
     }
 }

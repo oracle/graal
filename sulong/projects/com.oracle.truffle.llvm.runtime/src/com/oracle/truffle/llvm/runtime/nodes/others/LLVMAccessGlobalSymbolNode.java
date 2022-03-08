@@ -50,36 +50,30 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * a constant, which is very efficient, but in multi context mode, it's more efficient to get the
  * context from the {@link LLVMStack} stored in the frame.
  */
-public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
+public abstract class LLVMAccessGlobalSymbolNode extends LLVMAccessSymbolNode {
 
-    protected final LLVMSymbol symbol;
-
-    LLVMAccessSymbolNode(LLVMSymbol symbol) {
-        this.symbol = LLVMAlias.resolveAlias(symbol);
+    LLVMAccessGlobalSymbolNode(LLVMSymbol symbol) {
+        super(symbol);
     }
 
-    @Override
-    public abstract LLVMPointer executeGeneric(VirtualFrame frame);
-
-    @Override
-    public String toString() {
-        return getShortString("symbol");
+    /*
+     * CachedContext is very efficient in single-context mode, otherwise we should get the context
+     * from the frame.
+     */
+    @Specialization(assumptions = "singleContextAssumption()")
+    @GenerateAOT.Exclude
+    public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        return checkNull(getContext().getSymbol(symbol, exception), exception);
     }
 
-    public LLVMSymbol getSymbol() {
-        return symbol;
+    protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
+        return new LLVMStack.LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
     }
 
-    @TruffleBoundary
-    protected LLVMLinkerException notFound() {
-        throw new LLVMLinkerException(this, "External %s %s cannot be found.", symbol.getKind(), symbol.getName());
-    }
-
-    protected LLVMPointer checkNull(LLVMPointer result, BranchProfile exception) {
-        if (result == null) {
-            exception.enter();
-            throw notFound();
-        }
-        return result;
+    @Specialization
+    public LLVMPointer accessMultiContext(VirtualFrame frame,
+                    @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
+                    @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        return checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
     }
 }
