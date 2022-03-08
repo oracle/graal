@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,66 +29,49 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.dsl.Fallback;
+import java.time.ZoneId;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-@NodeChild(value = "object", type = LLVMExpressionNode.class)
-public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
+@NodeChild(value = "zoneId", type = LLVMExpressionNode.class)
+public abstract class LLVMPolyglotTimeZoneGetIdNode extends LLVMExpressionNode {
 
-    @FunctionalInterface
-    public interface Predicate {
-
-        boolean match(InteropLibrary interop, Object obj);
-    }
-
-    final Predicate predicate;
-    @Child InteropLibrary stringInterop = InteropLibrary.getFactory().create("");
-
-    protected LLVMPolyglotBoxedPredicate(Predicate predicate) {
-        this.predicate = predicate;
-    }
-
-    @Specialization(guards = "!foreigns.isForeign(pointer)")
+    @Specialization
     @GenerateAOT.Exclude
-    boolean matchNonForeignManaged(@SuppressWarnings("unused") LLVMManagedPointer pointer,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+    public LLVMManagedPointer executeForeign(LLVMManagedPointer object,
+                    @Cached LLVMAsForeignNode foreign,
+                    @Cached BranchProfile profile,
                     @CachedLibrary(limit = "3") InteropLibrary interop) {
-        return predicate.match(interop, pointer);
-    }
-
-    @Specialization(guards = "foreigns.isForeign(pointer)")
-    @GenerateAOT.Exclude
-    boolean matchForeignManaged(LLVMManagedPointer pointer,
-                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
-                    @CachedLibrary(limit = "3") InteropLibrary interop) {
-        Object foreign = foreigns.asForeign(pointer.getObject());
-        assert foreign != null;
-        return predicate.match(interop, foreign);
+        Object zone = foreign.execute(object);
+        return doExecute(zone, profile, interop);
     }
 
     @Specialization
     @GenerateAOT.Exclude
-    boolean matchNative(LLVMNativePointer pointer,
+    public LLVMManagedPointer doExecute(Object value,
+                    @Cached BranchProfile exception,
                     @CachedLibrary(limit = "3") InteropLibrary interop) {
-        return predicate.match(interop, pointer);
+        try {
+            ZoneId zoneId = interop.asTimeZone(value);
+            return LLVMManagedPointer.create(zoneId.getId());
+        } catch (UnsupportedMessageException ex) {
+            exception.enter();
+            throw new LLVMPolyglotException(this, "The object is not a time zone.");
+        }
     }
 
-    @Specialization
-    boolean matchString(String str) {
-        return predicate.match(stringInterop, str);
-    }
-
-    @Fallback
-    public boolean fallback(@SuppressWarnings("unused") Object object) {
-        return false;
+    public static LLVMPolyglotTimeZoneGetIdNode create(LLVMExpressionNode zoneId) {
+        return LLVMPolyglotTimeZoneGetIdNodeGen.create(zoneId);
     }
 }
