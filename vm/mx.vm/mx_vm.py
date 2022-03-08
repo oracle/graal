@@ -89,7 +89,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
-    name='Polybench Launcher',
+    name='PolyBench Launcher',
     short_name='pbm',
     license_files=[],
     third_party_license_files=[],
@@ -112,12 +112,12 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
-    name='Polybench Instruments',
+    name='PolyBench Instruments',
     short_name='pbi',
     dir_name='pbi',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Polybench Launcher'],
+    dependencies=['Truffle', 'PolyBench Launcher'],
     truffle_jars=['vm:POLYBENCH_INSTRUMENTS'],
     support_distributions=['vm:POLYBENCH_INSTRUMENTS_SUPPORT'],
 ))
@@ -129,7 +129,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='pmh',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Polybench Launcher'],
+    dependencies=['Truffle', 'PolyBench Launcher'],
     truffle_jars=['vm:PMH'],
     support_distributions=['vm:PMH_SUPPORT'],
     installable=False,
