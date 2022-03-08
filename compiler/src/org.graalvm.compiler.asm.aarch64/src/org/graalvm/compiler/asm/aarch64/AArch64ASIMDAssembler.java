@@ -559,6 +559,7 @@ public abstract class AArch64ASIMDAssembler {
         /* Advanced SIMD copy (C4-356). */
         DUPELEM(0b0000 << 11),
         DUPGEN(0b0001 << 11),
+        INSGEN(0b0011 << 11),
         SMOV(0b0101 << 11),
         UMOV(0b0111 << 11),
 
@@ -600,6 +601,7 @@ public abstract class AArch64ASIMDAssembler {
         ADDV(0b11011 << 12),
         UADDLV(UBit | 0b00011 << 12),
         UMAXV(UBit | 0b01010 << 12),
+        UMINV(UBit | 0b11010 << 12),
 
         /* Advanced SIMD three different (C4-365). */
         SMLAL(0b1000 << 12),
@@ -2061,6 +2063,22 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.176 Insert vector element from general-purpose register.<br>
+     *
+     * <code>dst[index] = src</code>
+     *
+     * Note the rest of the dst register is unaltered.
+     *
+     * @param eSize size of value to duplicate.
+     * @param dst SIMD register.
+     * @param index offset of value to duplicate
+     * @param src SIMD register.
+     */
+    public void insXG(ElementSize eSize, Register dst, int index, Register src) {
+        copyEncoding(ASIMDInstruction.INSGEN, true, eSize, dst, src, index);
+    }
+
+    /**
      * C7.2.177 Load multiple single-element structures to one register.<br>
      *
      * This instruction loads multiple single-element structures from memory and writes the result
@@ -2913,6 +2931,25 @@ public abstract class AArch64ASIMDAssembler {
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for umaxv";
 
         acrossLanesEncoding(ASIMDInstruction.UMAXV, size, elemSizeXX(elementSize), dst, src);
+    }
+
+    /**
+     * C7.2.363 Unsigned minimum across vector.<br>
+     *
+     * <code>dst = uint_min(src[0], ..., src[n]).</code>
+     *
+     * @param size register size.
+     * @param elementSize width of each operand.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void uminvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for uminv";
+        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uminv";
+
+        acrossLanesEncoding(ASIMDInstruction.UMINV, size, elemSizeXX(elementSize), dst, src);
     }
 
     /**
