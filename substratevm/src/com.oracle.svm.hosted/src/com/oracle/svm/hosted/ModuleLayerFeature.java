@@ -323,7 +323,7 @@ public final class ModuleLayerFeature implements Feature {
             for (Module m : runtimeBootLayer.modules()) {
                 Optional<Module> hostedModule = ModuleLayer.boot().findModule(m.getName());
                 if (hostedModule.isPresent() && hostedModule.get().getClassLoader() == null) {
-                    moduleLayerFeatureUtils.patchModuleLoaderField(m);
+                    moduleLayerFeatureUtils.patchModuleLoaderField(m, null);
                 }
             }
         } catch (IllegalAccessException ex) {
@@ -402,15 +402,18 @@ public final class ModuleLayerFeature implements Feature {
                 moduleReadsField.setAccessible(true);
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
+
+                allUnnamedModuleSet = new HashSet<>();
+                allUnnamedModuleSet.add(allUnnamedModule);
+                patchModuleLoaderField(allUnnamedModule, imageClassLoader.getClassLoader());
+                everyoneSet = new HashSet<>();
+                everyoneSet.add(everyoneModule);
+
+                moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
+                moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module class.", ex);
             }
-            allUnnamedModuleSet = new HashSet<>();
-            allUnnamedModuleSet.add(allUnnamedModule);
-            everyoneSet = new HashSet<>();
-            everyoneSet.add(everyoneModule);
-            moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
-            moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
         }
 
         private static Field findFieldByName(Field[] fields, String name) {
@@ -643,8 +646,8 @@ public final class ModuleLayerFeature implements Feature {
             moduleLayerField.set(module, runtimeBootLayer);
         }
 
-        void patchModuleLoaderField(Module module) throws IllegalAccessException {
-            moduleLoaderField.set(module, null);
+        void patchModuleLoaderField(Module module, ClassLoader loader) throws IllegalAccessException {
+            moduleLoaderField.set(module, loader);
         }
     }
 }
