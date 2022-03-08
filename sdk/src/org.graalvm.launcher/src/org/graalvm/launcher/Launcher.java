@@ -933,9 +933,10 @@ public abstract class Launcher {
         final int width = 120;
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
-        while (cursor + width < sb.length()) {
+        while (sb.length() > cursor + width) {
             int i = sb.lastIndexOf(" ", cursor + width);
-            if (i == -1 || i < cursor) {
+            if (i == -1 || i <= cursor) { // Can't find any space between cursor and cursor+width
+                // take the next space (will exceed the width)
                 i = sb.indexOf(" ", cursor + width);
             }
             if (i != -1) {
