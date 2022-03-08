@@ -72,7 +72,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
     private final String javaIdentifier = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
     private final Pattern validOptionValue = Pattern.compile(javaIdentifier + "(\\." + javaIdentifier + ")*");
 
-    private final Set<OptionOrigin> reasonCommandLine = Collections.singleton(OptionOrigin.CommandLineOptionOrigin.singleton);
+    private final Set<OptionOrigin> reasonCommandLine = Collections.singleton(OptionOrigin.commandLineOptionOriginSingleton);
 
     private final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
     private final Set<Module> requireCompleteModules = new HashSet<>();
