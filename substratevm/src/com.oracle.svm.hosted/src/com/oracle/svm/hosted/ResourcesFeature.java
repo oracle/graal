@@ -174,7 +174,7 @@ public final class ResourcesFeature implements Feature {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
         ImageSingletons.add(ResourcesRegistry.class,
-                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue())));
+                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader)));
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {

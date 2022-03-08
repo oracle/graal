@@ -47,20 +47,18 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private static final String CONSTRUCTOR_NAME = "<init>";
 
     private final ReflectionConfigurationParserDelegate<T> delegate;
-    private final boolean allowIncompleteClasspath;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
-        this(delegate, false, true);
+        this(delegate, true);
     }
 
-    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean allowIncompleteClasspath, boolean strictConfiguration) {
+    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean strictConfiguration) {
         super(strictConfiguration);
         this.delegate = delegate;
-        this.allowIncompleteClasspath = allowIncompleteClasspath;
     }
 
     @Override
@@ -282,19 +280,15 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         return delegate.getTypeName(clazz) + '.' + methodName + '(' + parameterTypeNames + ')';
     }
 
-    private void handleError(String message) {
+    private static void handleError(String message) {
         handleError(message, null);
     }
 
-    private void handleError(String msg, Throwable cause) {
+    private static void handleError(String msg, Throwable cause) {
         String message = msg;
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        if (allowIncompleteClasspath) {
-            System.err.println("Warning: " + message);
-        } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option --allow-incomplete-classpath");
-        }
+        System.err.println("Warning: " + message);
     }
 }

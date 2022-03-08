@@ -41,9 +41,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -253,7 +252,7 @@ public final class Target_java_lang_reflect_Executable {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedReceiverType, receiver);
+            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedReceiverType, executable);
         }
     }
 
@@ -266,7 +265,7 @@ public final class Target_java_lang_reflect_Executable {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedParameterTypes, receiver);
+            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedParameterTypes, executable);
         }
     }
 
@@ -279,7 +278,7 @@ public final class Target_java_lang_reflect_Executable {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedReturnType, receiver);
+            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedReturnType, executable);
         }
     }
 
@@ -292,24 +291,22 @@ public final class Target_java_lang_reflect_Executable {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedExceptionTypes, receiver);
+            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedExceptionTypes, executable);
         }
     }
 
     private static final class AnnotatedTypeEncoder {
-        static Object encodeAnnotationTypes(Supplier<Object> supplier, Object receiver) {
+        static Object encodeAnnotationTypes(Supplier<Object> supplier, Executable executable) {
             try {
                 return supplier.get();
             } catch (InternalError e) {
                 return e;
             } catch (LinkageError e) {
-                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                if (!LinkAtBuildTimeSupport.singleton().linkAtBuildTime(executable.getDeclaringClass())) {
                     return e;
                 }
-                Executable culprit = (Executable) receiver;
-                String message = "Encountered an error while processing annotated types for type: " + culprit.getDeclaringClass().getName() + ", executable: " + culprit.getName() + ". " +
-                                "To avoid the issue at build time, use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + ". " +
-                                "The error is then reported at runtime when these annotated types are first accessed.";
+                String message = "Encountered an error while processing annotated types for type: " + executable.getDeclaringClass().getName() + ", executable: " + executable.getName() + ". " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(executable.getDeclaringClass());
                 throw new UnsupportedOperationException(message, e);
             }
         }

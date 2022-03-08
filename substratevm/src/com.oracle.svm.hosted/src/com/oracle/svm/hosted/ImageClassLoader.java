@@ -33,6 +33,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -428,7 +429,7 @@ public final class ImageClassLoader {
         return classLoaderSupport.getMainClassFromModule(module);
     }
 
-    public Optional<? extends Object> findModule(String moduleName) {
+    public Optional<Module> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
     }
 
@@ -442,5 +443,17 @@ public final class ImageClassLoader {
 
     private static String pathsToString(List<Path> paths) {
         return paths.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(File.pathSeparator));
+    }
+
+    public EconomicSet<String> classes(URI container) {
+        return classLoaderSupport.classes(container);
+    }
+
+    public EconomicSet<String> packages(URI container) {
+        return classLoaderSupport.packages(container);
+    }
+
+    public boolean noEntryForURI(EconomicSet<String> set) {
+        return classLoaderSupport.noEntryForURI(set);
     }
 }

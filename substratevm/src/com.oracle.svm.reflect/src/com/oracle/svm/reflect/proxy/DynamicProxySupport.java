@@ -40,7 +40,6 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -100,11 +99,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             try {
                 clazz = getJdkProxyClass(classLoader, intfs);
             } catch (Throwable e) {
-                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                    return e;
-                } else {
-                    throw e;
-                }
+                return e;
             }
 
             /*
