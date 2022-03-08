@@ -88,10 +88,7 @@ public interface VirtualMemoryProvider {
      * @return An {@linkplain #getAlignment aligned} pointer to the beginning of the reserved
      *         address range, or {@link WordFactory#nullPointer()} in case of an error.
      */
-    default Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
-        // GR-36766: required for legacy code, remove as soon as no longer needed
-        return reserve(nbytes, alignment);
-    }
+    Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
 
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     default Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {

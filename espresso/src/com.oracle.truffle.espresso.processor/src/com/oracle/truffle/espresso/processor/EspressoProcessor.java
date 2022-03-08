@@ -255,7 +255,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String CREATE = "create";
 
-    static final String SHOULD_SPLIT = "shouldSplit";
     static final String SPLIT = "split";
 
     static final String ARGS_NAME = "args";
@@ -593,12 +592,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * Injects meta data in the substitutor's field, so the Meta be passed along during substitution
      * invocation.
      */
-    private static void generateMetaInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
-        if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            FieldBuilder field = new FieldBuilder(META_TYPE, META_VAR) //
-                            .withQualifiers(new ModifierBuilder().asPrivate().asFinal());
-            cb.withField(field);
-        }
+    private static void generateMetaInstanceField(ClassBuilder cb) {
+        FieldBuilder field = new FieldBuilder(META_TYPE, META_VAR) //
+                        .withQualifiers(new ModifierBuilder().asPrivate().asFinal());
+        cb.withField(field);
     }
 
     private static void generateChildInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
@@ -619,9 +616,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withModifiers(new ModifierBuilder().asPrivate()) //
                         .withParams(META_TYPE + " " + META_VAR);
 
-        if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            constructor.addBodyLine(SET_META);
-        }
+        constructor.addBodyLine(SET_META);
         if (helper.isNodeTarget()) {
             TypeElement enclosing = (TypeElement) helper.getNodeTarget().getEnclosingElement();
             constructor.addBodyLine("this.node = ", enclosing.getQualifiedName(), "Factory.", helper.getNodeTarget().getSimpleName(), "NodeGen", ".create();");
@@ -704,8 +699,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
-        if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            generateMetaInstanceField(substitutorClass, helper);
+        generateMetaInstanceField(substitutorClass);
+        if (helper.isNodeTarget()) {
             generateChildInstanceField(substitutorClass, helper);
         }
 
@@ -713,10 +708,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withAnnotation(SUPPRESS_UNUSED);
         substitutorClass.withMethod(constructor);
 
-        if (helper.hasProfileInjection) {
-            substitutorClass.withMethod(generateShouldSplit());
-            substitutorClass.withMethod(generateSplit());
-        }
+        substitutorClass.withMethod(generateSplit());
 
         if (isTrivial(helper.getTarget(), helper.getImplAnnotation())) {
             substitutorClass.withMethod(generateIsTrivial(helper));
@@ -726,18 +718,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         substitutorFile.withClass(substitutorClass);
         return substitutorFile.build();
-    }
-
-    /**
-     * Injects override of 'shouldSplit()' methods.
-     */
-    private static MethodBuilder generateShouldSplit() {
-        MethodBuilder method = new MethodBuilder(SHOULD_SPLIT) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("boolean") //
-                        .addBodyLine("return true;");
-        return method;
     }
 
     /**

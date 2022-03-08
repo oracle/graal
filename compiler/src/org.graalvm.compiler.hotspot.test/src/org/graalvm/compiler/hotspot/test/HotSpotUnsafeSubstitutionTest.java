@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.junit.Test;
 
@@ -54,12 +53,11 @@ public class HotSpotUnsafeSubstitutionTest extends MethodSubstitutionTest {
         expected = invokeSafe(originalMethod, receiver, args1);
         actual = executeVarargsSafe(code, args2);
         assertDeepEquals(expected, actual);
-
     }
 
     @Test
-    public void testUnsafeSubstitutions() throws Exception {
-        testGraph("unsafeCopyMemory", HotSpotBackend.copyMemoryName);
+    public void testUnsafeSubstitutions() {
+        testGraph("unsafeCopyMemory", "copyMemory0");
     }
 
     public void unsafeCopyMemory(Object srcBase, long srcOffset, Object dstBase, long dstOffset, long bytes) {

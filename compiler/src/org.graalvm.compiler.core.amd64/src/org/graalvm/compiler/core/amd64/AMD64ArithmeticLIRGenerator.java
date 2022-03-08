@@ -171,7 +171,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     private final AllocatableValue nullRegisterValue;
 
     @Override
-    public Variable emitNegate(Value inputVal) {
+    public Variable emitNegate(Value inputVal, boolean setFlags) {
         AllocatableValue input = asAllocatable(inputVal);
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         boolean isAvx = supportAVX();
@@ -1099,10 +1099,21 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    private Value emitMathAbsForInteger(AllocatableValue tmp, Value input, OperandSize size) {
+        Variable sign = getLIRGen().newVariable(LIRKind.combine(input));
+        getLIRGen().append(new AMD64Binary.ConstOp(SAR.miOp, size, sign, asAllocatable(input), size.getBytes() * Byte.SIZE - 1));
+        getLIRGen().emitMove(tmp, input);
+        return emitSub(emitXor(tmp, sign), sign, false);
+    }
+
     @Override
     public Value emitMathAbs(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         switch ((AMD64Kind) input.getPlatformKind()) {
+            case DWORD:
+                return emitMathAbsForInteger(result, input, DWORD);
+            case QWORD:
+                return emitMathAbsForInteger(result, input, QWORD);
             case SINGLE:
                 getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.AND, PS, result, asAllocatable(input), JavaConstant.forFloat(Float.intBitsToFloat(0x7FFFFFFF)), 16));
                 break;

@@ -43,6 +43,10 @@ local jdks = common_json.jdks;
   vm_profiles:: [],
   collect_profiles:: [],
 
+  mx_cmd_base_no_env: ['mx'],
+
+  check_graalvm_base_build: [],
+
   vm_setup:: {
     short_name:: 'ce',
     setup+: [

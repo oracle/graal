@@ -14,7 +14,7 @@ GraalVM's polyglot capabilities make it possible to mix multiple programming lan
 Here you will find information about installing GraalVM Community Edition, running basic applications with it, and adding support for accompanying features.
 Further, you will learn about the polyglot capabilities of GraalVM and see how to build platform-specific native executables of JVM-based applications.
 
-If you are new to GraaVM, we recommend starting with [Introduction to GraalVM](../../introduction.md), where you will find information about GraalVM's architecture, distributions available, supported platforms, core and additional features, and much more.
+If you are new to GraalVM, we recommend starting with [Introduction to GraalVM](../../introduction.md), where you will find information about GraalVM's architecture, distributions available, supported platforms, core and additional features, and much more.
 
 If you have GraalVM already installed and have experience using it, you can skip this getting started guide and proceed to the in-depth [Reference Manuals](../../reference-manual/reference-manuals.md).
 

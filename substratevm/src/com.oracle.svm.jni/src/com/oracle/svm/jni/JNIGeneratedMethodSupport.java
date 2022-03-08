@@ -26,7 +26,6 @@ package com.oracle.svm.jni;
 
 import java.lang.reflect.Array;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -40,16 +39,14 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
-import sun.misc.Unsafe;
 
 /**
  * Helper code that is used in generated JNI code via {@code JNIGraphKit}.
  */
 public final class JNIGeneratedMethodSupport {
     // Careful around here -- these methods are invoked by generated methods.
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     static PointerBase nativeCallAddress(JNINativeLinkage linkage) {
         return linkage.getOrFindEntryPoint();
@@ -125,7 +122,7 @@ public final class JNIGeneratedMethodSupport {
         if (count > 0) {
             long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            UNSAFE.copyMemory(array, offset, null, buffer.rawValue(), count * elementSize);
+            Unsafe.getUnsafe().copyMemory(array, offset, null, buffer.rawValue(), count * elementSize);
         }
     }
 
@@ -136,7 +133,7 @@ public final class JNIGeneratedMethodSupport {
         if (count > 0) {
             long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            UNSAFE.copyMemory(null, buffer.rawValue(), array, offset, count * elementSize);
+            Unsafe.getUnsafe().copyMemory(null, buffer.rawValue(), array, offset, count * elementSize);
         }
     }
 }

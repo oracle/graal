@@ -849,20 +849,22 @@ public class InvocationPlugins {
             }
         }
         InvocationPlugin invocationPlugin = get(method);
-        if (invocationPlugin == null || allowDecorators || !invocationPlugin.isDecorator()) {
-            if (disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
-                if (invocationPlugin.canBeDisabled()) {
-                    if (logDisabledIntrinsics) {
-                        TTY.println("[Warning] Intrinsic for %s is disabled.", method.format("%H.%n(%p)"));
-                    }
-                    return null;
-                } else {
-                    if (logDisabledIntrinsics) {
-                        TTY.println("[Warning] Intrinsic for %s cannot be disabled.", method.format("%H.%n(%p)"));
+        if (invocationPlugin != null) {
+            if (allowDecorators || !invocationPlugin.isDecorator()) {
+                if (disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
+                    if (invocationPlugin.canBeDisabled()) {
+                        if (logDisabledIntrinsics) {
+                            TTY.println("[Warning] Intrinsic for %s is disabled.", method.format("%H.%n(%p)"));
+                        }
+                        return null;
+                    } else {
+                        if (logDisabledIntrinsics) {
+                            TTY.println("[Warning] Intrinsic for %s cannot be disabled.", method.format("%H.%n(%p)"));
+                        }
                     }
                 }
+                return invocationPlugin;
             }
-            return invocationPlugin;
         }
         return null;
     }

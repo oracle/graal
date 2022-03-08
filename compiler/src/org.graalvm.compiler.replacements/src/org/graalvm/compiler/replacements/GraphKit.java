@@ -108,7 +108,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
                     boolean trackNodeSourcePosition) {
         super(providers);
-        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).compilationId(compilationId);
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).compilationId(compilationId).profileProvider(null);
         if (name != null) {
             builder.name(name);
         } else {

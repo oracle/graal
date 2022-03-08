@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,6 +71,12 @@ public class ExactMathTest extends GraalCompilerTest {
     }
 
     @Test
+    public void testNeg() {
+        test("neg", 1);
+        test("neg", Integer.MIN_VALUE);
+    }
+
+    @Test
     public void testMulHigh() {
         test("mulHigh", 7, 15);
         test("mulHigh", Integer.MAX_VALUE, 15);
@@ -109,6 +115,12 @@ public class ExactMathTest extends GraalCompilerTest {
     public void testLongSub() {
         test("longSub", (long) Integer.MIN_VALUE, 2L);
         test("longSub", Long.MIN_VALUE, 2L);
+    }
+
+    @Test
+    public void testLongNeg() {
+        test("longNeg", (long) Integer.MIN_VALUE);
+        test("longNeg", Long.MIN_VALUE);
     }
 
     @Test
@@ -189,6 +201,10 @@ public class ExactMathTest extends GraalCompilerTest {
         return Math.subtractExact(a, b);
     }
 
+    public static int neg(int a) {
+        return Math.negateExact(a);
+    }
+
     public static int mulHigh(int a, int b) {
         return ExactMath.multiplyHigh(a, b);
     }
@@ -207,6 +223,10 @@ public class ExactMathTest extends GraalCompilerTest {
 
     public static long longSub(long a, long b) {
         return Math.subtractExact(a, b);
+    }
+
+    public static long longNeg(long a) {
+        return Math.negateExact(a);
     }
 
     public static long longMulHigh(long a, long b) {

@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -73,6 +74,7 @@ public final class Target_java_lang_System {
         return VM.JVM_IHashCode(self);
     }
 
+    @ReportPolymorphism
     @Substitution
     abstract static class Arraycopy extends SubstitutionNode {
         abstract void execute(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
