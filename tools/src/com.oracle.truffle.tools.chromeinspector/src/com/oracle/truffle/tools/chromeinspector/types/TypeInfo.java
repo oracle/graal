@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,6 +152,10 @@ public final class TypeInfo {
                 descriptionType = metaType;
             }
         }
+        if (subtype != null) {
+            // Whatever the type was set to, subtype is defined for object only
+            type = TYPE.OBJECT;
+        }
         if (descriptionType == null) {
             descriptionType = className;
         }
@@ -191,6 +195,9 @@ public final class TypeInfo {
                     return type;
                 }
             }
+        }
+        if (value.isString()) {
+            return TYPE.STRING;
         }
         if (!isObject && value.isNumber()) {
             return TYPE.NUMBER;
