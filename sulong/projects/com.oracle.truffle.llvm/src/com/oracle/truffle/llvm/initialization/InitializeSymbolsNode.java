@@ -102,7 +102,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final int globalLength;
 
     public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName, DataSectionFactory dataSectionFactory) {
-        //DataLayout dataLayout = result.getDataLayout();
+        // DataLayout dataLayout = result.getDataLayout();
         this.nodeFactory = result.getRuntime().getNodeFactory();
         this.fileScope = result.getRuntime().getFileScope();
         this.globalLength = result.getSymbolTableSize();
@@ -111,18 +111,19 @@ public final class InitializeSymbolsNode extends LLVMNode {
         this.exception = BranchProfile.create();
         // allocate all non-pointer types as two structs
         // one for read-only and one for read-write
-        /*DataSection roSection = new DataSection(dataLayout);
-        DataSection rwSection = new DataSection(dataLayout);
-        DataSection threadLocalSection = new DataSection(dataLayout);*/
+        /*
+         * DataSection roSection = new DataSection(dataLayout); DataSection rwSection = new
+         * DataSection(dataLayout); DataSection threadLocalSection = new DataSection(dataLayout);
+         */
         List<GlobalVariable> definedGlobals = result.getDefinedGlobals();
         List<GlobalVariable> threadLocalGlobals = result.getThreadLocalGlobals();
         int globalsCount = definedGlobals.size();
         int threadLocalGlobalsCount = threadLocalGlobals.size();
         this.threadLocalGlobalsArray = new LLVMSymbol[threadLocalGlobalsCount];
-        //this.globalOffsets = new int[globalsCount];
+        // this.globalOffsets = new int[globalsCount];
         this.globals = new LLVMSymbol[globalsCount];
 
-        //this.threadLocalPointers = new LLVMThreadLocalPointer[threadLocalGlobalsCount];
+        // this.threadLocalPointers = new LLVMThreadLocalPointer[threadLocalGlobalsCount];
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.get(null).getCapability(LLVMIntrinsicProvider.class);
 
         this.globalOffsets = dataSectionFactory.getGlobalOffsets();
@@ -171,7 +172,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
         }
 
         // this will all be moved to a new class called from loadmodules and passed here.
-        //this.allocTLSection = threadLocalSection.createAllocateNode(nodeFactory, "tlglobals_struct", true);
+        // this.allocTLSection = threadLocalSection.createAllocateNode(nodeFactory,
+        // "tlglobals_struct", true);
         this.allocRoSection = dataSectionFactory.getRoSection().createAllocateNode(nodeFactory, "roglobals_struct", true);
         this.allocRwSection = dataSectionFactory.getRwSection().createAllocateNode(nodeFactory, "rwglobals_struct", false);
     }

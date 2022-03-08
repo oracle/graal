@@ -91,7 +91,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
     @Specialization
     protected void initialize(VirtualFrame frame,
-                              Thread thread,
+                    Thread thread,
                     @Cached LLVMI8OffsetStoreNode storeI8,
                     @Cached LLVMI64OffsetStoreNode storeI64,
                     @Cached BranchProfile exception) {

@@ -49,36 +49,36 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNode {
 
-        LLVMAccessThreadLocalSymbolNode(LLVMSymbol symbol) {
-           super(symbol);
-        }
+    LLVMAccessThreadLocalSymbolNode(LLVMSymbol symbol) {
+        super(symbol);
+    }
 
-        /*
-         * CachedContext is very efficient in single-context mode, otherwise we should get the context
-         * from the frame.
-         */
-        @Specialization(assumptions = "singleContextAssumption()")
-        @GenerateAOT.Exclude
-        public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
-            LLVMPointer pointer = checkNull(getContext().getSymbol(symbol, exception), exception);
-            LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
-            long offset = threadLocalPointer.getOffset();
-            LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(symbol.getBitcodeID(exception));
-            return checkNull(base.increment(offset), exception);
-        }
+    /*
+     * CachedContext is very efficient in single-context mode, otherwise we should get the context
+     * from the frame.
+     */
+    @Specialization(assumptions = "singleContextAssumption()")
+    @GenerateAOT.Exclude
+    public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        LLVMPointer pointer = checkNull(getContext().getSymbol(symbol, exception), exception);
+        LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
+        long offset = threadLocalPointer.getOffset();
+        LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(symbol.getBitcodeID(exception));
+        return checkNull(base.increment(offset), exception);
+    }
 
-        protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
-            return new LLVMStack.LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
-        }
+    protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
+        return new LLVMStack.LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
+    }
 
-        @Specialization
-        public LLVMPointer accessMultiContext(VirtualFrame frame,
-                @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
-                @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
-            LLVMPointer pointer = checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
-            LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
-            long offset = threadLocalPointer.getOffset();
-            LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(symbol.getBitcodeID(exception));
-            return checkNull(base.increment(offset), exception);
-        }
+    @Specialization
+    public LLVMPointer accessMultiContext(VirtualFrame frame,
+                    @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
+                    @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        LLVMPointer pointer = checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
+        LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
+        long offset = threadLocalPointer.getOffset();
+        LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(symbol.getBitcodeID(exception));
+        return checkNull(base.increment(offset), exception);
+    }
 }

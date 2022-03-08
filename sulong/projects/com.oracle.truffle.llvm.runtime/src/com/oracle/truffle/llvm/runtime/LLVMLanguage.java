@@ -143,7 +143,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private ContextExtensionKey<?>[] contextExtensions;
 
-    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal =  createContextThreadLocal(LLVMThreadLocalValue::new);
+    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
     @CompilationFinal private ByteArraySupport cachedByteArraySupport;
@@ -216,7 +216,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
-            this.thread =  new WeakReference<>(thread);
+            this.thread = new WeakReference<>(thread);
         }
 
         public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
@@ -696,7 +696,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
 
-        //TODO: need to dispose entry in context and free globals
+        // TODO: need to dispose entry in context and free globals
     }
 
     @Override

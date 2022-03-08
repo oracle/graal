@@ -87,7 +87,8 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
 
         this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
 
-        this.threadGlobalVarInit = Truffle.getRuntime().createDirectCallNode(((AggregateTLGlobalInPlaceNode)createGlobalVariableInitializer(parserResult.getThreadLocalGlobals(), parserResult.getRuntime(), moduleName, true, dataSectionFactory)).getCallTarget());
+        this.threadGlobalVarInit = Truffle.getRuntime().createDirectCallNode(((AggregateTLGlobalInPlaceNode) createGlobalVariableInitializer(parserResult.getThreadLocalGlobals(),
+                        parserResult.getRuntime(), moduleName, true, dataSectionFactory)).getCallTarget());
 
     }
 
@@ -171,7 +172,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             return initNode;
         }
 
-        return StaticInitsNodeGen.create(new LLVMStatementNode[]{(LLVMStatementNode)initNode}, "global variable initializers", moduleName);
+        return StaticInitsNodeGen.create(new LLVMStatementNode[]{(LLVMStatementNode) initNode}, "global variable initializers", moduleName);
     }
 
     /**

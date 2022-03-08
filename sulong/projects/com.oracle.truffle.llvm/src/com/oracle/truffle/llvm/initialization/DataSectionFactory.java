@@ -72,7 +72,6 @@ public class DataSectionFactory {
             threadLocalGlobalOffsets[i] = (int) offset;
         }
 
-
     }
 
     DataSection getRoSection() {

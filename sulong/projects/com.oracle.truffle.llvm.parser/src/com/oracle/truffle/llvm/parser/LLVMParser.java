@@ -78,7 +78,8 @@ public final class LLVMParser {
         defineFunctions(module, definedFunctions, externalFunctions, targetDataLayout);
         defineAliases(module.getAliases(), targetDataLayout);
 
-        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, threadLocalGlobals, targetDataLayout, module.getTargetInformation(TargetTriple.class));
+        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, threadLocalGlobals, targetDataLayout,
+                        module.getTargetInformation(TargetTriple.class));
     }
 
     private void defineGlobals(List<GlobalVariable> globals, List<GlobalVariable> definedGlobals, List<GlobalVariable> externalGlobals, List<GlobalVariable> threadLocalGlobals) {
@@ -120,9 +121,9 @@ public final class LLVMParser {
             symbol = LLVMThreadLocalSymbol.create(global.getName(), runtime.getBitcodeID(), global.getIndex(), global.isExported(), global.isExternalWeak());
             threadLocalGlobals.add(global);
         } else {
-           symbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
-                    global.isExternalWeak());
-           definedGlobals.add(global);
+            symbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
+                            global.isExternalWeak());
+            definedGlobals.add(global);
         }
         runtime.getFileScope().register(symbol);
         registerInPublicFileScope(symbol);

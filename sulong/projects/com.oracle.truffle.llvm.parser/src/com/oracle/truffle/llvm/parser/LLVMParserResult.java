@@ -53,8 +53,8 @@ public final class LLVMParserResult {
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
-                     List<GlobalVariable> threadLocalGlobals,
-                     DataLayout dataLayout,
+                    List<GlobalVariable> threadLocalGlobals,
+                    DataLayout dataLayout,
                     TargetTriple targetTriple) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
