@@ -111,8 +111,6 @@ class EspressoReferenceDrainer implements ContextAccess {
         if (getContext().multiThreadingEnabled()) {
             hostToGuestReferenceDrainThread = env.createThread(drain);
             hostToGuestReferenceDrainThread.setName("Reference Drain");
-        } else {
-            drain.setDrainThreadInactive();
         }
     }
 
@@ -165,7 +163,7 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     void triggerDrain() {
         Meta meta = getMeta();
-        drain.drain(meta, getGuestLock(meta));
+        drain.drain(meta, getGuestLock(meta), false);
     }
 
     @TruffleBoundary
@@ -215,7 +213,6 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     private abstract class ReferenceDrain implements Runnable {
 
-        private volatile boolean isDrainThreadActive = true;
         protected final SubstitutionProfiler profiler = new SubstitutionProfiler();
 
         private void safepoint() {
@@ -230,7 +227,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                 getVM().attachThread(Thread.currentThread());
                 final StaticObject lock = getGuestLock(meta);
                 while (!Thread.currentThread().isInterrupted()) {
-                    drain(meta, lock);
+                    drain(meta, lock, true);
                 }
             } finally {
                 context.getThreadAccess().terminate(context.getCurrentThread());
@@ -241,7 +238,7 @@ class EspressoReferenceDrainer implements ContextAccess {
             }
         }
 
-        private void drain(Meta meta, StaticObject lock) {
+        private void drain(Meta meta, StaticObject lock, boolean block) {
             try {
                 // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
                 // HotSpot's "new behavior": Walk down the list, self-looping the next field
@@ -249,9 +246,9 @@ class EspressoReferenceDrainer implements ContextAccess {
                 EspressoReference head;
                 do {
                     safepoint();
-                    head = popQueue();
+                    head = popQueue(block);
                     if (head == null) {
-                        assert isDrainThreadActive;
+                        assert !meta.getContext().multiThreadingEnabled();
                         return;
                     }
                 } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
@@ -284,12 +281,8 @@ class EspressoReferenceDrainer implements ContextAccess {
             }
         }
 
-        private void setDrainThreadInactive() {
-            isDrainThreadActive = false;
-        }
-
-        private EspressoReference popQueue() throws InterruptedException {
-            if (isDrainThreadActive) {
+        private EspressoReference popQueue(boolean block) throws InterruptedException {
+            if (block) {
                 return (EspressoReference) referenceQueue.remove();
             } else {
                 return (EspressoReference) referenceQueue.poll();
@@ -300,7 +293,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         protected abstract void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock);
     }
 
-    private StaticObject getGuestLock(Meta meta) {
+    private static StaticObject getGuestLock(Meta meta) {
         return meta.java_lang_ref_Reference_lock.getObject(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
     }
 }
