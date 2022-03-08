@@ -53,18 +53,22 @@ public class SignedFloatingIntegerRemNode extends FloatingIntegerDivRemNode<Bina
         super(TYPE, getArithmeticOpTable(x).getRem(), x, y, null);
     }
 
-    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
-        super(TYPE, getArithmeticOpTable(x).getRem(), x, y, zeroCheck);
+    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode floatingGuard) {
+        super(TYPE, getArithmeticOpTable(x).getRem(), x, y, floatingGuard);
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode zeroCheck) {
+    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
+        super(TYPE, getArithmeticOpTable(x).getRem(), x, y, floatingGuard, divisionOverflowFollowsSemantics);
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
         BinaryOp<Rem> op = ArithmeticOpTable.forStamp(x.stamp(view)).getRem();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new SignedFloatingIntegerRemNode(x, y, zeroCheck).canonical(null);
+        return new SignedFloatingIntegerRemNode(x, y, floatingGuard, divisionOverflowFollowsSemantics).canonical(null);
     }
 
     @Override
@@ -73,7 +77,12 @@ public class SignedFloatingIntegerRemNode extends FloatingIntegerDivRemNode<Bina
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = forY.asJavaConstant().asLong();
             if (yConst == 0) {
-                throw GraalError.shouldNotReachHere("Must have never been a floating rem");
+                // Replacing a previous never 0 with constant zero can create this situation
+                if (floatingGuard == null) {
+                    throw GraalError.shouldNotReachHere("Must have never been a floating rem");
+                } else {
+                    return this;
+                }
             }
             return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() % yConst);
         } else if (forY.isConstant()) {

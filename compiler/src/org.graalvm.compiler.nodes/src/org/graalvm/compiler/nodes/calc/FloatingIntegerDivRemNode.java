@@ -55,6 +55,8 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
 
     @SuppressWarnings("rawtypes") public static final NodeClass<FloatingIntegerDivRemNode> TYPE = NodeClass.create(FloatingIntegerDivRemNode.class);
 
+    @OptionalInput(InputType.Guard) protected GuardingNode floatingGuard;
+
     /**
      * Construct a new FloatingIntegerDivRemNode.
      *
@@ -62,40 +64,54 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
      * @param op the division operation of this node
      * @param x the dividend
      * @param y the divisor
-     * @param floatingReason the guard (potentially a {@link MultiGuardNode}) that represents all
+     * @param floatingGuard the guard (potentially a {@link MultiGuardNode}) that represents all
      *            necessary pre-conditions to allow a floating of the previously fixed
      *            {@link IntegerDivRemNode}
      */
-    protected FloatingIntegerDivRemNode(NodeClass<? extends FloatingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode floatingReason) {
+    protected FloatingIntegerDivRemNode(NodeClass<? extends FloatingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode floatingGuard) {
         super(c, op, x, y);
-        this.floatingReason = floatingReason;
+        this.floatingGuard = floatingGuard;
     }
 
-    @OptionalInput(InputType.Guard) protected GuardingNode floatingReason;
+    protected FloatingIntegerDivRemNode(NodeClass<? extends FloatingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode floatingGuard,
+                    boolean divisionOverflowFollowsSemantics) {
+        super(c, op, x, y);
+        this.floatingGuard = floatingGuard;
+        this.divisionOverflowFollowsSemantics = divisionOverflowFollowsSemantics;
+    }
 
     /**
-     * Determines if an external guard (or external knowledge) proves the dividend to be checked for
-     * its getBits().minimalValue(). This means that a division with -1 can never overflow.
+     * Determines if it is allowed for this floating node to produce an overflow during division. If
+     * this is {@code false} the stamps of the dividend and divisor must ensure an overflow never
+     * happens. See {@link SignedDivNode#divOverflowViolatesSemantic(ValueNode, ValueNode, boolean)}
+     * for details.
+     *
+     * If this value is {@code true} either the stamps guaranteed this can never happen or the
+     * architecture guarantees the semantics is followed.
      */
-    private boolean dividendOverflowChecked;
+    private boolean divisionOverflowFollowsSemantics;
 
     @Override
     public GuardingNode getGuard() {
-        return floatingReason;
+        return floatingGuard;
     }
 
-    public void setDividendOverflowChecked() {
-        this.dividendOverflowChecked = true;
+    public void setDivisionOverflowFollowsSemantics() {
+        this.divisionOverflowFollowsSemantics = true;
+    }
+
+    public boolean divisionOverflowFollowsSemantics() {
+        return divisionOverflowFollowsSemantics;
     }
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsagesInterface(this.floatingReason, guard);
-        this.floatingReason = guard;
+        updateUsagesInterface(this.floatingGuard, guard);
+        this.floatingGuard = guard;
     }
 
     /**
-     * Determine if ths division operation can potentially be a division by zero, i.e., the divisor
+     * Determine if the division operation can potentially be a division by zero, i.e., the divisor
      * stamp can contain the value {@code 0}.
      */
     private boolean canDivideByZero() {
@@ -103,14 +119,13 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
         return yStamp.contains(0);
     }
 
-    public boolean canOverflow() {
-        // dividendOverflowChecked -> div can not trap
-        return SignedDivNode.divCanOverflow(x, y, !dividendOverflowChecked);
+    private boolean overflowVisibleSideEffect() {
+        return SignedDivNode.divOverflowViolatesSemantic(x, y, divisionOverflowFollowsSemantics);
     }
 
     @Override
     public boolean verify() {
-        GraalError.guarantee((!canDivideByZero() && !canOverflow()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never trap");
+        GraalError.guarantee((!canDivideByZero() && !overflowVisibleSideEffect()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never create an exception or trap");
         return super.verify();
     }
 }

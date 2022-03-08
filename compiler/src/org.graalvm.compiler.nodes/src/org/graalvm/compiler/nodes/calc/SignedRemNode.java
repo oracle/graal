@@ -68,7 +68,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroGuard(), stamp(view), view, tool);
+        return canonical(this, forX, forY, getZeroGuard(), stamp(view), view, tool, this.canDeoptimize() ? tool.divisionOverflowFollowsSemantics() : true);
     }
 
     /**
@@ -79,11 +79,11 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool) {
-        return canonical(self, forX, forY, zeroCheck, stamp, view, tool, true/* be pessimistic */);
+        return canonical(self, forX, forY, zeroCheck, stamp, view, tool, self == null ? false : !self.canDeoptimize());
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool,
-                    boolean integerDivisionOverflowTraps) {
+                    boolean divisionOverflowFollowsSemantics) {
         if (forX.isConstant() && forY.isConstant()) {
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
@@ -112,14 +112,8 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
         }
         if (tool != null && GraalOptions.FloatingDivNodes.getValue(tool.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            // a: division of a/0 traps
-            // b: division of Integer.MIN_VALUE / -1 overflows
-            if (!yStamp.contains(0) && !SignedDivNode.divCanOverflow(forX, forY, integerDivisionOverflowTraps)) {
-                ValueNode nonTrappingVersion = SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck);
-                if (!integerDivisionOverflowTraps && nonTrappingVersion instanceof FloatingIntegerDivRemNode<?>) {
-                    ((FloatingIntegerDivRemNode<?>) nonTrappingVersion).setDividendOverflowChecked();
-                }
-                return nonTrappingVersion;
+            if (!yStamp.contains(0) && !SignedDivNode.divOverflowViolatesSemantic(forX, forY, divisionOverflowFollowsSemantics)) {
+                return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck, divisionOverflowFollowsSemantics);
             }
         }
 

@@ -115,8 +115,8 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
 
         @Override
-        public boolean integerDivisionOverflowTraps() {
-            return getLowerer().integerDivisionOverflowTraps();
+        public boolean divisionOverflowFollowsSemantics() {
+            return getLowerer().divisionOverflowFollowsSemantics();
         }
 
     }

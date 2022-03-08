@@ -79,6 +79,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -86,7 +87,6 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
@@ -1268,15 +1268,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return;
         }
         if (n.getY().isConstant() && n.getY().asJavaConstant().asLong() == 0) {
-            // always trap
+            // always div by zero
             return;
         }
         if (!GraalOptions.FloatingDivNodes.getValue(n.getOptions())) {
             return;
         }
 
-        boolean integerDivOverflowTraps = tool.getLowerer().integerDivisionOverflowTraps();
-        if (integerDivOverflowTraps) {
+        boolean divisionOverflowFollowsSemantics = tool.getLowerer().divisionOverflowFollowsSemantics();
+        if (!divisionOverflowFollowsSemantics) {
             long minValue = NumUtil.minValue(dividendStamp.getBits());
             if (dividendStamp.contains(minValue)) {
                 /*
@@ -1322,9 +1322,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
             }
         }
-
-        boolean dividendChecked = !integerDivOverflowTraps;
-        if (SignedDivNode.divCanOverflow(dividend, divisor, integerDivOverflowTraps)) {
+        if (SignedDivNode.divOverflowViolatesSemantic(dividend, divisor, divisionOverflowFollowsSemantics)) {
             ConstantNode minVal = ConstantNode.forIntegerBits(divisorStamp.getBits(), NumUtil.minValue(divisorStamp.getBits()));
             LogicNode conditionDividend = graph.addOrUniqueWithInputs(CompareNode.createAnyCompareNode(Condition.GT, n.getX(), minVal, tool.getConstantReflection()));
             GuardingNode guard2 = tool.createGuard(n, conditionDividend, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, false,
@@ -1332,27 +1330,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             int bits = divisorStamp.getBits();
             IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
             dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
-            assert !SignedDivNode.divCanOverflow(dividend, divisor, integerDivOverflowTraps);
+            assert !SignedDivNode.divOverflowViolatesSemantic(dividend, divisor, divisionOverflowFollowsSemantics);
             guard = guard == null ? guard2 : MultiGuardNode.combine(guard2, guard);
-        } else {
-            dividendChecked = true;
         }
 
         ValueNode divRem = null;
         if (n instanceof SignedDivNode) {
-            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard));
+            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowFollowsSemantics));
 
         } else if (n instanceof SignedRemNode) {
-            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard));
+            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowFollowsSemantics));
         } else {
             // do nothing with it
             return;
         }
         n.replaceAtUsages(divRem);
         graph.replaceFixedWithFloating(n, divRem);
-        if (dividendChecked && divRem instanceof FloatingIntegerDivRemNode<?>) {
-            ((FloatingIntegerDivRemNode<?>) divRem).setDividendOverflowChecked();
-        }
     }
 
     protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);

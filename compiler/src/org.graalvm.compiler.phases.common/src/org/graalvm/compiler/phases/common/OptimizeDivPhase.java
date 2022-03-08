@@ -152,7 +152,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
             return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroGuard(), NodeView.DEFAULT);
         } else {
             SignedFloatingIntegerRemNode rem = (SignedFloatingIntegerRemNode) val;
-            return SignedFloatingIntegerDivNode.create(((BinaryNode) val).getX(), ((BinaryNode) val).getY(), NodeView.DEFAULT, rem.getGuard());
+            return SignedFloatingIntegerDivNode.create(((BinaryNode) val).getX(), ((BinaryNode) val).getY(), NodeView.DEFAULT, rem.getGuard(), rem.divisionOverflowFollowsSemantics());
         }
     }
 

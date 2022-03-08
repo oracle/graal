@@ -385,10 +385,11 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     }
 
     @Override
-    public boolean integerDivisionOverflowTraps() {
+    public boolean divisionOverflowFollowsSemantics() {
         if (getLowerer() != null) {
-            return getLowerer().integerDivisionOverflowTraps();
+            return getLowerer().divisionOverflowFollowsSemantics();
         }
-        return true;
+        // prevent accidental floating of divs if we dont know the target arch
+        return false;
     }
 }

@@ -198,7 +198,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             }
 
             @Override
-            public boolean integerDivisionOverflowTraps() {
+            public boolean divisionOverflowFollowsSemantics() {
                 return true;
             }
 

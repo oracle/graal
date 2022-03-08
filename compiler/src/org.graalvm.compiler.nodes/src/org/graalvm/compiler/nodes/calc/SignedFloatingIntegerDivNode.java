@@ -53,18 +53,18 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
         super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, null);
     }
 
-    protected SignedFloatingIntegerDivNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
-        super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, zeroCheck);
+    protected SignedFloatingIntegerDivNode(ValueNode x, ValueNode y, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
+        super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, floatingGuard, divisionOverflowFollowsSemantics);
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode zeroCheck) {
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
         BinaryOp<Div> op = ArithmeticOpTable.forStamp(x.stamp(view)).getDiv();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new SignedFloatingIntegerDivNode(x, y, zeroCheck).canonical(null);
+        return new SignedFloatingIntegerDivNode(x, y, floatingGuard, divisionOverflowFollowsSemantics).canonical(null);
     }
 
     @Override
@@ -73,7 +73,12 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = forY.asJavaConstant().asLong();
             if (yConst == 0) {
-                throw GraalError.shouldNotReachHere("Must have never been a floating div");
+                // Replacing a previous never 0 with constant zero can create this situation
+                if (floatingGuard == null) {
+                    throw GraalError.shouldNotReachHere("Must have never been a floating div");
+                } else {
+                    return this;
+                }
             }
             return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() / yConst);
         } else if (forY.isConstant()) {

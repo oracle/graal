@@ -94,9 +94,8 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     }
 
     @Override
-    public boolean integerDivisionOverflowTraps() {
-        // default behavior
-        return true;
+    public boolean divisionOverflowFollowsSemantics() {
+        return false;
     }
 
 }

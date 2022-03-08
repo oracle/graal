@@ -708,8 +708,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
 
             @Override
-            public boolean integerDivisionOverflowTraps() {
-                return context.getLowerer().integerDivisionOverflowTraps();
+            public boolean divisionOverflowFollowsSemantics() {
+                return context.getLowerer().divisionOverflowFollowsSemantics();
             }
         }
     }

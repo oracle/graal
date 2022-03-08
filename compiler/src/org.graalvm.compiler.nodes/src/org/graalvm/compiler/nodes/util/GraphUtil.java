@@ -1063,10 +1063,11 @@ public class GraphUtil {
         }
 
         @Override
-        public boolean integerDivisionOverflowTraps() {
+        public boolean divisionOverflowFollowsSemantics() {
             if (getLowerer() != null) {
-                return getLowerer().integerDivisionOverflowTraps();
+                return getLowerer().divisionOverflowFollowsSemantics();
             } else {
+                // prevent accidental floating of divs if we dont know the target arch
                 return false;
             }
         }

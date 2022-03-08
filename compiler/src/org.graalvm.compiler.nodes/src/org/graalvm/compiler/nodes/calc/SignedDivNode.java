@@ -67,7 +67,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroGuard(), view, tool.integerDivisionOverflowTraps());
+        return canonical(this, forX, forY, getZeroGuard(), view, this.canDeoptimize() ? tool.divisionOverflowFollowsSemantics() : true);
     }
 
     /**
@@ -80,10 +80,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view) {
-        return canonical(self, forX, forY, zeroCheck, view, true/* be pessimistic */);
+        return canonical(self, forX, forY, zeroCheck, view, self == null ? false : !self.canDeoptimize());
     }
 
-    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view, boolean integerDivisionOverflowTraps) {
+    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view, boolean divisionOverflowFollowsSemantics) {
         Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
         Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
         if (forX.isConstant() && forY.isConstant()) {
@@ -118,14 +118,8 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
         if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            // a: division of a/0 traps
-            // b: division of Integer.MIN_VALUE / -1 overflows
-            if (!yStamp.contains(0) && !divCanOverflow(forX, forY, integerDivisionOverflowTraps)) {
-                ValueNode nonTrappingVersion = SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck);
-                if (!integerDivisionOverflowTraps && nonTrappingVersion instanceof FloatingIntegerDivRemNode<?>) {
-                    ((FloatingIntegerDivRemNode<?>) nonTrappingVersion).setDividendOverflowChecked();
-                }
-                return nonTrappingVersion;
+            if (!yStamp.contains(0) && !divOverflowViolatesSemantic(forX, forY, divisionOverflowFollowsSemantics)) {
+                return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck, divisionOverflowFollowsSemantics);
             }
         }
 
@@ -139,8 +133,15 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return self != null ? self : new SignedDivNode(forX, forY, zeroCheck);
     }
 
-    public static boolean divCanOverflow(ValueNode dividend, ValueNode divisor, boolean divisionCanOverflow) {
-        if (!divisionCanOverflow) {
+    /**
+     * Determines if the given division can violate the Java semantic for integer division (idiv) on
+     * a machine level: Integer division overflow must not throw an exception and is invisible to
+     * the user. This can either be true if the division can never overflow based on the stamps of
+     * the operands or the architecture guarantees no error/trap happens on a machine level for the
+     * overflow.
+     */
+    public static boolean divOverflowViolatesSemantic(ValueNode dividend, ValueNode divisor, boolean divisionOverflowFollowsSemantics) {
+        if (divisionOverflowFollowsSemantics) {
             return false;
         }
         IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);

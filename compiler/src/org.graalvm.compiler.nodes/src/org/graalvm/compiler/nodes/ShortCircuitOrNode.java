@@ -313,8 +313,8 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         }
 
         @Override
-        public boolean integerDivisionOverflowTraps() {
-            return tool.integerDivisionOverflowTraps();
+        public boolean divisionOverflowFollowsSemantics() {
+            return tool.divisionOverflowFollowsSemantics();
         }
     }
 

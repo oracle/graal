@@ -30,8 +30,8 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 public interface AArch64LoweringProviderMixin extends LoweringProvider {
 
     @Override
-    default boolean integerDivisionOverflowTraps() {
-        return false;
+    default boolean divisionOverflowFollowsSemantics() {
+        return true;
     }
 
     @Override
