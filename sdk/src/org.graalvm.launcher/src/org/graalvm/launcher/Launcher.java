@@ -87,6 +87,8 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.shadowed.org.jline.terminal.Terminal;
+import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
@@ -929,8 +931,10 @@ public abstract class Launcher {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s, String indent) {
-        final int width = 120;
+    @SuppressWarnings("hiding")
+    private String wrap(String s, String indent) {
+        final int terminalWidth = Math.max(getTerminalWidth(), indent.length() + 10);
+        final int width = terminalWidth - indent.length();
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
         while (sb.length() > cursor + width) {
@@ -947,6 +951,29 @@ public abstract class Launcher {
             }
         }
         return sb.toString();
+    }
+
+    private static final int FALLBACK_TERMINAL_WIDTH = 120;
+    private int terminalWidth = -1;
+
+    int getTerminalWidth() {
+        if (terminalWidth == -1) {
+            if (System.console() != null) {
+                try (Terminal terminal = createSystemTerminal()) {
+                    terminalWidth = terminal.getWidth();
+                } catch (IOException exception) {
+                    terminalWidth = FALLBACK_TERMINAL_WIDTH;
+                }
+            } else {
+                terminalWidth = FALLBACK_TERMINAL_WIDTH;
+            }
+        }
+        return terminalWidth;
+    }
+
+    static Terminal createSystemTerminal() throws IOException {
+        // Create a system Terminal. JNA is not shipped in the SDK JLINE3 jar.
+        return TerminalBuilder.builder().jansi(Launcher.OS.getCurrent() == Launcher.OS.Windows).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
