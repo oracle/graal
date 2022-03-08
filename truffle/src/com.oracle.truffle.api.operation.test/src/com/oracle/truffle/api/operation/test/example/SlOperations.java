@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation.test.example;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -29,6 +30,14 @@ public class SlOperations {
         @Specialization
         public static boolean lessThan(long lhs, long rhs) {
             return lhs < rhs;
+        }
+    }
+
+    @Operation
+    static class VeryComplexOperation {
+        @Specialization
+        public static long bla(long a1, Object... a2) {
+            return a1 + a2.length;
         }
     }
 }

@@ -1,426 +1,438 @@
 package com.oracle.truffle.dsl.processor.operations;
 
-import javax.lang.model.element.ExecutableElement;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.*;
+
+import java.util.List;
+
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 
-abstract class Instruction {
+public abstract class Instruction {
 
-    static class ExecutorVariables {
+    public final String name;
+    public final int id;
+    public final Argument[] arguments;
+
+    public static class ExecuteVariables {
+        CodeVariableElement bc;
         CodeVariableElement bci;
         CodeVariableElement nextBci;
-        CodeVariableElement bc;
-        CodeVariableElement consts;
-        CodeVariableElement sp;
-        CodeVariableElement funArgs;
+
         CodeVariableElement frame;
+        CodeVariableElement sp;
+        CodeVariableElement consts;
         CodeVariableElement returnValue;
-
-        CodeVariableElement[] arguments;
-        CodeVariableElement[] children;
-        CodeVariableElement result;
-
-        public ExecutorVariables(CodeVariableElement bci, CodeVariableElement nextBci, CodeVariableElement bc, CodeVariableElement consts, CodeVariableElement sp, CodeVariableElement funArgs,
-                        CodeVariableElement frame, CodeVariableElement returnValue) {
-            this.bci = bci;
-            this.nextBci = nextBci;
-            this.bc = bc;
-            this.consts = consts;
-            this.sp = sp;
-            this.funArgs = funArgs;
-            this.frame = frame;
-            this.returnValue = returnValue;
-            this.arguments = null;
-            this.children = null;
-            this.result = null;
-        }
-
+        CodeVariableElement maxStack;
     }
 
-    enum ArgumentType {
-        BYTE(1),
-        SHORT(2),
-        JUMP_TARGET(2),
-        LOCAL(2),
-        FUN_ARG(2),
-        LOCAL_INDEX(2),
-        CONSTANT_POOL(2);
-
-        public final int length;
-
-        public TypeMirror toType(ProcessorContext context, TruffleTypes types) {
-            switch (this) {
-                case BYTE:
-                    return context.getType(byte.class);
-                case LOCAL:
-                case FUN_ARG:
-                case LOCAL_INDEX:
-                case SHORT:
-                    return context.getType(short.class);
-                case JUMP_TARGET:
-                    return types.OperationLabel;
-                case CONSTANT_POOL:
-                    return context.getType(Object.class);
-                default:
-                    throw new IllegalArgumentException(this.toString());
-            }
-        }
-
-        private ArgumentType(int length) {
-            this.length = length;
-        }
-
-        public TypeMirror toExecType(ProcessorContext context, TruffleTypes types) {
-            switch (this) {
-                case BYTE:
-                    return context.getType(byte.class);
-                case SHORT:
-                case JUMP_TARGET:
-                case LOCAL_INDEX:
-                    return context.getType(short.class);
-                case LOCAL:
-                case FUN_ARG:
-                case CONSTANT_POOL:
-                    return context.getType(Object.class);
-                default:
-                    throw new IllegalArgumentException(this.toString());
-            }
-        }
-
-        CodeTree createReaderCode(ExecutorVariables vars, CodeTree offset) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            switch (this) {
-                case BYTE:
-                    b.variable(vars.bc).string("[").tree(offset).string("]");
-                    break;
-                case SHORT:
-                case JUMP_TARGET:
-                case LOCAL_INDEX:
-                    b.startCall("LE_BYTES", "getShort");
-                    b.variable(vars.bc);
-                    b.tree(offset);
-                    b.end();
-                    break;
-                case CONSTANT_POOL:
-                    b.variable(vars.consts);
-                    b.string("[");
-                    b.startCall("LE_BYTES", "getShort");
-                    b.variable(vars.bc);
-                    b.tree(offset);
-                    b.end();
-                    b.string("]");
-                    break;
-                case FUN_ARG:
-                    b.variable(vars.funArgs);
-                    b.string("[");
-                    b.startCall("LE_BYTES", "getShort");
-                    b.variable(vars.bc);
-                    b.tree(offset);
-                    b.end();
-                    b.string("]");
-                    break;
-                case LOCAL:
-                    b.startCall(CodeTreeBuilder.singleVariable(vars.frame), "getValue");
-                    b.startGroup();
-                    b.string("maxStack + ");
-                    b.startCall("LE_BYTES", "getShort");
-                    b.variable(vars.bc);
-                    b.tree(offset);
-                    b.end(3);
-                    break;
-                default:
-                    throw new IllegalArgumentException(this.toString());
-            }
-            return b.build();
-        }
-
-        CodeTree createDumperReaderCode(CodeVariableElement varBc, CodeTree offset) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            switch (this) {
-                case BYTE:
-                    b.variable(varBc).string("[").tree(offset).string("]");
-                    break;
-                case SHORT:
-                case JUMP_TARGET:
-                case LOCAL_INDEX:
-                case FUN_ARG:
-                case CONSTANT_POOL:
-                case LOCAL:
-                    b.startCall("LE_BYTES", "getShort");
-                    b.variable(varBc);
-                    b.tree(offset);
-                    b.end();
-                    break;
-                default:
-                    throw new IllegalArgumentException(this.toString());
-            }
-            return b.build();
-        }
-
-        CodeTree createDumperCode(CodeVariableElement varBc, CodeTree offset, CodeVariableElement sb) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            b.startStatement();
-            b.startCall(sb, "append");
-            b.startCall("String", "format");
-            switch (this) {
-                case BYTE:
-                case SHORT:
-                case LOCAL:
-                case LOCAL_INDEX:
-                case FUN_ARG:
-                case CONSTANT_POOL:
-                    b.doubleQuote("%d ");
-                    break;
-                case JUMP_TARGET:
-                    b.doubleQuote("%04x ");
-                    break;
-                default:
-                    throw new IllegalArgumentException(this.toString());
-            }
-            b.tree(createDumperReaderCode(varBc, offset));
-            b.end(3);
-
-            return b.build();
-        }
-    }
-
-    final int opcodeNumber;
-    final ArgumentType[] arguments;
-    final int stackPops;
-    final int stackPushes;
-
-    protected Instruction(int opcodeNumber, int stackPops, int stackPushes, ArgumentType... arguments) {
-        this.opcodeNumber = opcodeNumber;
-        this.stackPops = stackPops;
-        this.stackPushes = stackPushes;
+    public Instruction(String name, int id, Argument... arguments) {
+        this.name = name;
+        this.id = id;
         this.arguments = arguments;
     }
 
     public int length() {
-        int l = 1;
-        for (ArgumentType arg : arguments) {
-            l += arg.length;
+        int len = 1;
+        for (Argument arg : getArgumentTypes()) {
+            len += arg.length;
         }
-        return l;
+        return len;
     }
 
-    public boolean isDivergent() {
-        return false;
+    public List<Argument> getArgumentTypes() {
+        return List.of(arguments);
     }
 
-    CodeTree createEmitterCode(
-                    TruffleTypes types,
-                    Operation.EmitterVariables vars,
-                    String... varArguments) {
+    public abstract CodeTree createPushCountCode(BuilderVariables vars);
+
+    protected abstract CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2);
+
+    public abstract CodeTree createExecuteCode(ExecuteVariables vars);
+
+    public CodeTree createExecuteEpilogue(ExecuteVariables vars) {
+
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.lineComment("opcode");
+        if (isNormalControlFlow()) {
+            b.startAssign(vars.nextBci).variable(vars.bci).string(" + " + length()).end();
+        }
 
-        // TODO: support multibyte ops
-        OperationGeneratorUtils.buildWriteByte(b, Integer.toString(opcodeNumber), vars.bc, vars.bci);
+        b.statement("break");
 
+        return b.build();
+    }
+
+    public CodeTree createBreakCode(ExecuteVariables vars) {
+        return CodeTreeBuilder.createBuilder().statement("break").build();
+    }
+
+    public boolean isNormalControlFlow() {
+        return true;
+    }
+
+    public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement[] argValues) {
+
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startStatement();
+        b.variable(vars.bc).string("[").variable(vars.bci).string("++]");
+        b.string(" = ");
+        b.string("" + id + " /* " + name + " */");
+        b.end();
+
+        assert argValues.length == arguments.length;
         for (int i = 0; i < arguments.length; i++) {
-            b.lineComment("argument" + i);
-            String argv = varArguments[i];
-            switch (arguments[i]) {
-                case BYTE:
-                    OperationGeneratorUtils.buildWriteByte(b, argv, vars.bc, vars.bci);
-                    break;
-                case LOCAL:
-                case LOCAL_INDEX:
-                case FUN_ARG:
-                case SHORT:
-                    OperationGeneratorUtils.buildWriteShort(b, "(short) " + argv, vars.bc, vars.bci);
-                    break;
-                case CONSTANT_POOL:
-                    b.declaration("int", "argidx_" + i, CodeTreeBuilder.createBuilder().startCall(CodeTreeBuilder.singleVariable(vars.consts), "add").string(argv).end().build());
-                    OperationGeneratorUtils.buildWriteShort(b, "(short) argidx_" + i, vars.bc, vars.bci);
-                    break;
-                case JUMP_TARGET:
-                    b.declaration(types.BuilderOperationLabel, "lbl_" + i, "(" + types.BuilderOperationLabel.asElement().getSimpleName() + ") " + argv);
-                    b.startStatement().startCall("lbl_" + i, "putValue").variable(vars.bc).variable(vars.bci).end(2);
-                    b.startAssign(vars.bci).variable(vars.bci).string("+ 2").end();
-                    break;
-                default:
-                    throw new IllegalArgumentException("unknown argument type " + arguments[i]);
+            b.tree(arguments[i].createBuildCode(vars, argValues[i]));
+            b.startAssign(vars.bci).variable(vars.bci).string(" + " + arguments[i].length).end();
+        }
+
+        return b.build();
+    }
+
+    abstract static class SimpleInstruction extends Instruction {
+
+        private final int pushCount;
+        private final int popCount;
+
+        public SimpleInstruction(String name, int id, int pushCount, int popCount, Argument... arguments) {
+            super(name, id, arguments);
+            this.pushCount = pushCount;
+            this.popCount = popCount;
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("" + pushCount);
+        }
+
+        @Override
+        public CodeTree createExecuteEpilogue(ExecuteVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            for (int i = 0; i < (popCount - pushCount); i++) {
+                createClearStackSlot(vars, i);
             }
-        }
 
-        return b.build();
-    }
-
-    abstract CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars);
-
-    CodeTree createNextBciCode(TruffleTypes types, ExecutorVariables vars) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startAssign(vars.nextBci).variable(vars.bci).string(" + " + length()).end();
-        return b.build();
-    }
-
-    static class StoreLocal extends Instruction {
-        protected StoreLocal(int opcodeNumber) {
-            super(opcodeNumber, 1, 0, ArgumentType.LOCAL_INDEX);
-        }
-
-        @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            b.startStatement();
-            b.startCall(CodeTreeBuilder.singleVariable(vars.frame), "setObject");
-            b.startGroup().string("maxStack + ").variable(vars.arguments[0]).end();
-            b.variable(vars.children[0]);
-            b.end(2);
-
+            b.startAssign(vars.sp).variable(vars.sp).string(" + " + (pushCount - popCount)).end();
+            b.tree(super.createExecuteEpilogue(vars));
             return b.build();
         }
     }
 
-    static class JumpUncond extends Instruction {
-        protected JumpUncond(int opcodeNumber) {
-            super(opcodeNumber, 0, 0, ArgumentType.JUMP_TARGET);
+    public static class Pop extends SimpleInstruction {
+        public Pop(int id) {
+            super("pop", id, 0, 1);
         }
 
         @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            b.startAssign(vars.nextBci).tree(OperationGeneratorUtils.buildReadShort(vars.bc, vars.bci.getName() + " + 1")).end();
-            return b.build();
-        }
-
-        @Override
-        CodeTree createNextBciCode(TruffleTypes types, ExecutorVariables vars) {
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
             return null;
         }
+
+        @Override
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("-1");
+        }
     }
 
-    static class JumpFalse extends Instruction {
-        protected JumpFalse(int opcodeNumber) {
-            super(opcodeNumber, 1, 0, ArgumentType.JUMP_TARGET);
+    public static class BranchFalse extends SimpleInstruction {
+        public BranchFalse(int id) {
+            super("br.false", id, 0, 1, new Argument.BranchTarget());
         }
 
         @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.startIf().string("(boolean) ").variable(vars.children[0]).end();
+            b.declaration("Object", "condition", createReadStack(vars, 0));
+            b.startIf().string("(boolean) condition").end();
             b.startBlock();
             b.startAssign(vars.nextBci).variable(vars.bci).string(" + " + length()).end();
+            b.end().startElseBlock();
+            b.startAssign(vars.nextBci).tree(arguments[0].createReadCode(vars, 1)).end();
             b.end();
-            b.startElseBlock();
-            b.startAssign(vars.nextBci).variable(vars.arguments[0]).end();
-            b.end();
 
             return b.build();
         }
 
         @Override
-        CodeTree createNextBciCode(TruffleTypes types, ExecutorVariables vars) {
-            return null;
-        }
-    }
-
-    static class Pop extends Instruction {
-        protected Pop(int opcodeNumber) {
-            super(opcodeNumber, 1, 0);
+        public boolean isNormalControlFlow() {
+            return false;
         }
 
         @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("-1");
+        }
+    }
+
+    public static class Branch extends SimpleInstruction {
+        public Branch(int id) {
+            super("br", id, 0, 0, new Argument.BranchTarget());
+        }
+
+        @Override
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            b.startStatement().variable(vars.sp).string(" -= 1").end();
+
+            b.startAssign(vars.nextBci).tree(arguments[0].createReadCode(vars, 1)).end();
+
             return b.build();
         }
 
-    }
-
-    static class Return extends Instruction {
-        protected Return(int opcodeNumber) {
-            super(opcodeNumber, 1, 0);
+        @Override
+        public boolean isNormalControlFlow() {
+            return false;
         }
 
         @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("0");
+        }
+    }
+
+    public static class ConstObject extends SimpleInstruction {
+        public ConstObject(int id) {
+            super("const", id, 1, 0, new Argument.Const());
+        }
+
+        @Override
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            b.startAssign(vars.returnValue).variable(vars.children[0]).end();
-            b.statement("break loop");
+
+            b.tree(createWriteStackObject(vars, 1, arguments[0].createReadCode(vars, 1)));
+
             return b.build();
         }
 
         @Override
-        public boolean isDivergent() {
-            return true;
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("1");
         }
     }
 
-    static abstract class SimplePushInstruction extends Instruction {
-        protected SimplePushInstruction(int opcodeNumber, ArgumentType... arguments) {
-            super(opcodeNumber, 0, 1, arguments);
+    public static class Return extends SimpleInstruction {
+        public Return(int id) {
+            super("ret", id, 0, 1);
         }
 
         @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            b.startAssign(vars.result).variable(vars.arguments[0]).end();
+
+            b.startAssign(vars.returnValue).tree(createReadStack(vars, 0)).end();
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createExecuteEpilogue(ExecuteVariables vars) {
+            return CodeTreeBuilder.createBuilder().statement("break loop").build();
+        }
+
+        @Override
+        public boolean isNormalControlFlow() {
+            return false;
+        }
+
+        @Override
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("0");
+        }
+    }
+
+    public static class LoadArgument extends SimpleInstruction {
+        public LoadArgument(int id) {
+            super("ldarg", id, 1, 0, new Argument.Integer(2));
+        }
+
+        @Override
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.declaration("int", "index", arguments[0].createReadCode(vars, 1));
+
+            CodeTree val = CodeTreeBuilder.createBuilder()//
+                            .startCall(vars.frame, "getArguments").end()//
+                            .string("[index]").build();
+
+            b.tree(createWriteStackObject(vars, 1, val));
+
+            return b.build();
+        }
+
+        @Override
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("1");
+        }
+    }
+
+    public static class LoadLocal extends SimpleInstruction {
+        public LoadLocal(int id) {
+            super("ldloc", id, 1, 0, new Argument.Integer(2));
+        }
+
+        @Override
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.declaration("int", "index", arguments[0].createReadCode(vars, 1));
+
+            CodeTree val = createReadLocal(vars, CodeTreeBuilder.singleString("index"));
+
+            b.tree(createWriteStackObject(vars, 1, val));
+
+            return b.build();
+        }
+
+        @Override
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("1");
+        }
+    }
+
+    public static class StoreLocal extends SimpleInstruction {
+        public StoreLocal(int id) {
+            super("starg", id, 0, 1, new Argument.Integer(2));
+        }
+
+        @Override
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.declaration("int", "index", arguments[0].createReadCode(vars, 1));
+
+            CodeTree val = createReadStack(vars, 0);
+
+            b.tree(createWriteLocal(vars, CodeTreeBuilder.singleString("index"), val));
+
+            return b.build();
+        }
+
+        @Override
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("-1");
+        }
+
+        @Override
+        public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement[] argValues) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startIf().variable(vars.maxLocal).string(" < ").variable(argValues[0]).end();
+            b.startAssign(vars.maxLocal).variable(argValues[0]).end();
+            b.tree(super.createBuildCode(vars, argValues));
+
             return b.build();
         }
     }
 
-    static class ConstObject extends SimplePushInstruction {
-        protected ConstObject(int opcodeNumber) {
-            super(opcodeNumber, ArgumentType.CONSTANT_POOL);
-        }
-    }
+    public static class Custom extends Instruction {
 
-    static class LoadLocal extends SimplePushInstruction {
-        protected LoadLocal(int opcodeNumber) {
-            super(opcodeNumber, ArgumentType.LOCAL);
-        }
-    }
+        public final int stackPops;
+        public final boolean isVarArgs;
+        public final TypeElement type;
 
-    static class LoadArgument extends SimplePushInstruction {
-        protected LoadArgument(int opcodeNumber) {
-            super(opcodeNumber, ArgumentType.FUN_ARG);
-        }
-    }
+        private CodeVariableElement uncachedInstance;
 
-    static class Custom extends Instruction {
-        private final TypeElement type;
-
-        private VariableElement uncachedInstance;
-
-        public TypeElement getType() {
-            return type;
-        }
-
-        protected Custom(int opcodeNumber, TypeElement type, ExecutableElement mainMethod) {
-            super(opcodeNumber, mainMethod.getParameters().size(), 1);
+        public Custom(String name, int id, int stackPops, boolean isVarArgs, TypeElement type, Argument... arguments) {
+            super(name, id, arguments);
+            this.stackPops = stackPops;
+            this.isVarArgs = isVarArgs;
             this.type = type;
         }
 
-        public void setUncachedInstance(VariableElement uncachedInstance) {
+        @Override
+        public int length() {
+            return super.length() + (isVarArgs ? 1 : 0);
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("1"); // TODO: support void
+
+        }
+
+        public void setUncachedInstance(CodeVariableElement uncachedInstance) {
             this.uncachedInstance = uncachedInstance;
         }
 
         @Override
-        CodeTree createExecutorCode(TruffleTypes types, ExecutorVariables vars) {
+        public CodeTree createExecuteEpilogue(ExecuteVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            b.startAssign(vars.result);
-            b.startCall(CodeTreeBuilder.createBuilder().staticReference(uncachedInstance).build(), "execute");
-            for (CodeVariableElement child : vars.children) {
-                b.variable(child);
+
+            for (int i = 0; i < stackPops - 1; i++) {
+                createClearStackSlot(vars, i);
             }
-            b.end();
-            b.end();
+
+            b.startAssign(vars.sp).variable(vars.sp).string(" + " + (1 - stackPops)).end();
+
+            b.tree(super.createExecuteEpilogue(vars));
+
             return b.build();
         }
+
+        @Override
+        public CodeTree createExecuteCode(ExecuteVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            CodeTree[] vals = new CodeTree[stackPops];
+            if (isVarArgs) {
+                b.declaration("byte", "varArgCount", arguments[0].createReadCode(vars, 1));
+                b.declaration("Object[]", "varArgs", "new Object[varArgCount]");
+
+                b.startFor().string("int i = 0; i < varArgCount; i++").end();
+                b.startBlock();
+
+                String stackIndex = "i - varArgCount + 1";
+
+                b.startStatement();
+                b.string("varArgs[i] = ");
+                b.tree(createReadStack(vars, CodeTreeBuilder.singleString(stackIndex)));
+                b.end();
+
+                b.end();
+
+                vals[stackPops - 1] = CodeTreeBuilder.singleString("varArgs");
+
+                for (int i = 1; i < stackPops; i++) {
+                    String stackIndex2 = "- (varArgCount + " + i + ")";
+                    vals[vals.length - 1 - i] = createReadStack(vars, CodeTreeBuilder.singleString(stackIndex2));
+                }
+
+            } else {
+                for (int i = 0; i < stackPops; i++) {
+                    vals[vals.length - 1 - i] = createReadStack(vars, -i);
+                }
+            }
+
+            int resultOffset = 1 - stackPops;
+
+            CodeTree instance = CodeTreeBuilder.createBuilder() //
+                            .staticReference(uncachedInstance) //
+                            .build();
+
+            CodeTreeBuilder bCall = CodeTreeBuilder.createBuilder();
+            bCall.startCall(instance, "execute");
+            for (int i = 0; i < stackPops; i++) {
+                bCall.tree(vals[i]);
+            }
+            bCall.end(2);
+
+            b.tree(createWriteStackObject(vars, resultOffset, bCall.build()));
+
+            return b.build();
+        }
+
+        @Override
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+            return CodeTreeBuilder.singleString("(1 - " + vars.numChildren.getName() + ")");
+        }
+
     }
+
 }

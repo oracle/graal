@@ -1,399 +1,417 @@
 package com.oracle.truffle.dsl.processor.operations;
 
-import java.util.ArrayList;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createCreateLabel;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitInstruction;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitLabel;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.getTypes;
+
 import java.util.Collection;
+import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.Instruction.ArgumentType;
 
-abstract class Operation {
-
-    static class EmitterVariables {
-        final CodeExecutableElement self;
-        final CodeVariableElement bc;
-        final CodeVariableElement bci;
-        final CodeVariableElement consts;
-        final CodeVariableElement children;
-        final CodeVariableElement arguments;
-
-        public EmitterVariables(CodeExecutableElement self, CodeVariableElement bc, CodeVariableElement bci, CodeVariableElement consts, CodeVariableElement children,
-                        CodeVariableElement arguments) {
-            this.self = self;
-            this.bc = bc;
-            this.bci = bci;
-            this.consts = consts;
-            this.children = children;
-            this.arguments = arguments;
-        }
-    }
-
-    static class CtorVariables {
-        final CodeVariableElement children;
-        final CodeVariableElement arguments;
-        final CodeVariableElement returnsValue;
-        final CodeVariableElement maxStack;
-        final CodeVariableElement maxLocals;
-
-        public CtorVariables(CodeVariableElement children, CodeVariableElement arguments, CodeVariableElement returnsValue, CodeVariableElement maxStack, CodeVariableElement maxLocals) {
-            this.children = children;
-            this.arguments = arguments;
-            this.returnsValue = returnsValue;
-            this.maxStack = maxStack;
-            this.maxLocals = maxLocals;
-        }
-    }
-
+public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
 
-    public static final int RETURNS_VALUE_NEVER = 0;
-    public static final int RETURNS_VALUE_ALWAYS = 1;
-    public static final int RETURNS_VALUE_DIVERGE = 2;
+    public final OperationsBuilder builder;
+    public final String name;
+    public final int id;
+    public final int children;
 
-    protected final String name;
-    protected final int type;
-    protected final int children;
-    protected final Instruction[] instructions;
-
-    public static final int COMMON_OPCODE_JUMP_UNCOND = 0;
-    public static final int COMMON_OPCODE_JUMP_FALSE = 1;
-    public static final int COMMON_OPCODE_POP = 2;
-    protected static final int NUM_COMMON_OPCODES = 3;
-
-    protected Instruction[] commonInstructions;
-
-    static Instruction[] createCommonOpcodes(int start) {
-        Instruction[] commonOpcodes = new Instruction[NUM_COMMON_OPCODES];
-        commonOpcodes[COMMON_OPCODE_JUMP_UNCOND] = new Instruction.JumpUncond(start);
-        commonOpcodes[COMMON_OPCODE_JUMP_FALSE] = new Instruction.JumpFalse(start + 1);
-        commonOpcodes[COMMON_OPCODE_POP] = new Instruction.Pop(start + 2);
-        return commonOpcodes;
-    }
-
-    protected Operation(String name, int type, int children, Instruction... opcodes) {
+    protected Operation(OperationsBuilder builder, String name, int id, int children) {
+        this.builder = builder;
         this.name = name;
-        this.type = type;
+        this.id = id;
         this.children = children;
-        this.instructions = opcodes;
     }
 
-    public void setCommonInstructions(Instruction[] commonInstructions) {
-        this.commonInstructions = commonInstructions;
+    public final boolean isVariableChildren() {
+        return children == VARIABLE_CHILDREN;
     }
 
-    public String getName() {
-        return name;
+    public static class BuilderVariables {
+        CodeVariableElement bc;
+        CodeVariableElement bci;
+        CodeVariableElement consts;
+
+        CodeVariableElement stackUtility;
+
+        CodeVariableElement lastChildPushCount;
+        CodeVariableElement childIndex;
+        CodeVariableElement numChildren;
+        CodeVariableElement[] arguments;
+
+        CodeVariableElement curStack;
+        CodeVariableElement maxStack;
+        CodeVariableElement maxLocal;
     }
 
-    public TypeMirror[] getBuilderArgumentTypes(ProcessorContext context, TruffleTypes types) {
-        ArrayList<TypeMirror> arr = new ArrayList<>();
-
-        for (Instruction.ArgumentType art : getArgumentTypes()) {
-            arr.add(art.toType(context, types));
-        }
-
-        return arr.toArray(new TypeMirror[arr.size()]);
+    public int minimumChildren() {
+        assert isVariableChildren() : "should only be called for variadics";
+        return 0;
     }
 
-    public Collection<ArgumentType> getArgumentTypes() {
-        ArrayList<ArgumentType> arr = new ArrayList<>();
-        for (Instruction inst : instructions) {
-            for (Instruction.ArgumentType art : inst.arguments) {
-                arr.add(art);
-            }
-        }
-
-        return arr;
+    public List<Argument> getArguments() {
+        return List.of();
     }
 
-    public boolean hasChildren() {
-        return children != 0;
+    public final List<TypeMirror> getBuilderArgumentTypes() {
+        return getArguments().stream().map(x -> x.toBuilderArgumentType()).toList();
     }
 
-    public int getType() {
-        return type;
+    public CodeTree createBeginCode(BuilderVariables vars) {
+        return null;
     }
 
-    public boolean keepsChildValues() {
-        return false;
+    public CodeTree createAfterChildCode(BuilderVariables vars) {
+        return null;
     }
 
-    public abstract CodeTree createCtorCode(TruffleTypes types, CtorVariables vars);
+    public CodeTree createBeforeChildCode(BuilderVariables vars) {
+        return null;
+    }
 
-    public abstract CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars);
+    public CodeTree createEndCode(BuilderVariables vars) {
+        return null;
+    }
 
-    static class SimpleOperation extends Operation {
+    public abstract CodeTree createPushCountCode(BuilderVariables vars);
 
-        SimpleOperation(String name, int type, Instruction opcode) {
-            super(name, type, opcode.stackPops, opcode);
+    public static class Custom extends Operation {
+        final Instruction.Custom instruction;
+
+        protected Custom(OperationsBuilder builder, String name, int id, int children, Instruction.Custom instruction) {
+            super(builder, name, id, instruction.isVarArgs ? VARIABLE_CHILDREN : children);
+            this.instruction = instruction;
         }
 
         @Override
-        public CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars) {
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return instruction.createPushCountCode(vars);
+        }
+
+        @Override
+        public List<Argument> getArguments() {
+            return instruction.getArgumentTypes();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            return createEmitInstruction(vars, instruction, vars.arguments);
+        }
+
+        @Override
+        public int minimumChildren() {
+            if (instruction.isVarArgs) {
+                return instruction.stackPops - 1;
+            } else {
+                return super.minimumChildren();
+            }
+        }
+    }
+
+    public static class Simple extends Operation {
+
+        private final Instruction instruction;
+
+        protected Simple(OperationsBuilder builder, String name, int id, int children, Instruction instruction) {
+            super(builder, name, id, children);
+            this.instruction = instruction;
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            for (int i = 0; i < children; i++) {
-                OperationGeneratorUtils.buildChildCall(b, Integer.toString(i), vars);
-            }
-
-            String[] arguments = new String[instructions[0].arguments.length];
-
-            for (int i = 0; i < arguments.length; i++) {
-                arguments[i] = vars.arguments.getName() + "[" + i + "]";
-            }
-
-            b.tree(instructions[0].createEmitterCode(types, vars, arguments));
+            b.tree(createEmitInstruction(vars, instruction, vars.arguments));
 
             return b.build();
         }
 
         @Override
-        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return this.instruction.createPushCountCode(vars);
+        }
+
+        @Override
+        public List<Argument> getArguments() {
+            return instruction.getArgumentTypes();
+        }
+    }
+
+    public static class Block extends Operation {
+        protected Block(OperationsBuilder builder, int id) {
+            super(builder, "Block", id, VARIABLE_CHILDREN);
+        }
+
+        @Override
+        public CodeTree createBeforeChildCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            // returnsValue
+            b.startIf().variable(vars.childIndex).string(" != 0").end();
+            b.startBlock(); // {
 
-            for (int i = 0; i < children; i++) {
-                b.startAssert().variable(vars.children).string("[" + i + "].").variable(vars.returnsValue).string(" != " + RETURNS_VALUE_NEVER).end();
+            b.tree(createPopLastChildCode(vars));
+
+            b.end(); // }
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleVariable(vars.lastChildPushCount);
+        }
+    }
+
+    public static class IfThen extends Operation {
+        protected IfThen(OperationsBuilder builder, int id) {
+            super(builder, "IfThen", id, 2);
+        }
+
+        @Override
+        public CodeTree createAfterChildCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startIf().variable(vars.childIndex).string(" == 0").end();
+            b.startBlock();
+            {
+                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+
+                // utilstack: ...
+                b.tree(createPushUtility(varEndLabel, vars));
+                // utilstack ..., endLabel
+
+                b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varEndLabel));
             }
+            b.end().startElseBlock();
+            {
+                b.tree(createPopLastChildCode(vars));
 
-            b.startAssign("this", vars.returnsValue);
-            b.string(this.instructions[0].stackPushes > 0 ? "" + RETURNS_VALUE_ALWAYS : "" + RETURNS_VALUE_NEVER);
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+
+                // utilstack ..., endLabel
+                b.tree(createPopUtility(varEndLabel, vars));
+                // utilstack ...
+
+                b.tree(createEmitLabel(vars, varEndLabel));
+            }
             b.end();
 
             return b.build();
         }
 
         @Override
-        public boolean keepsChildValues() {
-            return true;
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
         }
     }
 
-    static class CustomOperation extends SimpleOperation {
+    public static class IfThenElse extends Operation {
 
-        public CustomOperation(String name, int type, Instruction.Custom opcode) {
-            super(name, type, opcode);
-        }
+        private final boolean hasValue;
 
-        public Instruction.Custom getCustomInstruction() {
-            return (Instruction.Custom) instructions[0];
-        }
-
-    }
-
-    static abstract class PseudoOperation extends Operation {
-        public PseudoOperation(String name, int type, int children) {
-            super(name, type, children);
-        }
-    }
-
-    static class Block extends PseudoOperation {
-        public Block(int type) {
-            super("Block", type, VARIABLE_CHILDREN);
+        public IfThenElse(OperationsBuilder builder, int id, boolean hasValue) {
+            super(builder, hasValue ? "Conditional" : "IfThenElse", id, 3);
+            this.hasValue = hasValue;
         }
 
         @Override
-        public CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            b.startFor().string("int i = 0; i < " + vars.children.getName() + ".length; i++").end();
-            b.startBlock();
-            OperationGeneratorUtils.buildChildCall(b, "i", vars);
-            b.end();
-
-            return b.build();
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString(hasValue ? "1" : "0");
         }
 
         @Override
-        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            b.startIf().variable(vars.children).string(".length > 0").end();
-            b.startBlock();
-
-            b.startAssign("this", vars.returnsValue);
-            b.variable(vars.children).string("[").variable(vars.children).string(".length - 1].").variable(vars.returnsValue);
-            b.end(2);
-
-            b.startElseBlock();
-
-            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER);
-            b.end(2);
-
-            return b.build();
-        }
-
-    }
-
-    static class IfThen extends PseudoOperation {
-        public IfThen(int type) {
-            super("IfThen", type, 2);
-        }
-
-        @Override
-        public CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        public CodeTree createAfterChildCode(BuilderVariables vars) {
 
             // <<child0>>
-            OperationGeneratorUtils.buildChildCall(b, "0", vars);
-
-            // jump_false end
-            OperationGeneratorUtils.buildWriteByte(b, "" + commonInstructions[COMMON_OPCODE_JUMP_FALSE].opcodeNumber, vars.bc, vars.bci);
-            b.declaration("int", "fwdref_end", CodeTreeBuilder.singleVariable(vars.bci));
-            b.startAssign(vars.bci).variable(vars.bci).string(" + 2").end();
+            // brfalse elseLabel
 
             // <<child1>>
-            OperationGeneratorUtils.buildChildCall(b, "1", vars);
-
-            // end:
-            OperationGeneratorUtils.buildWriteForwardReference(b, "fwdref_end", vars.bc, vars.bci);
-
-            return b.build();
-        }
-
-        @Override
-        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
-
-            return b.build();
-        }
-
-    }
-
-    static class IfThenElse extends PseudoOperation {
-        public IfThenElse(int type) {
-            super("IfThenElse", type, 3);
-        }
-
-        @Override
-        public CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            // <<child0>>
-            OperationGeneratorUtils.buildChildCall(b, "0", vars);
-
-            // jump_false else
-            OperationGeneratorUtils.buildWriteByte(b, "" + commonInstructions[COMMON_OPCODE_JUMP_FALSE].opcodeNumber, vars.bc, vars.bci);
-            b.declaration("int", "fwdref_else", CodeTreeBuilder.singleVariable(vars.bci));
-            b.startAssign(vars.bci).variable(vars.bci).string(" + 2").end();
-
-            // <<child1>>
-            OperationGeneratorUtils.buildChildCall(b, "1", vars);
-
-            // jump_uncond end
-            OperationGeneratorUtils.buildWriteByte(b, "" + commonInstructions[COMMON_OPCODE_JUMP_UNCOND].opcodeNumber, vars.bc, vars.bci);
-            b.declaration("int", "fwdref_end", CodeTreeBuilder.singleVariable(vars.bci));
-            b.startAssign(vars.bci).variable(vars.bci).string(" + 2").end();
-
-            // else:
-            OperationGeneratorUtils.buildWriteForwardReference(b, "fwdref_else", vars.bc, vars.bci);
+            // br endLabel
+            // elseLabel:
 
             // <<child2>>
-            OperationGeneratorUtils.buildChildCall(b, "2", vars);
+            // endLabel:
 
-            // end:
-            OperationGeneratorUtils.buildWriteForwardReference(b, "fwdref_end", vars.bc, vars.bci);
-
-            return b.build();
-        }
-
-        @Override
-        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.startAssert().variable(vars.children).string("[0].").variable(vars.returnsValue).string("!= " + RETURNS_VALUE_NEVER).end();
+            b.startIf().variable(vars.childIndex).string(" == 0").end();
+            b.startBlock();
+            {
+                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
 
-            b.declaration("int", "rv_1", "children[1].returnsValue");
-            b.declaration("int", "rv_2", "children[2].returnsValue");
+                CodeVariableElement varElseLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "elseLabel");
+                b.declaration(getTypes().BuilderOperationLabel, varElseLabel.getName(), createCreateLabel());
 
-            b.startIf().string("rv_1 == " + RETURNS_VALUE_NEVER + " || rv_2 == " + RETURNS_VALUE_NEVER).end();
-            b.startBlock().startAssign(vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end(2);
-            b.startElseBlock().startAssign(vars.returnsValue).string("" + RETURNS_VALUE_ALWAYS).end(2);
-            return b.build();
-        }
+                // utilstack: ...
+                b.tree(createPushUtility(varElseLabel, vars));
+                // utilstack ..., elseLabel
 
-    }
+                b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varElseLabel));
+            }
+            b.end();
+            b.startElseIf().variable(vars.childIndex).string(" == 1").end();
+            b.startBlock(); // {
+            {
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+                CodeVariableElement varElseLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "elseLabel");
 
-    static class While extends PseudoOperation {
-        public While(int type) {
-            super("While", type, 2);
-        }
+                if (hasValue) {
+                    b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+                } else {
+                    b.tree(createPopLastChildCode(vars));
+                }
 
-        @Override
-        public CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
 
-            // start:
-            b.declaration("int", "backref_start", CodeTreeBuilder.singleVariable(vars.bci));
+                // utilstack ..., elseLabel
+                b.tree(createPopUtility(varElseLabel, vars));
+                // utilstack ...
+                b.tree(createPushUtility(varEndLabel, vars));
+                // utilstack ..., endLabel
 
-            // <<child0>>
-            OperationGeneratorUtils.buildChildCall(b, "0", vars);
+                b.tree(createEmitInstruction(vars, builder.commonBranch, varEndLabel));
+                b.tree(createEmitLabel(vars, varElseLabel));
+            }
+            b.end().startElseBlock();
+            {
 
-            // jump_false end
-            OperationGeneratorUtils.buildWriteByte(b, "" + commonInstructions[COMMON_OPCODE_JUMP_FALSE].opcodeNumber, vars.bc, vars.bci);
-            b.declaration("int", "fwdref_end", CodeTreeBuilder.singleVariable(vars.bci));
-            b.startAssign(vars.bci).variable(vars.bci).string(" + 2").end();
+                if (hasValue) {
+                    b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+                } else {
+                    b.tree(createPopLastChildCode(vars));
+                }
 
-            // <<child1>>
-            OperationGeneratorUtils.buildChildCall(b, "1", vars);
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
 
-            // jump start
-            OperationGeneratorUtils.buildWriteByte(b, "" + commonInstructions[COMMON_OPCODE_JUMP_UNCOND].opcodeNumber, vars.bc, vars.bci);
-            OperationGeneratorUtils.buildWriteShort(b, "backref_start", vars.bc, vars.bci);
+                // utilstack ..., endLabel
+                b.tree(createPopUtility(varEndLabel, vars));
+                // utilstack ...
 
-            // end:
-            OperationGeneratorUtils.buildWriteForwardReference(b, "fwdref_end", vars.bc, vars.bci);
-
-            return b.build();
-        }
-
-        @Override
-        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
+                b.tree(createEmitLabel(vars, varEndLabel));
+            }
+            b.end();
 
             return b.build();
         }
     }
 
-    static class Label extends PseudoOperation {
-        public Label(int type) {
-            super("Label", type, 0);
+    public static class While extends Operation {
+        public While(OperationsBuilder builder, int id) {
+            super(builder, "While", id, 2);
         }
 
         @Override
-        public CodeTree createEmitterCode(TruffleTypes types, EmitterVariables vars) {
+        public CodeTree createBeginCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.declaration(types.BuilderOperationLabel, "lbl", CodeTreeBuilder.createBuilder().cast(types.BuilderOperationLabel).variable(vars.arguments).string("[0]").build());
-            b.startStatement().startCall("lbl", "resolve").variable(vars.bc).variable(vars.bci).end(2);
+            CodeVariableElement varStartLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "startLabel");
+            b.declaration(getTypes().BuilderOperationLabel, varStartLabel.getName(), createCreateLabel());
+
+            b.tree(createEmitLabel(vars, varStartLabel));
+
+            b.tree(createPushUtility(varStartLabel, vars));
+            // utilstack: ..., startLabel
 
             return b.build();
         }
 
         @Override
-        public TypeMirror[] getBuilderArgumentTypes(ProcessorContext context, TruffleTypes types) {
-            return new TypeMirror[]{types.OperationLabel};
-        }
-
-        @Override
-        public CodeTree createCtorCode(TruffleTypes types, CtorVariables vars) {
+        public CodeTree createAfterChildCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.startAssign("this", vars.returnsValue).string("" + RETURNS_VALUE_NEVER).end();
+            b.startIf().variable(vars.childIndex).string(" == 0").end();
+            b.startBlock();
+            {
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+
+                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+
+                // utilstack: ..., startLabel
+                b.tree(createPushUtility(varEndLabel, vars));
+                // utilstack ..., startLabel, endLabel
+
+                b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varEndLabel));
+            }
+            b.end().startElseBlock();
+            {
+                b.tree(createPopLastChildCode(vars));
+
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+                CodeVariableElement varStartLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "startLabel");
+
+                // utilstack ..., startLabel, endLabel
+                b.tree(createPopUtility(varEndLabel, vars));
+                b.tree(createPopUtility(varStartLabel, vars));
+                // utilstack ...
+
+                b.tree(createEmitInstruction(vars, builder.commonBranch, varStartLabel));
+
+                b.tree(createEmitLabel(vars, varEndLabel));
+            }
+
+            b.end();
 
             return b.build();
         }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
+        }
+    }
+
+    public static class Label extends Operation {
+        public Label(OperationsBuilder builder, int id) {
+            super(builder, "Label", id, 0);
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            return createEmitLabel(vars, CodeTreeBuilder.singleString("((BuilderOperationLabel) " + vars.arguments[0].getName() + ")"));
+        }
+
+        @Override
+        public List<Argument> getArguments() {
+            return List.of(new Argument.BranchTarget());
+        }
+    }
+
+    protected static final CodeTree createPopUtility(TypeMirror type, BuilderVariables vars) {
+        return CodeTreeBuilder.createBuilder().cast(type).startCall(vars.stackUtility, "pop").end().build();
+    }
+
+    protected static final CodeTree createPopUtility(CodeVariableElement target, BuilderVariables vars) {
+        return CodeTreeBuilder.createBuilder().declaration(target.asType(), target.getName(), createPopUtility(target.asType(), vars)).build();
+    }
+
+    protected static final CodeTree createPushUtility(CodeVariableElement target, BuilderVariables vars) {
+        return CodeTreeBuilder.createBuilder().startStatement().startCall(vars.stackUtility, "push").variable(target).end(2).build();
+    }
+
+    protected final CodeTree createPopLastChildCode(BuilderVariables vars) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startFor().string("int i = 0; i < ", vars.lastChildPushCount.getName(), "; i++").end();
+        b.startBlock(); // {
+
+        b.tree(createEmitInstruction(vars, builder.commonPop));
+
+        b.end(); // }
+        return b.build();
     }
 
 }

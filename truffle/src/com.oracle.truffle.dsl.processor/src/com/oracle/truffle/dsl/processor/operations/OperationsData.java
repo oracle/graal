@@ -13,37 +13,30 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 public class OperationsData extends Template {
-    private final List<Operation> operations = new ArrayList<>();
+
+    private final OperationsBuilder builder = new OperationsBuilder();
 
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
     }
 
-    public List<Operation> getOperations() {
-        return operations;
+    public OperationsBuilder getOperationsBuilder() {
+        return builder;
     }
 
     public Collection<Instruction> getInstructions() {
-        Set<Instruction> instrs = new HashSet<>();
-
-        for (Instruction insn : getOperations().get(0).commonInstructions) {
-            instrs.add(insn);
-        }
-
-        for (Operation op : getOperations()) {
-            for (Instruction insn : op.instructions) {
-                instrs.add(insn);
-            }
-        }
-
-        return instrs;
+        return builder.instructions;
     }
 
-    public Collection<Operation.CustomOperation> getCustomOperations() {
-        return operations.stream()//
-                        .filter(x -> x instanceof Operation.CustomOperation)//
-                        .map(x -> (Operation.CustomOperation) x)//
+    public Collection<Operation.Custom> getCustomOperations() {
+        return builder.operations.stream()//
+                        .filter(x -> x instanceof Operation.Custom)//
+                        .map(x -> (Operation.Custom) x)//
                         .toList();
+    }
+
+    public Collection<Operation> getOperations() {
+        return builder.operations;
     }
 
 }

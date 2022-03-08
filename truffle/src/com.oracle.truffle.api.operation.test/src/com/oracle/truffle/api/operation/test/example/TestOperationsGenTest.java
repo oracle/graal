@@ -78,6 +78,11 @@ public class TestOperationsGenTest {
         runTest(TestOperationsGenTest::parseBreakLoop, 10L, 15L);
     }
 
+    @Test
+    public void testVeryComplex() {
+        runTest(TestOperationsGenTest::parseVeryComplex, 10L);
+    }
+
     private static void runTest(Consumer<SlOperationsBuilderino> parse, Object expectedResult, Object... args) {
         System.out.println("------------------------------------");
         SlOperationsBuilderino b = SlOperationsBuilderino.createBuilder();
@@ -194,6 +199,25 @@ public class TestOperationsGenTest {
 
         b.beginReturn();
         b.emitLoadLocal((short) 0);
+        b.endReturn();
+    }
+
+    private static void parseVeryComplex(SlOperationsBuilderino b) {
+        // function veryComplex() {
+        // return veryComplex(1, 2, 3, 4, 5) + 6
+        // }
+
+        b.beginReturn();
+        b.beginAddOperation();
+        b.emitConstObject(6L);
+        b.beginVeryComplexOperation();
+        b.emitConstObject(1L);
+        b.emitConstObject(2L);
+        b.emitConstObject(3L);
+        b.emitConstObject(4L);
+        b.emitConstObject(5L);
+        b.endVeryComplexOperation();
+        b.endAddOperation();
         b.endReturn();
     }
 

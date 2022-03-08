@@ -24,9 +24,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         return null;
     }
 
-    private int opId = 0;
-    private int opcodeId = 1;
-
     @Override
     protected OperationsData parse(Element element, List<AnnotationMirror> mirror) {
 
@@ -34,8 +31,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         AnnotationMirror generateOperationsMirror = getAnnotationMirror(mirror, types.GenerateOperations);
 
         OperationsData data = new OperationsData(ProcessorContext.getInstance(), typeElement, generateOperationsMirror);
-
-        addPrimitives(data);
 
         for (Element e : typeElement.getEnclosedElements()) {
             AnnotationMirror operationMirror = getAnnotationMirror(e.getAnnotationMirrors(), types.Operation);
@@ -53,29 +48,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         }
 
         return data;
-    }
-
-    private void addPrimitives(OperationsData data) {
-        Instruction[] commonOpcodes = Operation.createCommonOpcodes(opcodeId);
-        opcodeId += commonOpcodes.length;
-
-        addPrimitive(data, commonOpcodes, new Operation.Block(opId++));
-        addPrimitive(data, commonOpcodes, new Operation.IfThen(opId++));
-        addPrimitive(data, commonOpcodes, new Operation.IfThenElse(opId++));
-        addPrimitive(data, commonOpcodes, new Operation.While(opId++));
-        addPrimitive(data, commonOpcodes, new Operation.Label(opId++));
-        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("LoadLocal", opId++, new Instruction.LoadLocal(opcodeId++)));
-        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("StoreLocal", opId++, new Instruction.StoreLocal(opcodeId++)));
-        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("LoadArgument", opId++, new Instruction.LoadArgument(opcodeId++)));
-        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("ConstObject", opId++, new Instruction.ConstObject(opcodeId++)));
-        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("Return", opId++, new Instruction.Return(opcodeId++)));
-        addPrimitive(data, commonOpcodes, new Operation.SimpleOperation("Branch", opId++, commonOpcodes[Operation.COMMON_OPCODE_JUMP_UNCOND]));
-
-    }
-
-    private static void addPrimitive(OperationsData data, Instruction[] commonOpcodes, Operation op) {
-        op.setCommonInstructions(commonOpcodes);
-        data.getOperations().add(op);
     }
 
     private void processOperation(OperationsData data, TypeElement te) {
@@ -96,23 +68,39 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         ExecutableElement first = operationFunctions.get(0);
         List<DeclaredType> arguments = List.of(); // TODO
-        int numChildren = first.getParameters().size();
+        int numParams = first.getParameters().size();
         boolean returnsValue = !first.getReturnType().equals(context.getType(void.class));
 
         for (ExecutableElement fun : operationFunctions) {
             // check all functions have the same number of parameters
             int numChildParameters = fun.getParameters().size();
             boolean funReturnsValue = !fun.getReturnType().equals(context.getType(void.class));
-            if (numChildParameters != numChildren) {
-                data.addWarning(fun, "Expected %d child parameters, found %d", numChildren, numChildParameters);
+            if (numChildParameters != numParams) {
+                data.addWarning(fun, "Expected %d child parameters, found %d", numParams, numChildParameters);
             }
             if (funReturnsValue != returnsValue) {
                 data.addWarning(fun, "Not all functions return values!");
             }
         }
 
-        Operation op = new Operation.CustomOperation(te.getSimpleName().toString(), opId++, new Instruction.Custom(opcodeId++, te, first));
-        data.getOperations().add(op);
+        OperationsBuilder builder = data.getOperationsBuilder();
+
+        Instruction.Custom instr;
+        if (first.isVarArgs()) {
+            instr = new Instruction.Custom(
+                            "custom." + te.getSimpleName(),
+                            builder.getNextInstructionId(),
+                            numParams, first.isVarArgs(), te,
+                            new Argument.VarArgsCount(numParams - 1));
+        } else {
+            instr = new Instruction.Custom(
+                            "custom." + te.getSimpleName(),
+                            builder.getNextInstructionId(),
+                            numParams, first.isVarArgs(), te);
+        }
+        builder.add(instr);
+        Operation.Custom op = new Operation.Custom(builder, te.getSimpleName().toString(), builder.getNextOperationId(), numParams, instr);
+        builder.add(op);
     }
 
     private static boolean isOperationFunction(ExecutableElement el) {
