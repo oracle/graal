@@ -35,7 +35,7 @@ ifeq ($(OS), darwin)
 default: objc/test001.bc objc/ref.out
 else
 default:
-	touch objc
+	@mkdir -p objc
 endif
 
 objc/test001.bc: objc/test001.m objc/Makefile
