@@ -6,13 +6,13 @@ permalink: /docs/getting-started/container-images/
 
 ## GraalVM Enterprise Images
 
-To support container-based development, GraalVM Enterprise container images are published in the [Oracle Container Registry](https://docs.oracle.com/en-us/iaas/Content/Registry/Concepts/registryoverview.htm).
+To support container-based development, GraalVM Enterprise container images are published in the [Oracle Container Registry](https://container-registry.oracle.com).
 In this guide you will learn how to start using GraalVM Enterprise images for Docker containers.
 
 ## Images Tagging Policy and Availability
 
-There are different images provided depending on the platform, the architecture and the Java version.
-The images are multi-arch (`aarch64` or `amd64` depending on Docker host architecture), and tagged with the format `container-registry.oracle.com/graalvm/jdk-ee:latest`.
+There are different images provided depending on the platform, the architecture, and the Java version.
+The images are multi-arch (`aarch64` or `amd64` depending on Docker host architecture), and tagged with the format `container-registry.oracle.com/graalvm/IMAGE_NAME:version`.
 
 The version tag defines the level of specificity.
 It is recommended that the most specific tag be used, e.g., `java17-21.3.0` or `java17-21.3.0-b1`, where the `-b1` means the image required a patch and this specific build will never change. All images support the installation of extra features. 
@@ -28,14 +28,14 @@ The following GraalVM Enterprise container images are available:
 
 ## Get Started
 
-Oracle Container Registry provides access to Oracle products to use in Docker containers.
+[Oracle Container Registry](https://container-registry.oracle.com). provides access to Oracle products to use in Docker containers. 
 To start using GraalVM Enterprise images, you should accept the [Oracle Technology Network License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html). 
 
-1. Go to [Oracle Container Registry](https://container-registry.oracle.com/) and click on “GraalVM”. You will be redirected to the GraalVM repositories page with different images types.
+1. Go to [Oracle Container Registry](https://container-registry.oracle.com/) and click on “GraalVM”.You will be redirected to the GraalVM repositories page.
 
     ![](/img/ocir.png)
 
-2. Click on the necessary image. For example, you need the GraalVM EE JDK image. On this page, click the **jdk-ee** link.
+2. Click on the necessary image. For example, you need a compact container image with the JDK pre-installed. On this page, click the **jdk-ee** link.
 
     ![](/img/graalvm_repositories.png)
 
@@ -45,23 +45,25 @@ To start using GraalVM Enterprise images, you should accept the [Oracle Technolo
 
 4. Sign in with an Oracle account. If you do not have an existing Oracle account, create one.
 
-5. Once you have signed in, you will see the following screen, click **Continue** to accept the license and proceed ahead.
+5. Once you have signed in, you will see the following screen:
 
     ![](/img/license_review.png)
+
+    Click **Continue** to accept the license and proceed ahead.
 
 6. Check and accept the license.
 
     ![](/img/license_accepted.png)
 
-7. Open a terminal window and login with Docker using your Oracle account.
+7. Open a terminal window and `docker login` to Oracle Container Registry using your Oracle account.
 
     ```shell
     docker login container-registry.oracle.com
-
     Username: user.name@email.com
     Password: 
     Login Succeeded
     ```
+
 8. Pull the image. You can pull a package by name or by name and version tag. Use the `docker pull` command to download the image (use the latest tag or a specific tag from the list of tags displayed on the page). For example:
 
     ```shell
