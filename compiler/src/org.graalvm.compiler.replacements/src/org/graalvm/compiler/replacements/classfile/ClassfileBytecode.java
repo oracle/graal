@@ -34,15 +34,12 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.classfile.ClassfileConstant.Utf8;
 
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.TriState;
 
 /**
  * The bytecode properties of a method as parsed directly from a class file without any
@@ -240,11 +237,6 @@ public class ClassfileBytecode implements Bytecode {
     @Override
     public ResolvedJavaMethod getMethod() {
         return method;
-    }
-
-    @Override
-    public ProfilingInfo getProfilingInfo() {
-        return DefaultProfilingInfo.get(TriState.FALSE);
     }
 
     @Override
