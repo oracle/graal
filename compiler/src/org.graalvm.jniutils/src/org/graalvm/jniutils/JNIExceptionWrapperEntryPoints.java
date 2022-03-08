@@ -82,7 +82,7 @@ final class JNIExceptionWrapperEntryPoints {
      * @return a {@link ForeignException} instance
      */
     static Throwable createForeignException(byte[] rawValue) {
-        return ForeignException.create(rawValue);
+        return ForeignException.createHostToGuest(rawValue);
     }
 
     static byte[] getStackTrace(Throwable throwable) {
@@ -109,5 +109,9 @@ final class JNIExceptionWrapperEntryPoints {
 
     static String getClassName(Class<?> clz) {
         return clz.getName();
+    }
+
+    static byte[] toByteArray(ForeignException exception) {
+        return exception.toByteArray();
     }
 }

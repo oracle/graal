@@ -75,6 +75,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static final JNIMethodResolver GetStackTrace = JNIMethodResolver.create("getStackTrace", byte[].class, Throwable.class);
     private static final JNIMethodResolver GetThrowableMessage = JNIMethodResolver.create("getThrowableMessage", String.class, Throwable.class);
     private static final JNIMethodResolver UpdateStackTrace = JNIMethodResolver.create("updateStackTrace", Throwable.class, Throwable.class, byte[].class);
+    private static final JNIMethodResolver ToByteArray = JNIMethodResolver.create("toByteArray", byte[].class, ForeignException.class);
 
     private static volatile JNI.JClass entryPointsClass;
 
@@ -508,6 +509,10 @@ public final class JNIExceptionWrapper extends RuntimeException {
         }
     }
 
+    static byte[] toByteArray(JNIEnv env, JThrowable foreignException) {
+        return JNIUtil.createArray(env, callToByteArray(env, foreignException));
+    }
+
     // JNI calls
     private static JThrowable callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
@@ -547,6 +552,12 @@ public final class JNIExceptionWrapper extends RuntimeException {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
+    }
+
+    private static JByteArray callToByteArray(JNIEnv env, JObject p0) {
+        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+        args.addressOf(0).setJObject(p0);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), ToByteArray.resolve(env), args);
     }
 
     private static final class JNIMethodResolver implements JNIMethod {

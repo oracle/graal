@@ -27,16 +27,30 @@ package org.graalvm.jniutils;
 @SuppressWarnings("serial")
 public final class ForeignException extends RuntimeException {
 
+    private static final byte UNDEFINED = 0;
+    private static final byte HOST_TO_GUEST = 1;
+    private static final byte GUEST_TO_HOST = 2;
     private static final ThreadLocal<ForeignException> pendingException = new ThreadLocal<>();
+
+    public static final HotSpotCalls TO_HOTSPOT = HotSpotCalls.createWithExceptionHandler((context) -> {
+        if (ForeignException.class.getName().equals(context.getThrowableClassName())) {
+            throw create(JNIExceptionWrapper.toByteArray(context.getEnv(), context.getThrowable()), GUEST_TO_HOST);
+        } else {
+            context.throwJNIExceptionWrapper();
+        }
+    });
+
+    private final byte kind;
     private final byte[] rawData;
 
     public ForeignException(byte[] rawData) {
-        this(rawData, false);
+        this(rawData, UNDEFINED, false);
     }
 
-    private ForeignException(byte[] rawData, boolean writableStackTrace) {
+    private ForeignException(byte[] rawData, byte kind, boolean writableStackTrace) {
         super(null, null, true, writableStackTrace);
         this.rawData = rawData;
+        this.kind = kind;
     }
 
     public byte[] toByteArray() {
@@ -50,14 +64,25 @@ public final class ForeignException extends RuntimeException {
     public static StackTraceElement[] mergeStackTrace(StackTraceElement[] foreignExceptionStack) {
         ForeignException localException = pendingException.get();
         if (localException != null) {
-            return JNIExceptionWrapper.mergeStackTraces(localException.getStackTrace(), foreignExceptionStack, 2, 0, false);
+            switch (localException.kind) {
+                case HOST_TO_GUEST:
+                    return JNIExceptionWrapper.mergeStackTraces(localException.getStackTrace(), foreignExceptionStack, 3, 0, false);
+                case GUEST_TO_HOST:
+                    return JNIExceptionWrapper.mergeStackTraces(foreignExceptionStack, localException.getStackTrace(), 0, 0, true);
+                default:
+                    throw new IllegalStateException("Unsupported kind " + localException.kind);
+            }
         } else {
             return foreignExceptionStack;
         }
     }
 
-    static ForeignException create(byte[] rawData) {
-        ForeignException exception = new ForeignException(rawData, true);
+    static ForeignException createHostToGuest(byte[] rawData) {
+        return create(rawData, HOST_TO_GUEST);
+    }
+
+    private static ForeignException create(byte[] rawData, byte kind) {
+        ForeignException exception = new ForeignException(rawData, kind, true);
         pendingException.set(exception);
         return exception;
     }
