@@ -186,7 +186,7 @@ public final class Isolates {
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
         private final List<String> arguments;
-        private ProtectionDomain protectionDomain;
+        private final ProtectionDomain protectionDomain;
 
         private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments,
                         ProtectionDomain protectionDomain) {

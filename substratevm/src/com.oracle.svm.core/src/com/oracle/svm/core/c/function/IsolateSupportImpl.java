@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
+import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.os.MemoryProtectionProvider;
 public final class IsolateSupportImpl implements IsolateSupport {
     private static final String ISOLATES_DISABLED_MESSAGE = "Spawning of multiple isolates is disabled, use " +
                     SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+") + " option.";
+    private static final String PROTECTION_DOMAIN_UNSUPPORTED_MESSAGE = "Protection domains are unavailable";
 
     static void initialize() {
         ImageSingletons.add(IsolateSupport.class, new IsolateSupportImpl());
@@ -71,7 +73,13 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setVersion(3);
 
             if (MemoryProtectionProvider.isAvailable()) {
-                MemoryProtectionProvider.singleton().applyProtectionDomain(parameters.getProtectionDomain(), params);
+                int pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
+                if (pkey == MemoryProtectionProvider.DOMAIN_UNRECOGNIZED) {
+                    throw new IsolateException(PROTECTION_DOMAIN_UNSUPPORTED_MESSAGE);
+                }
+                params.setProtectionKey(pkey);
+            } else if (!ProtectionDomain.NO_DOMAIN.equals(parameters.getProtectionDomain())) {
+                throw new IsolateException(PROTECTION_DOMAIN_UNSUPPORTED_MESSAGE);
             }
 
             // Prepare argc and argv.

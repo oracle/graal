@@ -29,8 +29,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-
 public interface MemoryProtectionProvider {
 
     @Fold
@@ -69,13 +67,16 @@ public interface MemoryProtectionProvider {
      */
     ProtectionDomain getProtectionDomain();
 
+    int DOMAIN_UNRECOGNIZED = -2;
+
     /**
-     * Apply the given protection domain to the {@link CEntryPointCreateIsolateParameters}.
+     * Return a protection key representation of the given protection domain that can be used in the
+     * native {@code CEntryPointCreateIsolateParameters}. It will return {@code DOMAIN_UNRECOGNIZED}
+     * if the {@link MemoryProtectionProvider} implementation does not support the passed protection
+     * domain.
      *
      * @param domain memory protection domain
-     *
-     * @param nativeParameters native isolate creation parameters, which will be modified to reflect
-     *            the given protection domain
+     * @return the protection key for a given protection domain
      */
-    void applyProtectionDomain(ProtectionDomain domain, CEntryPointCreateIsolateParameters nativeParameters);
+    int asProtectionKey(ProtectionDomain domain);
 }
