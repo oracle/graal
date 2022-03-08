@@ -529,7 +529,8 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
 
-        measured_phases = ['setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image', 'write']
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
+                           'write']
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
