@@ -220,6 +220,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    public Management getManagement() {
+        return management;
+    }
+
     public static final class GlobalFrameIDs {
         private static final AtomicLong id = new AtomicLong();
 
