@@ -78,7 +78,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected AllocatableValue vectorTemp4;
 
     public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value offset1, Value array2, Value offset2,
-                                Value length) {
+                    Value length) {
         super(TYPE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
@@ -118,21 +118,6 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register byteArrayLength = asRegister(temp1);
 
-        // FIXME need to incorporate offsetValues like this commented code
-        /*-
-        Register rscratch1 = sc1.getRegister();
-        // Load array base addresses.
-        masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
-        if (!offset1Value.equals(Value.ILLEGAL)) {
-            // optional offset parameter is present, add to base pointer
-            masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
-        }
-        masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
-        if (!offset2Value.equals(Value.ILLEGAL)) {
-            // optional offset parameter is present, add to base pointer
-            masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
-        }
-         */
         try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
             Label breakLabel = new Label();
             Label scalarCompare = new Label();
@@ -157,14 +142,31 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         }
     }
 
+    private void loadArrayStart(AArch64MacroAssembler masm, Register array1, Register array2) {
+        if (!offset1Value.equals(Value.ILLEGAL)) {
+            // address start = pointer + baseOffset + optional offset
+            masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
+            masm.add(64, array1, array1, array1BaseOffset);
+        } else {
+            // address start = pointer + base offset + optional offset
+            masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
+        }
+        if (!offset2Value.equals(Value.ILLEGAL)) {
+            // address start = pointer + baseOffset + optional offset
+            masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
+            masm.add(64, array2, array2, array2BaseOffset);
+        } else {
+            // address start = pointer + base offset + optional offset
+            masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
+        }
+    }
+
     private void emitScalarCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label breakLabel) {
         Register array1 = asRegister(temp2);
         Register array2 = asRegister(temp3);
 
         // Load array base addresses.
-        // TODO add the offset values here
-        masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
-        masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
+        loadArrayStart(masm, array1, array2);
         masm.mov(64, scratch, byteArrayLength); // copy
 
         emit8ByteCompare(masm, scratch, array1, array2, byteArrayLength, breakLabel, hasMismatch);
@@ -310,10 +312,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         Label processTail = new Label();
 
         masm.mov(64, hasMismatch, zr);
-        // TODO add offset value here
         /* 1. Set 'array1Address' and 'array2Address' to point to start of arrays. */
-        masm.add(64, array1Address, asRegister(array1Value), array1BaseOffset);
-        masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset);
+        loadArrayStart(masm, array1Address, array2Address);
         /*
          * 2.1 Set endOfArray1 pointing to byte next to the last valid element in array1 and
          * 'refAddress1' pointing to the beginning of the last chunk.
@@ -324,7 +324,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.align(16);
         masm.bind(compareByChunkHead);
         masm.cmp(64, refAddress1, array1Address);
-        masm.branchConditionally(ConditionFlag.LE, processTail);
+        masm.branchConditionally(ConditionFlag.LS, processTail);
         masm.bind(compareByChunkTail);
 
         /* 2.2 Read a 32-byte chunk from source and target array each in two SIMD registers. */
@@ -350,10 +350,15 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.align(16);
         masm.bind(processTail);
         masm.cmp(64, array1Address, endOfArray1);
-        masm.branchConditionally(ConditionFlag.GE, endLabel);
+        masm.branchConditionally(ConditionFlag.HS, endLabel);
         /* Adjust array1Address and array2Address to access last 32 bytes. */
         masm.sub(64, array1Address, endOfArray1, 32);
-        masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset - 32);
+        if (!offset2Value.equals(Value.ILLEGAL)) {
+            masm.add(64, array2Address, asRegister(array2Value), asRegister(offset2Value));
+            masm.add(64, array2Address, array2Address, array2BaseOffset - 32);
+        } else {
+            masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset - 32);
+        }
         masm.add(64, array2Address, array2Address, byteArrayLength);
         /*
          * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkTail', the

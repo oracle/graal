@@ -254,7 +254,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         Register result = asRegister(resultValue);
         Register arrayLength = asRegister(arrayLengthValue);
         Register fromIndex = asRegister(fromIndexValue);
-        Register searchElement = asRegister(searchValues[0]);
         Register currOffset = asRegister(temp2);
         Register searchEnd = asRegister(temp3);
         Register refAddress = asRegister(temp4);
@@ -281,11 +280,9 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         long magicConstant = 0xc030_0c03_c030_0c03L;
 
         /* 1. Duplicate the searchElement(s) to 16-bytes */
-        masm.neon.dupVG(ASIMDSize.FullReg, findTwoConsecutive ? eSize.expand() : eSize, firstSearchElementRegV, searchElement);
+        masm.neon.dupVG(ASIMDSize.FullReg, eSize, firstSearchElementRegV, asRegister(searchValues[0]));
         if (findTwoConsecutive) {
-            // TODO - need to copy over searchValues[1]
-            masm.neon.dupVX(ASIMDSize.FullReg, eSize, secondSearchElementRegV, firstSearchElementRegV, 1);
-            masm.neon.dupVX(ASIMDSize.FullReg, eSize, firstSearchElementRegV, firstSearchElementRegV, 0);
+            masm.neon.dupVG(ASIMDSize.FullReg, eSize, secondSearchElementRegV, asRegister(searchValues[1]));
         }
         /*
          * 2.1 Set searchEnd pointing to byte after the last valid element in the array and
