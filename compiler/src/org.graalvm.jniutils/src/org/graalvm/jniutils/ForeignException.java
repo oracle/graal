@@ -24,23 +24,41 @@
  */
 package org.graalvm.jniutils;
 
-
 @SuppressWarnings("serial")
 public final class ForeignException extends RuntimeException {
 
+    private static final ThreadLocal<ForeignException> pendingException = new ThreadLocal<>();
     private final byte[] rawData;
 
     public ForeignException(byte[] rawData) {
-        this.rawData = rawData;
+        this(rawData, false);
     }
 
-    @Override
-    @SuppressWarnings("sync-override")
-    public Throwable fillInStackTrace() {
-        return this;
+    private ForeignException(byte[] rawData, boolean writableStackTrace) {
+        super(null, null, true, writableStackTrace);
+        this.rawData = rawData;
     }
 
     public byte[] toByteArray() {
         return rawData;
+    }
+
+    public static void clearPendingException() {
+        pendingException.set(null);
+    }
+
+    public static StackTraceElement[] mergeStackTrace(StackTraceElement[] foreignExceptionStack) {
+        ForeignException localException = pendingException.get();
+        if (localException != null) {
+            return JNIExceptionWrapper.mergeStackTraces(localException.getStackTrace(), foreignExceptionStack, 2, 0, false);
+        } else {
+            return foreignExceptionStack;
+        }
+    }
+
+    static ForeignException create(byte[] rawData) {
+        ForeignException exception = new ForeignException(rawData, true);
+        pendingException.set(exception);
+        return exception;
     }
 }

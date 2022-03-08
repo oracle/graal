@@ -355,7 +355,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * @param nativeStackStartIndex
      * @param originatedInHotSpot
      */
-    private static StackTraceElement[] mergeStackTraces(
+    static StackTraceElement[] mergeStackTraces(
                     StackTraceElement[] hotSpotStackTrace,
                     StackTraceElement[] nativeStackTrace,
                     int hotSpotStackStartIndex,
@@ -391,7 +391,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * Gets the stack trace from a JNI exception.
      *
      * @param env the {@link JNIEnv}
-     * @param throwableHandle the JNI exception to get the stack trace from or {@link WordFactory#nullPointer() null} to capture the current stack trace.
+     * @param throwableHandle the JNI exception to get the stack trace from.
      * @return the stack trace
      */
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
@@ -488,7 +488,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static JThrowable createExceptionOfSameType(JNIEnv env, Throwable original) {
         Class<? extends Throwable> originalType = original.getClass();
         if (originalType == ForeignException.class) {
-            return callCreateForeignException(env, JNIUtil.createHSArray(env, ((ForeignException)original).toByteArray()));
+            return callCreateForeignException(env, JNIUtil.createHSArray(env, ((ForeignException) original).toByteArray()));
         } else {
             String className = originalType.getTypeName();
             JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);

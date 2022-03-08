@@ -90,8 +90,8 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
         HotSpotToNativeDefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
                         List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor,
                         ExecutableElement receiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle,
-                        DeclaredType centryPointPredicate, DeclaredType jniConfig,  MarshallerData throwableMarshaller,
-                                      Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
+                        DeclaredType centryPointPredicate, DeclaredType jniConfig, MarshallerData throwableMarshaller,
+                        Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
             super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor,
                             exceptionHandler, endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
             this.centryPointPredicate = centryPointPredicate;

@@ -181,9 +181,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         CacheData cacheData = methodData.cachedData;
         TypeMirror returnType = methodData.type.getReturnType();
         CharSequence foreignException = "foreignException";
-        CharSequence throwUnboxedException = new CodeBuilder(builder).write("throw")
-                .space().invoke(null, "unboxForeignException", foreignException)
-                .write(";").build();
+        CharSequence throwUnboxedException = new CodeBuilder(builder).write("throw").space().invoke(null, "unboxForeignException", foreignException).write(";").build();
         if (cacheData != null) {
             String cacheFieldName = cacheData.cacheFieldName;
             String resFieldName = cacheFieldName + "Result";
@@ -295,6 +293,10 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.dedent();
         builder.line("}");
         builder.lineStart("throw (T) t").lineEnd(";");
+        builder.dedent();
+        builder.line("} finally {");
+        builder.indent();
+        builder.lineStart().invokeStatic(typeCache.foreignException, "clearPendingException").lineEnd(";");
         builder.dedent();
         builder.line("}");
         builder.dedent();

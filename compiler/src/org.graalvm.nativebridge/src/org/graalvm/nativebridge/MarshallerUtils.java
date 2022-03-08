@@ -24,26 +24,35 @@
  */
 package org.graalvm.nativebridge;
 
-import org.graalvm.jniutils.ForeignException;
 import java.io.IOException;
 
-final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
+public final class MarshallerUtils {
 
-    @Override
-    public Throwable read(BinaryInput in) throws IOException {
-        String foreignExceptionClassName = in.readUTF();
-        String foreignExceptionMessage = in.readUTF();
-        StackTraceElement[] foreignExceptionStack = MarshallerUtils.readStackTrace(in);
-        String message = RuntimeException.class.getName().equals(foreignExceptionClassName) ? foreignExceptionMessage : String.format("%s:%s", foreignExceptionClassName, foreignExceptionMessage);
-        RuntimeException exception = new RuntimeException(message);
-        exception.setStackTrace(ForeignException.mergeStackTrace(foreignExceptionStack));
-        return exception;
+    private MarshallerUtils() {
     }
 
-    @Override
-    public void write(BinaryOutput out, Throwable object) throws IOException {
-        out.writeUTF(object.getClass().getName());
-        out.writeUTF(object.getMessage());
-        MarshallerUtils.writeStackTrace(out, object.getStackTrace());
+    public static void writeStackTrace(BinaryOutput out, StackTraceElement[] stack) throws IOException {
+        out.writeInt(stack.length);
+        for (StackTraceElement stackTraceElement : stack) {
+            out.writeUTF(stackTraceElement.getClassName());
+            out.writeUTF(stackTraceElement.getMethodName());
+            String fileName = stackTraceElement.getFileName();
+            out.writeUTF(fileName == null ? "" : fileName);
+            out.writeInt(stackTraceElement.getLineNumber());
+        }
+    }
+
+    public static StackTraceElement[] readStackTrace(BinaryInput in) throws IOException {
+        int len = in.readInt();
+        StackTraceElement[] res = new StackTraceElement[len];
+        for (int i = 0; i < len; i++) {
+            String className = in.readUTF();
+            String methodName = in.readUTF();
+            String fileName = in.readUTF();
+            fileName = fileName.isEmpty() ? null : fileName;
+            int lineNumber = in.readInt();
+            res[i] = new StackTraceElement(className, methodName, fileName, lineNumber);
+        }
+        return res;
     }
 }
