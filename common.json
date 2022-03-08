@@ -33,14 +33,15 @@
     "common": {
       "timelimit": "30:00",
       "environment": {
-        "MX_PYTHON": "python3"
+        "MX_PYTHON": "python3.9"
       },
       "packages": {
         "python3": "==3.9.9",
         "pip:pylint": "==2.4.4",
         "pip:lazy-object-proxy": "==1.6.0",
         "pip:ninja_syntax": "==1.7.2"
-      }
+      },
+      "python_version": "3"
     },
 
     "linux": {

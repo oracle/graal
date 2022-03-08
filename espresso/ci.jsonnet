@@ -6,8 +6,8 @@
 
   suite_name: 'espresso',
 
-  windows_11: devkits["windows-jdk11"] + common.windows,
-  windows_17: devkits["windows-jdk17"] + common.windows,
+  windows_11 : common.windows + {packages+: devkits["windows-jdk11"].packages},
+  windows_17 : common.windows + {packages+: devkits["windows-jdk17"].packages},
 
   builds: common.builds + [
     // Benchmarks

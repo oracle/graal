@@ -18,12 +18,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   local that = self,
 
   // platform-specific snippets
-  common: sulong_deps.common + {
+  common: base_json.deps.common + graal_common.mx + sulong_deps.common + {
     python_version: '3',
-    packages+: base_json.deps.common.packages + {
-      'pip:ninja_syntax': '==1.7.2',
-      'mx': mx_version,
-    },
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },

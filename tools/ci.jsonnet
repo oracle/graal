@@ -1,8 +1,9 @@
 {
+  local common_json = import '../common.json',
   local common = import '../common.jsonnet',
-  local devkits = (import "../common.json").devkits,
+  local devkits = common_json.devkits,
 
-  local tools_common = {
+  local tools_common = common_json.deps.common + common.mx + {
     setup+: [
       ["cd", "./tools"],
     ],

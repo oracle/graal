@@ -21,7 +21,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   common: {
     environment+: {
-      MX_PYTHON: 'python3',
+      MX_PYTHON: common_json.deps.common.environment["MX_PYTHON"],
     },
     packages+: common_json.deps.common.packages + {
       'mx': mx,

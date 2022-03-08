@@ -31,7 +31,8 @@
     environment+: if jvm_config_suffix != null then {
       JVM_CONFIG: jvm_config + jvm_config_suffix
     } else {},
-    targets: ["gate"]
+    targets: ["gate"],
+    python_version: "3"
   },
 
   weekly:: {
