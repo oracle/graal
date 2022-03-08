@@ -11,18 +11,34 @@ This brings the visual Java tooling to VS Code.
 
 ![VisualVM and VS Code Integration](images/vscode_visualvm.png)
 
-A special launch configuration, **Launch VisualVM & Java 8+ Application**, is provided by the GraalVM Tools for Java extension to start VisualVM along with the project.
-To get started, do the following:
+It you go to **View**, then **Command Palette**, and search for "VisualVM", the following actions related to VisualVM are available:
+
+![VisualVM Commands available from Command Palette](images/visualvm_commands.png)
+
+To start monitoring from VS Code, do the following:
 
 1. Click **Gr** in the activity panel, install the latest GraalVM release, and activate it, as described [here](README.md#graalvm-installation-wizard).
-2. Create the _launch.json_ file. If not already created, create a new `launch.json` file from the **Run and Debug** activity using the create a launch.json file link. Select the Java 8+ environment when asked.
-3. Open `launch.json` and click the **Add Configuration…** button in the bottom right corner of the editor. Select the **GraalVM: Launch Java 8+ Application with VisualVM** configuration. Make sure to save the `launch.json` file after editing.
-4. Select the action to perform when project starts. In the VisualVM pane of the **Gr** activity view, click the **Configure** action to define the action to perform when the project is started.
-5. Select the **Launch VisualVM & Java 8+ Application** launch configuration in the **Run and Debug** activity. Use the **Start Debugging** or **Run Without Debugging** action to start the current project.
+2. Run your Java application (with or without debugging), the process ID will be discovered automatically. You can see that in the VisualVM pane in VS Code:
 
-While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label.
-Once the project process starts, the Process node is updated to show its process ID (PID) and the action defined in step 3 is performed.
+   ![Process ID detected](images/visualvm_commands.png)
 
+   While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label. 
+  Once the project process starts, the Process node is updated to show its process ID (PID).
+
+3. Open VisualVM by just clicking the play button:
+
+   ![Open VisualVM from VS Code](images/open_visualvm.png)
+  
+   Note: VisualVM in VS Code screens your system every second and discovers all other Java project running. When you click the play button, the prompt will ask you which process to monitor by VisualVM:
+
+   ![Select Java process to monitor by VisualVM](images/select_java_process_to_monitor.png)
+  
+You can manually request checking Java process running concurrently by clicking the loop icon in the **VisualVM**:**Process** field. It starts reading Java processes, and then prompts to select which process to monitor.
+
+By default, VisualVM should not open when a Java process is started, but you can configure another behavior. In the VisualVM pane, click the edit button and select the action to perform when the project is started.
+
+  ![Select action to perform when Java project is started](images/command_when_java_process_started.png)
+  
 ## VisualVM Pane
 
 The VisualVM pane provides the following actions and features:
@@ -185,8 +201,6 @@ The following settings can be configured using the Configure action:
 The following quick actions related to VisualVM become available if you install active the most recent GraalVM in VS Code:
 
 ![VisualVM Commands available from Command Palette](images/visualvm_command_palette.png)
-
-> Note: If the current active GraalVM installation is older than GraalVM 21.2.0, only the **VisualVM: Start VisualVM**, and **VisualVM: Open Process In VisualVM** commands are available from the Command Palette. Upgrade GraalVM to the latest release.
 
 **VisualVM: Start VisualVM**
 
