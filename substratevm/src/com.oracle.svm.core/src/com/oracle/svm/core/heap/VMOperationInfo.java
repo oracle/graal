@@ -25,15 +25,18 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 
 public final class VMOperationInfo {
+    private final Class<? extends VMOperation> clazz;
     private final int id;
     private final String name;
     private final SystemEffect systemEffect;
 
-    VMOperationInfo(int id, String name, SystemEffect systemEffect) {
+    VMOperationInfo(int id, Class<? extends VMOperation> clazz, String name, SystemEffect systemEffect) {
         this.id = id;
+        this.clazz = clazz;
         this.name = name;
         this.systemEffect = systemEffect;
     }
@@ -41,6 +44,11 @@ public final class VMOperationInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getId() {
         return id;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Class<? extends VMOperation> getVMOperationClass() {
+        return clazz;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -54,6 +62,7 @@ public final class VMOperationInfo {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("static-method")
     public boolean isBlocking() {
         return true;
     }

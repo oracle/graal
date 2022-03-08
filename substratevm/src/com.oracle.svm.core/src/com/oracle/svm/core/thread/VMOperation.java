@@ -48,6 +48,7 @@ public abstract class VMOperation {
     private final VMOperationInfo info;
 
     protected VMOperation(VMOperationInfo info) {
+        assert info.getVMOperationClass() == this.getClass();
         this.info = info;
     }
 

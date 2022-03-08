@@ -47,7 +47,7 @@ import com.oracle.svm.core.thread.VMOperation.SystemEffect;
  */
 public final class VMOperationInfos {
     @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> HostedMap = new HashMap<>();
-    @UnknownObjectField(types = VMOperationInfos[].class) static String[] Names = new String[0];
+    @UnknownObjectField(types = String[].class) static String[] Names = new String[0];
 
     @Fold
     public static VMOperationInfos singleton() {
@@ -66,7 +66,7 @@ public final class VMOperationInfos {
             if (result == null) {
                 // Generate a unique id per (clazz, name) tuple.
                 int id = HostedMap.size();
-                result = new VMOperationInfo(id, name, systemEffect);
+                result = new VMOperationInfo(id, clazz, name, systemEffect);
                 HostedMap.put(key, result);
             }
             return result;

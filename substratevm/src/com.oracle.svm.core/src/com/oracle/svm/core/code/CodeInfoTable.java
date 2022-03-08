@@ -27,9 +27,6 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -48,6 +45,8 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
