@@ -642,8 +642,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         GeneratorUtils.addGeneratedBy(context, typProxy, t);
 
         {
-            CodeExecutableElement metExecute = new CodeExecutableElement(MOD_PUBLIC_ABSTRACT,
-                            context.getType(Object.class), "execute");
+            TypeMirror retType = instruction.stackPushes > 0 ? context.getType(Object.class) : context.getType(void.class);
+            CodeExecutableElement metExecute = new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, retType, "execute");
             typProxy.add(metExecute);
 
             for (int i = 0; i < instruction.stackPops; i++) {
@@ -672,6 +672,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 if (metProxy.getReturnType().getKind() != TypeKind.VOID) {
                     b.startReturn();
+                } else {
+                    b.startStatement();
                 }
 
                 b.startStaticCall(el);
@@ -680,9 +682,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 }
                 b.end();
 
-                if (metProxy.getReturnType().getKind() != TypeKind.VOID) {
-                    b.end();
-                }
+                b.end();
 
                 typProxy.add(metProxy);
             }

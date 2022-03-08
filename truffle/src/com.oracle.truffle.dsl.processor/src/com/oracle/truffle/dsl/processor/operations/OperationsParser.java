@@ -9,6 +9,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
@@ -69,12 +70,12 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         ExecutableElement first = operationFunctions.get(0);
         List<DeclaredType> arguments = List.of(); // TODO
         int numParams = first.getParameters().size();
-        boolean returnsValue = !first.getReturnType().equals(context.getType(void.class));
+        boolean returnsValue = first.getReturnType().getKind() != TypeKind.VOID;
 
         for (ExecutableElement fun : operationFunctions) {
             // check all functions have the same number of parameters
             int numChildParameters = fun.getParameters().size();
-            boolean funReturnsValue = !fun.getReturnType().equals(context.getType(void.class));
+            boolean funReturnsValue = fun.getReturnType().getKind() != TypeKind.VOID;
             if (numChildParameters != numParams) {
                 data.addWarning(fun, "Expected %d child parameters, found %d", numParams, numChildParameters);
             }
@@ -90,13 +91,13 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             instr = new Instruction.Custom(
                             "custom." + te.getSimpleName(),
                             builder.getNextInstructionId(),
-                            numParams, first.isVarArgs(), te,
+                            numParams, first.isVarArgs(), !returnsValue, te,
                             new Argument.VarArgsCount(numParams - 1));
         } else {
             instr = new Instruction.Custom(
                             "custom." + te.getSimpleName(),
                             builder.getNextInstructionId(),
-                            numParams, first.isVarArgs(), te);
+                            numParams, first.isVarArgs(), !returnsValue, te);
         }
         builder.add(instr);
         Operation.Custom op = new Operation.Custom(builder, te.getSimpleName().toString(), builder.getNextOperationId(), numParams, instr);

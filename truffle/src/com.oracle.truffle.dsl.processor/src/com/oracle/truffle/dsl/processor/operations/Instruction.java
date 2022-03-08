@@ -334,15 +334,17 @@ public abstract class Instruction {
     public static class Custom extends Instruction {
 
         public final int stackPops;
+        public final int stackPushes;
         public final boolean isVarArgs;
         public final TypeElement type;
 
         private CodeVariableElement uncachedInstance;
 
-        public Custom(String name, int id, int stackPops, boolean isVarArgs, TypeElement type, Argument... arguments) {
+        public Custom(String name, int id, int stackPops, boolean isVarArgs, boolean isVoid, TypeElement type, Argument... arguments) {
             super(name, id, arguments);
             this.stackPops = stackPops;
             this.isVarArgs = isVarArgs;
+            this.stackPushes = isVoid ? 0 : 1;
             this.type = type;
         }
 
@@ -353,8 +355,7 @@ public abstract class Instruction {
 
         @Override
         public CodeTree createPushCountCode(BuilderVariables vars) {
-            return CodeTreeBuilder.singleString("1"); // TODO: support void
-
+            return CodeTreeBuilder.singleString("" + stackPushes);
         }
 
         public void setUncachedInstance(CodeVariableElement uncachedInstance) {
@@ -369,7 +370,7 @@ public abstract class Instruction {
                 createClearStackSlot(vars, i);
             }
 
-            b.startAssign(vars.sp).variable(vars.sp).string(" + " + (1 - stackPops)).end();
+            b.startAssign(vars.sp).variable(vars.sp).string(" + " + (stackPushes - stackPops)).end();
 
             b.tree(super.createExecuteEpilogue(vars));
 
@@ -423,14 +424,18 @@ public abstract class Instruction {
             }
             bCall.end(2);
 
-            b.tree(createWriteStackObject(vars, resultOffset, bCall.build()));
+            if (stackPushes > 0) {
+                b.tree(createWriteStackObject(vars, resultOffset, bCall.build()));
+            } else {
+                b.statement(bCall.build());
+            }
 
             return b.build();
         }
 
         @Override
         protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
-            return CodeTreeBuilder.singleString("(1 - " + vars.numChildren.getName() + ")");
+            return CodeTreeBuilder.singleString("(" + this.stackPushes + " - " + vars.numChildren.getName() + ")");
         }
 
     }

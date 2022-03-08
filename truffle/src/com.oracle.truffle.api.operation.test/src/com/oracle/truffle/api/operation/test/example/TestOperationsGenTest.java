@@ -1,5 +1,7 @@
 package com.oracle.truffle.api.operation.test.example;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
@@ -8,8 +10,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationsNode;
 
@@ -81,6 +81,11 @@ public class TestOperationsGenTest {
     @Test
     public void testVeryComplex() {
         runTest(TestOperationsGenTest::parseVeryComplex, 10L);
+    }
+
+    @Test
+    public void testVoidOperation() {
+        runTest(TestOperationsGenTest::parseVoidOperation, List.of(1, 2, 3), new ArrayList(), 1, 2, 3);
     }
 
     private static void runTest(Consumer<SlOperationsBuilderino> parse, Object expectedResult, Object... args) {
@@ -218,6 +223,30 @@ public class TestOperationsGenTest {
         b.emitConstObject(5L);
         b.endVeryComplexOperation();
         b.endAddOperation();
+        b.endReturn();
+    }
+
+    private static void parseVoidOperation(SlOperationsBuilderino b) {
+        // function veryComplex(l1, a, b, c) {
+        // addToList(l1, a);
+        // ...
+        // return l1;
+        // }
+
+        b.beginAddToListOperation();
+        b.emitLoadArgument(0);
+        b.emitLoadArgument(1);
+        b.endAddToListOperation();
+        b.beginAddToListOperation();
+        b.emitLoadArgument(0);
+        b.emitLoadArgument(2);
+        b.endAddToListOperation();
+        b.beginAddToListOperation();
+        b.emitLoadArgument(0);
+        b.emitLoadArgument(3);
+        b.endAddToListOperation();
+        b.beginReturn();
+        b.emitLoadArgument(0);
         b.endReturn();
     }
 

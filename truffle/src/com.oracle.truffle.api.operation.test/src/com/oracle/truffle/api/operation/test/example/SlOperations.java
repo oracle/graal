@@ -1,9 +1,8 @@
 package com.oracle.truffle.api.operation.test.example;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import java.util.List;
+
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 
@@ -38,6 +37,14 @@ public class SlOperations {
         @Specialization
         public static long bla(long a1, Object... a2) {
             return a1 + a2.length;
+        }
+    }
+
+    @Operation
+    static class AddToListOperation {
+        @Specialization
+        public static void bla(List a1, Object a2) {
+            a1.add(a2);
         }
     }
 }
