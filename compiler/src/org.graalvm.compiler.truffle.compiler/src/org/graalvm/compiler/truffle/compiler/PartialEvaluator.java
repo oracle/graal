@@ -299,20 +299,15 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * Periodically checks the size of the graph during PE and bails out if the graph gets too big
-     * (> MaximumGraalGraphSize).
+     * Keeps track of the approximate graph size when nodes are added and removed and if this size
+     * goes over the allowed limit (MaximumGraalGraphSize) checks the actual size and bails out if
+     * the graph is actually too big.
      */
     private static final class GraphSizeListener extends Graph.NodeEventListener {
 
-        /**
-         * Assume all nodes are of this size when deciding whether to compute the actual graph size.
-         */
-        static final int NODE_SIZE_ESTIMATE = 8;
-
-        private int lastComputedSize;
-        private int lastNodeCount;
         private final int graphSizeLimit;
         private final StructuredGraph graph;
+        private int approximateGraphSize = 0;
 
         private GraphSizeListener(OptionValues options, StructuredGraph graph) {
             this.graphSizeLimit = options.get(MaximumGraalGraphSize);
@@ -321,39 +316,22 @@ public abstract class PartialEvaluator {
 
         @Override
         public void nodeAdded(Node node) {
-            int nodeCount = graph.getNodeCount();
-            if (shouldCheck(nodeCount)) {
-                lastNodeCount = nodeCount;
-                lastComputedSize = NodeCostUtil.computeGraphSize(graph);
-                if (lastComputedSize > graphSizeLimit) {
-                    throw new GraphTooBigBailoutException("Graph too big to safely compile. Node count: " + nodeCount + ". Graph Size: " + lastComputedSize + ". Limit: " + graphSizeLimit + ".");
+            // Some nodes (Notably LoadFieldNode) don't have their full cost known at the time of
+            // adding to the graph. That's why we treat this as an approximate graph size and only
+            // calculate the actual graph size when our approximation is larger than the limit.
+            approximateGraphSize += node.estimatedNodeSize().value;
+            if (approximateGraphSize > graphSizeLimit) {
+                approximateGraphSize = NodeCostUtil.computeGraphSize(graph);
+                if (approximateGraphSize > graphSizeLimit) {
+                    throw new GraphTooBigBailoutException(
+                                    "Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Graph Size: " + approximateGraphSize + ". Limit: " + graphSizeLimit + ".");
                 }
             }
         }
 
-        /**
-         * Uses a heuristic which assumes all nodes are of size NODE_SIZE_ESTIMATE and decides
-         * whether it is worth calculating the actual size of the graph.
-         */
-        private boolean shouldCheck(int currentNodeCount) {
-            // Don't bother checking small graphs, i.e. assume every node has a fixed size of
-            // NODE_SIZE_ESTIMATE and if the graph size under this assumption is not over the limit
-            // assume it's fine.
-            if (currentNodeCount * NODE_SIZE_ESTIMATE < graphSizeLimit) {
-                return false;
-            }
-            // Don't bother checking if the graph didn't actually grow since the last time we
-            // checked
-            int newNodes = currentNodeCount - lastNodeCount;
-            if (newNodes < 0) {
-                return false;
-            }
-            // Assume all new nodes have a size of NODE_SIZE_ESTIMATE and don't bother checking if
-            // the graph size is not over the limit under this assumption
-            if (lastComputedSize + newNodes * NODE_SIZE_ESTIMATE < graphSizeLimit) {
-                return false;
-            }
-            return true;
+        @Override
+        public void nodeRemoved(Node node) {
+            approximateGraphSize -= node.estimatedNodeSize().value;
         }
     }
 
