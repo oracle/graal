@@ -24,20 +24,21 @@
  */
 package com.oracle.svm.agent.configwithorigins;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jvmtiagentbase.Support;
-import jdk.vm.ci.meta.MetaUtil;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.word.WordFactory;
+import static com.oracle.svm.jvmtiagentbase.Support.checkPhase;
+import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.oracle.svm.jvmtiagentbase.Support.check;
-import static com.oracle.svm.jvmtiagentbase.Support.checkPhase;
-import static org.graalvm.word.WordFactory.nullPointer;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.jvmtiagentbase.Support;
+
+import jdk.vm.ci.meta.MetaUtil;
 
 class ClassInfo {
 

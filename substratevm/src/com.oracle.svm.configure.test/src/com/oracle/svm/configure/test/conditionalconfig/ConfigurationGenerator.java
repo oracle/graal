@@ -33,6 +33,10 @@ public class ConfigurationGenerator {
 
     @Test
     public void createTestConfig() {
+        String enabledProperty = System.getProperty(ConfigurationGenerator.class.getName() + ".enabled");
+        if (!Boolean.parseBoolean(enabledProperty)) {
+            return;
+        }
         NoPropagationNecessary.runTest();
         PropagateToParent.runTest();
         PropagateButLeaveCommonConfiguration.runTest();
@@ -81,6 +85,7 @@ class NoPropagationNecessary {
         ClassUtil.createProxy(IA.class);
     }
 
+    @SuppressWarnings("unused")
     private static class A {
     }
 
@@ -156,6 +161,7 @@ class PropagateButLeaveCommonConfiguration {
         }
     }
 
+    @SuppressWarnings("unused")
     private static class C {
     }
 

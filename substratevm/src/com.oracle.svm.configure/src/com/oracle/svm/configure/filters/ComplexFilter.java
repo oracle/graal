@@ -30,18 +30,18 @@ import java.io.IOException;
 import java.util.Map;
 
 public class ComplexFilter implements ConfigurationFilter {
-    private final RuleNode ruleNode;
+    private final HierarchyFilterNode hierarchyFilterNode;
     private final RegexFilter regexFilter = new RegexFilter();
 
-    public ComplexFilter(RuleNode ruleNode) {
-        this.ruleNode = ruleNode;
+    public ComplexFilter(HierarchyFilterNode hierarchyFilterNode) {
+        this.hierarchyFilterNode = hierarchyFilterNode;
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{');
         writer.indent().newline();
-        ruleNode.printJson(writer);
+        hierarchyFilterNode.printJson(writer);
         regexFilter.printJson(writer);
         writer.unindent().newline();
         writer.append('}').newline();
@@ -49,16 +49,16 @@ public class ComplexFilter implements ConfigurationFilter {
 
     @Override
     public void parseFromJson(Map<String, Object> topJsonObject) {
-        ruleNode.parseFromJson(topJsonObject);
+        hierarchyFilterNode.parseFromJson(topJsonObject);
         regexFilter.parseFromJson(topJsonObject);
     }
 
     @Override
     public boolean includes(String qualifiedName) {
-        return ruleNode.includes(qualifiedName) && regexFilter.includes(qualifiedName);
+        return hierarchyFilterNode.includes(qualifiedName) && regexFilter.includes(qualifiedName);
     }
 
-    public RuleNode getRuleNode() {
-        return ruleNode;
+    public HierarchyFilterNode getHierarchyFilterNode() {
+        return hierarchyFilterNode;
     }
 }

@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.configure.filters;
 
-import java.io.IOException;
 import java.util.Map;
 
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.configure.json.JsonPrintable;
 
-public interface ConfigurationFilter {
-
-    void printJson(JsonWriter writer) throws IOException;
+public interface ConfigurationFilter extends JsonPrintable {
 
     void parseFromJson(Map<String, Object> topJsonObject);
 

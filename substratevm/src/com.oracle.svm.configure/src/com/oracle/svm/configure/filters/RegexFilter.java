@@ -27,7 +27,8 @@ package com.oracle.svm.configure.filters;
 import static com.oracle.svm.core.configure.ConfigurationParser.asList;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -36,12 +37,11 @@ import com.oracle.svm.configure.json.JsonWriter;
 
 public class RegexFilter implements ConfigurationFilter {
 
-    private final Map<Inclusion, Map<String, Pattern>> regexPatterns;
+    private final Pattern[][] regexPatterns = new Pattern[Inclusion.values().length][];
 
     public RegexFilter() {
-        regexPatterns = new HashMap<>();
         for (Inclusion inclusion : Inclusion.values()) {
-            regexPatterns.put(inclusion, new HashMap<>());
+            regexPatterns[inclusion.ordinal()] = new Pattern[0];
         }
     }
 
@@ -49,15 +49,10 @@ public class RegexFilter implements ConfigurationFilter {
     public void printJson(JsonWriter writer) throws IOException {
         writer.quote("regexRules").append(": [").indent().newline();
 
-        boolean first = true;
+        boolean[] first = {true};
         for (Inclusion inclusion : Inclusion.values()) {
-            for (String pattern : regexPatterns.get(inclusion).keySet()) {
-                if (first) {
-                    first = false;
-                } else {
-                    writer.append(',').newline();
-                }
-                writer.append("{").quote(inclusion == Inclusion.Include ? "includeClasses" : "excludeClasses").append(": ").quote(pattern).append("}");
+            for (Pattern pattern : regexPatterns[inclusion.ordinal()]) {
+                FilterConfigurationParser.printEntry(writer, first, inclusion, pattern.pattern());
             }
         }
 
@@ -67,33 +62,44 @@ public class RegexFilter implements ConfigurationFilter {
         writer.append("}");
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     public void parseFromJson(Map<String, Object> topJsonObject) {
         Object regexRules = topJsonObject.get("regexRules");
         if (regexRules != null) {
             List<Object> patternList = asList(regexRules, "Field 'regexRules' must be a list of objects.");
+            List<Pattern>[] patterns = new List[Inclusion.values().length];
+            for (Inclusion inclusion : Inclusion.values()) {
+                patterns[inclusion.ordinal()] = new ArrayList<>(Arrays.asList(regexPatterns[inclusion.ordinal()]));
+            }
+
             for (Object patternObject : patternList) {
-                RuleNode.parseEntry(patternObject, (pattern, inclusion) -> regexPatterns.get(inclusion).computeIfAbsent(pattern, Pattern::compile));
+                FilterConfigurationParser.parseEntry(patternObject, (pattern, inclusion) -> patterns[inclusion.ordinal()].add(Pattern.compile(pattern)));
+            }
+
+            for (Inclusion inclusion : Inclusion.values()) {
+                regexPatterns[inclusion.ordinal()] = patterns[inclusion.ordinal()].toArray(new Pattern[0]);
             }
         }
     }
 
     private boolean matchesForInclusion(Inclusion inclusion, String qualifiedName) {
-        return regexPatterns.get(inclusion).values().stream().anyMatch(p -> p.matcher(qualifiedName).matches());
-    }
-
-    private boolean hasPatternsForInclusion(Inclusion inclusion) {
-        return regexPatterns.get(inclusion).size() != 0;
+        for (Pattern p : regexPatterns[inclusion.ordinal()]) {
+            if (p.matcher(qualifiedName).matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public boolean includes(String qualifiedName) {
-        if (hasPatternsForInclusion(Inclusion.Include)) {
+        if (regexPatterns[Inclusion.Include.ordinal()].length != 0) {
             if (!matchesForInclusion(Inclusion.Include, qualifiedName)) {
                 return false;
             }
         }
-        if (hasPatternsForInclusion(Inclusion.Exclude)) {
+        if (regexPatterns[Inclusion.Exclude.ordinal()].length != 0) {
             return !matchesForInclusion(Inclusion.Exclude, qualifiedName);
         }
         return true;

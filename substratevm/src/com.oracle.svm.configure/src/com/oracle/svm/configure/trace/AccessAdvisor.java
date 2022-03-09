@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter;
-import com.oracle.svm.configure.filters.RuleNode;
+import com.oracle.svm.configure.filters.HierarchyFilterNode;
 
 /**
  * Decides if a recorded access should be included in a configuration. Also advises the agent's
@@ -44,19 +44,19 @@ public final class AccessAdvisor {
     public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile("^(.+[/.])?\\$Proxy[0-9]+$");
 
     /** Filter to ignore accesses that <em>originate in</em> methods of these internal classes. */
-    private static final RuleNode internalCallerFilter;
+    private static final HierarchyFilterNode internalCallerFilter;
 
     /** Filter to unconditionally ignore <em>accesses of</em> these classes and their members. */
-    private static final RuleNode internalAccessFilter;
+    private static final HierarchyFilterNode internalAccessFilter;
 
     /**
      * Filter to ignore <em>accesses of</em> these classes and their members when the caller
      * (accessing class) is unknown. Used in addition to {@link #accessFilter}, not instead.
      */
-    private static final RuleNode accessWithoutCallerFilter;
+    private static final HierarchyFilterNode accessWithoutCallerFilter;
 
     static {
-        internalCallerFilter = RuleNode.createRootWithIncludedChildren();
+        internalCallerFilter = HierarchyFilterNode.createInclusiveRoot();
 
         internalCallerFilter.addOrGetChildren("com.sun.crypto.provider.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("com.sun.java.util.jar.pack.**", ConfigurationFilter.Inclusion.Exclude);
@@ -98,11 +98,12 @@ public final class AccessAdvisor {
 
         internalCallerFilter.removeRedundantNodes();
 
-        internalAccessFilter = RuleNode.createRootWithIncludedChildren();
+        internalAccessFilter = HierarchyFilterNode.createInclusiveRoot();
         excludeInaccessiblePackages(internalAccessFilter);
         internalAccessFilter.removeRedundantNodes();
 
-        accessWithoutCallerFilter = RuleNode.createRootWithIncludedChildren(); // in addition to accessFilter
+        accessWithoutCallerFilter = HierarchyFilterNode.createInclusiveRoot(); // in addition to
+                                                                               // accessFilter
         accessWithoutCallerFilter.addOrGetChildren("jdk.vm.ci.**", ConfigurationFilter.Inclusion.Exclude);
         accessWithoutCallerFilter.addOrGetChildren("[Ljava.lang.String;", ConfigurationFilter.Inclusion.Exclude);
         // ^ String[]: for command-line argument arrays created before Java main method is called
@@ -114,18 +115,18 @@ public final class AccessAdvisor {
      * by their module and should not be accessible from application code. Generate all with:
      * native-image-configure generate-filters --exclude-unexported-packages-from-modules [--reduce]
      */
-    private static void excludeInaccessiblePackages(RuleNode rootNode) {
+    private static void excludeInaccessiblePackages(HierarchyFilterNode rootNode) {
         rootNode.addOrGetChildren("com.oracle.graal.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("com.oracle.truffle.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.compiler.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.libgraal.**", ConfigurationFilter.Inclusion.Exclude);
     }
 
-    public static RuleNode copyBuiltinCallerFilterTree() {
+    public static HierarchyFilterNode copyBuiltinCallerFilterTree() {
         return internalCallerFilter.copy();
     }
 
-    public static RuleNode copyBuiltinAccessFilterTree() {
+    public static HierarchyFilterNode copyBuiltinAccessFilterTree() {
         return internalAccessFilter.copy();
     }
 

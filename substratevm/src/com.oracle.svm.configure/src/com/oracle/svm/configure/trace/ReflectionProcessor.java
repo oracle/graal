@@ -261,7 +261,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
     }
 
-    private void addFullyQualifiedDeclaredMethod(String descriptor, TypeConfiguration configuration) {
+    private static void addFullyQualifiedDeclaredMethod(String descriptor, TypeConfiguration configuration) {
         int sigbegin = descriptor.indexOf('(');
         int classend = descriptor.lastIndexOf('.', sigbegin - 1);
         String qualifiedClass = descriptor.substring(0, classend);

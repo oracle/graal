@@ -44,6 +44,10 @@ public class ConfigurationVerifier {
 
     @Test
     public void testConfig() throws Exception {
+        String enabledProperty = System.getProperty(ConfigurationVerifier.class.getName() + ".enabled");
+        if (!Boolean.parseBoolean(enabledProperty)) {
+            return;
+        }
         ConfigurationSet actualConfig = loadActualConfig();
         ConfigurationSet expectedConfig = loadExpectedConfig();
 

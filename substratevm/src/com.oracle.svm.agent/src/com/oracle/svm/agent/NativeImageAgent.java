@@ -71,7 +71,7 @@ import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
-import com.oracle.svm.configure.filters.RuleNode;
+import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
@@ -205,7 +205,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 configurationWithOrigins = true;
             } else if (token.startsWith("experimental-conditional-config-filter-file=")) {
                 conditionalConfigUserPackageFilterFiles.add(getTokenValue(token));
-            } else if (token.startsWith("conditional-config-class-name-filter-file=")) {
+            } else if (token.startsWith("conditional-config-class-filter-file=")) {
                 conditionalConfigClassNameFilterFiles.add(getTokenValue(token));
             } else if (token.equals("track-reflection-metadata")) {
                 trackReflectionMetadata = true;
@@ -235,16 +235,16 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         }
 
         ComplexFilter callerFilter = null;
-        RuleNode callerFilterRuleNode = null;
+        HierarchyFilterNode callerFilterHierarchyFilterNode = null;
         if (!builtinCallerFilter) {
-            callerFilterRuleNode = RuleNode.createRootWithIncludedChildren();
-            callerFilter = new ComplexFilter(callerFilterRuleNode);
+            callerFilterHierarchyFilterNode = HierarchyFilterNode.createInclusiveRoot();
+            callerFilter = new ComplexFilter(callerFilterHierarchyFilterNode);
         }
 
         if (!callerFilterFiles.isEmpty()) {
-            if (callerFilterRuleNode == null) {
-                callerFilterRuleNode = AccessAdvisor.copyBuiltinCallerFilterTree();
-                callerFilter = new ComplexFilter(callerFilterRuleNode);
+            if (callerFilterHierarchyFilterNode == null) {
+                callerFilterHierarchyFilterNode = AccessAdvisor.copyBuiltinCallerFilterTree();
+                callerFilter = new ComplexFilter(callerFilterHierarchyFilterNode);
             }
             if (!parseFilterFiles(callerFilter, callerFilterFiles)) {
                 return 1;
@@ -309,18 +309,18 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     tracer = writer;
                     tracingResultWriter = writer;
                 } else if (!conditionalConfigUserPackageFilterFiles.isEmpty()) {
-                    ComplexFilter userCodeFilter = new ComplexFilter(RuleNode.createRoot());
+                    ComplexFilter userCodeFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
                     if (!parseFilterFiles(userCodeFilter, conditionalConfigUserPackageFilterFiles)) {
                         return 2;
                     }
                     ComplexFilter classNameFilter;
                     if (!conditionalConfigClassNameFilterFiles.isEmpty()) {
-                        classNameFilter = new ComplexFilter(RuleNode.createRoot());
-                        if(!parseFilterFiles(classNameFilter, conditionalConfigClassNameFilterFiles)) {
+                        classNameFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+                        if (!parseFilterFiles(classNameFilter, conditionalConfigClassNameFilterFiles)) {
                             return 3;
                         }
                     } else {
-                        classNameFilter = new ComplexFilter(RuleNode.createRootWithIncludedChildren());
+                        classNameFilter = new ComplexFilter(HierarchyFilterNode.createInclusiveRoot());
                     }
 
                     ConditionalConfigurationPredicate predicate = new ConditionalConfigurationPredicate(classNameFilter);
@@ -432,7 +432,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 return error(false, "cannot parse filter file " + path + ": " + e);
             }
         }
-        filter.getRuleNode().removeRedundantNodes();
+        filter.getHierarchyFilterNode().removeRedundantNodes();
         return true;
     }
 
@@ -458,7 +458,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         initialDelay, writePeriod, TimeUnit.SECONDS);
     }
 
-    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationFileCollection ignoredConfigSet) {
+    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationFileCollection ignoredConfigCollection) {
         String classpath = Support.getSystemProperty(jvmti, "java.class.path");
         String sep = Support.getSystemProperty(jvmti, "path.separator");
         if (sep == null) {
@@ -472,7 +472,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
-        AgentMetaInfProcessor processor = new AgentMetaInfProcessor(ignoredConfigSet);
+        AgentMetaInfProcessor processor = new AgentMetaInfProcessor(ignoredConfigCollection);
         for (String cpEntry : classpath.split(sep)) {
             try {
                 NativeImageMetaInfWalker.walkMetaInfForCPEntry(Paths.get(cpEntry), processor);

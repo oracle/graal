@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.agent.configwithorigins.HumanReadableConfigurationWithOrigins;
 import com.oracle.svm.configure.filters.ComplexFilter;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -86,7 +87,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
 
     /* This code is only ever executed by one thread. */
     @SuppressWarnings("NonAtomicOperationOnVolatileField")
-    private Set<MethodInfo> maybePropagateConfiguration(List<MethodCallNode> callNodes) {
+    private static Set<MethodInfo> maybePropagateConfiguration(List<MethodCallNode> callNodes) {
         /*
          * Iterate over a given method's call nodes and try to find the common config across all
          * calls of that method. Then, for each call node of the given method: 1. Set the common
@@ -134,7 +135,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
         return affectedNodes;
     }
 
-    private ConfigurationSet findCommonConfigurationForMethod(List<MethodCallNode> callNodes) {
+    private static ConfigurationSet findCommonConfigurationForMethod(List<MethodCallNode> callNodes) {
         ConfigurationSet config = null;
         for (MethodCallNode node : callNodes) {
             if (config == null) {
@@ -159,7 +160,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
          * Once the configuration has been propagated, iterate over all call nodes and use each call
          * node as the condition for that call node's config.
          */
-        MethodCallNode rootNode = methodCallNodes.remove(null).get(0);
+        MethodCallNode rootCallNode = methodCallNodes.remove(null).get(0);
 
         for (List<MethodCallNode> value : methodCallNodes.values()) {
             for (MethodCallNode node : value) {
@@ -170,7 +171,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
             }
         }
 
-        addConfigurationWithCondition(rootNode.configuration, ConfigurationCondition.alwaysTrue());
+        addConfigurationWithCondition(rootCallNode.configuration, ConfigurationCondition.alwaysTrue());
 
         filterConfiguration();
     }
@@ -199,7 +200,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsTrac
         configurationContainer = configurationContainer.filter(predicate);
     }
 
-    private void propagateConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
+    private static void propagateConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
         /*
          * Iteratively propagate configuration from children to parent calls until an iteration
          * doesn't produce any changes.

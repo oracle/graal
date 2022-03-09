@@ -168,7 +168,6 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
         return new SerializationConfigurationType(condition, convertedClassName, convertedCustomTargetConstructorClassName);
     }
 
-
     private static SerializationConfigurationLambdaCapturingType createLambdaCapturingClassConfigurationType(ConfigurationCondition condition, String className) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
         return new SerializationConfigurationLambdaCapturingType(condition, convertedClassName);

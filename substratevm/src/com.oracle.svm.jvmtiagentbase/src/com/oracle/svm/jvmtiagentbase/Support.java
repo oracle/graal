@@ -444,5 +444,6 @@ public final class Support {
     }
 
     public static class WrongPhaseException extends Exception {
+        private static final long serialVersionUID = 8503239518909756105L;
     }
 }

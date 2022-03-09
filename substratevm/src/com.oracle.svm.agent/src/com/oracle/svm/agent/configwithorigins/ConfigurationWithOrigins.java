@@ -27,14 +27,12 @@ package com.oracle.svm.agent.configwithorigins;
 import java.io.IOException;
 import java.util.Set;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-
-import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
-public class ConfigurationWithOrigins extends ConfigurationBase<ConfigurationWithOrigins, ConfigurationWithOrigins.DummyPredicate> {
+public class ConfigurationWithOrigins implements JsonPrintable {
 
     private final MethodCallNode root;
     private final ConfigurationFile configFile;
@@ -88,45 +86,6 @@ public class ConfigurationWithOrigins extends ConfigurationBase<ConfigurationWit
 
         writer.unindent().newline();
         writer.append("}");
-
-    }
-
-    @Override
-    public boolean isEmpty() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ConfigurationWithOrigins copy() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void merge(ConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void mergeConditional(ConfigurationCondition condition, ConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void subtract(ConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void intersect(ConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void removeIf(DummyPredicate predicate) {
-        throw new UnsupportedOperationException();
-    }
-
-    interface DummyPredicate {
 
     }
 }

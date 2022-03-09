@@ -67,13 +67,13 @@ public abstract class ConfigurationWithOriginsTracer extends Tracer {
             } else {
                 stackTrace = filterStackTrace(stackTrace);
                 if (stackTrace != null) {
-                    dispatchTraceEntry(stackTrace, processor, entry);
+                    dispatchTraceEntry(stackTrace, entry);
                 }
             }
         }
     }
 
-    public void dispatchTraceEntry(MethodInfo[] stackTrace, TraceProcessor processor, Map<String, Object> entry) {
+    public void dispatchTraceEntry(MethodInfo[] stackTrace, Map<String, Object> entry) {
         MethodCallNode currentNode = rootNode;
         for (int i = stackTrace.length - 1; i >= 0; i--) {
             MethodInfo nextMethodInfo = stackTrace[i];

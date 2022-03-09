@@ -38,12 +38,12 @@ import com.oracle.svm.configure.trace.TraceProcessor;
 public class ConfigurationResultWriter extends Tracer implements TracingResultWriter {
     private final TraceProcessor processor;
     private final ConfigurationSet configuration;
-    private final ConfigurationSet omitedConfiguration;
+    private final ConfigurationSet omittedConfiguration;
 
     public ConfigurationResultWriter(TraceProcessor processor, ConfigurationSet configuration, ConfigurationSet omittedConfiguration) {
         this.processor = processor;
         this.configuration = configuration;
-        this.omitedConfiguration = omittedConfiguration;
+        this.omittedConfiguration = omittedConfiguration;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class ConfigurationResultWriter extends Tracer implements TracingResultWr
 
     @Override
     public List<Path> writeToDirectory(Path directoryPath) throws IOException {
-        ConfigurationSet finalConfiguration = configuration.copyAndSubtract(omitedConfiguration);
+        ConfigurationSet finalConfiguration = configuration.copyAndSubtract(omittedConfiguration);
         return finalConfiguration.writeConfiguration(configFile -> directoryPath.resolve(configFile.getFileName()));
     }
 }

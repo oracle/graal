@@ -30,8 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
@@ -70,13 +70,13 @@ public class ConfigurationSet {
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
-        TypeConfiguration reflectionConfiguration = mutator.apply(this.reflectionConfiguration, other.reflectionConfiguration);
-        TypeConfiguration jniConfiguration = mutator.apply(this.jniConfiguration, other.jniConfiguration);
-        ResourceConfiguration resourceConfiguration = mutator.apply(this.resourceConfiguration, other.resourceConfiguration);
-        ProxyConfiguration proxyConfiguration = mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
-        SerializationConfiguration serializationConfiguration = mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
-        PredefinedClassesConfiguration predefinedClassesConfiguration = mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
-        return new ConfigurationSet(reflectionConfiguration, jniConfiguration, resourceConfiguration, proxyConfiguration, serializationConfiguration, predefinedClassesConfiguration);
+        TypeConfiguration reflectionConfig = mutator.apply(this.reflectionConfiguration, other.reflectionConfiguration);
+        TypeConfiguration jniConfig = mutator.apply(this.jniConfiguration, other.jniConfiguration);
+        ResourceConfiguration resourceConfig = mutator.apply(this.resourceConfiguration, other.resourceConfiguration);
+        ProxyConfiguration proxyConfig = mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
+        SerializationConfiguration serializationConfig = mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
+        PredefinedClassesConfiguration predefinedClassesConfig = mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
+        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
     }
 
     public ConfigurationSet copyAndMerge(ConfigurationSet other) {
@@ -92,13 +92,13 @@ public class ConfigurationSet {
     }
 
     public ConfigurationSet filter(ConditionalConfigurationPredicate filter) {
-        TypeConfiguration reflectionConfiguration = this.reflectionConfiguration.copyAndFilter(filter);
-        TypeConfiguration jniConfiguration = this.jniConfiguration.copyAndFilter(filter);
-        ResourceConfiguration resourceConfiguration = this.resourceConfiguration.copyAndFilter(filter);
-        ProxyConfiguration proxyConfiguration = this.proxyConfiguration.copyAndFilter(filter);
-        SerializationConfiguration serializationConfiguration = this.serializationConfiguration.copyAndFilter(filter);
-        PredefinedClassesConfiguration predefinedClassesConfiguration = this.predefinedClassesConfiguration.copyAndFilter(filter);
-        return new ConfigurationSet(reflectionConfiguration, jniConfiguration, resourceConfiguration, proxyConfiguration, serializationConfiguration, predefinedClassesConfiguration);
+        TypeConfiguration reflectionConfig = this.reflectionConfiguration.copyAndFilter(filter);
+        TypeConfiguration jniConfig = this.jniConfiguration.copyAndFilter(filter);
+        ResourceConfiguration resourceConfig = this.resourceConfiguration.copyAndFilter(filter);
+        ProxyConfiguration proxyConfig = this.proxyConfiguration.copyAndFilter(filter);
+        SerializationConfiguration serializationConfig = this.serializationConfiguration.copyAndFilter(filter);
+        PredefinedClassesConfiguration predefinedClassesConfig = this.predefinedClassesConfiguration.copyAndFilter(filter);
+        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
     }
 
     public TypeConfiguration getReflectionConfiguration() {
@@ -144,7 +144,7 @@ public class ConfigurationSet {
         }
     }
 
-    public static List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver, Function<ConfigurationFile, ConfigurationBase<?, ?>> configSupplier) throws IOException {
+    public static List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver, Function<ConfigurationFile, JsonPrintable> configSupplier) throws IOException {
         List<Path> writtenFiles = new ArrayList<>();
         for (ConfigurationFile configFile : ConfigurationFile.values()) {
             if (configFile.canBeGeneratedByAgent()) {

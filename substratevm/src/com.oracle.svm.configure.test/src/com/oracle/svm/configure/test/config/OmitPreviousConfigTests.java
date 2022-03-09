@@ -52,7 +52,6 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.util.VMError;
 
 public class OmitPreviousConfigTests {
@@ -72,8 +71,6 @@ public class OmitPreviousConfigTests {
                     throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
                 }
             });
-
-            AccessAdvisor unusedAdvisor = new AccessAdvisor();
 
             Function<IOException, Exception> handler = e -> {
                 StringWriter sw = new StringWriter();

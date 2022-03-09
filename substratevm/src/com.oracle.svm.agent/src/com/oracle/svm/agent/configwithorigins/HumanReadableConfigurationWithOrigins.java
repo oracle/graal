@@ -22,21 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.conditionalconfig;
+package com.oracle.svm.agent.configwithorigins;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-
-import com.oracle.svm.agent.configwithorigins.MethodCallNode;
-import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
-public class HumanReadableConfigurationWithOrigins extends ConfigurationBase<HumanReadableConfigurationWithOrigins, HumanReadableConfigurationWithOrigins.DummyPredicate> {
+public class HumanReadableConfigurationWithOrigins implements JsonPrintable {
 
     static final String CONNECTING_INDENT = "\u2502   "; // "| "
     static final String EMPTY_INDENT = "    ";
@@ -76,7 +73,6 @@ public class HumanReadableConfigurationWithOrigins extends ConfigurationBase<Hum
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        Set<MethodCallNode> nodesWithNonEmptyConfig = root.getNodesWithNonEmptyConfig(configFile);
         writer.append("root").newline();
 
         List<MethodCallNode> nodes = List.copyOf(root.calledMethods.values());
@@ -98,44 +94,5 @@ public class HumanReadableConfigurationWithOrigins extends ConfigurationBase<Hum
                 printChildNodes(writer, prefix + (child == lastChild ? EMPTY_INDENT : CONNECTING_INDENT), child);
             }
         }
-    }
-
-    @Override
-    public boolean isEmpty() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public HumanReadableConfigurationWithOrigins copy() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void merge(HumanReadableConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void mergeConditional(ConfigurationCondition condition, HumanReadableConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void subtract(HumanReadableConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void intersect(HumanReadableConfigurationWithOrigins other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void removeIf(DummyPredicate predicate) {
-        throw new UnsupportedOperationException();
-    }
-
-    interface DummyPredicate {
-
     }
 }

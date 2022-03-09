@@ -475,7 +475,6 @@ def svm_gate_body(args, tasks):
 
 
 def native_unittests_task(extra_build_args=None):
-    tests = ['com.oracle.svm.test', 'com.oracle.svm.configure.test.config']
     if mx.is_windows():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
@@ -491,7 +490,7 @@ def native_unittests_task(extra_build_args=None):
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
-    native_unittest(['--builder-on-modulepath', '--build-args', _native_unittest_features] + additional_build_args + tests)
+    native_unittest(['--builder-on-modulepath', '--build-args', _native_unittest_features] + additional_build_args)
 
 
 def conditional_config_task(native_image):
@@ -511,11 +510,13 @@ def conditional_config_task(native_image):
 '''
         )
     agent_opts = ['config-output-dir=' + config_dir, 'experimental-conditional-config-filter-file=' + conditional_config_filter_path]
-    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts)]
-                 + ['com.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator'])
+    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                  '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
+                  'com.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator'])
 
-    jvm_unittest(['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_dir]
-                + ['com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
+    jvm_unittest(['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_dir,
+                  "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
+                  'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
 
 
 def javac_image_command(javac_path):
@@ -605,7 +606,7 @@ def _native_unittest(native_image, cmdline_args):
         except IOError:
             mx.log('warning: could not read blacklist: ' + blacklist)
 
-    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test']
+    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
     builder_on_modulepath = pargs.builder_on_modulepath
     _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, builder_on_modulepath)
 

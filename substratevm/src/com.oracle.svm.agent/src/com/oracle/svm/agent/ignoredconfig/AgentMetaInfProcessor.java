@@ -32,15 +32,15 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 
 public class AgentMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
 
-    private ConfigurationFileCollection ignoredConfigSet;
+    private final ConfigurationFileCollection ignoredConfigFileCollection;
 
-    public AgentMetaInfProcessor(ConfigurationFileCollection ignoredConfigSet) {
-        this.ignoredConfigSet = ignoredConfigSet;
+    public AgentMetaInfProcessor(ConfigurationFileCollection ignoredConfigFileCollection) {
+        this.ignoredConfigFileCollection = ignoredConfigFileCollection;
     }
 
     @Override
     public void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception {
-        ignoredConfigSet.addDirectory(resourcePath.getParent());
+        ignoredConfigFileCollection.addDirectory(resourcePath.getParent());
     }
 
     @Override
