@@ -218,7 +218,6 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
 
         public LLVMStatementNode createNode(int[] bufferOffsets, LLVMSymbol[] descriptors, boolean isThreadLocal) {
             assert !buffer.hasRemaining();
-            assert !isThreadLocal;
             LLVMOffsetStoreNode[] stores = new LLVMOffsetStoreNode[valueStores.size()];
             int[] offsets = new int[valueStores.size() + 1];
             int[] sizes = new int[valueStores.size()];
@@ -238,6 +237,5 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             LLVMAllocateNode allocateNode = dataSectionFactory.getThreadLocalSection().createAllocateNode(runtime.getNodeFactory(), "tlglobals_struct", true);
             return new AggregateTLGlobalInPlaceNode(language, aggregateLiteralInPlaceNode, allocateNode, runtime.getBitcodeID());
         }
-
     }
 }

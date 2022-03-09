@@ -30,7 +30,6 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
         assert frame.getArguments()[0] instanceof Thread;
         Thread thread = (Thread) frame.getArguments()[0];
         LLVMPointer tlgBase = allocOrNull(allocTLSection);
-        assert !tlgBase.isNull();
         contextThreadLocal.get().addSection(tlgBase, bitcodeID);
         inPlaceNode.execute(frame, thread);
         return null;

@@ -235,7 +235,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
                 if (globalOffsets[i] == -1) {
                     ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
                 } else {
-                    assert roBase != null && rwBase != null;
                     LLVMPointer base = globalIsReadOnly[i] ? roBase : rwBase;
                     ref = base.increment(globalOffsets[i]);
                 }
