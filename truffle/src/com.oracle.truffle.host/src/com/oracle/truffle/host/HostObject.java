@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -1707,7 +1708,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean hasExceptionCause() {
-        return isException() && InteropLibrary.getUncached().isException(((Throwable) obj).getCause());
+        return isException() && ((Throwable) obj).getCause() instanceof AbstractTruffleException;
     }
 
     @ExportMessage
@@ -1715,7 +1716,7 @@ final class HostObject implements TruffleObject {
     Object getExceptionCause() throws UnsupportedMessageException {
         if (isException()) {
             Throwable cause = ((Throwable) obj).getCause();
-            if (InteropLibrary.getUncached().isException(cause)) {
+            if (cause instanceof AbstractTruffleException) {
                 return cause;
             }
         }
