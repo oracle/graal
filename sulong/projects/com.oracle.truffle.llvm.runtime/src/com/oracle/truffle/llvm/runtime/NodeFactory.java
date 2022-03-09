@@ -187,7 +187,7 @@ public interface NodeFactory {
 
     LLVMMemoryOpNode createProtectGlobalsBlock();
 
-    LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly);
+    LLVMMemoryOpNode  createFreeGlobalsBlock(boolean readOnly);
 
     LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
 
