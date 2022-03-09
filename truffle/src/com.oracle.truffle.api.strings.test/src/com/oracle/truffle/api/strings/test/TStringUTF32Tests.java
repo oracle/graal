@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,52 +39,30 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.api.strings.test.ops;
+package com.oracle.truffle.api.strings.test;
 
-import static org.junit.runners.Parameterized.Parameter;
-
-import java.util.Arrays;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.test.TStringTestBase;
 
-@RunWith(Parameterized.class)
-public class TStringCodePointIndexToByteIndexTest extends TStringTestBase {
+public class TStringUTF32Tests extends TStringTestBase {
 
-    @Parameter public TruffleString.CodePointIndexToByteIndexNode node;
-
-    @Parameters(name = "{0}")
-    public static Iterable<TruffleString.CodePointIndexToByteIndexNode> data() {
-        return Arrays.asList(TruffleString.CodePointIndexToByteIndexNode.create(), TruffleString.CodePointIndexToByteIndexNode.getUncached());
+    @Test
+    public void testBroken() {
+        TruffleString ts = TruffleString.fromJavaStringUncached("\ud803\udfff\ud800", UTF_32);
+        Assert.assertEquals(2, ts.codePointLengthUncached(UTF_32));
+        Assert.assertEquals(TruffleString.CodeRange.BROKEN, ts.getCodeRangeUncached(UTF_32));
+        Assert.assertFalse(ts.isValidUncached(UTF_32));
     }
 
     @Test
-    public void testAll() throws Exception {
-        forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            for (int i = 0; i < codepoints.length; i++) {
-                Assert.assertEquals(byteIndices[i], node.execute(a, 0, i, encoding));
-                if (i > 0) {
-                    Assert.assertEquals(byteIndices[i] - byteIndices[1], node.execute(a, byteIndices[1], i - 1, encoding));
-                }
-            }
-            Assert.assertEquals(array.length, node.execute(a, 0, codepoints.length, encoding));
-        });
-    }
-
-    @Test
-    public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, 0, 0, e));
-    }
-
-    @Test
-    public void testOutOfBounds() throws Exception {
-        checkOutOfBounds(true, true, (a, i, encoding) -> node.execute(a, i, 0, encoding));
-        checkOutOfBounds(false, true, (a, i, encoding) -> node.execute(a, 0, i, encoding));
+    public void testBroken2() {
+        TruffleString ts = TruffleString.fromJavaStringUncached("\ud800", UTF_32);
+        Assert.assertEquals(1, ts.codePointLengthUncached(UTF_32));
+        Assert.assertEquals(TruffleString.CodeRange.BROKEN, ts.getCodeRangeUncached(UTF_32));
+        Assert.assertFalse(ts.isValidUncached(UTF_32));
     }
 }

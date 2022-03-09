@@ -1484,16 +1484,32 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract TruffleString execute(int codepoint, Encoding encoding);
+        public final TruffleString execute(int codepoint, Encoding encoding) {
+            return execute(codepoint, encoding, false);
+        }
+
+        /**
+         * Creates a new TruffleString from a given code point.
+         * 
+         * If {@code allowUTF16Surrogates} is {@code true}, {@link Character#isSurrogate(char)
+         * UTF-16 surrogate values} passed as {@code codepoint} will not cause an
+         * {@link IllegalArgumentException}, but instead be encoded on a best-effort basis. This
+         * option is only supported on {@link TruffleString.Encoding#UTF_16} and
+         * {@link TruffleString.Encoding#UTF_32}.
+         *
+         * @since 22.1
+         */
+        public abstract TruffleString execute(int codepoint, Encoding encoding, boolean allowUTF16Surrogates);
 
         @Specialization
-        static TruffleString fromCodePoint(int c, Encoding enc,
+        static TruffleString fromCodePoint(int c, Encoding enc, boolean allowUTF16Surrogates,
                         @Cached ConditionProfile bytesProfile,
                         @Cached ConditionProfile utf8Profile,
                         @Cached ConditionProfile utf16Profile,
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile exoticProfile,
                         @Cached ConditionProfile bmpProfile) {
+            assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-8, UTF-16 and UTF-32";
             if (Integer.toUnsignedLong(c) > 0x10ffff) {
                 throw InternalErrors.invalidCodePoint(c);
             }
@@ -1529,7 +1545,15 @@ public final class TruffleString extends AbstractTruffleString {
                 stride = 1;
                 if (bmpProfile.profile(c <= 0xffff)) {
                     length = 1;
-                    codeRange = Encodings.isUTF16Surrogate(c) ? TSCodeRange.getBrokenMultiByte() : TSCodeRange.get16Bit();
+                    if (Encodings.isUTF16Surrogate(c)) {
+                        if (allowUTF16Surrogates) {
+                            codeRange = TSCodeRange.getBrokenMultiByte();
+                        } else {
+                            throw InternalErrors.invalidCodePoint(c);
+                        }
+                    } else {
+                        codeRange = TSCodeRange.get16Bit();
+                    }
                     TStringOps.writeToByteArray(bytes, 1, 0, c);
                 } else {
                     length = 2;
@@ -1538,19 +1562,27 @@ public final class TruffleString extends AbstractTruffleString {
                 }
             } else if (utf32Profile.profile(isUTF32(enc))) {
                 assert c > 0xff;
-                if (Encodings.isUTF16Surrogate(c)) {
-                    throw InternalErrors.invalidCodePoint(c);
+                if (c <= 0xffff) {
+                    if (Encodings.isUTF16Surrogate(c)) {
+                        if (allowUTF16Surrogates) {
+                            codeRange = TSCodeRange.getBrokenFixedWidth();
+                        } else {
+                            throw InternalErrors.invalidCodePoint(c);
+                        }
+                    } else {
+                        codeRange = TSCodeRange.get16Bit();
+                    }
+                } else {
+                    codeRange = TSCodeRange.getValidFixedWidth();
                 }
-                boolean compact1 = c <= 0xffff;
+                final boolean compact1 = TSCodeRange.is16Bit(codeRange);
                 bytes = new byte[compact1 ? 2 : 4];
                 length = 1;
                 if (bmpProfile.profile(compact1)) {
                     stride = 1;
-                    codeRange = TSCodeRange.get16Bit();
                     TStringOps.writeToByteArray(bytes, 1, 0, c);
                 } else {
                     stride = 2;
-                    codeRange = TSCodeRange.getValidFixedWidth();
                     TStringOps.writeToByteArray(bytes, 2, 0, c);
                 }
             } else if (exoticProfile.profile(!isSupportedEncoding(enc))) {
@@ -1601,6 +1633,16 @@ public final class TruffleString extends AbstractTruffleString {
     @TruffleBoundary
     public static TruffleString fromCodePointUncached(int codepoint, Encoding encoding) {
         return FromCodePointNode.getUncached().execute(codepoint, encoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link FromCodePointNode}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public static TruffleString fromCodePointUncached(int codepoint, Encoding encoding, boolean allowUTF16Surrogates) {
+        return FromCodePointNode.getUncached().execute(codepoint, encoding, allowUTF16Surrogates);
     }
 
     /**
@@ -2829,6 +2871,64 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
+     * Node to convert a given byte index to a codepoint index. See
+     * {@link #execute(AbstractTruffleString, int, int, TruffleString.Encoding)} for details.
+     *
+     * @since 22.1
+     */
+    @ImportStatic(TStringGuards.class)
+    @GeneratePackagePrivate
+    @GenerateUncached
+    public abstract static class ByteIndexToCodePointIndexNode extends Node {
+
+        ByteIndexToCodePointIndexNode() {
+        }
+
+        /**
+         * Convert the given byte index to a codepoint index, relative to starting point
+         * {@code byteOffset}.
+         *
+         * @since 22.1
+         */
+        public abstract int execute(AbstractTruffleString a, int byteOffset, int byteIndex, Encoding expectedEncoding);
+
+        @Specialization
+        static int translate(AbstractTruffleString a, int byteOffset, int byteIndex, Encoding expectedEncoding,
+                        @Cached ToIndexableNode toIndexableNode,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TStringInternalNodes.RawIndexToCodePointIndexNode rawIndexToCodePointIndexNode) {
+            a.checkEncoding(expectedEncoding);
+            int rawOffset = rawIndex(byteOffset, expectedEncoding);
+            int rawIndex = rawIndex(byteIndex, expectedEncoding);
+            a.boundsCheckRegionRaw(rawOffset, rawIndex);
+            if (byteIndex == 0) {
+                return 0;
+            }
+            Object arrayA = toIndexableNode.execute(a, a.data());
+            int codeRangeA = getCodeRangeNode.execute(a);
+            return rawIndexToCodePointIndexNode.execute(a, arrayA, codeRangeA, a.offset() + byteOffset, rawIndex);
+        }
+
+        /**
+         * Create a new {@link ByteIndexToCodePointIndexNode}.
+         *
+         * @since 22.1
+         */
+        public static ByteIndexToCodePointIndexNode create() {
+            return TruffleStringFactory.ByteIndexToCodePointIndexNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link ByteIndexToCodePointIndexNode}.
+         *
+         * @since 22.1
+         */
+        public static ByteIndexToCodePointIndexNode getUncached() {
+            return TruffleStringFactory.ByteIndexToCodePointIndexNodeGen.getUncached();
+        }
+    }
+
+    /**
      * Node to convert a given codepoint index to a byte index. See
      * {@link #execute(AbstractTruffleString, int, int, TruffleString.Encoding)} for details.
      *
@@ -2857,15 +2957,15 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.CodePointIndexToRawNode codePointIndexToRawNode) {
             a.checkEncoding(expectedEncoding);
-            a.boundsCheck(codepointIndex, getCodePointLengthNode);
+            a.boundsCheckRegion(0, codepointIndex, getCodePointLengthNode);
             int rawOffset = rawIndex(byteOffset, expectedEncoding);
-            a.boundsCheckRaw(rawOffset);
+            a.boundsCheckRawLength(rawOffset);
             if (codepointIndex == 0) {
-                return byteOffset;
+                return 0;
             }
             Object arrayA = toIndexableNode.execute(a, a.data());
             int codeRangeA = getCodeRangeNode.execute(a);
-            return codePointIndexToRawNode.execute(a, arrayA, codeRangeA, rawOffset, codepointIndex, false) << expectedEncoding.naturalStride;
+            return codePointIndexToRawNode.execute(a, arrayA, codeRangeA, rawOffset, codepointIndex, true) << expectedEncoding.naturalStride;
         }
 
         /**
@@ -4423,16 +4523,16 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract TruffleString execute(AbstractTruffleString a, int fromIndex, int length, Encoding expectedEncoding, boolean lazy);
+        public abstract TruffleString execute(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy);
 
         @Specialization
-        static TruffleString substringRaw(AbstractTruffleString a, int byteFromIndex, int byteLength, Encoding expectedEncoding, boolean lazy,
+        static TruffleString substringRaw(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.SubstringNode substringNode) {
             a.checkEncoding(expectedEncoding);
             final int codeRangeA = getCodeRangeANode.execute(a);
-            final int fromIndex = rawIndex(byteFromIndex, expectedEncoding);
+            final int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
             final int length = rawIndex(byteLength, expectedEncoding);
             a.boundsCheckRegionRaw(fromIndex, length);
             if (length == 0) {

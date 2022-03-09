@@ -386,4 +386,8 @@ final class Encodings {
         }
         return c;
     }
+
+    static boolean isValidUnicodeCodepoint(int codepoint) {
+        return !isUTF16Surrogate(codepoint) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
+    }
 }

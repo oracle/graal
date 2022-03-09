@@ -183,7 +183,7 @@ public class TRegexOptions {
     /**
      * The parser will try to unroll bounded quantifiers on groups up to this limit.
      */
-    public static final int TRegexQuantifierUnrollThresholdGroup = 5;
+    public static final int TRegexQuantifierUnrollThresholdGroup = 6;
 
     /**
      * Bailout threshold for number of capture groups.

@@ -95,13 +95,13 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
         for (int length : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129}) {
             byte[] arr = new byte[offset + length + padding];
             for (int i = 0; i < offset; i++) {
-                arr[i] = (byte) 0xff;
+                arr[i] = (byte) 0x7f;
             }
             for (int i = offset; i < offset + length; i++) {
                 arr[i] = (byte) (i % 0x7f);
             }
             for (int i = arr.length - padding; i < arr.length; i++) {
-                arr[i] = (byte) 0xff;
+                arr[i] = (byte) 0x7f;
             }
             ret.add(new Object[]{arr, offset, length});
             for (byte[] pattern : PATTERNS) {
@@ -134,8 +134,8 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
 
     @Test
     public void testUtf8() throws ClassNotFoundException {
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class);
-        test(method, null, DUMMY_LOCATION, array, offset, length, true);
-        test(method, null, DUMMY_LOCATION, array, offset, length, false);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class);
+        test(method, null, DUMMY_LOCATION, array, offset, length, true, false);
+        test(method, null, DUMMY_LOCATION, array, offset, length, false, false);
     }
 }

@@ -77,10 +77,10 @@ public final class NFAGenerator {
     /**
      * These are like {@link #initialStates}, but with {@code mustAdvance} set to {@code false},
      * i.e. we have already advanced when we are in these states. In a regular expression with
-     * {@code MustAdvance=true}, all loopback transitions end in {@link #advancedInitialStates}
+     * {@code MustAdvance=true}, all loopback transitions end in {@link #advancedInitialState}
      * instead of {@link #initialStates}.
      */
-    private final NFAState[] advancedInitialStates;
+    private final NFAState advancedInitialState;
     private final NFAState anchoredFinalState;
     private final NFAState finalState;
     private final NFAStateTransition[] anchoredEntries;
@@ -115,16 +115,14 @@ public final class NFAGenerator {
         unAnchoredReverseEntry = createTransition(finalState, dummyInitialState, ast.getEncoding().getFullSet(), -1);
         int nEntries = ast.getWrappedPrefixLength() + 1;
         initialStates = new NFAState[nEntries];
-        advancedInitialStates = ast.getOptions().isMustAdvance() ? new NFAState[Math.max(1, nEntries - 1)] : null;
+        advancedInitialState = ast.getOptions().isMustAdvance() ? createFinalState(StateSet.create(ast, ast.getNFAUnAnchoredInitialState(0)), false) : null;
         unAnchoredEntries = new NFAStateTransition[nEntries];
         for (int i = 0; i < initialStates.length; i++) {
             initialStates[i] = createFinalState(StateSet.create(ast, ast.getNFAUnAnchoredInitialState(i)), ast.getOptions().isMustAdvance());
             initialStates[i].setUnAnchoredInitialState(true);
             unAnchoredEntries[i] = createTransition(dummyInitialState, initialStates[i], ast.getEncoding().getFullSet(), -1);
-        }
-        if (ast.getOptions().isMustAdvance()) {
-            for (int i = 0; i < advancedInitialStates.length; i++) {
-                advancedInitialStates[i] = createFinalState(StateSet.create(ast, ast.getNFAUnAnchoredInitialState(i)), false);
+            if (i > 0) {
+                initialStates[i].setHasPrefixStates(true);
             }
         }
         if (ast.getReachableCarets().isEmpty()) {
@@ -136,6 +134,9 @@ public final class NFAGenerator {
             for (int i = 0; i < anchoredInitialStates.length; i++) {
                 anchoredInitialStates[i] = createFinalState(StateSet.create(ast, ast.getNFAAnchoredInitialState(i)), ast.getOptions().isMustAdvance());
                 anchoredInitialStates[i].setAnchoredInitialState();
+                if (i > 0) {
+                    initialStates[i].setHasPrefixStates(true);
+                }
                 anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialStates[i], ast.getEncoding().getFullSet(), -1);
             }
         }
@@ -153,7 +154,7 @@ public final class NFAGenerator {
     private NFA doCreateNFA() {
         Collections.addAll(expansionQueue, initialStates);
         if (ast.getOptions().isMustAdvance()) {
-            Collections.addAll(expansionQueue, advancedInitialStates);
+            expansionQueue.add(advancedInitialState);
         }
         if (!ast.getReachableCarets().isEmpty()) {
             Collections.addAll(expansionQueue, anchoredInitialStates);
@@ -165,19 +166,13 @@ public final class NFAGenerator {
 
         NFAStateTransition initialLoopBack;
         assert transitionGBUpdateIndices.isEmpty() && transitionGBClearIndices.isEmpty();
+        for (int i = 1; i < initialStates.length; i++) {
+            addNewLoopBackTransition(initialStates[i], initialStates[i - 1]);
+        }
         if (ast.getOptions().isMustAdvance()) {
-            for (int i = 1; i < initialStates.length; i++) {
-                addNewLoopBackTransition(initialStates[i], advancedInitialStates[i - 1]);
-            }
-            for (int i = 1; i < advancedInitialStates.length; i++) {
-                addNewLoopBackTransition(advancedInitialStates[i], advancedInitialStates[i - 1]);
-            }
-            addNewLoopBackTransition(initialStates[0], advancedInitialStates[0]);
-            initialLoopBack = createTransition(advancedInitialStates[0], advancedInitialStates[0], ast.getEncoding().getFullSet(), -1);
+            addNewLoopBackTransition(initialStates[0], advancedInitialState);
+            initialLoopBack = createTransition(advancedInitialState, advancedInitialState, ast.getEncoding().getFullSet(), -1);
         } else {
-            for (int i = 1; i < initialStates.length; i++) {
-                addNewLoopBackTransition(initialStates[i], initialStates[i - 1]);
-            }
             initialLoopBack = createTransition(initialStates[0], initialStates[0], ast.getEncoding().getFullSet(), -1);
         }
 
@@ -211,9 +206,7 @@ public final class NFAGenerator {
                     initialState.removeSuccessor(state);
                 }
                 if (ast.getOptions().isMustAdvance()) {
-                    for (NFAState initialState : advancedInitialStates) {
-                        initialState.removeSuccessor(state);
-                    }
+                    advancedInitialState.removeSuccessor(state);
                 }
                 dummyInitialState.removeSuccessor(state);
                 nfaStates.remove(NFAStateID.create(state));

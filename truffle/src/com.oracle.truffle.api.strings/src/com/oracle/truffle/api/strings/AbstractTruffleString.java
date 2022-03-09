@@ -403,6 +403,12 @@ public abstract class AbstractTruffleString {
         boundsCheckI(index, length());
     }
 
+    final void boundsCheckRawLength(int index) {
+        if (index < 0 || index > length()) {
+            throw InternalErrors.indexOutOfBounds();
+        }
+    }
+
     final void boundsCheckRaw(int fromIndex, int toIndex) {
         boundsCheckI(fromIndex, toIndex, length());
     }
@@ -601,6 +607,17 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final int byteLengthOfCodePointUncached(int byteIndex, TruffleString.Encoding expectedEncoding) {
         return TruffleString.ByteLengthOfCodePointNode.getUncached().execute(this, byteIndex, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of
+     * {@link TruffleString.ByteIndexToCodePointIndexNode}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public final int byteIndexToCodePointIndexUncached(int byteOffset, int byteIndex, TruffleString.Encoding expectedEncoding) {
+        return TruffleString.ByteIndexToCodePointIndexNode.getUncached().execute(this, byteOffset, byteIndex, expectedEncoding);
     }
 
     /**
