@@ -447,7 +447,7 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
 
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void load(String name, boolean isBuiltin);
+    private native void load(String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
@@ -459,7 +459,7 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
 
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
-    private native boolean load0(String name, boolean isBuiltin);
+    private native boolean load0(String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
