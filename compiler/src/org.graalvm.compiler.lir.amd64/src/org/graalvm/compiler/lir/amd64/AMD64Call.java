@@ -217,18 +217,20 @@ public class AMD64Call {
         return before;
     }
 
-    private static final int IC_MOV_SIZE = 10;
+    private static final int INLINE_CACHE_MOV_SIZE = 10;
 
     /**
      * @param nonOopBits placeholder bit pattern for inline cache receiver type patching
      */
     public static void directInlineCacheCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, MarkId markId, long nonOopBits, LIRFrameState info) {
-        masm.alignBeforeCall(true, IC_MOV_SIZE);
+        masm.alignBeforeCall(true, INLINE_CACHE_MOV_SIZE);
+        // The mark for an invocation that uses an inline cache must be placed at the
+        // instruction that loads the Klass from the inline cache.
         crb.recordMark(markId);
         int movPos = masm.position();
         masm.movq(AMD64.rax, nonOopBits);
         int before = masm.position();
-        assert movPos + IC_MOV_SIZE == before;
+        assert movPos + INLINE_CACHE_MOV_SIZE == before;
         masm.call();
         int after = masm.position();
         Call call = crb.recordDirectCall(before, after, callTarget, info);

@@ -402,18 +402,18 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * instruction, should be aligned to 4 bytes; 2) when {@code useBranchesWithin32ByteBoundary} is
      * true, the call instruction should be aligned with 32-bytes boundary.
      *
-     * @param additionalInstructionSize size of the additional instruction to be emitted before the
-     *            call instruction. This is used in HotSpot inline cache convention where a movq
+     * @param prefixInstructionSize size of the additional instruction to be emitted before the call
+     *            instruction. This is used in HotSpot inline cache convention where a movq
      *            instruction of the cached receiver type to {@code rax} register must be emitted
      *            before the call instruction.
      */
-    public void alignBeforeCall(boolean align, int additionalInstructionSize) {
-        emitAlignmentForDirectCall(align, additionalInstructionSize);
-        if (mitigateJCCErratum(position() + additionalInstructionSize, 5) != 0) {
+    public void alignBeforeCall(boolean align, int prefixInstructionSize) {
+        emitAlignmentForDirectCall(align, prefixInstructionSize);
+        if (mitigateJCCErratum(position() + prefixInstructionSize, 5) != 0) {
             // If JCC erratum padding was emitted, the displacement may be unaligned again. The
             // first call to emitAlignmentForDirectCall is essential as it may trigger the
             // JCC erratum padding.
-            emitAlignmentForDirectCall(align, additionalInstructionSize);
+            emitAlignmentForDirectCall(align, prefixInstructionSize);
         }
     }
 
