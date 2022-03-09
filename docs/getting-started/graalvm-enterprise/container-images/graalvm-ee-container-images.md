@@ -53,7 +53,7 @@ To start using GraalVM Enterprise images, you should accept the [Oracle Technolo
 
 6. Check and accept the license.
 
-    ![](../img/license_accepted.png)
+    ![](../img/licence_accepted.png)
 
 7. Open a terminal window and `docker login` to Oracle Container Registry using your Oracle account.
 
