@@ -1626,12 +1626,17 @@ public class LoggingTest {
                 public Object execute(VirtualFrame frame) {
                     boolean doDefaultLogging = true;
                     if (action != null) {
-                        doDefaultLogging = action.test(getReference().get(this), allLoggers);
+                        doDefaultLogging = isDefaultLogging();
                     }
                     if (doDefaultLogging) {
                         doLog();
                     }
                     return getReference().get(this).getEnv().asGuestValue(null);
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private boolean isDefaultLogging() {
+                    return action.test(getReference().get(this), allLoggers);
                 }
             };
             return root.getCallTarget();

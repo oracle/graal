@@ -168,7 +168,7 @@ final class HostClassDesc {
 
         private static HostMethodDesc collectPublicConstructors(HostClassCache hostAccess, Class<?> type) {
             HostMethodDesc ctor = null;
-            if (isClassAccessible(type, hostAccess)) {
+            if (isClassAccessible(type, hostAccess) && !Modifier.isAbstract(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;

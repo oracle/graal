@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -749,6 +750,7 @@ public class SourceAPITest {
         }
 
         @ExportMessage
+        @TruffleBoundary
         public com.oracle.truffle.api.source.SourceSection getSourceLocation() {
             return getSection();
         }

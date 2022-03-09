@@ -308,7 +308,7 @@ def graalvm_svm():
 
 def gate_substratevm(tasks, quickbuild=False):
     tag = VmGateTasks.substratevm
-    name = 'Run Truffle host interop tests on SVM'
+    name = 'Run Truffle API tests on SVM'
     extra_build_args = []
     if quickbuild:
         tag = VmGateTasks.substratevm_quickbuild
@@ -317,10 +317,21 @@ def gate_substratevm(tasks, quickbuild=False):
 
     with Task(name, tasks, tags=[tag]) as t:
         if t:
-            tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
-            truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
-                                      '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
-            args = ['--build-args'] + truffle_no_compilation + extra_build_args + ['--'] + tests
+            tests = ['com.oracle.truffle.api.test.polyglot']
+            with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
+                # ContextPreInitializationNativeImageTest must run in its own image
+                fp.file.writelines([l + '\n' for l in ['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest']])
+                blacklist_args = ["--blacklist", fp.name]
+
+            truffle_with_compilation = [
+                '--verbose',
+                '--macro:truffle',
+                '-H:MaxRuntimeCompileMethods=5000',
+                '-R:MaxHeapSize=2g',
+                '--enable-url-protocols=jar',
+                '--enable-url-protocols=http'
+            ]
+            args = ['--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
