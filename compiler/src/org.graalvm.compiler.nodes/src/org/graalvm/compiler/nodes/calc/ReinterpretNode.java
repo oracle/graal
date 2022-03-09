@@ -97,7 +97,9 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticOperat
         }
         if (forValue instanceof ReinterpretNode) {
             ReinterpretNode reinterpret = (ReinterpretNode) forValue;
-            return new ReinterpretNode(forStamp, reinterpret.getValue());
+            if (forStamp.isCompatible(reinterpret.value.stamp(view))) {
+                return reinterpret.value;
+            }
         }
         return node != null ? node : new ReinterpretNode(forStamp, forValue);
     }
