@@ -63,7 +63,7 @@ public abstract class InvokeStatic extends Node {
         return invokeStatic.execute(args);
     }
 
-    @ImportStatic(InvokeStatic.class)
+    @ImportStatic({InvokeStatic.class, Utils.class})
     @NodeInfo(shortName = "INVOKESTATIC !initcheck")
     public abstract static class WithoutClassInitCheck extends Node {
 
@@ -82,7 +82,7 @@ public abstract class InvokeStatic extends Node {
         @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             return directCallNode.call(args);
         }
 
