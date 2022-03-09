@@ -108,7 +108,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         loops.detectCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
-            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
+            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopTripCountIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
                 boolean hasSafepoint = false;
                 for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                     hasSafepoint |= loopEnd.canSafepoint();
