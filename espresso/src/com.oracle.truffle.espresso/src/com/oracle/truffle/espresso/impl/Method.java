@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
@@ -502,6 +503,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isCallerSensitive() {
         return (getModifiers() & ACC_CALLER_SENSITIVE) != 0;
+    }
+
+    /**
+     * The {@code @ForceInline} annotation only takes effect for methods or constructors of classes
+     * loaded by the boot loader. Annotations on methods or constructors of classes loaded outside
+     * of the boot loader are ignored.
+     */
+    public boolean isForceInline() {
+        return (getModifiers() & ACC_FORCE_INLINE) != 0 && StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader());
     }
 
     public boolean isHidden() {
