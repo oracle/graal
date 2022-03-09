@@ -2361,9 +2361,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * @return the number of nop bytes emitted
      */
     protected final int mitigateJCCErratum(int bytesToEmit) {
+        return mitigateJCCErratum(position(), bytesToEmit);
+    }
+
+    /**
+     * If this assembler is configured to mitigate the Intel JCC erratum, emits nops at the current
+     * position such that an instruction of size {@code bytesToEmit} at {@code position} will not
+     * cross a {@value #JCC_ERRATUM_MITIGATION_BOUNDARY}.
+     *
+     * @return the number of nop bytes emitted
+     */
+    protected final int mitigateJCCErratum(int position, int bytesToEmit) {
         if (useBranchesWithin32ByteBoundary) {
-            int beforeNextOp = position();
-            int bytesUntilBoundary = bytesUntilBoundary(beforeNextOp);
+            int bytesUntilBoundary = bytesUntilBoundary(position);
             if (bytesUntilBoundary < bytesToEmit) {
                 nop(bytesUntilBoundary);
                 return bytesUntilBoundary;

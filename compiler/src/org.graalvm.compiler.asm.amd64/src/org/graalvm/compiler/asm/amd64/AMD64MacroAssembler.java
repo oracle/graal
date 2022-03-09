@@ -397,28 +397,30 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
-     * Emits a direct call to a fixed address, which will be patched later during code installation.
+     * Emits alignment before a direct call to a fixed address. The alignment consists of two parts:
+     * 1) when {@code align} is true, the fixed address, i.e., the displacement of the call
+     * instruction, should be aligned to 4 bytes; 2) when {@code useBranchesWithin32ByteBoundary} is
+     * true, the call instruction should be aligned with 32-bytes boundary.
      *
-     * @param align indicates whether the call displacement operand must be 4-byte aligned
-     * @return the position of the emitted call instruction
+     * @param additionalInstructionSize size of the additional instruction to be emitted before the
+     *            call instruction. This is used in HotSpot inline cache convention where a movq
+     *            instruction of the cached receiver type to {@code rax} register must be emitted
+     *            before the call instruction.
      */
-    public final int directCall(boolean align) {
-        emitAlignmentForDirectCall(align);
-        if (mitigateJCCErratum(5) != 0) {
+    public void alignBeforeCall(boolean align, int additionalInstructionSize) {
+        emitAlignmentForDirectCall(align, additionalInstructionSize);
+        if (mitigateJCCErratum(position() + additionalInstructionSize, 5) != 0) {
             // If JCC erratum padding was emitted, the displacement may be unaligned again. The
             // first call to emitAlignmentForDirectCall is essential as it may trigger the
             // JCC erratum padding.
-            emitAlignmentForDirectCall(align);
+            emitAlignmentForDirectCall(align, additionalInstructionSize);
         }
-        int callPos = position();
-        call();
-        return callPos;
     }
 
-    private void emitAlignmentForDirectCall(boolean align) {
+    private void emitAlignmentForDirectCall(boolean align, int additionalInstructionSize) {
         if (align) {
             // make sure that the 4-byte call displacement will be 4-byte aligned
-            int displacementPos = position() + target.arch.getMachineCodeCallDisplacementOffset();
+            int displacementPos = position() + target.arch.getMachineCodeCallDisplacementOffset() + additionalInstructionSize;
             if (displacementPos % 4 != 0) {
                 nop(4 - displacementPos % 4);
             }
