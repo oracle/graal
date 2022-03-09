@@ -32,10 +32,12 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
@@ -50,6 +52,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
+
+import java.util.Arrays;
 
 @Opcode("AArch64_ARRAY_INDEX_OF")
 public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
@@ -82,8 +86,16 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
                     AllocatableValue result, AllocatableValue arrayPtr, AllocatableValue arrayOffset, AllocatableValue arrayLength, AllocatableValue fromIndex,
                     AllocatableValue[] searchValues) {
         super(TYPE);
+
+        assert result.getPlatformKind() == AArch64Kind.DWORD;
+        assert arrayPtr.getPlatformKind() == AArch64Kind.QWORD;
+        assert arrayOffset.getPlatformKind() == AArch64Kind.QWORD;
+        assert arrayLength.getPlatformKind() == AArch64Kind.DWORD;
+        assert fromIndex.getPlatformKind() == AArch64Kind.DWORD;
+        assert Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD);
+
         this.arrayBaseOffset = arrayBaseOffset;
-        this.elementByteSize = getElementByteSize(valueKind);
+        this.elementByteSize = tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind);
         this.findTwoConsecutive = findTwoConsecutive;
         resultValue = result;
         arrayPtrValue = arrayPtr;
@@ -107,19 +119,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         vectorTemp6 = findTwoConsecutive ? tool.newVariable(vectorKind) : Value.ILLEGAL;
     }
 
-    private static int getElementByteSize(JavaKind kind) {
-        switch (kind) {
-            case Byte:
-                return 1;
-            case Char:
-                return 2;
-            case Int:
-                return 4;
-            default:
-                throw GraalError.shouldNotReachHere("Unexpected JavaKind");
-        }
-    }
-
     private int getShiftSize() {
         switch (elementByteSize) {
             case 1:
@@ -140,7 +139,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
         Label match = new Label();
         Label searchByElementLoop = new Label();
-        Label end = new Label();
+        Label done = new Label();
 
         int shiftSize = getShiftSize();
 
@@ -168,7 +167,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         if (findTwoConsecutive) {
             /* The end of the region is the second to last element in the array */
             endIndex = asRegister(temp5);
-            masm.sub(64, endIndex, arrayLength, 1);
+            masm.sub(32, endIndex, arrayLength, 1);
         } else {
             /* The end of the region is the last element in the array */
             endIndex = arrayLength;
@@ -177,12 +176,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * Set the base address to be at the end of the region baseAddress + (endIndex << shift
          * size).
          */
-        masm.add(64, baseAddress, baseAddress, endIndex, ShiftType.LSL, shiftSize);
+        masm.add(64, baseAddress, baseAddress, endIndex, AArch64Assembler.ExtendType.SXTW, shiftSize);
         /* Initial index is -searchLength << shift size */
         Register curIndex = searchLength;
         masm.sub(64, curIndex, zr, curIndex, ShiftType.LSL, shiftSize);
         /* Loop doing element-by-element search */
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(searchByElementLoop);
         masm.ldr(memAccessSize, curValue, AArch64Address.createRegisterOffsetAddress(memAccessSize, baseAddress, curIndex, false));
         masm.cmp(compareSize, searchValueReg, curValue);
@@ -194,14 +193,14 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          */
         masm.adds(64, curIndex, curIndex, elementByteSize);
         masm.branchConditionally(ConditionFlag.MI, searchByElementLoop);
-        masm.jmp(end);
+        masm.jmp(done);
 
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(match);
         /* index = endIndex + (curIndex >> shiftSize) */
-        masm.add(64, result, endIndex, curIndex, ShiftType.ASR, shiftSize);
+        masm.add(32, result, endIndex, curIndex, ShiftType.ASR, shiftSize);
 
-        masm.bind(end);
+        masm.bind(done);
     }
 
     private void emitSIMDCode(AArch64MacroAssembler masm, Register baseAddress) {
@@ -288,12 +287,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * 2.1 Set searchEnd pointing to byte after the last valid element in the array and
          * 'refAddress' pointing to the beginning of the last chunk.
          */
-        masm.add(64, searchEnd, baseAddress, arrayLength, ShiftType.LSL, shiftSize);
-        masm.bic(64, refAddress, searchEnd, 31L);
+        masm.add(64, searchEnd, baseAddress, arrayLength, AArch64Assembler.ExtendType.SXTW, shiftSize);
+        masm.sub(64, refAddress, searchEnd, 32);
         /* Set 'chunkToReadAddress' pointing to the chunk from where the search begins. */
-        masm.add(64, chunkToReadAddress, baseAddress, fromIndex, ShiftType.LSL, shiftSize);
+        masm.add(64, chunkToReadAddress, baseAddress, fromIndex, AArch64Assembler.ExtendType.SXTW, shiftSize);
 
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(searchByChunkLoopHead);
         masm.cmp(64, refAddress, chunkToReadAddress);
         masm.branchConditionally(ConditionFlag.LS, processTail);
@@ -349,24 +348,26 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
             masm.cbnz(64, matchReg, matchInChunk);
         }
         /* No match; jump to next loop iteration. */
+        // align address to 32-byte boundary
         masm.bic(64, chunkToReadAddress, chunkToReadAddress, 31);
         masm.jmp(searchByChunkLoopHead);
 
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(processTail);
         masm.cmp(64, chunkToReadAddress, searchEnd);
         masm.branchConditionally(ConditionFlag.HS, end);
         masm.sub(64, chunkToReadAddress, searchEnd, 32);
         /*
-         * Move back the 'searchEnd' by 32-bytes because at the end of 'searchByChunkLoopTail', the
-         * 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the
-         * searchByChunkLoopHead would never using 'chunkToReadAddress' >= 'endOfString' condition.
+         * Set 'searchEnd' to zero because at the end of 'searchByChunkLoopTail', the
+         * 'chunkToReadAddress' will be rolled back to a 32-byte aligned addressed. Thus, unless
+         * 'searchEnd' is adjusted, the 'processTail' comparison condition 'chunkToReadAddress' >=
+         * 'searchEnd' may never be true.
          */
-        masm.mov(64, searchEnd, chunkToReadAddress);
+        masm.mov(64, searchEnd, zr);
         masm.jmp(searchByChunkLoopTail);
 
         /* 4. If the element is found in a 32-byte chunk then find its position. */
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(matchInChunk);
         /*
          * 4.1 Using the magic constant set 2 bits in the matching byte(s) that represent its
@@ -412,7 +413,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         Register baseAddress = asRegister(temp1);
         Register searchLength = asRegister(temp2);
 
-        Label ret = new Label();
+        Label done = new Label();
 
         /*
          * @formatter:off
@@ -422,7 +423,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * @formatter:on
         */
         masm.mov(result, -1);   // Return for empty strings
-        masm.cbz(64, arrayLength, ret);
+        masm.cbz(32, arrayLength, done);
 
         /* Load address of first array element */
         masm.add(64, baseAddress, asRegister(arrayPtrValue), arrayBaseOffset);
@@ -432,13 +433,13 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * Search element-by-element for small arrays (with search space size of less than 32 bytes,
          * i.e., 4 UTF-16 or 8 Latin1 elements) else search chunk-by-chunk.
          */
-        masm.sub(64, searchLength, arrayLength, fromIndex);
+        masm.sub(32, searchLength, arrayLength, fromIndex);
         if (findTwoConsecutive) {
             /*
              * Because one is trying to find two consecutive elements, the search length is in
              * effect one less
              */
-            masm.sub(64, searchLength, searchLength, 1);
+            masm.sub(32, searchLength, searchLength, 1);
         }
 
         Label searchByChunk = new Label();
@@ -448,12 +449,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
         /* Search sequentially for short arrays */
         emitScalarCode(masm, baseAddress, searchLength);
-        masm.jmp(ret);
+        masm.jmp(done);
 
         /* Search chunk-by-chunk for long arrays */
-        masm.align(16);
         masm.bind(searchByChunk);
         emitSIMDCode(masm, baseAddress);
-        masm.bind(ret);
+
+        masm.bind(done);
     }
 }

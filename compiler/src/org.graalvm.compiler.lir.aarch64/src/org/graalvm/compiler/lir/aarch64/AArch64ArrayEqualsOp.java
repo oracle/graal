@@ -43,6 +43,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
@@ -82,6 +83,13 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         super(TYPE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
+
+        assert result.getPlatformKind() == AArch64Kind.DWORD;
+        assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
+        assert offset1 == null || offset1.getPlatformKind() == AArch64Kind.QWORD;
+        assert offset2 == null || offset2.getPlatformKind() == AArch64Kind.QWORD;
+        assert length.getPlatformKind() == AArch64Kind.DWORD;
+
         this.kind = kind;
 
         /*
@@ -124,11 +132,12 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             Register hasMismatch = sc1.getRegister();
             Register scratch = sc2.getRegister();
 
-            // Get array length in bytes.
+            // Get array length in bytes and store as a 64-bit value.
             int shiftAmt = NumUtil.log2Ceil(arrayIndexScale);
-            masm.lsl(64, byteArrayLength, asRegister(lengthValue), shiftAmt);
+            masm.mov(32, byteArrayLength, asRegister(lengthValue));
+            masm.lsl(64, byteArrayLength, byteArrayLength, shiftAmt);
             masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
-            masm.branchConditionally(ConditionFlag.LS, scalarCompare);
+            masm.branchConditionally(ConditionFlag.LE, scalarCompare);
 
             emitSIMDCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
 
@@ -138,25 +147,25 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             // Return: hasMismatch is non-zero iff the arrays differ
             masm.bind(breakLabel);
             masm.cmp(64, hasMismatch, zr);
-            masm.cset(resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE, asRegister(resultValue), ConditionFlag.EQ);
+            masm.cset(32, asRegister(resultValue), ConditionFlag.EQ);
         }
     }
 
     private void loadArrayStart(AArch64MacroAssembler masm, Register array1, Register array2) {
         if (!offset1Value.equals(Value.ILLEGAL)) {
-            // address start = pointer + baseOffset + optional offset
+            // address start = pointer + baseOffset + offset
             masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
             masm.add(64, array1, array1, array1BaseOffset);
         } else {
-            // address start = pointer + base offset + optional offset
+            // address start = pointer + base offset
             masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
         }
         if (!offset2Value.equals(Value.ILLEGAL)) {
-            // address start = pointer + baseOffset + optional offset
+            // address start = pointer + baseOffset + offset
             masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
             masm.add(64, array2, array2, array2BaseOffset);
         } else {
-            // address start = pointer + base offset + optional offset
+            // address start = pointer + base offset
             masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
         }
     }
@@ -180,7 +189,6 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
     /**
      * Emits code that uses 8-byte vector compares.
-     *
      */
     private void emit8ByteCompare(AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label breakLabel, Register rscratch1) {
         Label loop = new Label();
@@ -197,7 +205,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.sub(64, length, zr, length);
 
         // Align the main loop
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(loop);
         masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(64, array1, length, false));
         masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, array2, length, false));
@@ -311,7 +319,6 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         Label compareByChunkTail = new Label();
         Label processTail = new Label();
 
-        masm.mov(64, hasMismatch, zr);
         /* 1. Set 'array1Address' and 'array2Address' to point to start of arrays. */
         loadArrayStart(masm, array1Address, array2Address);
         /*
@@ -321,7 +328,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.add(64, endOfArray1, array1Address, byteArrayLength);
         masm.sub(64, refAddress1, endOfArray1, 32);
 
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(compareByChunkHead);
         masm.cmp(64, refAddress1, array1Address);
         masm.branchConditionally(ConditionFlag.LS, processTail);
@@ -338,16 +345,25 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.neon.andVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1Part1RegV, array1Part1RegV, array1Part2RegV);
         /* 4.2 Find the minimum value across the vector */
         masm.neon.uminvSV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
-        /* 4.3 If hasMismatch != 0, then there is a mismatch somewhere. */
+        /* 4.3 If hasMismatch + 1 != 0, then there is a mismatch somewhere. */
         masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.Word, hasMismatch, array1Part1RegV, 0);
         masm.add(64, hasMismatch, hasMismatch, 1);
         /* If there is mismatch, then no more searching is necessary */
         masm.cbnz(64, hasMismatch, endLabel);
 
         /* 5. No mismatch; jump to next loop iteration. */
+        // align array1Address to 32-byte boundary
+        /*
+         * Determine how much to subtract from array2Address to match aligned array1Address. Using
+         * the result register as a temporary.
+         */
+        Register array1Alignment = asRegister(resultValue);
+        masm.and(64, array1Alignment, array1Address, 31);
+        masm.sub(64, array2Address, array2Address, array1Alignment);
+        masm.bic(64, array1Address, array1Address, 31);
         masm.jmp(compareByChunkHead);
 
-        masm.align(16);
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(processTail);
         masm.cmp(64, array1Address, endOfArray1);
         masm.branchConditionally(ConditionFlag.HS, endLabel);
@@ -361,11 +377,12 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         }
         masm.add(64, array2Address, array2Address, byteArrayLength);
         /*
-         * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkTail', the
-         * 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the 'compareByChunkHead'
-         * would never be using 'array1Address' >= 'endOfArray1' condition.
+         * Set 'endOfArray1' to zero because at the end of 'compareByChunkTail', the 'array1Address'
+         * will be rolled back to a 32-byte aligned addressed. Thus, unless 'endOfArray1' is
+         * adjusted, the 'processTail' comparison condition 'array1Address' >= 'endOfArray1' may
+         * never be true.
          */
-        masm.mov(64, endOfArray1, array1Address);
+        masm.mov(64, endOfArray1, zr);
         masm.jmp(compareByChunkTail);
     }
 }
