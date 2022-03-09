@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.tests.services;
 import java.util.HashMap;
 import java.util.Map;
 
-public class NativeTestEngineConfig extends TestEngineConfigBase {
+public class DryRunTestEngineConfig extends TestEngineConfigBase {
 
     @Override
     public int getPriority() {
-        return 10;
+        return 100;
     }
 
     @Override
@@ -47,5 +47,15 @@ public class NativeTestEngineConfig extends TestEngineConfigBase {
     @Override
     public Map<String, String> getContextOptions(String testName) {
         return new HashMap<>();
+    }
+
+    @Override
+    public boolean runReference() {
+        return false;
+    }
+
+    @Override
+    public boolean runCandidate() {
+        return false;
     }
 }

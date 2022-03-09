@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,40 @@
  */
 package com.oracle.truffle.llvm.tests.services;
 
-import java.util.HashMap;
 import java.util.Map;
 
-public class NativeTestEngineConfig extends TestEngineConfigBase {
+public class AOTCacheStoreNativeTestEngineConfig extends NativeTestEngineConfig {
 
     @Override
-    public int getPriority() {
-        return 10;
+    public String getConfigFolderName() {
+        return "AOTCache";
     }
 
     @Override
-    public String getDistributionSuffix() {
-        return "";
+    public int getPriority() {
+        return 100;
     }
 
     @Override
     public Map<String, String> getContextOptions(String testName) {
-        return new HashMap<>();
+        if (testName == null) {
+            throw new IllegalArgumentException("Test name missing");
+        }
+        Map<String, String> contextOptions = super.getContextOptions(testName);
+        contextOptions.put("engine.CacheStore", testName + ".image");
+        contextOptions.put("engine.CacheCompile", "aot");
+        contextOptions.put("llvm.AOTCacheStore", "true");
+        contextOptions.put("engine.CachePreinitializeContext", "false");
+        return contextOptions;
+    }
+
+    @Override
+    public boolean evaluateSourceOnly() {
+        return true;
+    }
+
+    @Override
+    public boolean runReference() {
+        return false;
     }
 }

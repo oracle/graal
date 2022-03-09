@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.tests.services;
 
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import org.graalvm.polyglot.Context;
 
 import java.nio.file.Path;
@@ -74,7 +75,11 @@ public interface TestEngineConfig extends Comparable<TestEngineConfig> {
     /**
      * Context options required by this test engine configuration.
      */
-    Map<String, String> getContextOptions();
+    default Map<String, String> getContextOptions() {
+        return getContextOptions(null);
+    }
+
+    Map<String, String> getContextOptions(String testName);
 
     /**
      * A filter to decide whether this configuration can execute the given test case.
@@ -82,4 +87,27 @@ public interface TestEngineConfig extends Comparable<TestEngineConfig> {
     boolean canExecute(Path path);
 
     Function<Context.Builder, CaptureOutput> getCaptureOutput();
+
+    /**
+     * Used for storing AOT auxiliary images of tests.
+     */
+    default boolean evaluateSourceOnly() {
+        return false;
+    }
+
+    default boolean runReference() {
+        return true;
+    }
+
+    default boolean runCandidate() {
+        return true;
+    }
+
+    default ProcessUtil.ProcessResult filterCandidateProcessResult(ProcessUtil.ProcessResult candidateResult) {
+        return candidateResult;
+    }
+
+    default String getConfigFolderName() {
+        return getName();
+    }
 }
