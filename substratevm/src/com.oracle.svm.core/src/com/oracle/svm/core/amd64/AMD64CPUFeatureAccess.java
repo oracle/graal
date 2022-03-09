@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -35,6 +36,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.util.VMError;
@@ -44,6 +46,19 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
 
 public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
+
+    private final EnumSet<?> buildTimeCPUFeatures;
+
+    public AMD64CPUFeatureAccess() {
+        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+        var arch = (AMD64) targetDescription.arch;
+        buildTimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
+    }
+
+    @Override
+    public EnumSet<?> buildTimeCPUFeatures() {
+        return buildTimeCPUFeatures;
+    }
 
     /**
      * We include all flags that enable AMD64 CPU instructions as we want best possible performance
