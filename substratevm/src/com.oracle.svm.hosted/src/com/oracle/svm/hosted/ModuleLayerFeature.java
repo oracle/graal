@@ -416,18 +416,31 @@ public final class ModuleLayerFeature implements Feature {
             }
         }
 
+        /**
+         * A manual field lookup is necessary due to reflection filters present in newer JDK
+         * versions. This method should be removed once {@link ReflectionUtil} becomes immune to
+         * reflection filters.
+         */
         private static Field findFieldByName(Field[] fields, String name) {
             return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().orElseThrow(VMError::shouldNotReachHere);
-        }
-
-        static boolean isModuleSynthetic(Module m) {
-            return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
         }
 
         public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
             if (hostedModule.isNamed()) {
                 return getOrCreateRuntimeModuleForHostedModule(hostedModule.getName(), runtimeModuleDescriptor);
             }
+
+            /*
+             * EVERYONE and ALL_UNNAMED modules are unnamed module instances that are used as
+             * markers throughout the JDK and therefore we need them in the image heap.
+             *
+             * We make an optimization that all hosted unnamed modules except EVERYONE module have
+             * the same runtime unnamed module. This does not break the module visibility semantics
+             * as unnamed modules can access all named modules, and visibility modifications that
+             * include unnamed modules do not depend on the actual instance, but only on the fact
+             * that the module is unnamed e.g., calling addExports from/to an unnamed module will do
+             * nothing.
+             */
 
             if (hostedModule == everyoneModule) {
                 return everyoneModule;
