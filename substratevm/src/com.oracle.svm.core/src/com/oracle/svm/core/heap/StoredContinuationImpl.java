@@ -78,6 +78,10 @@ import jdk.vm.ci.meta.JavaKind;
  * </pre>
  */
 public final class StoredContinuationImpl {
+    public interface RawFrameVisitor {
+        boolean visitRawFrame(int index, Pointer sp);
+    }
+
     private static final int HEADER_SIZE = 0x18;
     public static final int PAYLOAD_OFFSET = HEADER_SIZE;
     public static final int OBJECT_MONITOR_OFFSET = 8;
@@ -278,9 +282,9 @@ public final class StoredContinuationImpl {
      * Copied from {@link InstanceReferenceMapDecoder#walkOffsetsFromPointer}, walk references
      * stored in {@link StoredContinuation} object.
      */
-    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @AlwaysInline("de-virtualize calls to visitors")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkStoredContinuationFromPointer(Pointer baseAddress, ObjectReferenceVisitor visitor, Object holderObject) {
+    public static boolean walkStoredContinuationFromPointer(Pointer baseAddress, RawFrameVisitor frameVisitor, ObjectReferenceVisitor refVisitor, Object holderObject) {
         StoredContinuation f = (StoredContinuation) holderObject;
 
         Pointer payloadStart = StoredContinuationImpl.payloadLocation(f);
@@ -297,11 +301,14 @@ public final class StoredContinuationImpl {
             int frameSize = StoredContinuationImpl.readFrameSize(f, frameIndex);
             int referenceMapIndex = StoredContinuationImpl.readReferenceMapIndex(f, frameIndex);
 
-            boolean r = CodeReferenceMapDecoder.walkOffsetsFromPointer(curFrame, referenceMapEncoding, referenceMapIndex, visitor, holderObject);
-
-            if (!r) {
+            if (frameVisitor != null && !frameVisitor.visitRawFrame(frameIndex, curFrame)) {
                 return false;
             }
+
+            if (refVisitor != null && !CodeReferenceMapDecoder.walkOffsetsFromPointer(curFrame, referenceMapEncoding, referenceMapIndex, refVisitor, holderObject)) {
+                return false;
+            }
+
             curFrame = curFrame.add(frameSize);
         }
 
@@ -325,8 +332,8 @@ public final class StoredContinuationImpl {
         private static boolean startFromNextFrame = false;
 
         YieldVisitor(Pointer rootSp, Pointer verifyLeafSp, CodePointer leafIp) {
-            if (verifyLeafSp.isNonNull()) {
-                VMError.guarantee(verifyLeafSp.belowThan(rootSp));
+            if (verifyLeafSp.isNonNull() && !verifyLeafSp.belowThan(rootSp)) {
+                throw VMError.shouldNotReachHere(String.format("expecting leafSp (%x) < rootSp (%x)", verifyLeafSp.rawValue(), rootSp.rawValue()));
             }
             this.rootSP = rootSp;
             this.leafSP = verifyLeafSp;

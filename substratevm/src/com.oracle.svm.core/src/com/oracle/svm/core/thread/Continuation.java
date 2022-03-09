@@ -78,10 +78,12 @@ public final class Continuation {
         this.target = target;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer getIP() {
         return ip;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setIP(CodePointer ip) {
         this.ip = ip;
     }
