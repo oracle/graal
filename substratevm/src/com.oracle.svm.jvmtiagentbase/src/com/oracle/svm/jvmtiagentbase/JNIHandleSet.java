@@ -59,8 +59,10 @@ public abstract class JNIHandleSet {
     private boolean destroyed = false;
 
     final JNIMethodId javaLangClassGetName;
+    final JNIObjectHandle javaIoSerializable;
 
     public JNIHandleSet(JNIEnvironment env) {
+        javaIoSerializable = newClassGlobalRef(env, "java/io/Serializable");
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
     }

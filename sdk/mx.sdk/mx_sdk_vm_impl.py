@@ -1256,6 +1256,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += ['-ea', '-H:-AOTInline', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
             if _get_svm_support().is_debug_supported():
                 build_args += ['-g']
+            if getattr(image_config, 'link_at_build_time', True):
+                build_args += ['--link-at-build-time']
 
             graalvm_dist = get_final_graalvm_distribution()
             graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:' + self.subject.name))

@@ -184,32 +184,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.consumers.add(new ArgumentConsumer("--path", (value, config) -> config.path = value));
             this.consumers.add(new ArgumentConsumer("--class-name", (value, config) -> config.className = value));
             this.consumers.add(new ArgumentConsumer("--mode", (value, config) -> config.mode = Config.Mode.parse(value)));
-            this.consumers.add(new ArgumentConsumer("--metric", (value, config) -> {
-                switch (value) {
-                    case "peak-time":
-                        config.metric = new PeakTimeMetric();
-                        break;
-                    case "none":
-                        config.metric = new NoMetric();
-                        break;
-                    case "compilation-time":
-                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.MetricType.COMPILATION);
-                        break;
-                    case "partial-evaluation-time":
-                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.MetricType.PARTIAL_EVALUATION);
-                        break;
-                    case "one-shot":
-                        config.metric = new OneShotMetric();
-                        config.warmupIterations = 0;
-                        config.iterations = 1;
-                        break;
-                    case "allocated-bytes":
-                        config.metric = new AllocatedBytesMetric();
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unknown metric: " + value);
-                }
-            }));
+            this.consumers.add(new ArgumentConsumer("--metric", (value, config) -> (new MetricFactory()).loadMetric(config, value)));
             this.consumers.add(new ArgumentConsumer("-w", (value, config) -> config.warmupIterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("-i", (value, config) -> config.iterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> config.initMultiEngine().sharedEngine = Boolean.parseBoolean(value)));
@@ -571,9 +546,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             for (int i = 0; i < iterations; i++) {
                 config.metric.beforeIteration(warmup, i, config);
 
-                workload.run();
-
-                config.metric.afterIteration(warmup, i, config);
+                try {
+                    workload.run();
+                } finally {
+                    config.metric.afterIteration(warmup, i, config);
+                }
 
                 final Optional<Double> value = config.metric.reportAfterIteration(config);
                 if (value.isPresent()) {

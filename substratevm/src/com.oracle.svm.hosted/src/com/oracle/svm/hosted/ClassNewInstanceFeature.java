@@ -37,10 +37,10 @@ public class ClassNewInstanceFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
-        access.registerAsCompiled(Object.class.getDeclaredConstructors()[0]);
+        access.registerAsCompiled(Object.class.getDeclaredConstructors()[0], true);
         try {
-            access.registerAsCompiled(DynamicHub.class.getDeclaredMethod("newInstanceInstantiationError", Object.class));
-            access.registerAsCompiled(DynamicHub.class.getDeclaredMethod("newInstanceReachableError", Object.class));
+            access.registerAsCompiled(DynamicHub.class.getDeclaredMethod("newInstanceInstantiationError", Object.class), true);
+            access.registerAsCompiled(DynamicHub.class.getDeclaredMethod("newInstanceReachableError", Object.class), true);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }

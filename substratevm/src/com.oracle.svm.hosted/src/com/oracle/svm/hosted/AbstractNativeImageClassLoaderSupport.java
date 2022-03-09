@@ -55,6 +55,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -68,10 +70,17 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     final List<Path> imagecp;
     private final List<Path> buildcp;
+    private final EconomicMap<URI, EconomicSet<String>> classes;
+    private final EconomicMap<URI, EconomicSet<String>> packages;
+    private final EconomicSet<String> emptySet;
 
     protected final URLClassLoader classPathClassLoader;
 
     protected AbstractNativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath) {
+
+        classes = EconomicMap.create();
+        packages = EconomicMap.create();
+        emptySet = EconomicSet.create();
 
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
@@ -108,7 +117,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     protected abstract List<Path> applicationModulePath();
 
-    protected abstract Optional<? extends Object> findModule(String moduleName);
+    protected abstract Optional<Module> findModule(String moduleName);
 
     private HostedOptionParser hostedOptionParser;
     private OptionValues parsedHostedOptions;
@@ -130,6 +139,18 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     public OptionValues getParsedHostedOptions() {
         return parsedHostedOptions;
+    }
+
+    public EconomicSet<String> classes(URI container) {
+        return classes.get(container, emptySet);
+    }
+
+    public EconomicSet<String> packages(URI container) {
+        return packages.get(container, emptySet);
+    }
+
+    public boolean noEntryForURI(EconomicSet<String> set) {
+        return set == emptySet;
     }
 
     protected abstract void processClassLoaderOptions();
@@ -210,7 +231,8 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         private void loadClassesFromPath(Path path) {
             if (ClasspathUtils.isJar(path)) {
                 try {
-                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
+                    URI container = path.toAbsolutePath().toUri();
+                    URI jarURI = new URI("jar:" + container);
                     FileSystem probeJarFileSystem;
                     try {
                         probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
@@ -220,7 +242,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(jarFileSystem.getPath("/"), Collections.emptySet());
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), Collections.emptySet());
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -229,13 +251,14 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                loadClassesFromPath(path, excludeDirectories);
+                URI container = path.toUri();
+                loadClassesFromPath(container, path, excludeDirectories);
             }
         }
 
         protected static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(Path root, Set<Path> excludes) {
+        private void loadClassesFromPath(URI container, Path root, Set<Path> excludes) {
             FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
 
@@ -252,7 +275,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
                     String fileName = root.relativize(file).toString();
                     if (fileName.endsWith(CLASS_EXTENSION)) {
-                        executor.execute(() -> handleClassFileName(null, fileName, fileSystemSeparatorChar));
+                        executor.execute(() -> handleClassFileName(container, null, fileName, fileSystemSeparatorChar));
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -295,12 +318,32 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             return result.substring(0, result.length() - CLASS_EXTENSION.length());
         }
 
-        protected void handleClassFileName(Object module, String fileName, char fileSystemSeparatorChar) {
+        protected void handleClassFileName(URI container, Object module, String fileName, char fileSystemSeparatorChar) {
             String strippedClassFileName = strippedClassFileName(fileName);
             if (strippedClassFileName.equals("module-info")) {
                 return;
             }
+
             String className = strippedClassFileName.replace(fileSystemSeparatorChar, '.');
+            synchronized (classes) {
+                EconomicSet<String> classNames = classes.get(container);
+                if (classNames == null) {
+                    classNames = EconomicSet.create();
+                    classes.put(container, classNames);
+                }
+                classNames.add(className);
+            }
+            int packageSep = className.lastIndexOf('.');
+            String packageName = packageSep > 0 ? className.substring(0, packageSep) : "";
+            synchronized (packages) {
+                EconomicSet<String> packageNames = packages.get(container);
+                if (packageNames == null) {
+                    packageNames = EconomicSet.create();
+                    packages.put(container, packageNames);
+                }
+                packageNames.add(packageName);
+            }
+
             Class<?> clazz = null;
             try {
                 clazz = imageClassLoader.forName(className, module);

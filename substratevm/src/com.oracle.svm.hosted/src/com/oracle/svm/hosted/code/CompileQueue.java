@@ -147,6 +147,7 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
@@ -476,6 +477,10 @@ public class CompileQueue {
         return phaseSuite;
     }
 
+    public Map<HostedMethod, CompileTask> getCompilations() {
+        return compilations;
+    }
+
     public Collection<CompileTask> getCompilationTasks() {
         return compilations.values();
     }
@@ -563,15 +568,33 @@ public class CompileQueue {
      * parsed methods.
      */
     private void parseAheadOfTimeCompiledMethods() {
-        universe.getMethods().stream()
-                        .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+
+        for (HostedMethod method : universe.getMethods()) {
+            if (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method) ||
+                            method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+                ensureParsed(method, null, new EntryPointReason());
+            }
+            if (method.wrapped.isVirtualRootMethod()) {
+                for (HostedMethod impl : method.getImplementations()) {
+                    VMError.guarantee(impl.wrapped.isImplementationInvoked());
+                    ensureParsed(impl, null, new EntryPointReason());
+                }
+            }
+        }
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().values().stream()
-                        .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
-                        .filter(method -> method.wrapped.isRootMethod())
-                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+        for (SubstrateForeignCallLinkage linkage : foreignCallsProvider.getForeignCalls().values()) {
+            HostedMethod method = (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess());
+            if (method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+                ensureParsed(method, null, new EntryPointReason());
+            }
+            if (method.wrapped.isVirtualRootMethod()) {
+                for (HostedMethod impl : method.getImplementations()) {
+                    VMError.guarantee(impl.wrapped.isImplementationInvoked());
+                    ensureParsed(impl, null, new EntryPointReason());
+                }
+            }
+        }
     }
 
     private void parseDeoptimizationTargetMethods() {
@@ -761,13 +784,22 @@ public class CompileQueue {
     }
 
     public void scheduleEntryPoints() {
-        universe.getMethods().stream()
-                        .filter(method -> !ignoreEntryPoint(method) && (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)))
-                        .forEach(method -> ensureCompiled(method, new EntryPointReason()));
-        universe.getMethods().stream()
-                        .map(method -> method.compilationInfo.getDeoptTargetMethod())
-                        .filter(deoptTargetMethod -> deoptTargetMethod != null)
-                        .forEach(deoptTargetMethod -> ensureCompiled(deoptTargetMethod, new EntryPointReason()));
+        for (HostedMethod method : universe.getMethods()) {
+            if (!ignoreEntryPoint(method) && (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)) ||
+                            method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+                ensureCompiled(method, new EntryPointReason());
+            }
+            if (method.wrapped.isVirtualRootMethod()) {
+                for (HostedMethod impl : method.getImplementations()) {
+                    VMError.guarantee(impl.wrapped.isImplementationInvoked());
+                    ensureCompiled(impl, new EntryPointReason());
+                }
+            }
+            HostedMethod deoptTargetMethod = method.compilationInfo.getDeoptTargetMethod();
+            if (deoptTargetMethod != null) {
+                ensureCompiled(deoptTargetMethod, new EntryPointReason());
+            }
+        }
     }
 
     @SuppressWarnings("unused")
@@ -1577,7 +1609,7 @@ public class CompileQueue {
         }
     }
 
-    public Map<HostedMethod, CompilationResult> getCompilations() {
+    public Map<HostedMethod, CompilationResult> getCompilationResults() {
         Map<HostedMethod, CompilationResult> result = new TreeMap<>();
         for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);

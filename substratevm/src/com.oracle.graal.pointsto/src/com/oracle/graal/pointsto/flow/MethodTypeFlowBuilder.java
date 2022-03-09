@@ -328,9 +328,7 @@ public class MethodTypeFlowBuilder {
 
     private static void registerForeignCall(PointsToAnalysis bb, ForeignCallDescriptor foreignCallDescriptor) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, bb.getProviders().getForeignCalls());
-        targetMethod.ifPresent(analysisMethod -> {
-            bb.addRootMethod(analysisMethod);
-        });
+        targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
     protected void apply() {

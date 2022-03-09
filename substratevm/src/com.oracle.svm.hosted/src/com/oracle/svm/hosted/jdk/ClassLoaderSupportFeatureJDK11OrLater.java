@@ -52,7 +52,7 @@ import com.oracle.svm.hosted.ClassLoaderSupportImpl;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.ModuleSupport;
 
-public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
+final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
 
     private final NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport;
     private final Map<String, Set<Module>> packageToModules;
@@ -165,7 +165,7 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
 }
 
 @AutomaticFeature
-class ClassLoaderSupportFeatureJDK11OrLater implements Feature {
+public class ClassLoaderSupportFeatureJDK11OrLater implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;

@@ -24,7 +24,8 @@
  */
 package com.oracle.graal.pointsto.heap;
 
-import java.util.Map;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
@@ -33,42 +34,53 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Additional data for a {@link AnalysisType type} that is only available for types that are marked
  * as reachable. Computed lazily once the type is seen as reachable.
  */
 public final class TypeData {
-    /**
-     * The raw values of all static fields, regardless of field reachability status. Evaluating the
-     * {@link AnalysisFuture} runs
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)}
-     * adds the result to the image heap}.
-     */
-    final Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> staticFieldValues;
+    private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
 
-    public TypeData(Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> staticFieldValues) {
-        this.staticFieldValues = staticFieldValues;
+    /**
+     * The raw values of all static fields, regardless of field reachability status. The stored
+     * value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
+     * {@link JavaConstant}.
+     * 
+     * Evaluating the {@link AnalysisFuture} runs
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)}
+     * which adds the result to the image heap.
+     */
+    private final Object[] values;
+
+    public TypeData(int length) {
+        values = new Object[length];
+    }
+
+    /**
+     * Record the task computing the field value. It will be retrieved and executed when the field
+     * is marked as read.
+     */
+    public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
+        arrayHandle.setVolatile(this.values, field.getPosition(), task);
+    }
+
+    /**
+     * Record the field value produced by the task set in
+     * {@link #setFieldTask(AnalysisField, AnalysisFuture)}, i.e., the snapshot, already transformed
+     * and replaced.
+     */
+    public void setFieldValue(AnalysisField field, JavaConstant value) {
+        arrayHandle.setVolatile(this.values, field.getPosition(), value);
     }
 
     /**
      * Return a task for transforming and snapshotting the field value, effectively a future for
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)}.
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)},
+     * or its result, a {@link JavaConstant}.
      */
-    public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
-        return staticFieldValues.get(field);
-    }
-
-    /**
-     * Read the field value, executing the field task in this thread if not already executed.
-     */
-    public JavaConstant readField(AnalysisField field) {
-        return staticFieldValues.get(field).ensureDone();
-    }
-
-    public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
-        staticFieldValues.put(field, task);
+    public Object getFieldValue(AnalysisField field) {
+        return arrayHandle.getVolatile(this.values, field.getPosition());
     }
 
 }

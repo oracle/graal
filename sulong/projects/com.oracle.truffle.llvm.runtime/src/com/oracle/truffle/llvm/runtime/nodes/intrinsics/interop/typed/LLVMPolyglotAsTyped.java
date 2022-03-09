@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,15 +30,19 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "ptr", type = LLVMExpressionNode.class)
@@ -49,11 +53,25 @@ public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
         return LLVMPolyglotAsTypedNodeGen.create(ptr, typeid);
     }
 
-    @Specialization
-    LLVMManagedPointer doAsTyped(LLVMManagedPointer object, LLVMInteropType.Structured type,
-                    @Cached("create()") LLVMAsForeignNode asForeign) {
-        Object foreign = asForeign.execute(object);
+    @Specialization(guards = "!foreignsLib.isForeign(pointer)", limit = "3")
+    @GenerateAOT.Exclude
+    LLVMManagedPointer doManaged(LLVMManagedPointer pointer, LLVMInteropType.Structured type,
+                    @SuppressWarnings("unused") @CachedLibrary("pointer") LLVMAsForeignLibrary foreignsLib) {
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(pointer, type));
+    }
+
+    @Specialization(guards = "foreignsLib.isForeign(pointer)", limit = "3")
+    @GenerateAOT.Exclude
+    LLVMManagedPointer doAsTyped(LLVMManagedPointer pointer, LLVMInteropType.Structured type,
+                    @Cached("create()") LLVMAsForeignNode asForeign,
+                    @SuppressWarnings("unused") @CachedLibrary("pointer") LLVMAsForeignLibrary foreignsLib) {
+        Object foreign = asForeign.execute(pointer);
         return LLVMManagedPointer.create(LLVMTypedForeignObject.create(foreign, type));
+    }
+
+    @Specialization
+    LLVMManagedPointer doNative(LLVMNativePointer address, LLVMInteropType.Structured type) {
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(address, type));
     }
 
     @Specialization

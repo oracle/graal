@@ -25,6 +25,7 @@
  */
 package com.oracle.svm.reflect.serialize.hosted;
 
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.capturingClasses;
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.warn;
 
@@ -33,10 +34,14 @@ import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 import java.io.ObjectStreamField;
 import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,13 +49,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.java.LambdaUtils;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -64,7 +81,6 @@ import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationRegistry;
@@ -72,9 +88,17 @@ import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
+    static final HashSet<Class<?>> capturingClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -87,7 +111,7 @@ public class SerializationFeature implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader);
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
         serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
@@ -103,8 +127,108 @@ public class SerializationFeature implements Feature {
                         ConfigurationFile.SERIALIZATION.getFileName());
     }
 
+    private static GraphBuilderConfiguration buildLambdaParserConfig() {
+        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
+        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
+        plugins.prependNodePlugin(new MethodHandlePlugin(GraalAccess.getOriginalProviders().getConstantReflection().getMethodHandleAccess(), false));
+        return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
+    }
+
+    @SuppressWarnings("try")
+    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, DebugContext debug) {
+        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+        try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
+            HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
+            lambdaParserPhase.apply(graph, context);
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        }
+        return graph;
+    }
+
+    private static Class<?> getLambdaClassFromMemberField(Constant constant) {
+        ResolvedJavaType constantType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType((JavaConstant) constant);
+
+        if (constantType == null) {
+            return null;
+        }
+
+        ResolvedJavaField[] fields = constantType.getInstanceFields(true);
+        ResolvedJavaField targetField = null;
+        for (ResolvedJavaField field : fields) {
+            if (field.getName().equals("member")) {
+                targetField = field;
+                break;
+            }
+        }
+
+        if (targetField == null) {
+            return null;
+        }
+
+        HotSpotObjectConstant fieldValue = (HotSpotObjectConstant) GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(targetField, (JavaConstant) constant);
+        Member memberField = GraalAccess.getOriginalProviders().getSnippetReflection().asObject(Member.class, fieldValue);
+        return memberField.getDeclaringClass();
+    }
+
+    private static Class<?> getLambdaClassFromConstantNode(ConstantNode constantNode) {
+        Constant constant = constantNode.getValue();
+        Class<?> lambdaClass = getLambdaClassFromMemberField(constant);
+
+        if (lambdaClass == null) {
+            return null;
+        }
+
+        return lambdaClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ? lambdaClass : null;
+    }
+
+    private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph) {
+        NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
+
+        for (ConstantNode cNode : constantNodes) {
+            Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
+
+            if (lambdaClass != null) {
+                try {
+                    Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
+                    RuntimeReflection.register(serializeLambdaMethod);
+                } catch (NoSuchMethodException e) {
+                    throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("try")
+    private static void registerLambdasFromMethod(ResolvedJavaMethod method, DebugContext debug) {
+        GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
+        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, debug);
+        registerLambdasFromConstantNodesInGraph(graph);
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+
+        /*
+         * In order to serialize lambda classes we need to register proper methods for reflection.
+         * Since lambda names are not stable, we do not know which lambdas should be serialized. We
+         * simply register all the lambdas from capturing classes written in the serialization
+         * configuration file for serialization. In order to find all the lambdas from a class, we
+         * parse all the methods of the given class and find all the lambdas in them.
+         */
+        for (Class<?> clazz : capturingClasses) {
+            ResolvedJavaType clazzType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
+            List<ResolvedJavaMethod> allMethods = new ArrayList<>(Arrays.asList(clazzType.getDeclaredMethods()));
+            allMethods.addAll(Arrays.asList(clazzType.getDeclaredConstructors()));
+
+            for (ResolvedJavaMethod method : allMethods) {
+                if (method.getCode() != null) {
+                    registerLambdasFromMethod(method, impl.getDebugContext());
+                }
+            }
+        }
+
         serializationBuilder.flushConditionalConfiguration(access);
         /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
@@ -175,6 +299,14 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz) {
         if (clazz != null) {
             deniedClasses.put(clazz, true);
+        }
+    }
+
+    @Override
+    public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
+        Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
+        if (lambdaCapturingClass != null) {
+            deniedClasses.put(lambdaCapturingClass, true);
         }
     }
 
@@ -282,6 +414,17 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         for (Class<?> clazz : classes) {
             registerWithTargetConstructorClass(condition, clazz, null);
         }
+    }
+
+    @Override
+    public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
+        Class<?> serializationTargetClass = typeResolver.resolveType(lambdaCapturingClassName);
+
+        registerConditionalConfiguration(condition, () -> {
+            capturingClasses.add(serializationTargetClass);
+            RuntimeReflection.register(serializationTargetClass);
+        });
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(true, serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
     }
 
     @Override
@@ -437,8 +580,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
                 }
             }
             targetConstructor = newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
-            targetConstructorClass = targetConstructor.getDeclaringClass();
+
+            if (targetConstructor == null) {
+                targetConstructor = newConstructorForSerialization(Object.class, customConstructorToCall);
+            }
         }
+        targetConstructorClass = targetConstructor.getDeclaringClass();
         serializationSupport.addConstructorAccessor(serializationTargetClass, targetConstructorClass, getConstructorAccessor(targetConstructor));
         return targetConstructorClass;
     }

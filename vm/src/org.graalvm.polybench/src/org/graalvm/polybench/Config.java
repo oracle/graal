@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-class Config {
+public class Config {
 
     public static final String EVAL_SOURCE_ONLY_OPTION = "--eval-source-only";
 

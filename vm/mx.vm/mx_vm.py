@@ -64,6 +64,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             ],
             dir_jars=True,
             main_class="org.graalvm.component.installer.ComponentInstaller",
+            link_at_build_time=False,
             build_args=[],
             # Please see META-INF/native-image in the project for custom build options for native-image
             is_sdk_launcher=True,
@@ -89,7 +90,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
-    name='Polybench Launcher',
+    name='PolyBench Launcher',
     short_name='pbm',
     license_files=[],
     third_party_license_files=[],
@@ -112,12 +113,12 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
-    name='Polybench Instruments',
+    name='PolyBench Instruments',
     short_name='pbi',
     dir_name='pbi',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Polybench Launcher'],
+    dependencies=['Truffle', 'PolyBench Launcher'],
     truffle_jars=['vm:POLYBENCH_INSTRUMENTS'],
     support_distributions=['vm:POLYBENCH_INSTRUMENTS_SUPPORT'],
 ))
@@ -129,7 +130,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='pmh',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Polybench Launcher'],
+    dependencies=['Truffle', 'PolyBench Launcher'],
     truffle_jars=['vm:PMH'],
     support_distributions=['vm:PMH_SUPPORT'],
     installable=False,
