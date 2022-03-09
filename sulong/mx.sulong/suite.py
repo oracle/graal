@@ -1045,6 +1045,9 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
       "variants" : ["executable-O0", "executable-O1"],
+      "cmakeConfig" : {
+        "CMAKE_CXX_FLAGS" : "-pthread",
+      },
       "dependencies" : [
         "SULONG_TEST",
       ],
