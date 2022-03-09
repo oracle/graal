@@ -77,6 +77,33 @@ To start using GraalVM Enterprise images, you should accept the [Oracle Technolo
     container-registry.oracle.com/graalvm/jdk-ee:latest
     ```
 
+9. Start a container from the `jdk-ee` image and enter the bash session with the following `run` command:
+
+    ```shell
+    docker run -it --rm container-registry.oracle.com/graalvm/jdk-ee:latest bash
+    ```
+
+10. Check the GraalVM Enterprise version, storage location by running the `env` command:
+
+    ```shell
+    bash-4.4# env
+    ```
+
+11. Check the contents of the GraalVM Enterprise `bin` directory and the Java version by running the following commands:
+
+    ```shell
+    bash-4.4# ls /usr/lib64/graalvm/graalvm21-ee-java17/bin
+    ```
+    ```shell
+    bash-4.4# java -version
+    ```
+
+If you download the `native-image-ee` image, which is absolutely self-contained and includes all the `jdk-ee` image components such as the JIT compiler, you can start a container from and enter the session from the `native-image-ee` image:
+
+```shell
+docker run -it --rm container-registry.oracle.com/graalvm/native-image-ee:latest bash
+```
+
 You can also pull a desired image automatically using `docker pull` in your CI/CD pipeline: 
 
 1. Store the Oracle account username and password as secrets in a vault. 
