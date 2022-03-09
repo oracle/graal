@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
@@ -76,4 +76,8 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
         return cached ? Aarch64VAListPointerWrapperFactoryNodeGen.create() : Aarch64VAListPointerWrapperFactoryNodeGen.getUncached();
     }
 
+    @Override
+    public OS getOS() {
+        return OS.Linux;
+    }
 }
