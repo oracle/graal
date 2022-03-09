@@ -33,7 +33,7 @@
 
 for VECLEN in $(seq 1 16)
 do
-	for VECTYPE in i1 i8 i16 i32 i64 float double
+	for VECTYPE in i1 i8 i16 i32 i40 i64 float double
 	do
 		. ./gep-vector-test.sh
 	done
@@ -44,7 +44,7 @@ echo "define void @run(i8*,i8*,i8*) {"
 
 for VECLEN in $(seq 1 16)
 do
-	for VECTYPE in i1 i8 i16 i32 i64 float double
+	for VECTYPE in i1 i8 i16 i32 i40 i64 float double
 	do
 		echo "  call void @testVectorGEP_${VECLEN}x${VECTYPE}()"
 	done
