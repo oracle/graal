@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -84,7 +83,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected AnalysisFuture<ImageHeapObject> getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+    protected ImageHeapObject getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         VMError.guarantee(javaConstant instanceof SubstrateObjectConstant, "Not a substrate constant " + javaConstant);
         return super.getOrCreateConstantReachableTask(javaConstant, reason, onAnalysisModified);
     }

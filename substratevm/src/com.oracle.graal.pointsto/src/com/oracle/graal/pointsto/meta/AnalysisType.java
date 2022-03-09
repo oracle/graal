@@ -159,7 +159,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     /**
      * Additional information that is only available for types that are marked as reachable.
      */
-    final AnalysisFuture<TypeData> typeData;
+    private AnalysisFuture<TypeData> typeData;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -277,6 +277,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
         constantObjectsCache = null;
         uniqueConstant = null;
         unsafeAccessedFields = null;
+        typeData = null;
     }
 
     public int getId() {
@@ -942,7 +943,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
                 try {
                     AnalysisField aField = universe.lookup(original[i]);
                     if (aField != null) {
-                        if (listIncludesSuperClassesFields) {
+                        if (listIncludesSuperClassesFields || aField.isStatic()) {
                             /*
                              * If the list includes the super classes fields, register the position.
                              */
