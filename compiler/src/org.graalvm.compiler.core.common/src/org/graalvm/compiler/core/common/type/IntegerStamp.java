@@ -47,6 +47,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -234,6 +235,26 @@ public final class IntegerStamp extends PrimitiveStamp {
             default:
                 throw GraalError.shouldNotReachHere();
         }
+    }
+
+    @Override
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement, Stamp accessStamp) {
+        PrimitiveStamp primitiveAccess = (PrimitiveStamp) accessStamp;
+        int accessBits = primitiveAccess.getBits();
+        GraalError.guarantee(getBits() >= ((PrimitiveStamp) accessStamp).getBits(), "access size should be less than or equal the result");
+
+        JavaConstant constant = super.readJavaConstant(provider, base, displacement, accessBits);
+        if (constant == null) {
+            return null;
+        }
+        if (constant.getJavaKind().getBitCount() != accessBits) {
+            if (canBeNegative()) {
+                constant = JavaConstant.forPrimitiveInt(getBits(), CodeUtil.signExtend(constant.asLong(), accessBits));
+            } else {
+                constant = JavaConstant.forPrimitiveInt(getBits(), CodeUtil.zeroExtend(constant.asLong(), accessBits));
+            }
+        }
+        return constant;
     }
 
     /**
