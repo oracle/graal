@@ -335,7 +335,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             builder.compilationListener(new CompilationListenerProfiler(compilerProfiler, compileId));
         }
         return builder.build();
-
     }
 
     @Override

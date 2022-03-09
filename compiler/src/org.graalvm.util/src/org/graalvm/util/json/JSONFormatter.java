@@ -25,6 +25,7 @@
 package org.graalvm.util.json;
 
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -141,6 +142,9 @@ public class JSONFormatter {
         } else if (value instanceof Number || value instanceof Boolean || value == null) {
             sb.append(value);
         } else {
+            if (value instanceof Map<?, ?>) {
+                throw new IllegalArgumentException(value + " must use EconomicMap");
+            }
             sb.append(quote(String.valueOf(value)));
         }
     }

@@ -190,6 +190,10 @@ public final class DebugContext implements AutoCloseable {
         return Versions.VERSIONS.withVersions(properties);
     }
 
+    public CompilationListener getCompilationListener() {
+        return compilationListener;
+    }
+
     /**
      * The immutable configuration that can be shared between {@link DebugContext} objects.
      */
@@ -662,11 +666,15 @@ public final class DebugContext implements AutoCloseable {
     }
 
     public String getDumpPath(String extension, boolean createMissingDirectory) {
+        return getDumpPath(extension, createMissingDirectory, ShowDumpFiles.getValue(immutable.options));
+    }
+
+    public String getDumpPath(String extension, boolean createMissingDirectory, boolean showDumpFiles) {
         try {
             String id = description == null ? null : description.identifier;
             String label = description == null ? null : description.getLabel();
             String result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, createMissingDirectory);
-            if (ShowDumpFiles.getValue(immutable.options)) {
+            if (showDumpFiles) {
                 TTY.println(DUMP_FILE_MESSAGE_FORMAT, result);
             }
             return result;

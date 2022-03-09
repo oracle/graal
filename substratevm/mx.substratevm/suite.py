@@ -1158,6 +1158,9 @@ suite = {
                 "com.oracle.svm.graal",
                 "compiler:GRAAL"
             ],
+            "requires" : [
+            	"jdk.management"
+            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
