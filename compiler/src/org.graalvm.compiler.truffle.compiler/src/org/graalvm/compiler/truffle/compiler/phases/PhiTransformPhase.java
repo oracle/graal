@@ -217,6 +217,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             }
 
             // all preconditions are met, duplicate transformed nodes
+            Stamp stamp = transformation.stamp(NodeView.DEFAULT).unrestricted();
             for (ValueNode target : EconomicSet.create(nodes)) {
                 ValueNode duplicate;
                 if (target.getClass() == ValuePhiNode.class) {
@@ -226,13 +227,12 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                     for (int i = 0; i < phiValues.count(); i++) {
                         values[i] = transformInputValue(graph, phiValues.get(i), transformation, nodes, ec);
                     }
-                    Stamp stamp = values[0].stamp(NodeView.DEFAULT).unrestricted();
-                    ValuePhiNode duplicatePhi = graph.unique(new ValuePhiNode(stamp, phi.merge(), values));
+                    ValuePhiNode duplicatePhi = graph.addWithoutUnique(new ValuePhiNode(stamp, phi.merge(), values));
                     nodes.add(duplicatePhi);
                     duplicate = duplicatePhi;
                 } else {
                     ValueProxyNode proxy = (ValueProxyNode) target;
-                    duplicate = proxy.duplicateOn(proxy.proxyPoint(), transformInputValue(graph, proxy.value(), transformation, nodes, ec));
+                    duplicate = graph.addWithoutUnique(new ValueProxyNode(stamp, transformInputValue(graph, proxy.value(), transformation, nodes, ec), proxy.proxyPoint()));
                 }
                 nodes.add(duplicate);
                 // now replace all usages of the original phi/proxy
@@ -243,9 +243,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                         break;
                     }
                 }
-                if (duplicate != target) {
-                    target.replaceAndDelete(duplicate);
-                }
+                target.replaceAndDelete(duplicate);
             }
             return true;
         } else if (node.getClass() == ZeroExtendNode.class) {
