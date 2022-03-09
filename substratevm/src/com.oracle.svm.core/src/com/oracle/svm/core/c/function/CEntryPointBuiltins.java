@@ -76,7 +76,7 @@ public final class CEntryPointBuiltins {
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @CEntryPointBuiltinImplementation(builtin = Builtin.ATTACH_THREAD)
     public static IsolateThread attachThread(Isolate isolate) {
-        int status = CEntryPointActions.enterAttachThread(isolate, true);
+        int status = CEntryPointActions.enterAttachThread(isolate, false, true);
         if (status != 0) {
             return WordFactory.nullPointer();
         }
