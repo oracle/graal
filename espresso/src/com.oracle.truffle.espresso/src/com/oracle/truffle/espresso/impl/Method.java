@@ -992,7 +992,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion oldVersion = methodVersion;
         methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
-        return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
+        return new SharedRedefinitionContent(methodVersion, newLinkedMethod, runtimePool, newCodeAttribute);
     }
 
     public void redefine(ObjectKlass.KlassVersion klassVersion, SharedRedefinitionContent content, Ids<Object> ids) {
@@ -1002,7 +1002,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         ids.replaceObject(oldVersion, methodVersion);
     }
 
-    public void swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
+    public MethodVersion swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
         // create a copy of the code attribute using the original
@@ -1012,6 +1012,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         CodeAttribute newCodeAttribute = codeAttribute != null ? new CodeAttribute(codeAttribute) : null;
         methodVersion = oldVersion.replace(klassVersion, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
+        return methodVersion;
     }
 
     public MethodVersion getMethodVersion() {
@@ -1639,14 +1640,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     static class SharedRedefinitionContent {
 
+        private final MethodVersion version;
         private final LinkedMethod linkedMethod;
         private final RuntimeConstantPool pool;
         private final CodeAttribute codeAttribute;
 
-        SharedRedefinitionContent(LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+        SharedRedefinitionContent(MethodVersion version, LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+            this.version = version;
             this.linkedMethod = linkedMethod;
             this.pool = pool;
             this.codeAttribute = codeAttribute;
+        }
+
+        public MethodVersion getMethodVersion() {
+            return version;
         }
 
         public LinkedMethod getLinkedMethod() {
