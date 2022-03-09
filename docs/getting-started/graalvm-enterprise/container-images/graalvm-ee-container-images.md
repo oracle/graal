@@ -33,27 +33,27 @@ To start using GraalVM Enterprise images, you should accept the [Oracle Technolo
 
 1. Go to [Oracle Container Registry](https://container-registry.oracle.com/) and click on “GraalVM”.You will be redirected to the GraalVM repositories page.
 
-    ![](/img/ocir.png)
+    ![](../img/ocir.png)
 
 2. Click on the necessary image. For example, you need a compact container image with the JDK pre-installed. On this page, click the **jdk-ee** link.
 
-    ![](/img/graalvm_repositories.png)
+    ![](../img/graalvm_repositories.png)
 
 3. Click on **Sign In**. This will take you to the Oracle Single Sign-on page.
 
-    ![](/img/sign-in.png)
+    ![](../img/sign-in.png)
 
 4. Sign in with an Oracle account. If you do not have an existing Oracle account, create one.
 
 5. Once you have signed in, you will see the following screen:
 
-    ![](/img/license_review.png)
+    ![](../img/license_review.png)
 
     Click **Continue** to accept the license and proceed ahead.
 
 6. Check and accept the license.
 
-    ![](/img/license_accepted.png)
+    ![](../img/license_accepted.png)
 
 7. Open a terminal window and `docker login` to Oracle Container Registry using your Oracle account.
 
