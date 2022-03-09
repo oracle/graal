@@ -976,7 +976,12 @@ public abstract class Accessor {
 
         public abstract SourceSection getSourceLocation(Object receiver);
 
+        public abstract int getStackTraceElementLimit(Object receiver);
+
+        public abstract Node getLocation(Object receiver);
+
         public abstract boolean assertGuestObject(Object guestObject);
+
     }
 
     public abstract static class IOSupport extends Support {

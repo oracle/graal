@@ -243,29 +243,6 @@ meth public com.oracle.truffle.api.TruffleContext$Builder initializeCreatorConte
 supr java.lang.Object
 hfds config,initializeCreatorContext,sourceEnvironment
 
-CLSS public abstract interface com.oracle.truffle.api.TruffleException
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public boolean isCancelled()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public boolean isExit()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public boolean isIncompleteSource()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public boolean isInternalError()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public boolean isSyntaxError()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.source.SourceSection getSourceLocation()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public int getExitStatus()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public int getStackTraceElementLimit()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public java.lang.Object getExceptionObject()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_OTHER

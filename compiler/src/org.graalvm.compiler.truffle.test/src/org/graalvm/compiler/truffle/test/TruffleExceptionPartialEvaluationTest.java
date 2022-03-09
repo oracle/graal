@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -36,7 +37,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -52,11 +56,10 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
 
     @Test
     public void testTruffleException() {
-        NodeFactory nodeFactory = new NodeFactoryImpl();
-        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 0, nodeFactory));
-        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(3, 0, nodeFactory));
-        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 3, nodeFactory));
-        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(4, 4, nodeFactory));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 0));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(3, 0));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 3));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(4, 4));
     }
 
     @Test
@@ -73,16 +76,16 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant0, rootNode);
     }
 
-    static RootTestNode createCallerChain(int framesAbove, int framesBelow, NodeFactory factory) {
+    static RootTestNode createCallerChain(int framesAbove, int framesBelow) {
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode calleeNode = factory.createThrowNode(-1, true);
+        AbstractTestNode calleeNode = new ThrowTruffleExceptionTestNode(-1, true);
         RootTestNode calleeRoot = new RootTestNode(fd, "testTruffleException", calleeNode);
         for (int i = 0; i < framesAbove; i++) {
             AbstractTestNode call = new CallTestNode(calleeRoot.getCallTarget());
             calleeRoot = new RootTestNode(fd, "testTruffleException", call);
         }
         AbstractTestNode callerNode = new CallTestNode(calleeRoot.getCallTarget());
-        AbstractTestNode catchNode = factory.createCatchNode(callerNode);
+        AbstractTestNode catchNode = new CatchTruffleExceptionTestNode(callerNode);
         RootTestNode callerRoot = new RootTestNode(fd, "testTruffleException", catchNode);
         for (int i = 0; i < framesBelow; i++) {
             AbstractTestNode call = new CallTestNode(callerRoot.getCallTarget());
@@ -91,7 +94,8 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         return callerRoot;
     }
 
-    private static final class TestTruffleException extends AbstractTruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static final class TestTruffleException extends AbstractTruffleException {
 
         private static final long serialVersionUID = -6105288741119318027L;
 
@@ -101,42 +105,55 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
             super(null, null, stackTraceElementLimit, location);
             this.property = property;
         }
-    }
 
-    interface NodeFactory {
-        AbstractTestNode createThrowNode(int stackTraceElementLimit, boolean property);
-
-        AbstractTestNode createCatchNode(AbstractTestNode child);
-    }
-
-    private static final class NodeFactoryImpl implements NodeFactory {
-
-        @Override
-        public AbstractTestNode createThrowNode(int stackTraceElementLimit, boolean property) {
-            return new ThrowTruffleExceptionTestNode(stackTraceElementLimit, property);
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
         }
 
-        @Override
-        public AbstractTestNode createCatchNode(AbstractTestNode child) {
-            return new CatchTruffleExceptionTestNode(child);
+        @ExportMessage
+        @SuppressWarnings({"unused", "static-method"})
+        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberReadable(String member) {
+            return member.equals("property");
+        }
+
+        @ExportMessage
+        Object readMember(String member) throws UnknownIdentifierException {
+            if (member.equals("property")) {
+                return property;
+            }
+            throw UnknownIdentifierException.create(member);
         }
     }
 
     private static class CatchTruffleExceptionTestNode extends AbstractTestNode {
 
         @Child private AbstractTestNode child;
+        private final InteropLibrary exceptions;
 
         CatchTruffleExceptionTestNode(AbstractTestNode child) {
             this.child = child;
+            this.exceptions = InteropLibrary.getFactory().createDispatched(3);
         }
 
         @Override
         public int execute(VirtualFrame frame) {
             try {
                 return child.execute(frame);
-            } catch (TestTruffleException e) {
-                if (e.property) {
-                    return 42;
+            } catch (AbstractTruffleException e) {
+                try {
+                    if ((boolean) exceptions.readMember(e, "property")) {
+                        return 42;
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException interopException) {
+                    throw CompilerDirectives.shouldNotReachHere(interopException);
                 }
                 throw e;
             }
