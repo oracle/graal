@@ -60,8 +60,6 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        // The mark for an invocation that uses an inline cache must be placed at the
-        // instruction that loads the Klass from the inline cache.
         if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget)) {
             crb.setNeedsMHDeoptHandler();
         }
