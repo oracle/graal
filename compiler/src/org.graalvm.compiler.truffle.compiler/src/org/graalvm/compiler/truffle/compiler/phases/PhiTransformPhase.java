@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -52,7 +53,51 @@ import org.graalvm.compiler.phases.util.GraphOrder;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This phase recognizes phi values that are repeatedly converted back and forth with lossless
+ * conversions. The main use case is i64 phis that actually contain i32/f32/f64 values and that use
+ * {@link NarrowNode}, {@link ZeroExtendNode} and {@link ReinterpretNode} for conversion. In loop
+ * nests and complex control flow, multiple phis may need to be transformed as a group.<br/>
+ *
+ * In order to be considered, phis can only have constants, other phis in the group, or an
+ * appropriate conversion as an input (see
+ * {@link #isValidInput(ValueNode, UnaryNode, boolean, EconomicSet)}. Also, usages can only be other
+ * phis in the group, appropriate conversions, or {@link VirtualObjectState}s (see
+ * {@link #collectNodes(ValueNode, EconomicSet, UnaryNode, ResolvedJavaType)}).<br/>
+ *
+ * If there is any virtual object state usage in the group, the transformation cannot be a
+ * {@link SignExtendNode}, because only zero extend can be expressed in virtual state.<br/>
+ *
+ * As this phase is intended to run on graphs that still contain proxies, it takes the proxies
+ * between phis into account.<br/>
+ *
+ * <pre>
+ * long v = 0L;
+ * long v2 = Float.floatToRawIntBits(0f) & 0xFFFFFFFFL; // v2 = zeroextend(reinterpret(0.0))
+ * for (...) {
+ *   v = (((int) v) + 123) & 0xFFFFFFFFL; // v = zeroextend(narrow(v) + 123)
+ *   v2 = Float.floatToRawIntBits(Float.intBitsToFloat((int) v2) + 1f) & 0xFFFFFFFFL; // v2 = zeroextend(reinterpret(reinterpret(narrow(v2)) + 1f))
+ * }
+ * float s = Float.intBitsToFloat((int) v2); // s = reinterpret(narrow(v2))
+ * return (int) v; // narrow(v)
+ * </pre>
+ *
+ * will be transformed to:
+ *
+ * <pre>
+ * int v = 0;
+ * float v2 = 0f;
+ * for (...) {
+ *   v = v + 123;
+ *   v2 = v2 + 1f;
+ * }
+ * float s = v2;
+ * return v;
+ * </pre>
+ */
 public final class PhiTransformPhase extends BasePhase<CoreProviders> {
+
+    private static final int MAX_ITERATIONS = 3;
 
     private final CanonicalizerPhase canonicalizer;
 
@@ -66,6 +111,14 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
         WithState
     }
 
+    /**
+     * Collects all nodes that are (transitive) usages of the given node. This method also checks
+     * whether the usages are valid, i.e., whether they contain only virtual object states,
+     * transformations and other value/proxy nodes. Returns {@link ValidTransformation#Invalid} if
+     * there are invalid usages, {@link ValidTransformation#Valid} if there are no invalid usages
+     * and no virtual state usages, and {@link ValidTransformation#WithState} if there are no
+     * invalid usages but virtual state usages.
+     */
     private static ValidTransformation collectNodes(ValueNode node, EconomicSet<ValueNode> nodes, UnaryNode transformation, ResolvedJavaType longClass) {
         ValidTransformation valid = ValidTransformation.Valid;
         nodes.add(node);
@@ -158,7 +211,11 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
 
     private static boolean checkTransformedNode(StructuredGraph graph, EconomicSetNodeEventListener ec, ResolvedJavaType longClass, Node node) {
         if (node.getClass() == ValuePhiNode.class || node.getClass() == ValueProxyNode.class) {
-            UnaryNode transformation = null; // NarrowNode or ReinterpretNode
+            /*
+             * "transformation" is either a NarrowNode or a ReinterpretNode and represents the
+             * transformation that will be applied to the whole group of nodes.
+             */
+            UnaryNode transformation = null;
             for (Node usage : node.usages()) {
                 if (usage instanceof NarrowNode || usage instanceof ReinterpretNode) {
                     if (transformation == null) {
@@ -277,7 +334,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 for (Node node : graph.getNodes()) {
                     progress |= checkTransformedNode(graph, ec, longClass, node);
                 }
-            } while (progress && iteration++ < 3);
+            } while (progress && iteration++ < MAX_ITERATIONS);
         }
         canonicalizer.applyIncremental(graph, context, ec.getNodes());
         assert GraphOrder.assertNonCyclicGraph(graph);
