@@ -667,6 +667,7 @@ suite = {
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
+        "SULONG_NATIVE_HOME",
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
@@ -675,6 +676,7 @@ suite = {
         "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
+        "GRAALVM_LLVM_LIB_DIR" : "<path:SULONG_NATIVE_HOME>/native/lib",
         "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
         "MX_OS" : "<os>",
         "MX_ARCH" : "<arch>",
@@ -708,31 +710,49 @@ suite = {
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
-      "ninja_targets" : [
-        "<libv:graalvm-llvm.1>",
-      ],
       "ninja_install_targets" : ["install"],
-      "results" : [
-        # "bin/<lib:graalvm-llvm>",
-        # We on purpose exclude the symlink from the results because the layout distribution would dereference it and
-        # create a copy instead of keeping the symlink.
-        # The symlink is added manually in the layout definition of the distribution.
-        "bin/<libv:graalvm-llvm.1>",
-      ],
-      "buildDependencies" : [
-        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
-        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
-      ],
-      "cmakeConfig" : {
-        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
-        "CMAKE_BUILD_TYPE" : "Release",
-        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
-        "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
-        "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
-        "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
-      },
-      "license" : "BSD-new",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ninja_targets" : [
+              "<lib:graalvm-llvm>",
+              "<staticlib:graalvm-llvm>", # import library
+             ],
+             "results" : [
+               "bin/<lib:graalvm-llvm>",
+               "bin/<staticlib:graalvm-llvm>",
+             ],
+           },
+         },
+         "<others>" : {
+           "<others>" : {
+             "ninja_targets" : [
+             "<libv:graalvm-llvm.1>",
+           ],
+           "results" : [
+             # We on purpose exclude the symlink from the results because the layout distribution would dereference it and
+             # create a copy instead of keeping the symlink.
+             # The symlink is added manually in the layout definition of the distribution.
+             "bin/<libv:graalvm-llvm.1>",
+           ],
+         }
+       }
+     },
+     "buildDependencies" : [
+       "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
+       "com.oracle.truffle.llvm.libraries.graalvm.llvm",
+     ],
+     "cmakeConfig" : {
+       "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+       "CMAKE_BUILD_TYPE" : "Release",
+       "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+       "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+       "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
+       "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
+     },
+     "license" : "BSD-new",
     },
+
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
@@ -754,8 +774,7 @@ suite = {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
         "CMAKE_BUILD_TYPE" : "Release",
         "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
-
-          "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
         "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
       },
@@ -1529,18 +1548,10 @@ suite = {
         "windows" : {
           "<others>": {
             "layout" : {
-              "./": [
-                #"dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
-              ],
               "./native/lib/" : [
-                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
-                #"dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],
-              #"./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
-              # for source compatibility
-              #"./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
             },
           },
         },
@@ -1551,14 +1562,40 @@ suite = {
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
               ],
               "./native/lib/" : [
-                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
-                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],
               "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
               # for source compatibility
               "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
+            },
+          },
+        },
+      },
+    },
+
+    "SULONG_BITCODE_HOME" : {
+      "native": True,
+      "relpath": False,
+      "license": "BSD-new",
+      "os_arch" : {
+        "windows" : {
+          "<others>": {
+            "layout" : {
+              "./native/lib/" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
+                #"dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
+              ],
+            },
+          },
+        },
+        "<others>" : {
+          "<others>": {
+            "layout" : {
+              "./native/lib/" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
+              ],
             },
           },
         },
@@ -1585,6 +1622,7 @@ suite = {
       "layout" : {
         "./" : [
           "extracted-dependency:SULONG_NATIVE_HOME",
+          "extracted-dependency:SULONG_BITCODE_HOME",
           "extracted-dependency:SULONG_CORE_HOME",
         ],
       },

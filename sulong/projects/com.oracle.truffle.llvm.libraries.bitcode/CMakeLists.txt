@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -67,6 +67,15 @@ add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 add_library(sulong SHARED)
 
 if(WIN32)
+    set(GRAALVM_LLVM_LIB_DIR)
+
+    if(NOT GRAALVM_LLVM_LIB_DIR)
+      message(FATAL_ERROR "GRAALVM_LLVM_LIB_DIR needs to be set")
+    endif()
+
+    target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
+    target_link_libraries(sulong graalvm-llvm)
+
     target_sources(sulong PRIVATE
       src/crt0.c
       src/exit.c

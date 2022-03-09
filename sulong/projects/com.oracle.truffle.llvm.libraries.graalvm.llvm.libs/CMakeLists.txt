@@ -56,6 +56,11 @@ add_library(graalvm-llvm SHARED
     src/toolchain-api.c
     src/truffle-compat.c
 )
+
+if(WIN32)
+  target_sources(graalvm-llvm PRIVATE graalvm-llvm.def)
+endif()
+
 target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
 set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
 install(TARGETS graalvm-llvm DESTINATION bin)
