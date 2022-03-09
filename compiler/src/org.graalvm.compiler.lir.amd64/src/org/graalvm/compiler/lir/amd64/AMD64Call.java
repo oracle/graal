@@ -33,6 +33,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.code.CompilationResult.MarkId;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
@@ -202,7 +203,9 @@ public class AMD64Call {
             // erratum padding should be inserted before the mov instruction.
             before = masm.directCall(0L, scratch);
         } else {
-            before = masm.directCall(align);
+            masm.alignBeforeCall(align, 0);
+            before = masm.position();
+            masm.call();
         }
         int after = masm.position();
         Call call = crb.recordDirectCall(before, after, callTarget, info);
@@ -212,6 +215,26 @@ public class AMD64Call {
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
         return before;
+    }
+
+    private static final int IC_MOV_SIZE = 10;
+
+    /**
+     * @param nonOopBits placeholder bit pattern for inline cache receiver type patching
+     */
+    public static void directInlineCacheCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, MarkId markId, long nonOopBits, LIRFrameState info) {
+        masm.alignBeforeCall(true, IC_MOV_SIZE);
+        crb.recordMark(markId);
+        int movPos = masm.position();
+        masm.movq(AMD64.rax, nonOopBits);
+        int before = masm.position();
+        assert movPos + IC_MOV_SIZE == before;
+        masm.call();
+        int after = masm.position();
+        Call call = crb.recordDirectCall(before, after, callTarget, info);
+        checkCallDisplacementAlignment(crb, before, call);
+        crb.recordExceptionHandlers(after, info);
+        masm.ensureUniquePC();
     }
 
     private static void checkCallDisplacementAlignment(CompilationResultBuilder crb, int before, Call call) throws GraalError {

@@ -35,7 +35,6 @@ import org.graalvm.compiler.lir.amd64.AMD64Call.DirectCallOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
@@ -63,12 +62,10 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-        crb.recordMark(invokeKind == InvokeKind.Virtual ? HotSpotMarkId.INVOKEVIRTUAL : HotSpotMarkId.INVOKEINTERFACE);
-        // This must be emitted exactly like this to ensure it's patchable
-        masm.movq(AMD64.rax, config.nonOopBits);
         if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget)) {
             crb.setNeedsMHDeoptHandler();
         }
-        AMD64Call.directCall(crb, masm, callTarget, null, true, state);
+        // Emit a mov instruction before call to ensure it's patchable
+        AMD64Call.directInlineCacheCall(crb, masm, callTarget, invokeKind == InvokeKind.Virtual ? HotSpotMarkId.INVOKEVIRTUAL : HotSpotMarkId.INVOKEINTERFACE, config.nonOopBits, state);
     }
 }
