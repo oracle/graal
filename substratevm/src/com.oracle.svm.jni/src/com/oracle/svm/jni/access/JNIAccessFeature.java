@@ -184,7 +184,7 @@ public class JNIAccessFeature implements Feature {
         access.registerAsAccessed(access.getUniverse().lookup(field));
         String name = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, name);
-        access.registerAsCompiled(method);
+        access.registerAsCompiled(method, true);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
@@ -302,7 +302,7 @@ public class JNIAccessFeature implements Feature {
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
-                access.getBigBang().addRootMethod(analysisWrapper);
+                access.getBigBang().addRootMethod(analysisWrapper, true);
                 analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
             return jniMethod;

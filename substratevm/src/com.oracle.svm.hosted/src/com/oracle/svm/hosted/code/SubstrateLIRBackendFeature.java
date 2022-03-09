@@ -58,7 +58,7 @@ class SubstrateLIRBackendFeature implements Feature, GraalFeature {
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
             }
         });
     }

@@ -67,6 +67,13 @@ public class TruffleSupport {
         return ImageSingletons.lookup(TruffleSupport.class);
     }
 
+    /**
+     * @return the concrete subclass of {@link OptimizedCallTarget}.
+     */
+    public Class<?> getOptimizedCallTargetClass() {
+        return SubstrateOptimizedCallTarget.class;
+    }
+
     public SubstrateOptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         return new SubstrateOptimizedCallTarget(sourceCallTarget, rootNode);
     }

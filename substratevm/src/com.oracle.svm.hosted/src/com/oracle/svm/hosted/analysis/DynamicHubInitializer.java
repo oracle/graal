@@ -270,7 +270,7 @@ public class DynamicHubInitializer {
     }
 
     private void registerAsCompiled(AnalysisMethod aMethod) {
-        bb.addRootMethod(aMethod).registerAsImplementationInvoked();
+        bb.addRootMethod(aMethod, true).registerAsImplementationInvoked();
         CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
     }
 

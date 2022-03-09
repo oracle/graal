@@ -415,7 +415,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone();
+            assert this.isClone() || this.isContextInsensitive();
             /* The receiver state has changed. Process the invoke. */
 
             initCallee();

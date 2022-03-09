@@ -98,7 +98,7 @@ public class LLVMFeature implements Feature, GraalFeature {
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform, Path tempDir) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform, tempDir);
+                return new LLVMNativeImageCodeCache(compileQueue.getCompilationResults(), heap, platform, tempDir);
             }
         });
 
@@ -112,7 +112,7 @@ public class LLVMFeature implements Feature, GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()));
+        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
     }
 
     @Override
