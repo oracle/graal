@@ -1,5 +1,6 @@
 EXPORTS
   exit=__sulong_exit
+  atexit=__sulong_atexit
   _start
   __sulong_init_context
   __sulong_dispose_context
