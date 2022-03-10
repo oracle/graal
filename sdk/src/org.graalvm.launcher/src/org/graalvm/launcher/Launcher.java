@@ -974,11 +974,13 @@ public abstract class Launcher {
         final String name;
         final String option;
         final String description;
+        final boolean experimental;
 
-        protected PrintableOption(String name, String option, String description) {
+        protected PrintableOption(String name, String option, String description, boolean experimental) {
             this.name = name;
             this.option = option;
             this.description = description;
+            this.experimental = experimental;
         }
 
         @Override
@@ -988,10 +990,32 @@ public abstract class Launcher {
     }
 
     void printOptions(List<PrintableOption> options, String title, int indentation) {
-        Collections.sort(options);
-        out.println(title);
+        final List<PrintableOption> stableOptions = new ArrayList<>();
+        final List<PrintableOption> experimentalOptions = new ArrayList<>();
         for (PrintableOption option : options) {
-            printOption(option, indentation);
+            if (option.experimental) {
+                experimentalOptions.add(option);
+            } else {
+                stableOptions.add(option);
+            }
+        }
+
+        out.println(spaces(indentation) + title);
+
+        if (!stableOptions.isEmpty()) {
+            out.println(spaces(indentation + 1) + "[Stable]");
+            Collections.sort(stableOptions);
+            for (PrintableOption option : stableOptions) {
+                printOption(option, indentation + 2);
+            }
+        }
+
+        if (!experimentalOptions.isEmpty()) {
+            out.println(spaces(indentation + 1) + "[Experimental]");
+            Collections.sort(experimentalOptions);
+            for (PrintableOption option : experimentalOptions) {
+                printOption(option, indentation + 2);
+            }
         }
     }
 
