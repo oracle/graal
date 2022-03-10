@@ -8,10 +8,13 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.operations.OperationsData.OperationData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class OperationsParser extends AbstractParser<OperationsData> {
@@ -53,6 +56,48 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         return data;
     }
 
+    private boolean isIgnoredParameter(VariableElement param) {
+        if (ElementUtils.findAnnotationMirror(param, types.Cached) != null) {
+            return true;
+        } else if (ElementUtils.findAnnotationMirror(param, types.CachedLibrary) != null) {
+            return true;
+        } else if (ElementUtils.findAnnotationMirror(param, types.CachedLanguage) != null) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean isVariadicParameter(VariableElement param) {
+        return ElementUtils.findAnnotationMirror(param, types.Variadic) != null;
+    }
+
+    private OperationData processMethod(OperationsData data, ExecutableElement method) {
+        List<DeclaredType> arguments = List.of(); // TODO
+
+        int numChildren = 0;
+        boolean isVariadic = false;
+
+        for (VariableElement param : method.getParameters()) {
+            if (isVariadicParameter(param)) {
+                if (isVariadic) {
+                    data.addError(method, "Multiple @Variadic arguments not allowed");
+                }
+                isVariadic = true;
+                numChildren++;
+            } else if (!isIgnoredParameter(param)) {
+                if (isVariadic) {
+                    data.addError(method, "Value arguments after @Variadic not allowed");
+                }
+                numChildren++;
+            }
+        }
+
+        boolean returnsValue = method.getReturnType().getKind() != TypeKind.VOID;
+
+        return new OperationData(method.getEnclosingElement().getSimpleName().toString(), numChildren, isVariadic, returnsValue);
+    }
+
     private void processOperation(OperationsData data, TypeElement te) {
         List<ExecutableElement> operationFunctions = new ArrayList<>();
         for (Element el : te.getEnclosedElements()) {
@@ -69,40 +114,41 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             return;
         }
 
-        ExecutableElement first = operationFunctions.get(0);
-        List<DeclaredType> arguments = List.of(); // TODO
-        int numParams = first.getParameters().size();
-        boolean returnsValue = first.getReturnType().getKind() != TypeKind.VOID;
+        OperationData opData = processMethod(data, operationFunctions.get(0));
 
         for (ExecutableElement fun : operationFunctions) {
-            // check all functions have the same number of parameters
-            int numChildParameters = fun.getParameters().size();
-            boolean funReturnsValue = fun.getReturnType().getKind() != TypeKind.VOID;
-            if (numChildParameters != numParams) {
-                data.addWarning(fun, "Expected %d child parameters, found %d", numParams, numChildParameters);
+            OperationData opData2 = processMethod(data, fun);
+
+            if (opData2.isVariadic != opData.isVariadic) {
+                data.addError(fun, "All operation functions should be variadic / non-variadic");
             }
-            if (funReturnsValue != returnsValue) {
-                data.addWarning(fun, "Not all functions return values!");
+            if (opData2.returnsValue != opData.returnsValue) {
+                data.addError(fun, "All operation functions should return value / be void");
+            }
+            if (opData2.numParameters != opData.numParameters) {
+                data.addError(fun, "All operation functions should have same number of parameters");
             }
         }
 
         OperationsBuilder builder = data.getOperationsBuilder();
 
         Instruction.Custom instr;
-        if (first.isVarArgs()) {
+        if (opData.isVariadic) {
             instr = new Instruction.Custom(
                             "custom." + te.getSimpleName(),
                             builder.getNextInstructionId(),
-                            numParams, first.isVarArgs(), !returnsValue, te,
-                            new Argument.VarArgsCount(numParams - 1));
+                            opData.numParameters, true,
+                            !opData.returnsValue, te,
+                            new Argument.VarArgsCount(opData.numParameters - 1));
         } else {
             instr = new Instruction.Custom(
                             "custom." + te.getSimpleName(),
                             builder.getNextInstructionId(),
-                            numParams, first.isVarArgs(), !returnsValue, te);
+                            opData.numParameters, false,
+                            !opData.returnsValue, te);
         }
         builder.add(instr);
-        Operation.Custom op = new Operation.Custom(builder, te.getSimpleName().toString(), builder.getNextOperationId(), numParams, instr);
+        Operation.Custom op = new Operation.Custom(builder, te.getSimpleName().toString(), builder.getNextOperationId(), opData.numParameters, instr);
         builder.add(op);
     }
 

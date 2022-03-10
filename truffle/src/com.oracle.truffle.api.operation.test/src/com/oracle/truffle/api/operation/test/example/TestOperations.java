@@ -2,9 +2,11 @@ package com.oracle.truffle.api.operation.test.example;
 
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
+import com.oracle.truffle.api.operation.Variadic;
 
 @GenerateOperations
 public class TestOperations {
@@ -19,8 +21,16 @@ public class TestOperations {
         }
 
         @Specialization
-        public static String addStrings(String lhs, String rhs) {
+        public static String addStrings(String lhs, String rhs, @Cached int test) {
             return lhs + rhs;
+        }
+
+        protected static int create() {
+            return 1;
+        }
+
+        protected static int getUncached() {
+            return 1;
         }
     }
 
@@ -35,7 +45,7 @@ public class TestOperations {
     @Operation
     static class VeryComplexOperation {
         @Specialization
-        public static long bla(long a1, Object... a2) {
+        public static long bla(long a1, @Variadic Object[] a2) {
             return a1 + a2.length;
         }
     }

@@ -14,6 +14,20 @@ import com.oracle.truffle.dsl.processor.model.Template;
 
 public class OperationsData extends Template {
 
+    static class OperationData {
+        final String name;
+        final int numParameters;
+        final boolean isVariadic;
+        final boolean returnsValue;
+
+        public OperationData(String name, int numParameters, boolean isVariadic, boolean returnsValue) {
+            this.name = name;
+            this.numParameters = numParameters;
+            this.isVariadic = isVariadic;
+            this.returnsValue = returnsValue;
+        }
+    }
+
     private final OperationsBuilder builder = new OperationsBuilder();
 
     private boolean tracing;

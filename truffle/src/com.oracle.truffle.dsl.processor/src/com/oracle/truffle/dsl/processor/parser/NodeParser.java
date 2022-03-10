@@ -284,7 +284,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        if (mode == ParseMode.DEFAULT && !getRepeatedAnnotation(templateType.getAnnotationMirrors(), types.Operation).isEmpty()) {
+        if (ElementUtils.findAnnotationMirror(templateType.getAnnotationMirrors(), types.Operation) != null) {
             return null;
         }
 

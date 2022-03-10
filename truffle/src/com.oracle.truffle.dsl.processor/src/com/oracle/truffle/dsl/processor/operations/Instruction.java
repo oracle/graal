@@ -415,6 +415,8 @@ public abstract class Instruction {
             int resultOffset = 1 - stackPops;
 
             CodeTree instance = CodeTreeBuilder.createBuilder() //
+                            // .field(uncachedInstance.getEnclosingElement().getSimpleName().toString(),
+                            // uncachedInstance)//
                             .staticReference(uncachedInstance) //
                             .build();
 
