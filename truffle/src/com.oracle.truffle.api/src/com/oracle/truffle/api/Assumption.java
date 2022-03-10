@@ -58,8 +58,8 @@ import com.oracle.truffle.api.nodes.Node;
  * compiler optimizations to take effect.
  * <p>
  * Do not manually subclass the {@link Assumption} interface. This class is only intended to be
- * subclassed by Truffle runtime implementations. Creating a subclass of assumption lead to
- * performance degradation in performance critical code paths.
+ * subclassed by Truffle runtime implementations to avoid polymorphism in performance sensitive
+ * methods.
  *
  * @since 0.8 or earlier
  */
