@@ -56,10 +56,27 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * All instances of classes implementing {@code Assumption} must be held in {@code final} fields for
  * compiler optimizations to take effect.
+ * <p>
+ * Do not manually subclass the {@link Assumption} interface. This class is only intended to be
+ * subclassed by Truffle runtime implementations. Creating a subclass of assumption lead to
+ * performance degradation in performance critical code paths.
  *
  * @since 0.8 or earlier
  */
 public interface Assumption {
+
+    /**
+     * An assumption that is never valid.
+     *
+     * @since 22.1
+     */
+    Assumption NEVER_VALID = createNeverInvalid();
+
+    private static Assumption createNeverInvalid() {
+        Assumption assumption = create();
+        assumption.invalidate();
+        return assumption;
+    }
 
     /**
      * Checks that this assumption is still valid. The method throws an exception, if this is no
@@ -134,6 +151,25 @@ public interface Assumption {
             }
         }
         return true;
+    }
+
+    /**
+     * Creates a new assumption with a name. Shortcut for {@link TruffleRuntime#createAssumption()}.
+     *
+     * @since 22.1
+     */
+    static Assumption create() {
+        return Truffle.getRuntime().createAssumption();
+    }
+
+    /**
+     * Creates a new assumption with a name. Shortcut for
+     * {@link TruffleRuntime#createAssumption(String)}.
+     *
+     * @since 22.1
+     */
+    static Assumption create(String name) {
+        return Truffle.getRuntime().createAssumption(name);
     }
 
 }

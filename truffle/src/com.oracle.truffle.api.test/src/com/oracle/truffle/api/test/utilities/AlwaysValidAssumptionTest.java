@@ -46,9 +46,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("deprecation")
 public class AlwaysValidAssumptionTest {
 
     @BeforeClass
@@ -58,19 +58,19 @@ public class AlwaysValidAssumptionTest {
 
     @Test
     public void testCheck() throws InvalidAssumptionException {
-        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
         assumption.check();
     }
 
     @Test
     public void testIsValid() {
-        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
         assertTrue(assumption.isValid());
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testCannotInvalidate() {
-        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
         assumption.invalidate();
     }
 

@@ -53,12 +53,12 @@ public abstract class AbstractAssumption implements Assumption {
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "Assumption(" + (isValid ? "valid" : "invalid") + ", name=" + name + ")";
     }
 }
