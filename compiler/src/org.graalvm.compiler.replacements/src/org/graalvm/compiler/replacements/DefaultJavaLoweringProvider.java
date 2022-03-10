@@ -1273,8 +1273,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return;
         }
 
-        boolean divisionOverflowFollowsSemantics = tool.getLowerer().divisionOverflowFollowsSemantics();
-        if (!divisionOverflowFollowsSemantics) {
+        boolean divisionOverflowIsJVMSCompliant = tool.getLowerer().divisionOverflowIsJVMSCompliant();
+        if (!divisionOverflowIsJVMSCompliant) {
             long minValue = NumUtil.minValue(dividendStamp.getBits());
             if (dividendStamp.contains(minValue)) {
                 /*
@@ -1320,7 +1320,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
             }
         }
-        if (SignedDivNode.divOverflowViolatesSemantic(dividend, divisor, divisionOverflowFollowsSemantics)) {
+        if (!SignedDivNode.divisionIsJVMSCompliant(dividend, divisor, divisionOverflowIsJVMSCompliant)) {
             ConstantNode minVal = ConstantNode.forIntegerBits(divisorStamp.getBits(), NumUtil.minValue(divisorStamp.getBits()));
             LogicNode conditionDividend = graph.addOrUniqueWithInputs(CompareNode.createAnyCompareNode(Condition.GT, n.getX(), minVal, tool.getConstantReflection()));
             GuardingNode guard2 = tool.createGuard(n, conditionDividend, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, false,
@@ -1328,16 +1328,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             int bits = divisorStamp.getBits();
             IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
             dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
-            assert !SignedDivNode.divOverflowViolatesSemantic(dividend, divisor, divisionOverflowFollowsSemantics);
+            assert SignedDivNode.divisionIsJVMSCompliant(dividend, divisor, divisionOverflowIsJVMSCompliant);
             guard = MultiGuardNode.combine(guard2, guard);
         }
 
         ValueNode divRem = null;
         if (n instanceof SignedDivNode) {
-            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowFollowsSemantics));
+            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
 
         } else if (n instanceof SignedRemNode) {
-            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowFollowsSemantics));
+            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
         } else {
             throw GraalError.shouldNotReachHere("Unkown division node " + n);
         }

@@ -67,7 +67,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroGuard(), view, this.canDeoptimize() ? tool.divisionOverflowFollowsSemantics() : true);
+        return canonical(this, forX, forY, getZeroGuard(), view, this.canDeoptimize() ? tool.divisionOverflowIsJVMSCompliant() : true);
     }
 
     /**
@@ -83,7 +83,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return canonical(self, forX, forY, zeroCheck, view, self == null ? false : !self.canDeoptimize());
     }
 
-    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view, boolean divisionOverflowFollowsSemantics) {
+    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view, boolean divisionOverflowIsJVMSCompliant) {
         Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
         Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
         if (forX.isConstant() && forY.isConstant()) {
@@ -118,8 +118,8 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
         if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            if (!yStamp.contains(0) && !divOverflowViolatesSemantic(forX, forY, divisionOverflowFollowsSemantics)) {
-                return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck, divisionOverflowFollowsSemantics);
+            if (!yStamp.contains(0) && divisionIsJVMSCompliant(forX, forY, divisionOverflowIsJVMSCompliant)) {
+                return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck, divisionOverflowIsJVMSCompliant);
             }
         }
 
@@ -134,15 +134,26 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     /**
-     * Determines if the given division can violate the Java semantic for integer division (idiv) on
-     * a machine level: Integer division overflow must not throw an exception and is invisible to
-     * the user. This can either be true if the division can never overflow based on the stamps of
-     * the operands or the architecture guarantees no error/trap happens on a machine level for the
-     * overflow.
+     * Determines if {@code dividend / divisor} complies with the JVM specification for {@code idiv}
+     * and {@code ldiv}. From {@jvms 6.5} for {@code idiv}:
+     *
+     * <pre>
+     * There is one special case that does not satisfy this rule: if the dividend is the
+     * negative integer of largest possible magnitude for the int type, and the divisor
+     * is -1, then overflow occurs, and the result is equal to the dividend. Despite the
+     * overflow, no exception is thrown in this case.
+     * </pre>
+     *
+     * @param platformIsCompliant true iff the target platform complies with the JVM specification
+     *            for the overflow case of {@code Integer.MIN_VALUE / -1} and
+     *            {@code Long.MIN_VALUE / -1}
+     *
+     * @return true iff {@code platformIsCompliant == true} or the stamps of {@code dividend}
+     *         {@code divisor} excludes the possibility of the problematic overflow case
      */
-    public static boolean divOverflowViolatesSemantic(ValueNode dividend, ValueNode divisor, boolean divisionOverflowFollowsSemantics) {
-        if (divisionOverflowFollowsSemantics) {
-            return false;
+    public static boolean divisionIsJVMSCompliant(ValueNode dividend, ValueNode divisor, boolean platformIsCompliant) {
+        if (platformIsCompliant) {
+            return true;
         }
         IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
         IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);

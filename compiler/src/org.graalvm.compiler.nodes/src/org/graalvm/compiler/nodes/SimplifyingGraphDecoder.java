@@ -115,8 +115,8 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
 
         @Override
-        public boolean divisionOverflowFollowsSemantics() {
-            return getLowerer().divisionOverflowFollowsSemantics();
+        public boolean divisionOverflowIsJVMSCompliant() {
+            return getLowerer().divisionOverflowIsJVMSCompliant();
         }
 
     }

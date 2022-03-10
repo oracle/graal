@@ -313,8 +313,8 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         }
 
         @Override
-        public boolean divisionOverflowFollowsSemantics() {
-            return tool.divisionOverflowFollowsSemantics();
+        public boolean divisionOverflowIsJVMSCompliant() {
+            return tool.divisionOverflowIsJVMSCompliant();
         }
     }
 

@@ -1063,9 +1063,9 @@ public class GraphUtil {
         }
 
         @Override
-        public boolean divisionOverflowFollowsSemantics() {
+        public boolean divisionOverflowIsJVMSCompliant() {
             if (getLowerer() != null) {
-                return getLowerer().divisionOverflowFollowsSemantics();
+                return getLowerer().divisionOverflowIsJVMSCompliant();
             } else {
                 // prevent accidental floating of divs if we dont know the target arch
                 return false;

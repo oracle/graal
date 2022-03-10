@@ -68,7 +68,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroGuard(), stamp(view), view, tool, this.canDeoptimize() ? tool.divisionOverflowFollowsSemantics() : true);
+        return canonical(this, forX, forY, getZeroGuard(), stamp(view), view, tool, this.canDeoptimize() ? tool.divisionOverflowIsJVMSCompliant() : true);
     }
 
     /**
@@ -83,7 +83,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool,
-                    boolean divisionOverflowFollowsSemantics) {
+                    boolean divisionOverflowIsJVMSCompliant) {
         if (forX.isConstant() && forY.isConstant()) {
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
@@ -112,8 +112,8 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
         }
         if (tool != null && GraalOptions.FloatingDivNodes.getValue(tool.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            if (!yStamp.contains(0) && !SignedDivNode.divOverflowViolatesSemantic(forX, forY, divisionOverflowFollowsSemantics)) {
-                return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck, divisionOverflowFollowsSemantics);
+            if (!yStamp.contains(0) && SignedDivNode.divisionIsJVMSCompliant(forX, forY, divisionOverflowIsJVMSCompliant)) {
+                return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck, divisionOverflowIsJVMSCompliant);
             }
         }
 

@@ -482,11 +482,11 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (node instanceof MinNode) {
             return MinNode.create(a, MinNode.create(m1, m2, view), view);
         } else if (node instanceof SignedFloatingIntegerDivNode) {
-            return SignedFloatingIntegerDivNode.create(a, SignedFloatingIntegerDivNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowFollowsSemantics()), view, null,
-                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowFollowsSemantics());
+            return SignedFloatingIntegerDivNode.create(a, SignedFloatingIntegerDivNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
+                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
         } else if (node instanceof SignedFloatingIntegerRemNode) {
-            return SignedFloatingIntegerRemNode.create(a, SignedFloatingIntegerRemNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowFollowsSemantics()), view, null,
-                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowFollowsSemantics());
+            return SignedFloatingIntegerRemNode.create(a, SignedFloatingIntegerRemNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
+                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
         } else {
             throw GraalError.shouldNotReachHere();
         }

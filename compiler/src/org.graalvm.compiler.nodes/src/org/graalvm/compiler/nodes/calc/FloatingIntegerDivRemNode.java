@@ -74,34 +74,34 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
     }
 
     protected FloatingIntegerDivRemNode(NodeClass<? extends FloatingIntegerDivRemNode<OP>> c, BinaryOp<OP> op, ValueNode x, ValueNode y, GuardingNode floatingGuard,
-                    boolean divisionOverflowFollowsSemantics) {
+                    boolean divisionOverflowIsJVMSCompliant) {
         super(c, op, x, y);
         this.floatingGuard = floatingGuard;
-        this.divisionOverflowFollowsSemantics = divisionOverflowFollowsSemantics;
+        this.divisionOverflowIsJVMSCompliant = divisionOverflowIsJVMSCompliant;
     }
 
     /**
      * Determines if it is allowed for this floating node to produce an overflow during division. If
      * this is {@code false} the stamps of the dividend and divisor must ensure an overflow never
-     * happens. See {@link SignedDivNode#divOverflowViolatesSemantic(ValueNode, ValueNode, boolean)}
-     * for details.
+     * happens. See {@link SignedDivNode#divisionIsJVMSCompliant(ValueNode, ValueNode, boolean)} for
+     * details.
      *
      * If this value is {@code true} either the stamps guaranteed this can never happen or the
      * architecture guarantees the semantics is followed.
      */
-    private boolean divisionOverflowFollowsSemantics;
+    private boolean divisionOverflowIsJVMSCompliant;
 
     @Override
     public GuardingNode getGuard() {
         return floatingGuard;
     }
 
-    public void setDivisionOverflowFollowsSemantics() {
-        this.divisionOverflowFollowsSemantics = true;
+    public void setdivisionOverflowIsJVMSCompliant() {
+        this.divisionOverflowIsJVMSCompliant = true;
     }
 
-    public boolean divisionOverflowFollowsSemantics() {
-        return divisionOverflowFollowsSemantics;
+    public boolean divisionOverflowIsJVMSCompliant() {
+        return divisionOverflowIsJVMSCompliant;
     }
 
     @Override
@@ -120,7 +120,7 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
     }
 
     private boolean overflowVisibleSideEffect() {
-        return SignedDivNode.divOverflowViolatesSemantic(x, y, divisionOverflowFollowsSemantics);
+        return !SignedDivNode.divisionIsJVMSCompliant(x, y, divisionOverflowIsJVMSCompliant);
     }
 
     @Override

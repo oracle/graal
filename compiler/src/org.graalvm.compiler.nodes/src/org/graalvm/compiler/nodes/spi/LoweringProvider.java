@@ -87,9 +87,10 @@ public interface LoweringProvider {
     TargetDescription getTarget();
 
     /**
-     * Indicates whether this target platform follows Java semantics for the idiv bytecode when
-     * performing {@code MIN / -1 (= MIN)}.
+     * Indicates whether the target platform complies with the JVM specification semantics for
+     * {@code idiv} and {@code ldiv} when the dividend is {@link Integer#MAX_VALUE} or
+     * {@link Long#MAX_VALUE} respectively and the divisor is {@code -1}. The specified result for
+     * this case is the dividend.
      */
-    boolean divisionOverflowFollowsSemantics();
-
+    boolean divisionOverflowIsJVMSCompliant();
 }

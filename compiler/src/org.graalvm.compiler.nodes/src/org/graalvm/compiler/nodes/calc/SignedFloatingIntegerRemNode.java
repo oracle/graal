@@ -57,18 +57,18 @@ public class SignedFloatingIntegerRemNode extends FloatingIntegerDivRemNode<Bina
         super(TYPE, getArithmeticOpTable(x).getRem(), x, y, floatingGuard);
     }
 
-    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
-        super(TYPE, getArithmeticOpTable(x).getRem(), x, y, floatingGuard, divisionOverflowFollowsSemantics);
+    protected SignedFloatingIntegerRemNode(ValueNode x, ValueNode y, GuardingNode floatingGuard, boolean divisionOverflowIsJVMSCompliant) {
+        super(TYPE, getArithmeticOpTable(x).getRem(), x, y, floatingGuard, divisionOverflowIsJVMSCompliant);
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode floatingGuard, boolean divisionOverflowIsJVMSCompliant) {
         BinaryOp<Rem> op = ArithmeticOpTable.forStamp(x.stamp(view)).getRem();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new SignedFloatingIntegerRemNode(x, y, floatingGuard, divisionOverflowFollowsSemantics).canonical(null);
+        return new SignedFloatingIntegerRemNode(x, y, floatingGuard, divisionOverflowIsJVMSCompliant).canonical(null);
     }
 
     @Override

@@ -30,7 +30,7 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 public interface AArch64LoweringProviderMixin extends LoweringProvider {
 
     @Override
-    default boolean divisionOverflowFollowsSemantics() {
+    default boolean divisionOverflowIsJVMSCompliant() {
         return true;
     }
 

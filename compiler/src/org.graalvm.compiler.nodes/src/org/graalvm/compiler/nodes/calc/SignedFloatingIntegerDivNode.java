@@ -53,18 +53,18 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
         super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, null);
     }
 
-    protected SignedFloatingIntegerDivNode(ValueNode x, ValueNode y, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
-        super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, floatingGuard, divisionOverflowFollowsSemantics);
+    protected SignedFloatingIntegerDivNode(ValueNode x, ValueNode y, GuardingNode floatingGuard, boolean divisionOverflowIsJVMSCompliant) {
+        super(TYPE, getArithmeticOpTable(x).getDiv(), x, y, floatingGuard, divisionOverflowIsJVMSCompliant);
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode floatingGuard, boolean divisionOverflowFollowsSemantics) {
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view, GuardingNode floatingGuard, boolean divisionOverflowIsJVMSCompliant) {
         BinaryOp<Div> op = ArithmeticOpTable.forStamp(x.stamp(view)).getDiv();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new SignedFloatingIntegerDivNode(x, y, floatingGuard, divisionOverflowFollowsSemantics).canonical(null);
+        return new SignedFloatingIntegerDivNode(x, y, floatingGuard, divisionOverflowIsJVMSCompliant).canonical(null);
     }
 
     @Override

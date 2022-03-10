@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
 
     @Override
-    default boolean divisionOverflowFollowsSemantics() {
+    default boolean divisionOverflowIsJVMSCompliant() {
         // amd64 traps on a division overflow
         return false;
     }

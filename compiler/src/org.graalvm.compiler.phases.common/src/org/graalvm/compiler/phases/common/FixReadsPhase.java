@@ -198,10 +198,9 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             }
 
             @Override
-            public boolean divisionOverflowFollowsSemantics() {
+            public boolean divisionOverflowIsJVMSCompliant() {
                 return false;
             }
-
         }
 
         public RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess, boolean replaceInputsWithConstants) {
