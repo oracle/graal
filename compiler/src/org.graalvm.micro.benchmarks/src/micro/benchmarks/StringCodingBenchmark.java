@@ -33,7 +33,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
 @State(Scope.Thread)
-public class StringCodingBenchmark {
+public class StringCodingBenchmark extends BenchmarkBase {
 
     private byte[] bytes;
 
