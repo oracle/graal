@@ -13,6 +13,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -119,7 +120,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
      * does the most of the build-time heavy lifting.
      */
     private CodeTypeElement createBuilderImpl(CodeTypeElement typBuilder) {
-        String simpleName = m.getTemplateType().getSimpleName() + "BuilderinoImpl";
+        String simpleName = m.getTemplateType().getSimpleName() + "BuilderImpl";
         CodeTypeElement typBuilderImpl = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, typBuilder.asType());
 
         DeclaredType byteArraySupportType = context.getDeclaredType("com.oracle.truffle.api.memory.ByteArraySupport");
@@ -475,18 +476,36 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
      * executable Truffle node.
      */
     private CodeTypeElement createBuilderBytecodeNode(String simpleName) {
-        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, types.OperationsNode);
+        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, simpleName, types.OperationsNode);
 
         CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(byte.class)), "bc");
         builderBytecodeNodeType.add(fldBc);
 
-        CodeVariableElement fldConsts = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), arrayOf(context.getType(Object.class)), "consts");
+        CodeVariableElement fldConsts = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(Object.class)), "consts");
         builderBytecodeNodeType.add(fldConsts);
 
-        CodeVariableElement fldHandlers = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), arrayOf(types.BuilderExceptionHandler), "handlers");
+        CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
         builderBytecodeNodeType.add(fldHandlers);
 
-        builderBytecodeNodeType.add(GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType));
+        CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
+        builderBytecodeNodeType.add(ctor);
+
+        CodeVariableElement fldHitCount = null;
+        if (m.isTracing()) {
+            fldHitCount = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(int.class)), "hitCount");
+            builderBytecodeNodeType.add(fldHitCount);
+        }
+
+        {
+            CodeTreeBuilder b = ctor.getBuilder();
+
+            if (m.isTracing()) {
+                b.startAssign(fldHitCount).startNewArray(
+                                (ArrayType) fldHitCount.getType(),
+                                CodeTreeBuilder.createBuilder().variable(fldBc).string(".length").build());
+                b.end(2);
+            }
+        }
 
         ExecuteVariables vars = new ExecuteVariables();
         vars.bc = fldBc;
@@ -521,7 +540,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
             CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
 
-            b.declaration("int", varSp.getName(), "0");
+            b.declaration("int", varSp.getName(), "maxLocals");
             b.declaration("int", varBci.getName(), "0");
 
             CodeVariableElement varReturnValue = new CodeVariableElement(context.getType(Object.class), "returnValue");
@@ -540,6 +559,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             vars.returnValue = varReturnValue;
 
             b.startTryBlock();
+
+            if (m.isTracing()) {
+                b.startStatement().variable(fldHitCount).string("[bci]++").end();
+            }
 
             b.startSwitch().string("bc[bci]").end();
             b.startBlock();
@@ -569,7 +592,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startAssign(varSp).string("handler.startStack").end();
             // TODO check exception type
-            // TODO put exception in local
+
+            b.tree(OperationGeneratorUtils.createWriteLocal(vars,
+                            CodeTreeBuilder.singleString("handler.exceptionIndex"),
+                            CodeTreeBuilder.singleString("ex")));
 
             b.statement("bci = handler.handlerBci");
             b.statement("continue loop");
@@ -596,6 +622,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         {
             CodeExecutableElement mDump = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(String.class), "dump");
+            builderBytecodeNodeType.add(mDump);
 
             CodeTreeBuilder b = mDump.getBuilder();
 
@@ -606,6 +633,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startWhile().string("bci < bc.length").end();
             b.startBlock(); // while block
+
+            if (m.isTracing()) {
+                b.statement("sb.append(String.format(\" [ %3d ]\", hitCount[bci]))");
+            }
 
             b.statement("sb.append(String.format(\" %04x \", bci))");
 
@@ -651,7 +682,61 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             vars.bci = null;
 
-            builderBytecodeNodeType.add(mDump);
+        }
+
+        if (m.isTracing()) {
+            CodeExecutableElement mGetTrace = GeneratorUtils.override(types.OperationsNode, "getNodeTrace");
+            builderBytecodeNodeType.add(mGetTrace);
+
+            CodeTreeBuilder b = mGetTrace.getBuilder();
+
+            b.declaration("int", "bci", "0");
+            b.declaration("List<InstructionTrace>", "insts", "new ArrayList<>()");
+
+            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
+
+            b.startWhile().string("bci < bc.length").end();
+            b.startBlock(); // while block
+
+            b.startSwitch().string("bc[bci]").end();
+            b.startBlock();
+
+            for (Instruction op : m.getInstructions()) {
+                b.startCase().string("" + op.id).end();
+                b.startBlock();
+
+                b.startStatement();
+                b.startCall("insts", "add");
+                b.startNew(types.InstructionTrace);
+
+                b.string("" + op.id);
+                b.startGroup().variable(fldHitCount).string("[bci]").end();
+
+                int ofs = 1;
+                for (int i = 0; i < op.arguments.length; i++) {
+                    b.tree(op.arguments[i].createReadCode(vars, ofs));
+                }
+
+                b.end(3);
+
+                b.statement("bci += " + op.length());
+                b.statement("break");
+
+                b.end();
+            }
+
+            b.caseDefault().startCaseBlock();
+            b.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Unknown opcode").end(2);
+            b.end(); // default case block
+            b.end(); // switch block
+
+            b.end(); // while block
+
+            b.startReturn().startNew(types.NodeTrace);
+            b.startCall("insts", "toArray").string("new InstructionTrace[0]").end();
+            b.end(2);
+
+            vars.bci = null;
         }
 
         return builderBytecodeNodeType;
@@ -790,7 +875,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         this.processor = processor;
         this.m = m;
 
-        String simpleName = m.getTemplateType().getSimpleName() + "Builderino";
+        String simpleName = m.getTemplateType().getSimpleName() + "Builder";
 
         try {
             return List.of(createBuilder(simpleName));

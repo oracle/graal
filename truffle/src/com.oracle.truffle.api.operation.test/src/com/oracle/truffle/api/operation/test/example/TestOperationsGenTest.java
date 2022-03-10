@@ -12,11 +12,101 @@ import org.junit.runners.JUnit4;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationsNode;
+import com.oracle.truffle.api.operation.tracing.InstructionTrace;
 
 @RunWith(JUnit4.class)
 public class TestOperationsGenTest {
 
-    private static void parseAdd(SlOperationsBuilderino b) {
+    private static OperationsNode doBuild(Consumer<TestOperationsBuilder> bm) {
+        TestOperationsBuilder builder = TestOperationsBuilder.createBuilder();
+        bm.accept(builder);
+        return builder.build();
+    }
+
+    @Test
+    public void testAdd() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseAdd);
+        runTest(node, 42L, 20L, 22L);
+        runTest(node, "foobar", "foo", "bar");
+        runTest(node, 100L, 120L, -20L);
+
+        InstructionTrace[] instructions = node.getNodeTrace().getInstructions();
+
+        Assert.assertEquals(3, instructions[0].getHitCount());
+        Assert.assertEquals(3, instructions[1].getHitCount());
+        Assert.assertEquals(3, instructions[2].getHitCount());
+        Assert.assertEquals(3, instructions[3].getHitCount());
+    }
+
+    @Test
+    public void testMax() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseMax);
+        runTest(node, 42L, 42L, 13L);
+        runTest(node, 42L, 42L, 13L);
+        runTest(node, 42L, 13L, 42L);
+        runTest(node, 42L, 13L, 42L);
+
+        InstructionTrace[] instructions = node.getNodeTrace().getInstructions();
+
+        Assert.assertEquals(4, instructions[0].getHitCount());
+        Assert.assertEquals(2, instructions[instructions.length - 1].getHitCount());
+    }
+
+    @Test
+    public void testSumLoop() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseSumLoop);
+        runTest(node, 45L, 10L);
+    }
+
+    @Test
+    public void testBreakLoop() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseBreakLoop);
+        runTest(node, 6L, 5L);
+        runTest(node, 10L, 15L);
+    }
+
+    @Test
+    public void testBlockPopping() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseBlockPopping);
+        runTest(node, 5L);
+    }
+
+    @Test
+    public void testVeryComplex() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseVeryComplex);
+        runTest(node, 10L);
+    }
+
+    @Test
+    public void testVoidOperation() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseVoidOperation);
+        runTest(node, List.of(1, 2, 3), new ArrayList<Integer>(), 1, 2, 3);
+    }
+
+    @Test
+    public void testTryCatchOperation() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseTryCatchOperation);
+        runTest(node, 0L, 1L);
+        runTest(node, 1L, -1L);
+    }
+
+    @Test
+    public void testBooleanIfThingy() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseBooleanIfThingy);
+        runTest(node, 1L, 1L, -1L);
+        runTest(node, 2L, -1L, 2L);
+        runTest(node, -1L, -3L, -4L);
+    }
+
+    private static void runTest(OperationsNode executable, Object expectedResult, Object... args) {
+        System.out.println(executable);
+        CallTarget target = executable.getCallTarget();
+        Object result = target.call(args);
+        System.out.println(executable.dump());
+        Assert.assertEquals(expectedResult, result);
+    }
+
+    private static void parseAdd(TestOperationsBuilder b) {
         // simple test:
         // function foo(a, b) {
         // return (a + b);
@@ -29,7 +119,7 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void parseMax(SlOperationsBuilderino b) {
+    private static void parseMax(TestOperationsBuilder b) {
         // control flow test:
         // function max(a, b) {
         // if (a < b) {
@@ -55,73 +145,7 @@ public class TestOperationsGenTest {
         b.endIfThenElse();
     }
 
-    @Test
-    public void testAdd() {
-        runTest(TestOperationsGenTest::parseAdd, 42L, 20L, 22L);
-        runTest(TestOperationsGenTest::parseAdd, "foobar", "foo", "bar");
-    }
-
-    @Test
-    public void testMax() {
-        runTest(TestOperationsGenTest::parseMax, 42L, 42L, 13L);
-        runTest(TestOperationsGenTest::parseMax, 42L, 13L, 42L);
-    }
-
-    @Test
-    public void testSumLoop() {
-        runTest(TestOperationsGenTest::parseSumLoop, 45L, 10L);
-    }
-
-    @Test
-    public void testBreakLoop() {
-        runTest(TestOperationsGenTest::parseBreakLoop, 6L, 5L);
-        runTest(TestOperationsGenTest::parseBreakLoop, 10L, 15L);
-    }
-
-    @Test
-    public void testBlockPopping() {
-        runTest(TestOperationsGenTest::parseBlockPopping, 5L);
-    }
-
-    @Test
-    public void testVeryComplex() {
-        runTest(TestOperationsGenTest::parseVeryComplex, 10L);
-    }
-
-    @Test
-    public void testVoidOperation() {
-        runTest(TestOperationsGenTest::parseVoidOperation, List.of(1, 2, 3), new ArrayList(), 1, 2, 3);
-    }
-
-    @Test
-    public void testTryCatchOperation() {
-        runTest(TestOperationsGenTest::parseTryCatchOperation, 0L, 1L);
-        runTest(TestOperationsGenTest::parseTryCatchOperation, 1L, -1L);
-    }
-
-    @Test
-    public void testBooleanIfThingy() {
-        runTest(TestOperationsGenTest::parseBooleanIfThingy, 1L, 1L, -1L);
-        runTest(TestOperationsGenTest::parseBooleanIfThingy, 2L, -1L, 2L);
-        runTest(TestOperationsGenTest::parseBooleanIfThingy, -1L, -3L, -4L);
-    }
-
-    private static void runTest(Consumer<SlOperationsBuilderino> parse, Object expectedResult, Object... args) {
-        System.out.println("------------------------------------");
-        SlOperationsBuilderino b = SlOperationsBuilderino.createBuilder();
-        parse.accept(b);
-        System.out.println(" building");
-        OperationsNode executable = b.build();
-        System.out.println(" dumping");
-        System.out.println(executable.dump());
-        b.reset();
-        System.out.println(executable);
-        CallTarget target = executable.getCallTarget();
-        Object result = target.call(args);
-        Assert.assertEquals(expectedResult, result);
-    }
-
-    private static void parseSumLoop(SlOperationsBuilderino b) {
+    private static void parseSumLoop(TestOperationsBuilder b) {
         // control flow test:
         // function sum(length) {
         // sum = 0;
@@ -172,7 +196,7 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void parseBreakLoop(SlOperationsBuilderino b) {
+    private static void parseBreakLoop(TestOperationsBuilder b) {
         // function breakLoop(input) {
         // i = 0;
         // while (i < 10) {
@@ -225,7 +249,7 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void parseBlockPopping(SlOperationsBuilderino b) {
+    private static void parseBlockPopping(TestOperationsBuilder b) {
         // function blockPopping() {
         // return 1 + {2; 3; 4}
         // }
@@ -244,7 +268,7 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void parseVeryComplex(SlOperationsBuilderino b) {
+    private static void parseVeryComplex(TestOperationsBuilder b) {
         // function veryComplex() {
         // return veryComplex(1, 2, 3, 4, 5) + 6
         // }
@@ -263,7 +287,7 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void parseVoidOperation(SlOperationsBuilderino b) {
+    private static void parseVoidOperation(TestOperationsBuilder b) {
         // function veryComplex(l1, a, b, c) {
         // addToList(l1, a);
         // ...
@@ -287,7 +311,7 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void parseTryCatchOperation(SlOperationsBuilderino b) {
+    private static void parseTryCatchOperation(TestOperationsBuilder b) {
         // function tryCatch(x) {
         // try {
         // if (x < 0) throw(...)
@@ -296,7 +320,7 @@ public class TestOperationsGenTest {
         // }
         // return 0
 
-        b.beginTryCatch();
+        b.beginTryCatch(1);
 
         b.beginIfThen();
 
@@ -320,14 +344,14 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
-    private static void beginBooleanAnd(SlOperationsBuilderino b, int i) {
+    private static void beginBooleanAnd(TestOperationsBuilder b, int i) {
         // a && b -> { l0 = a; if (isFalsey(l0)) { l0 = b }; l0 }
 
         b.beginBlock();
         b.beginStoreLocal(i);
     }
 
-    private static void middleBooleanAnd(SlOperationsBuilderino b, int i) {
+    private static void middleBooleanAnd(TestOperationsBuilder b, int i) {
         b.endStoreLocal();
 
         b.beginIfThen();
@@ -339,7 +363,7 @@ public class TestOperationsGenTest {
         b.beginStoreLocal(i);
     }
 
-    private static void endBooleanAnd(SlOperationsBuilderino b, int i) {
+    private static void endBooleanAnd(TestOperationsBuilder b, int i) {
         b.endStoreLocal();
 
         b.endIfThen();
@@ -349,16 +373,16 @@ public class TestOperationsGenTest {
         b.endBlock();
     }
 
-    private static void parseBooleanIfThingy(SlOperationsBuilderino b) {
+    private static void parseBooleanIfThingy(TestOperationsBuilder b) {
 
         // function test(x, y) {
         // try {
         // return x && y && throw();
-        // } catch {
+        // } catch (e) {
         // return -1;
         // }
 
-        b.beginTryCatch();
+        b.beginTryCatch(2);
         {
             b.beginReturn();
             {

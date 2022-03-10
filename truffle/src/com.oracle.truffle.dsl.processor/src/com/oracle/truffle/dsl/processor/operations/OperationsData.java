@@ -16,12 +16,22 @@ public class OperationsData extends Template {
 
     private final OperationsBuilder builder = new OperationsBuilder();
 
+    private boolean tracing;
+
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
     }
 
     public OperationsBuilder getOperationsBuilder() {
         return builder;
+    }
+
+    public void setTracing(boolean tracing) {
+        this.tracing = tracing;
+    }
+
+    public boolean isTracing() {
+        return tracing;
     }
 
     public Collection<Instruction> getInstructions() {

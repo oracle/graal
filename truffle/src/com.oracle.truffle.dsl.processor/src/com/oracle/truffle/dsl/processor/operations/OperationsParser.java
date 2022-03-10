@@ -48,6 +48,8 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         }
 
+        data.setTracing(true);
+
         return data;
     }
 

@@ -74,14 +74,14 @@ public class OperationGeneratorUtils {
     public static CodeTree createReadLocal(ExecuteVariables vars, CodeTree offset) {
         return CodeTreeBuilder.createBuilder() //
                         .startCall(vars.frame, "getValue") //
-                        .startGroup().variable(vars.maxStack).string(" + ").tree(offset).end()//
+                        .startGroup().tree(offset).end()//
                         .end(2).build();
     }
 
     public static CodeTree createWriteLocal(ExecuteVariables vars, CodeTree offset, CodeTree value) {
         return CodeTreeBuilder.createBuilder() //
                         .startStatement().startCall(vars.frame, "setObject") //
-                        .startGroup().variable(vars.maxStack).string(" + ").tree(offset).end() //
+                        .startGroup().tree(offset).end() //
                         .tree(value) //
                         .end(3).build();
     }

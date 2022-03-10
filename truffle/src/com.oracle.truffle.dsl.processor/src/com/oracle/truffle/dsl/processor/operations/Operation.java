@@ -407,6 +407,11 @@ public abstract class Operation {
         }
 
         @Override
+        public List<Argument> getArguments() {
+            return List.of(new Argument.Integer(2));
+        }
+
+        @Override
         public CodeTree createBeginCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
@@ -414,6 +419,7 @@ public abstract class Operation {
             b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
             b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
             b.startStatement().variable(varBeh).string(".startStack = ").variable(vars.curStack).end();
+            b.startStatement().variable(varBeh).string(".exceptionIndex = ").variable(vars.arguments[0]).end();
             b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
 
             // ...

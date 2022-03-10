@@ -1,11 +1,10 @@
 package com.oracle.truffle.api.operation;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.operation.tracing.NodeTrace;
 
 public abstract class OperationsNode extends RootNode {
 
@@ -30,4 +29,8 @@ public abstract class OperationsNode extends RootNode {
 // public abstract OperationsNode copyUninitialized();
 
     public abstract String dump();
+
+    public NodeTrace getNodeTrace() {
+        throw new UnsupportedOperationException("Operations not built with tracing");
+    }
 }

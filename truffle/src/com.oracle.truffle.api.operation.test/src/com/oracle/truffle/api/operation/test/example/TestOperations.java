@@ -7,7 +7,7 @@ import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 
 @GenerateOperations
-public class SlOperations {
+public class TestOperations {
 
     @Operation
     static class AddOperation {
