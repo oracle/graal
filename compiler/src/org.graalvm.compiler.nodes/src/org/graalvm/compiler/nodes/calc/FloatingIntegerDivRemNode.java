@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
 /**
  * {@link FloatingNode} version of {@link IntegerDivRemNode} if it is known that this node cannot
@@ -81,13 +82,7 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
     }
 
     /**
-     * Determines if it is allowed for this floating node to produce an overflow during division. If
-     * this is {@code false} the stamps of the dividend and divisor must ensure an overflow never
-     * happens. See {@link SignedDivNode#divisionIsJVMSCompliant(ValueNode, ValueNode, boolean)} for
-     * details.
-     *
-     * If this value is {@code true} either the stamps guaranteed this can never happen or the
-     * architecture guarantees the semantics is followed.
+     * See {@link LoweringProvider#divisionOverflowIsJVMSCompliant()}.
      */
     private boolean divisionOverflowIsJVMSCompliant;
 
@@ -96,7 +91,7 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
         return floatingGuard;
     }
 
-    public void setdivisionOverflowIsJVMSCompliant() {
+    public void setDivisionOverflowIsJVMSCompliant() {
         this.divisionOverflowIsJVMSCompliant = true;
     }
 

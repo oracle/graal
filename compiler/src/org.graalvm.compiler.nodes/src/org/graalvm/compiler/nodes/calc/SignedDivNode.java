@@ -159,7 +159,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
         assert dividendStamp.getBits() == divisorStamp.getBits();
         long minValue = NumUtil.minValue(dividendStamp.getBits());
-        return dividendStamp.contains(minValue) && divisorStamp.contains(-1);
+        return !(dividendStamp.contains(minValue) && divisorStamp.contains(-1));
     }
 
     public static ValueNode canonical(ValueNode forX, long c, NodeView view) {

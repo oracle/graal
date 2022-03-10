@@ -39,10 +39,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -65,7 +62,6 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -77,12 +73,9 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
-import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
@@ -90,10 +83,6 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.calc.SignedDivNode;
-import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
-import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -112,7 +101,6 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.MembarNode.FenceKind;
-import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
@@ -324,10 +312,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 StructuredGraph graph = (StructuredGraph) n.graph();
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
-                }
-            } else if (n instanceof IntegerDivRemNode) {
-                if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-                    lowerIntegerDivRem((IntegerDivRemNode) n, tool);
                 }
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
@@ -1246,103 +1230,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 return new NarrowNode(value, 16);
         }
         return value;
-    }
-
-    /**
-     * Lower ({@link FixedNode}) {@link IntegerDivRemNode} nodes to a {@link GuardingNode}
-     * (potentially 2 guards if an overflow is possible) and a floating division
-     * {@link FloatingIntegerDivRemNode}. This enabled global value numbering for non-constant
-     * division operations. Later on in the backend we can combine certain divs again with their
-     * checks to avoid explicit 0 and overflow checks.
-     */
-    protected void lowerIntegerDivRem(IntegerDivRemNode n, LoweringTool tool) {
-        ValueNode dividend = n.getX();
-        ValueNode divisor = n.getY();
-        final IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
-        final IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
-        final StructuredGraph graph = n.graph();
-        if (!(n instanceof SignedDivNode || n instanceof SignedRemNode)) {
-            // Floating integer division is only supported for signed division at the moment
-            return;
-        }
-        if (n.getY().isConstant() && n.getY().asJavaConstant().asLong() == 0) {
-            // always div by zero
-            return;
-        }
-        if (!GraalOptions.FloatingDivNodes.getValue(n.getOptions())) {
-            return;
-        }
-
-        boolean divisionOverflowIsJVMSCompliant = tool.getLowerer().divisionOverflowIsJVMSCompliant();
-        if (!divisionOverflowIsJVMSCompliant) {
-            long minValue = NumUtil.minValue(dividendStamp.getBits());
-            if (dividendStamp.contains(minValue)) {
-                /*
-                 * The dividend may contain NumUtil.minValue(dividendStamp.getBits()) which can lead
-                 * to an overflow of the division. Thus, also check if the divisor contains -1, in
-                 * such case we can only start to float if we actually create 2 guards (one min
-                 * check for the dividend and the 0 check for the divisor), this is only beneficial
-                 * if we actually have at least 2 equivalent divisions. Thus, we do not perform this
-                 * optimization at the moment, this may change in the future.
-                 */
-                if (divisorStamp.contains(-1)) {
-                    return;
-
-                }
-            }
-        }
-
-        GuardingNode guard = null;
-        if (n.getZeroGuard() == null) {
-            LogicNode conditionDivisor = graph.addOrUniqueWithInputs(
-                            CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(divisorStamp.getBits(), 0), tool.getConstantReflection()));
-            if (conditionDivisor instanceof LogicConstantNode) {
-                boolean val = ((LogicConstantNode) conditionDivisor).getValue();
-                if (val) {
-                    // stamp always is zero
-                    return;
-                } else {
-                    // stamp never is zero, let canon later handle it
-                }
-            }
-            guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-            IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
-            divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
-        } else {
-            guard = n.getZeroGuard();
-            /*
-             * We have a zero guard but its possible we are still missing a proper pi node for the
-             * guard (which ensures the div never floats to far also based on the value input,
-             * construct one if necessary.
-             */
-            if (divisorStamp.contains(0)) {
-                IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
-                divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
-            }
-        }
-        if (!SignedDivNode.divisionIsJVMSCompliant(dividend, divisor, divisionOverflowIsJVMSCompliant)) {
-            ConstantNode minVal = ConstantNode.forIntegerBits(divisorStamp.getBits(), NumUtil.minValue(divisorStamp.getBits()));
-            LogicNode conditionDividend = graph.addOrUniqueWithInputs(CompareNode.createAnyCompareNode(Condition.GT, n.getX(), minVal, tool.getConstantReflection()));
-            GuardingNode guard2 = tool.createGuard(n, conditionDividend, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, false,
-                            null);
-            int bits = divisorStamp.getBits();
-            IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
-            dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
-            assert SignedDivNode.divisionIsJVMSCompliant(dividend, divisor, divisionOverflowIsJVMSCompliant);
-            guard = MultiGuardNode.combine(guard2, guard);
-        }
-
-        ValueNode divRem = null;
-        if (n instanceof SignedDivNode) {
-            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
-
-        } else if (n instanceof SignedRemNode) {
-            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
-        } else {
-            throw GraalError.shouldNotReachHere("Unkown division node " + n);
-        }
-        n.replaceAtUsages(divRem);
-        graph.replaceFixedWithFloating(n, divRem);
     }
 
     protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
