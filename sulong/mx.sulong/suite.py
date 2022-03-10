@@ -698,6 +698,7 @@ suite = {
         "include/graalvm/llvm/internal/handles-impl.h",
         "include/graalvm/llvm/internal/polyglot-impl.h",
         "include/graalvm/llvm/internal/polyglot-time-impl.h",
+        "include/graalvm/llvm/internal/intrinsics.h",
         # for source compatibility
         "include/polyglot.h",
         "include/llvm/api/toolchain.h",

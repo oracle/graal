@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <graalvm/llvm/internal/intrinsics.h>
 #include "exit.h"
 
 struct entry {
@@ -94,8 +95,6 @@ int atexit(void (*func)(void)) {
     return __sulong_atexit(func);
 }
 #endif
-
-void __sulong_destructor_functions();
 
 void __sulong_exit(int status) {
     __sulong_funcs_on_exit();
