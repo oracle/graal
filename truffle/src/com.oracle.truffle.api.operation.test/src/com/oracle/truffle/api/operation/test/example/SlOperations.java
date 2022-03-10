@@ -47,4 +47,12 @@ public class SlOperations {
             a1.add(a2);
         }
     }
+
+    @Operation
+    static class ThrowOperation {
+        @Specialization
+        public static void perform() {
+            throw new RuntimeException("haha");
+        }
+    }
 }

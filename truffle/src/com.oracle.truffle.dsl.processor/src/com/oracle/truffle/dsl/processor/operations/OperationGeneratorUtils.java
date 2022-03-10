@@ -22,7 +22,7 @@ public class OperationGeneratorUtils {
         b.startAssign(vars.curStack).variable(vars.curStack).string(" + ").tree(instr.createStackEffect(vars, arguments)).end();
         b.startIf().variable(vars.maxStack).string(" < ").variable(vars.curStack).end();
         b.startAssign(vars.maxStack).variable(vars.curStack).end();
-        b.statement("System.out.printf(\" " + instr.name + " %d %d \\n\", maxStack, curStack)");
+        // b.statement("System.out.printf(\" " + instr.name + " %d %d \\n\", maxStack, curStack)");
         b.tree(instr.createBuildCode(vars, arguments));
         return b.build();
     }

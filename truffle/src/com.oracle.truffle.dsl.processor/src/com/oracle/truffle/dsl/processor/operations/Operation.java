@@ -7,9 +7,13 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Stack;
 
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
@@ -37,6 +41,7 @@ public abstract class Operation {
         CodeVariableElement bc;
         CodeVariableElement bci;
         CodeVariableElement consts;
+        CodeVariableElement exteptionHandlers;
 
         CodeVariableElement stackUtility;
 
@@ -391,6 +396,103 @@ public abstract class Operation {
         }
     }
 
+    public static class TryCatch extends Operation {
+        public TryCatch(OperationsBuilder builder, int id) {
+            super(builder, "TryCatch", id, 2);
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+            b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
+            b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
+            b.startStatement().variable(varBeh).string(".startStack = ").variable(vars.curStack).end();
+            b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
+
+            // ...
+            b.tree(createPushUtility(varBeh, vars));
+            // ..., beh
+
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+
+            // utilstack: ..., beh
+            b.tree(createPushUtility(varEndLabel, vars));
+            // utilstack ..., beh, endLabel
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createAfterChildCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.tree(createPopLastChildCode(vars));
+
+            b.startIf().variable(vars.childIndex).string(" == 0").end();
+            b.startBlock();
+
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+
+            // utilstack ..., beh, endLabel
+            b.tree(createPeekUtility(varEndLabel, vars, 0));
+            b.tree(createPeekUtility(varBeh, vars, 1));
+
+            b.startStatement().variable(varBeh).string(".endBci = ").variable(vars.bci).end();
+
+            b.tree(createEmitInstruction(vars, builder.commonBranch, varEndLabel));
+
+            b.end().startElseBlock();
+
+            b.end();
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createBeforeChildCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startIf().variable(vars.childIndex).string(" == 1").end();
+            b.startBlock();
+
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+
+            // utilstack ..., beh, endLabel
+            b.tree(createPeekUtility(varEndLabel, vars, 0));
+            b.tree(createPeekUtility(varBeh, vars, 1));
+
+            b.startAssign(vars.curStack).variable(varBeh).string(".startStack").end();
+            b.startStatement().variable(varBeh).string(".handlerBci = ").variable(vars.bci).end();
+
+            b.end();
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+            b.tree(createPopUtility(varEndLabel, vars));
+            b.tree(createPopUtility(varBeh, vars));
+
+            b.tree(createEmitLabel(vars, CodeTreeBuilder.singleVariable(varEndLabel)));
+
+            return b.build();
+        }
+    }
+
     protected static final CodeTree createPopUtility(TypeMirror type, BuilderVariables vars) {
         return CodeTreeBuilder.createBuilder().cast(type).startCall(vars.stackUtility, "pop").end().build();
     }
@@ -401,6 +503,30 @@ public abstract class Operation {
 
     protected static final CodeTree createPushUtility(CodeVariableElement target, BuilderVariables vars) {
         return CodeTreeBuilder.createBuilder().startStatement().startCall(vars.stackUtility, "push").variable(target).end(2).build();
+    }
+
+    /**
+     * 0 = TOS, 1 = TOS-1, ...
+     *
+     * @param target
+     * @param vars
+     * @param offset
+     * @return
+     */
+    protected static final CodeTree createPeekUtility(CodeVariableElement target, BuilderVariables vars, int offset) {
+        return CodeTreeBuilder.createBuilder().declaration(target.asType(), target.getName(), createPeekUtility(target.asType(), vars, offset)).build();
+    }
+
+    protected static final CodeTree createPeekUtility(TypeMirror type, BuilderVariables vars, int offset) {
+        if (offset == 0) {
+            return CodeTreeBuilder.createBuilder().cast(type).startCall(vars.stackUtility, "peek").end().build();
+        } else {
+            return CodeTreeBuilder.createBuilder().cast(type).startCall(vars.stackUtility, "get") //
+                            .startGroup() //
+                            .startCall(vars.stackUtility, "size").end() //
+                            .string(" - " + (offset + 1)) //
+                            .end(2).build();
+        }
     }
 
     protected final CodeTree createPopLastChildCode(BuilderVariables vars) {

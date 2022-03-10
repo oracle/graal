@@ -88,6 +88,12 @@ public class TestOperationsGenTest {
         runTest(TestOperationsGenTest::parseVoidOperation, List.of(1, 2, 3), new ArrayList(), 1, 2, 3);
     }
 
+    @Test
+    public void testTryCatchOperation() {
+        runTest(TestOperationsGenTest::parseTryCatchOperation, 0L, 1L);
+        runTest(TestOperationsGenTest::parseTryCatchOperation, 1L, -1L);
+    }
+
     private static void runTest(Consumer<SlOperationsBuilderino> parse, Object expectedResult, Object... args) {
         System.out.println("------------------------------------");
         SlOperationsBuilderino b = SlOperationsBuilderino.createBuilder();
@@ -247,6 +253,39 @@ public class TestOperationsGenTest {
         b.endAddToListOperation();
         b.beginReturn();
         b.emitLoadArgument(0);
+        b.endReturn();
+    }
+
+    private static void parseTryCatchOperation(SlOperationsBuilderino b) {
+        // function tryCatch(x) {
+        // try {
+        // if (x < 0) throw(...)
+        // } catch {
+        // return 1
+        // }
+        // return 0
+
+        b.beginTryCatch();
+
+        b.beginIfThen();
+
+        b.beginLessThanOperation();
+        b.emitLoadArgument(0);
+        b.emitConstObject(0L);
+        b.endLessThanOperation();
+
+        b.emitThrowOperation();
+
+        b.endIfThen();
+
+        b.beginReturn();
+        b.emitConstObject(1L);
+        b.endReturn();
+
+        b.endTryCatch();
+
+        b.beginReturn();
+        b.emitConstObject(0L);
         b.endReturn();
     }
 

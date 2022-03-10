@@ -31,6 +31,7 @@ public class OperationsBuilder {
         add(new Operation.IfThenElse(this, operationId++, false));
         add(new Operation.IfThenElse(this, operationId++, true));
         add(new Operation.While(this, operationId++));
+        add(new Operation.TryCatch(this, operationId++));
 
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));

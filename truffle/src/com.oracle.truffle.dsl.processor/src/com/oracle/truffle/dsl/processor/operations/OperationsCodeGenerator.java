@@ -154,6 +154,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("new byte[65535]");
         }
 
+        CodeVariableElement fldExceptionHandlers = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), types.BuilderExceptionHandler), "exceptionHandlers");
+        typBuilderImpl.add(fldExceptionHandlers);
+        {
+            CodeTreeBuilder b = fldExceptionHandlers.createInitBuilder();
+            b.string("new ArrayList<>()");
+        }
+
         CodeVariableElement fldLastPush = new CodeVariableElement(context.getType(int.class), "lashPush");
         typBuilderImpl.add(fldLastPush);
 
@@ -185,6 +192,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.maxStack = fldMaxStack;
         vars.curStack = fldCurStack;
         vars.maxLocal = fldMaxLocal;
+        vars.exteptionHandlers = fldExceptionHandlers;
 
         {
             CodeExecutableElement metReset = new CodeExecutableElement(
@@ -202,6 +210,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startStatement().startCall(fldArgumentStack.getName(), "clear").end(2);
             b.startStatement().startCall(fldTypeStack.getName(), "clear").end(2);
             b.startStatement().startCall(fldTypeStack.getName(), "add").string("0").end(2);
+            b.startStatement().startCall(fldExceptionHandlers.getName(), "clear").end(2);
         }
 
         {
@@ -216,6 +225,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.declaration("byte[]", "bcCopy", "java.util.Arrays.copyOf(bc, bci)");
             b.declaration("Object[]", "cpCopy", "constPool.getValues()");
+            b.declaration("BuilderExceptionHandler[]", "handlers", fldExceptionHandlers.getName() + ".toArray(new BuilderExceptionHandler[0])");
 
             b.startReturn();
             b.startNew(builderBytecodeNodeType.asType());
@@ -223,6 +233,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startGroup().variable(fldMaxLocal).string(" + 1").end();
             b.string("bcCopy");
             b.string("cpCopy");
+            b.string("handlers");
             b.end(2);
 
         }
@@ -343,6 +354,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     CodeTreeBuilder b = metBegin.getBuilder();
 
+                    b.statement("doBeforeChild()");
+
                     b.startStatement().startCall(fldTypeStack, "push").string("" + op.id).end(2);
                     b.startStatement().startCall(fldChildIndexStack, "push").string("0").end(2);
 
@@ -357,7 +370,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         b.startStatement().startCall(fldArgumentStack, "push").string("args").end(2);
                     }
 
-                    b.statement("doBeforeChild()");
                     b.tree(op.createBeginCode(vars));
 
                     vars.arguments = null;
@@ -407,6 +419,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         for (int i = 0; i < argInfo.size(); i++) {
                             if (argInfo.get(i).isImplicit())
                                 continue;
+
+                            // TODO: this does not work with mixing implicit and real args
 
                             varArgs[i] = new CodeVariableElement(argInfo.get(i).toBuilderArgumentType(), "arg_" + i);
 
@@ -469,12 +483,16 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement fldConsts = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), arrayOf(context.getType(Object.class)), "consts");
         builderBytecodeNodeType.add(fldConsts);
 
+        CodeVariableElement fldHandlers = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.FINAL), arrayOf(types.BuilderExceptionHandler), "handlers");
+        builderBytecodeNodeType.add(fldHandlers);
+
         builderBytecodeNodeType.add(GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType));
 
         ExecuteVariables vars = new ExecuteVariables();
         vars.bc = fldBc;
         vars.consts = fldConsts;
         vars.maxStack = new CodeVariableElement(context.getType(int.class), "maxStack");
+        vars.handlers = fldHandlers;
 
         {
             CodeExecutableElement mExecute = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(Object.class), "execute", new CodeVariableElement(types.VirtualFrame, "frame"));
@@ -500,11 +518,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mContinueAt.getBuilder();
 
-            CodeVariableElement varFunArgs = new CodeVariableElement(arrayOf(context.getType(Object.class)), "funArgs");
             CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
             CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
 
-            b.declaration("final Object[]", varFunArgs.getName(), "frame.getArguments()");
             b.declaration("int", varSp.getName(), "0");
             b.declaration("int", varBci.getName(), "0");
 
@@ -523,6 +539,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             vars.sp = varSp;
             vars.returnValue = varReturnValue;
 
+            b.startTryBlock();
+
             b.startSwitch().string("bc[bci]").end();
             b.startBlock();
 
@@ -539,6 +557,28 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.caseDefault().startCaseBlock().tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered")).end();
 
             b.end(); // switch block
+
+            b.end().startCatchBlock(context.getType(Throwable.class), "ex");
+
+            b.startFor().string("int handlerIndex = 0; handlerIndex < " + vars.handlers.getName() + ".length; handlerIndex++").end();
+            b.startBlock();
+
+            b.declaration(types.BuilderExceptionHandler, "handler", vars.handlers.getName() + "[handlerIndex]");
+            b.startIf().string("handler.startBci > bci || handler.endBci <= bci").end();
+            b.statement("continue");
+
+            b.startAssign(varSp).string("handler.startStack").end();
+            // TODO check exception type
+            // TODO put exception in local
+
+            b.statement("bci = handler.handlerBci");
+            b.statement("continue loop");
+
+            b.end(); // for (handlerIndex ...)
+
+            b.startThrow().string("ex").end();
+
+            b.end(); // catch block
 
             b.statement("bci = nextBci");
             b.end(); // while block
@@ -558,7 +598,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             CodeExecutableElement mDump = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(String.class), "dump");
 
             CodeTreeBuilder b = mDump.getBuilder();
-            CodeVariableElement varSb = new CodeVariableElement(context.getType(StringBuilder.class), "sb");
 
             b.declaration("int", "bci", "0");
             b.declaration("StringBuilder", "sb", "new StringBuilder()");
@@ -581,7 +620,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 int ofs = 1;
                 for (int i = 0; i < op.arguments.length; i++) {
-                    b.startStatement().string("sb.append(").tree(op.arguments[i].createReadCode(vars, ofs)).string(")").end();
+                    b.tree(op.arguments[i].getDumpCode(vars, CodeTreeBuilder.singleString("bci + " + ofs)));
                     ofs += op.arguments[i].length;
                 }
 
@@ -600,6 +639,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("sb.append(\"\\n\")");
 
             b.end(); // while block
+
+            b.startFor().string("int i = 0; i < ").variable(fldHandlers).string(".length; i++").end();
+            b.startBlock();
+
+            b.startStatement().string("sb.append(").variable(fldHandlers).string("[i] + \"\\n\")").end();
+
+            b.end();
 
             b.startReturn().string("sb.toString()").end();
 
@@ -738,6 +784,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     @Override
+    @SuppressWarnings("hiding")
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsData m) {
         this.context = context;
         this.processor = processor;

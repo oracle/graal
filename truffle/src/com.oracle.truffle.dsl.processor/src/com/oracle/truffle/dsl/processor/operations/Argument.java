@@ -32,6 +32,8 @@ public abstract class Argument {
 
     public abstract TypeMirror toBuilderArgumentType();
 
+    public abstract CodeTree getDumpCode(ExecuteVariables vars, CodeTree offset);
+
     public static class Integer extends Argument {
         public Integer(int length) {
             super(length);
@@ -74,6 +76,14 @@ public abstract class Argument {
                                 .tree(offset) //
                                 .end().build();
             }
+        }
+
+        @Override
+        public CodeTree getDumpCode(ExecuteVariables vars, CodeTree offset) {
+            return CodeTreeBuilder.createBuilder().startStatement() //
+                            .startCall("sb", "append") //
+                            .tree(createReadCode(vars, offset)) //
+                            .end(2).build();
         }
     }
 
@@ -138,6 +148,16 @@ public abstract class Argument {
                             .tree(offset) //
                             .end().build();
         }
+
+        @Override
+        public CodeTree getDumpCode(ExecuteVariables vars, CodeTree offset) {
+            return CodeTreeBuilder.createBuilder().startStatement() //
+                            .startCall("sb", "append") //
+                            .startCall("String", "format") //
+                            .doubleQuote("%04x") //
+                            .tree(createReadCode(vars, offset)) //
+                            .end(3).build();
+        }
     }
 
     public static class Const extends Argument {
@@ -171,6 +191,17 @@ public abstract class Argument {
                             .variable(vars.bc) //
                             .tree(offset) //
                             .end().string("]").build();
+        }
+
+        @Override
+        public CodeTree getDumpCode(ExecuteVariables vars, CodeTree offset) {
+            return CodeTreeBuilder.createBuilder().startStatement() //
+                            .startCall("sb", "append") //
+                            .startCall("String", "format") //
+                            .doubleQuote("(%s) %s") //
+                            .startCall(createReadCode(vars, offset), "getClass().getSimpleName").end() //
+                            .tree(createReadCode(vars, offset)) //
+                            .end(3).build();
         }
     }
 }

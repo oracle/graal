@@ -22,12 +22,13 @@ public abstract class Instruction {
         CodeVariableElement bc;
         CodeVariableElement bci;
         CodeVariableElement nextBci;
-
+        CodeVariableElement returnValue;
         CodeVariableElement frame;
         CodeVariableElement sp;
+
         CodeVariableElement consts;
-        CodeVariableElement returnValue;
         CodeVariableElement maxStack;
+        CodeVariableElement handlers;
     }
 
     public Instruction(String name, int id, Argument... arguments) {
@@ -435,7 +436,11 @@ public abstract class Instruction {
 
         @Override
         protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
-            return CodeTreeBuilder.singleString("(" + this.stackPushes + " - " + vars.numChildren.getName() + ")");
+            if (this.isVarArgs) {
+                return CodeTreeBuilder.singleString("(" + this.stackPushes + " - " + vars.numChildren.getName() + ")");
+            } else {
+                return CodeTreeBuilder.singleString(this.stackPushes - this.stackPops + "");
+            }
         }
 
     }
