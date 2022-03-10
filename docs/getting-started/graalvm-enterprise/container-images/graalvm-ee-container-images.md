@@ -88,20 +88,35 @@ To start using GraalVM Enterprise images, you should accept the [Oracle Technolo
     ```shell
     bash-4.4# env
     ```
+    The output message will print the `GRAALVM_VERSION` and `JAVA_HOME` values showing the version of the installed GraalVM Enterprise and the location where it is installed.
 
-11. Check the contents of the GraalVM Enterprise `bin` directory and the Java version by running the following commands:
+11. Check the contents of the GraalVM Enterprise `bin` directory containing `java`, which is the GraalVM Enterprise JDK:
 
     ```shell
     bash-4.4# ls /usr/lib64/graalvm/graalvm21-ee-java17/bin
     ```
+
+12. Check the Java version by running the following command:
+ 
     ```shell
     bash-4.4# java -version
     ```
+    The output printed contains the information about the runtime environment and the version number.
 
-If you download the `native-image-ee` image, which is absolutely self-contained and includes all the `jdk-ee` image components such as the JIT compiler, you can start a container from and enter the session from the `native-image-ee` image:
+If you download the `native-image-ee` image, which is absolutely self-contained and includes all the `jdk-ee` image components such as the JIT compiler, you can start a container and enter the session from the `native-image-ee` image immediately:
 
 ```shell
 docker run -it --rm container-registry.oracle.com/graalvm/native-image-ee:latest bash
+```
+
+Follow steps 10-12 above to check the installed version and the location of GraalVM Enterprise. The `bin` directory, in this case, includes `java` and `native-image` launchers. Check the versions:
+
+```shell
+native-image --version
+```
+
+```shell
+java -version
 ```
 
 You can also pull a desired image automatically using `docker pull` in your CI/CD pipeline: 
