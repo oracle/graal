@@ -97,6 +97,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class PhiTransformPhase extends BasePhase<CoreProviders> {
 
+    /**
+     * It's possible to construct corner cases that expose one opportunity after the other via
+     * canonicalization, but we need to stop after a certain number of iterations to have a bound on
+     * compile time.
+     */
     private static final int MAX_ITERATIONS = 3;
 
     private final CanonicalizerPhase canonicalizer;
