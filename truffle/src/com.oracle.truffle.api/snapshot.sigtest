@@ -15,12 +15,15 @@ supr java.lang.Object
 hfds UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
 
 CLSS public abstract interface com.oracle.truffle.api.Assumption
+fld public final static com.oracle.truffle.api.Assumption NEVER_VALID
 meth public abstract boolean isValid()
 meth public abstract java.lang.String getName()
 meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
 meth public abstract void invalidate()
 meth public static boolean isValidAssumption(com.oracle.truffle.api.Assumption)
 meth public static boolean isValidAssumption(com.oracle.truffle.api.Assumption[])
+meth public static com.oracle.truffle.api.Assumption create()
+meth public static com.oracle.truffle.api.Assumption create(java.lang.String)
 meth public void invalidate(java.lang.String)
 
 CLSS public abstract interface com.oracle.truffle.api.CallTarget
@@ -827,9 +830,9 @@ CLSS public final static com.oracle.truffle.api.frame.FrameDescriptor$Builder
  outer com.oracle.truffle.api.frame.FrameDescriptor
 meth public com.oracle.truffle.api.frame.FrameDescriptor build()
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValue(java.lang.Object)
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
 meth public int addSlot(com.oracle.truffle.api.frame.FrameSlotKind,java.lang.Object,java.lang.Object)
 meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
-meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
 supr java.lang.Object
 hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags
 
