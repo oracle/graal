@@ -28,7 +28,7 @@ The following GraalVM Enterprise container images are available:
 
 ## Get Started
 
-[Oracle Container Registry](https://container-registry.oracle.com). provides access to Oracle products to use in Docker containers. 
+[Oracle Container Registry](https://container-registry.oracle.com) provides access to Oracle products to use in Docker containers. 
 To start using GraalVM Enterprise images, you should accept the [Oracle Technology Network License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html). 
 
 1. Go to [Oracle Container Registry](https://container-registry.oracle.com/) and click on “GraalVM”.You will be redirected to the GraalVM repositories page.
