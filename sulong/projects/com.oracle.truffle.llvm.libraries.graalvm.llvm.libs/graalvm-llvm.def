@@ -73,3 +73,4 @@ EXPORTS
   truffle_deref_handle_for_managed
   truffle_cannot_be_handle
   truffle_decorate_function
+  __sulong_destructor_functions

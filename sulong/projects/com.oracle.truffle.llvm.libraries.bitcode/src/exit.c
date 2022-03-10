@@ -95,8 +95,7 @@ int atexit(void (*func)(void)) {
 }
 #endif
 
-void __sulong_destructor_functions() {
-}
+void __sulong_destructor_functions();
 
 void __sulong_exit(int status) {
     __sulong_funcs_on_exit();

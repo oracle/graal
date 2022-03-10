@@ -50,6 +50,7 @@ endif()
 add_library(graalvm-llvm SHARED
     src/common.c
     src/handles.c
+    src/intrinsics.c
     src/polyglot.c
     src/polyglot-buffer.c
     src/polyglot-time.c
