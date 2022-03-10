@@ -29,13 +29,16 @@ import java.util.Collections;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -89,5 +92,16 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
             tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), getNodeSourcePosition(), false);
             tool.replaceWithVirtual(virtualObject);
         }
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        interpreter.setHeapValue(this, interpreter.getRuntimeValueFactory().createObject(instanceClass()));
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return interpreter.getHeapValue(this);
     }
 }

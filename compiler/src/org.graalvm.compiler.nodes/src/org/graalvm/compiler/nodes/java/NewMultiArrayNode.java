@@ -27,19 +27,25 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueArray;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
@@ -86,5 +92,27 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
     @Override
     public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         return dimension(0);
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        int[] dimensionsEvaluated = new int[dimensions().size()];
+        for (int i = 0; i < dimensions().size(); i++) {
+            InterpreterValue dimensionValue = interpreter.interpretExpr(dimension(i));
+            GraalError.guarantee(dimensionValue.isPrimitive() && dimensionValue.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int,
+                            "NewMultiArrayNode dimension does not interpret to an int");
+            dimensionsEvaluated[i] = dimensionValue.asPrimitiveConstant().asInt();
+        }
+
+        // TODO: is type() the elemental type?
+        InterpreterValueArray newArray = interpreter.getRuntimeValueFactory().createMultiArray(type(), dimensionsEvaluated);
+        interpreter.setHeapValue(this, newArray);
+
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return interpreter.getHeapValue(this);
     }
 }

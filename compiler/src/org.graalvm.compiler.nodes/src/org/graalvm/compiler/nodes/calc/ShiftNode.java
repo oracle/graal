@@ -32,6 +32,9 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
@@ -44,6 +47,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * The {@code ShiftOp} class represents shift operations.
@@ -118,5 +122,17 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
          */
         IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
         return (yStamp.upMask() & (wideMask & ~narrowMask)) == 0;
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
+
+        GraalError.guarantee(xVal.isPrimitive(), "x doesn't interpret to primitive value");
+        GraalError.guarantee(yVal.isPrimitive(), "Shift amount doesn't interpret to primitive value");
+        GraalError.guarantee(yVal.getJavaKind().getStackKind() == JavaKind.Int, "Shift amount doesn't interpret to int kind");
+
+        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant().asInt()));
     }
 }

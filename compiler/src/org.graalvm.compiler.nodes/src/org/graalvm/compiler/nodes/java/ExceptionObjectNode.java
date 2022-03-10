@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -148,5 +150,12 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     @Override
     public boolean canDeoptimize() {
         return true;
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        // TODO: is predecessor() the best way to get the exception object?
+        interpreter.setNodeLookupValue(this, interpreter.interpretExpr(predecessor()));
+        return next();
     }
 }

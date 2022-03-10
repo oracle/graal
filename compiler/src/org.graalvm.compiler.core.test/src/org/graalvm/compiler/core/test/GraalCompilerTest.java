@@ -58,6 +58,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.GraalCompiler.Request;
+import org.graalvm.compiler.core.interpreter.GraalInterpreter;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.target.Backend;
@@ -812,7 +813,58 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final Result test(String name, Object... args) {
-        return test(getInitialOptions(), name, args);
+        // return test(getInitialOptions(), name, args);
+        Result result = test(getInitialOptions(), name, args);
+        String interpret = System.getProperty("graal.Interpreter");
+        if ("ALL".equals(interpret) ||
+                "PRIM".equals(interpret) && primitiveArgs(args) && result.exception == null) {
+            checkAgainstInterpreter(result, false, name, args);
+        }
+        return result;
+    }
+
+    /**
+     * Check that the (static) method name(args) returns result when interpreted.
+     *
+     * @param result normal or exceptional result
+     * @param strict false means silently succeed if the method tries to execute any unimplemented nodes.
+     * @param name the name of a static method in this class.
+     * @param args arguments to call the method with.
+     */
+    public void checkAgainstInterpreter(Result result, boolean strict, String name, Object... args) {
+        System.out.print("?");
+        try {
+            ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(name));
+            if (!method.isStatic()) {
+                // non static methods not handled yet.
+                return;
+            }
+            StructuredGraph methodGraph = parseForCompile(method, getOrCreateCompilationId(method, null), getInitialOptions());
+//            System.out.println("Method: " + method.getName());
+//            for (Node n : methodGraph.getNodes()) {
+//                System.out.println("  node: " + n);
+//            }
+            GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext());
+            Result interpreterResult = null;
+            try {
+                interpreterResult = new Result(interpreter.executeGraph(methodGraph, args), null);
+            } catch (InvocationTargetException e) {
+                interpreterResult = new Result(null, e.getTargetException());
+            }
+            assertEquals(result, interpreterResult);
+        } catch (GraalError ex) {
+            if (ex.getMessage().startsWith("unimplemented: ")) {
+                // this test contained a Node that does not yet implement the interpret methods.
+                System.out.print("U");
+                if (strict) {
+                    throw new RuntimeException(ex);
+                    // fail(ex.getMessage());
+                }
+            } else {
+                // any other kind of exception is serious, so we propagate it.
+                throw ex;
+            }
+        }
     }
 
     protected final Result test(OptionValues options, String name, Object... args) {
@@ -1535,4 +1587,15 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CanonicalizerPhase createCanonicalizerPhase() {
         return CanonicalizerPhase.create();
     }
+
+    // TODO: this is just temporary while non-primitives aren't implemented in the interpreter
+    private static boolean primitiveArgs(Object... args) {
+        for (Object arg : args) {
+            if (!(arg instanceof Integer)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

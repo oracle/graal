@@ -32,8 +32,12 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueArray;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
@@ -51,6 +55,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -198,4 +203,18 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         }
         return null;
     }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue indexVal = interpreter.interpretExpr(index());
+        InterpreterValue arrayVal = interpreter.interpretExpr(array());
+
+        GraalError.guarantee(indexVal.isPrimitive() && indexVal.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "LoadIndexNode index doesn't interpret to int");
+        GraalError.guarantee(arrayVal.isArray(), "LoadIndexNode array did not interpret to an array");
+
+        interpreter.setNodeLookupValue(this, ((InterpreterValueArray) arrayVal).getAtIndex(indexVal.asPrimitiveConstant().asInt()));
+
+        return next();
+    }
+
 }
