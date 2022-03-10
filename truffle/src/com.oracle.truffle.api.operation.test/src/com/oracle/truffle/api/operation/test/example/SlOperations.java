@@ -55,4 +55,30 @@ public class SlOperations {
             throw new RuntimeException("haha");
         }
     }
+
+    @Operation
+    static class IsThruthyOperation {
+        @Specialization
+        public static boolean testString(String s) {
+            return s != null && s.length() > 0;
+        }
+
+        @Specialization
+        public static boolean testLong(long l) {
+            return l > 0;
+        }
+    }
+
+    @Operation
+    static class IsFalseyOperation {
+        @Specialization
+        public static boolean testString(String s) {
+            return s == null || s.length() == 0;
+        }
+
+        @Specialization
+        public static boolean testLong(long l) {
+            return l <= 0;
+        }
+    }
 }

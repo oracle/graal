@@ -79,6 +79,11 @@ public class TestOperationsGenTest {
     }
 
     @Test
+    public void testBlockPopping() {
+        runTest(TestOperationsGenTest::parseBlockPopping, 5L);
+    }
+
+    @Test
     public void testVeryComplex() {
         runTest(TestOperationsGenTest::parseVeryComplex, 10L);
     }
@@ -92,6 +97,13 @@ public class TestOperationsGenTest {
     public void testTryCatchOperation() {
         runTest(TestOperationsGenTest::parseTryCatchOperation, 0L, 1L);
         runTest(TestOperationsGenTest::parseTryCatchOperation, 1L, -1L);
+    }
+
+    @Test
+    public void testBooleanIfThingy() {
+        runTest(TestOperationsGenTest::parseBooleanIfThingy, 1L, 1L, -1L);
+        runTest(TestOperationsGenTest::parseBooleanIfThingy, 2L, -1L, 2L);
+        runTest(TestOperationsGenTest::parseBooleanIfThingy, -1L, -3L, -4L);
     }
 
     private static void runTest(Consumer<SlOperationsBuilderino> parse, Object expectedResult, Object... args) {
@@ -213,6 +225,25 @@ public class TestOperationsGenTest {
         b.endReturn();
     }
 
+    private static void parseBlockPopping(SlOperationsBuilderino b) {
+        // function blockPopping() {
+        // return 1 + {2; 3; 4}
+        // }
+
+        b.beginReturn();
+        b.beginAddOperation();
+        b.emitConstObject(1L);
+
+        b.beginBlock();
+        b.emitConstObject(2L);
+        b.emitConstObject(3L);
+        b.emitConstObject(4L);
+        b.endBlock();
+
+        b.endAddOperation();
+        b.endReturn();
+    }
+
     private static void parseVeryComplex(SlOperationsBuilderino b) {
         // function veryComplex() {
         // return veryComplex(1, 2, 3, 4, 5) + 6
@@ -287,6 +318,74 @@ public class TestOperationsGenTest {
         b.beginReturn();
         b.emitConstObject(0L);
         b.endReturn();
+    }
+
+    private static void beginBooleanAnd(SlOperationsBuilderino b, int i) {
+        // a && b -> { l0 = a; if (isFalsey(l0)) { l0 = b }; l0 }
+
+        b.beginBlock();
+        b.beginStoreLocal(i);
+    }
+
+    private static void middleBooleanAnd(SlOperationsBuilderino b, int i) {
+        b.endStoreLocal();
+
+        b.beginIfThen();
+
+        b.beginIsFalseyOperation();
+        b.emitLoadLocal(i);
+        b.endIsFalseyOperation();
+
+        b.beginStoreLocal(i);
+    }
+
+    private static void endBooleanAnd(SlOperationsBuilderino b, int i) {
+        b.endStoreLocal();
+
+        b.endIfThen();
+
+        b.emitLoadLocal(i);
+
+        b.endBlock();
+    }
+
+    private static void parseBooleanIfThingy(SlOperationsBuilderino b) {
+
+        // function test(x, y) {
+        // try {
+        // return x && y && throw();
+        // } catch {
+        // return -1;
+        // }
+
+        b.beginTryCatch();
+        {
+            b.beginReturn();
+            {
+
+                beginBooleanAnd(b, 0);
+                {
+                    b.emitLoadArgument(0);
+                }
+                middleBooleanAnd(b, 0);
+                {
+
+                    beginBooleanAnd(b, 1);
+                    b.emitLoadArgument(1);
+                    middleBooleanAnd(b, 1);
+                    b.emitThrowOperation();
+                    endBooleanAnd(b, 1);
+                }
+                endBooleanAnd(b, 0);
+            }
+            b.endReturn();
+
+            b.beginReturn();
+            b.emitConstObject(-1L);
+            b.endReturn();
+        }
+        b.endTryCatch();
+
     }
 
 }
