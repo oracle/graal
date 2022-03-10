@@ -134,4 +134,4 @@ It will update the whole system and remove the obsolete GraalVM Enterprise insta
 
 - Run the [Get Started with GraalVM on Oracle Linux in OCI](https://luna.oracle.com/lab/3b0dcf97-22d0-489b-a049-5d269199fa00) interactive workshop to get hands-on lab experience installing GraalVM Enterprise on Oracle Linux 8 (all the necessary compute resources are provisioned).
 
-- Take the [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1) interactive lab to see how GraalVM Enterprise accelerates Java applications in OracIe Cloud.
+- Take the [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1) interactive lab to see how GraalVM Enterprise accelerates Java applications in Oracle Cloud.
