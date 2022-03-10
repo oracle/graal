@@ -24,35 +24,36 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
+@SuppressWarnings("serial")
+public final class MarshalledException extends RuntimeException {
 
-public final class MarshallerUtils {
+    private final String foreignExceptionClassName;
 
-    private MarshallerUtils() {
+    public MarshalledException(String foreignExceptionClassName, String foreignExceptionMessage) {
+        this(foreignExceptionClassName, foreignExceptionMessage, null);
     }
 
-    public static void writeStackTrace(BinaryOutput out, StackTraceElement[] stack) throws IOException {
-        out.writeInt(stack.length);
-        for (StackTraceElement stackTraceElement : stack) {
-            out.writeUTF(stackTraceElement.getClassName());
-            out.writeUTF(stackTraceElement.getMethodName());
-            String fileName = stackTraceElement.getFileName();
-            out.writeUTF(fileName == null ? "" : fileName);
-            out.writeInt(stackTraceElement.getLineNumber());
+    public MarshalledException(String foreignExceptionClassName, String foreignExceptionMessage, StackTraceElement[] stackTrace) {
+        super(foreignExceptionMessage);
+        this.foreignExceptionClassName = foreignExceptionClassName;
+        if (stackTrace != null) {
+            setStackTrace(stackTrace);
         }
     }
 
-    public static StackTraceElement[] readStackTrace(BinaryInput in) throws IOException {
-        int len = in.readInt();
-        StackTraceElement[] res = new StackTraceElement[len];
-        for (int i = 0; i < len; i++) {
-            String className = in.readUTF();
-            String methodName = in.readUTF();
-            String fileName = in.readUTF();
-            fileName = fileName.isEmpty() ? null : fileName;
-            int lineNumber = in.readInt();
-            res[i] = new StackTraceElement(className, methodName, fileName, lineNumber);
-        }
-        return res;
+    public String getForeignExceptionClassName() {
+        return foreignExceptionClassName;
+    }
+
+    @Override
+    @SuppressWarnings("sync-override")
+    public Throwable fillInStackTrace() {
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        String message = getLocalizedMessage();
+        return (message != null) ? (foreignExceptionClassName + ": " + message) : foreignExceptionClassName;
     }
 }

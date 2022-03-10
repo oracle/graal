@@ -355,6 +355,7 @@ public final class JNIConfig {
             this.annotationBinaryMarshallers = new HashMap<>();
             // Register default marshallers
             this.binaryMarshallers.put(Throwable.class, new DefaultThrowableMarshaller());
+            this.binaryMarshallers.put(StackTraceElement[].class, defaultStackTraceMarshaller());
         }
 
         /**
@@ -593,6 +594,13 @@ public final class JNIConfig {
                             annotationHotSpotMarshallers, annotationNativeMarshallers, annotationBinaryMarshallers,
                             attachThreadAction, detachThreadAction, shutDownIsolateAction,
                             releaseNativeObjectAction);
+        }
+
+        /**
+         * Returns a {@link BinaryMarshaller} for stack trace marshalling.
+         */
+        public static BinaryMarshaller<StackTraceElement[]> defaultStackTraceMarshaller() {
+            return DefaultStackTraceMarshaller.INSTANCE;
         }
     }
 }

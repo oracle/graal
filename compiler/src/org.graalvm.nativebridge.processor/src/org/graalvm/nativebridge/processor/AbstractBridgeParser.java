@@ -1200,6 +1200,12 @@ abstract class AbstractBridgeParser {
             return res;
         }
 
+        MarshallerData getCustomMarshaller(DeclaredType forType, DeclaredType annotationType, Types types) {
+            return getAllCustomMarshallers().stream().filter((m) -> types.isSameType(forType, m.forType)).filter((m) -> annotationType == null ? m.annotations.isEmpty()
+                            : Utilities.contains(m.annotations.stream().map(AnnotationMirror::getAnnotationType).collect(Collectors.toList()), annotationType, types)).findFirst().orElseThrow(
+                                            () -> new IllegalStateException(String.format("No custom marshaller for type %s.", Utilities.getTypeName(forType))));
+        }
+
         Collection<MarshallerData> getAllReferenceMarshallers() {
             Set<MarshallerData> res = new HashSet<>();
             collectAllMarshallers(res, MarshallerData.Kind.REFERENCE);
@@ -1297,7 +1303,7 @@ abstract class AbstractBridgeParser {
             this.endPointHandle = (DeclaredType) processor.getType("org.graalvm.nativebridge.EndPointHandle");
             this.exceptionHandler = (DeclaredType) processor.getType("org.graalvm.nativebridge.ExceptionHandler");
             this.expectError = (DeclaredType) processor.getTypeOrNull("org.graalvm.nativebridge.processor.test.ExpectError");
-            this.foreignException = (DeclaredType) processor.getTypeOrNull("org.graalvm.jniutils.ForeignException");
+            this.foreignException = (DeclaredType) processor.getType("org.graalvm.nativebridge.ForeignException");
             this.generateHSToNativeBridge = (DeclaredType) processor.getType(HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION);
             this.generateNativeToHSBridge = (DeclaredType) processor.getType(NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");

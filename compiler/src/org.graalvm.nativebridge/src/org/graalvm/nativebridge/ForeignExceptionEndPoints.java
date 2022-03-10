@@ -24,25 +24,31 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
+final class ForeignExceptionEndPoints {
 
-    private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
-
-    @Override
-    public Throwable read(BinaryInput in) throws IOException {
-        String foreignExceptionClassName = in.readUTF();
-        String foreignExceptionMessage = (String) in.readTypedValue();
-        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
-        return new MarshalledException(foreignExceptionClassName, foreignExceptionMessage, ForeignException.mergeStackTrace(foreignExceptionStack));
+    private ForeignExceptionEndPoints() {
     }
 
-    @Override
-    public void write(BinaryOutput out, Throwable object) throws IOException {
-        out.writeUTF(object instanceof MarshalledException ? ((MarshalledException) object).getForeignExceptionClassName() : object.getClass().getName());
-        out.writeTypedValue(object.getMessage());
-        stackTraceMarshaller.write(out, object.getStackTrace());
+    /**
+     * Called by JNI to create a {@link ForeignException} used to throw native exception into Java
+     * code.
+     *
+     * @param rawValue marshalled original exception
+     * @return a {@link ForeignException} instance
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static Throwable createForeignException(byte[] rawValue) {
+        return ForeignException.create(rawValue, ForeignException.HOST_TO_GUEST);
     }
 
+    /**
+     * Called by JNI to return a marshalled exception transferred by the {@code exception}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static byte[] toByteArray(ForeignException exception) {
+        return exception.toByteArray();
+    }
 }

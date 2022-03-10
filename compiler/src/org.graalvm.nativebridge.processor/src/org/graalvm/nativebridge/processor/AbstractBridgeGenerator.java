@@ -165,42 +165,6 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    final void generateUnboxForeignException(CodeBuilder builder) {
-        builder.lineEnd("");
-        CodeBuilder.Parameter foreignException = CodeBuilder.newParameter(typeCache.foreignException, "e");
-        builder.lineStart().annotation(typeCache.suppressWarnings, "unchecked").lineEnd("");
-        builder.lineStart().writeModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC)).spaceIfNeeded();
-        builder.write("<T").space().write("extends").space().write(typeCache.runtimeException).write(">").space();
-        builder.write("T").space().write("unboxForeignException").write("(").write(typeCache.foreignException).space().write(foreignException.name).write(") ");
-        builder.write("throws").space().write("T").space().lineEnd("{");
-        builder.indent();
-        CharSequence in = "in";
-        CharSequence arrayInit = new CodeBuilder(builder).invoke(foreignException.name, "toByteArray").build();
-        CharSequence binaryReaderInit = new CodeBuilder(builder).write(typeCache.binaryInput).space().write(in).write(" = ").invokeStatic(typeCache.binaryInput, "create", arrayInit).build();
-        builder.lineStart("try (").write(binaryReaderInit).lineEnd(") {");
-        builder.indent();
-        builder.lineStart().write(typeCache.throwable).space().write("t").lineEnd(";");
-        builder.line("try {");
-        builder.indent();
-        builder.lineStart("t = ").invoke("throwableMarshaller", "read", in).lineEnd(";");
-        builder.dedent();
-        builder.lineStart("} catch (").write(typeCache.iOException).space().write("ioe").lineEnd(") {");
-        builder.indent();
-        CharSequence message = new CodeBuilder(builder).invoke("ioe", "getMessage").build();
-        builder.lineStart("throw").space().newInstance(typeCache.assertionError, message, "ioe").lineEnd(";");
-        builder.dedent();
-        builder.line("}");
-        builder.lineStart("throw (T) t").lineEnd(";");
-        builder.dedent();
-        builder.line("} finally {");
-        builder.indent();
-        builder.lineStart().invokeStatic(typeCache.foreignException, "clearPendingException").lineEnd(";");
-        builder.dedent();
-        builder.line("}");
-        builder.dedent();
-        builder.line("}");
-    }
-
     final CacheSnippets cacheSnippets(DefinitionData data) {
         if (data.hasCustomDispatch()) {
             return CacheSnippets.customDispatch(types, typeCache);
