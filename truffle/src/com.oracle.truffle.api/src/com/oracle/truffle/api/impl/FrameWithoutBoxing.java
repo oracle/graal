@@ -75,6 +75,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private static final Object OBJECT_LOCATION = new Object();
     private static final Object PRIMITIVE_LOCATION = new Object();
 
+    private static final long INT_MASK = 0xFFFFFFFFL;
+
     /*
      * Changing these constants implies changes in NewFrameNode.java as well:
      */
@@ -226,6 +228,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     byte getByteUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
+        // Multiple casts are not strictly needed for semantics, but we want to use "int" semantics
+        // everywhere and it's easier to let the compiler decide how to merge them.
         return (byte) (int) unsafeGetLong(getPrimitiveLocals(), offset, condition, slot);
     }
 
@@ -238,7 +242,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setByteUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, byte value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value & 0xFFFFFFFFL, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, value & INT_MASK, slot);
     }
 
     @Override
@@ -286,7 +290,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setFloatUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, float value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, Float.floatToRawIntBits(value) & 0xFFFFFFFFL, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, Float.floatToRawIntBits(value) & INT_MASK, slot);
     }
 
     @Override
@@ -334,7 +338,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setIntUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, int value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value & 0xFFFFFFFFL, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, value & INT_MASK, slot);
     }
 
     @Override
@@ -609,7 +613,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setByte(int slot, byte value) {
         verifyIndexedSet(slot, BYTE_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & 0xFF, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & INT_MASK, PRIMITIVE_LOCATION);
     }
 
     @Override
@@ -633,7 +637,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setFloat(int slot, float value) {
         verifyIndexedSet(slot, FLOAT_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Float.floatToRawIntBits(value) & 0xFFFFFFFFL, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Float.floatToRawIntBits(value) & INT_MASK, PRIMITIVE_LOCATION);
     }
 
     @Override
@@ -657,7 +661,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setInt(int slot, int value) {
         verifyIndexedSet(slot, INT_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & 0xFFFFFFFFL, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & INT_MASK, PRIMITIVE_LOCATION);
     }
 
     @Override
