@@ -75,7 +75,7 @@ public class SlOperations {
 
         public static final int LIBRARY_LIMIT = 3;
 
-        @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "3")
+        @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
         public static Object readArray(Object receiver, Object index,
                         @CachedLibrary("receiver") InteropLibrary arrays,
                         @CachedLibrary("index") InteropLibrary numbers) {
@@ -100,7 +100,7 @@ public class SlOperations {
             return result;
         }
 
-        @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "3")
+        @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
         public static Object readObject(Object receiver, Object name,
                         @CachedLibrary("receiver") InteropLibrary objects,
                         @Cached SLToMemberNode asMember) {
@@ -130,7 +130,6 @@ public class SlOperations {
         // this.library = InteropLibrary.getFactory().createDispatched(3);
         // }
 
-        @ExplodeLoop
         @Specialization
         public static Object call(
                         Object function,

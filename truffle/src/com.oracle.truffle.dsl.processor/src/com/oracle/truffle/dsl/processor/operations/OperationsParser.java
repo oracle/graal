@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -39,11 +40,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         for (Element e : typeElement.getEnclosedElements()) {
             AnnotationMirror operationMirror = getAnnotationMirror(e.getAnnotationMirrors(), types.Operation);
             if (operationMirror == null) {
-                continue;
-            }
-
-            if (!(e instanceof TypeElement)) {
-                data.addError(e, "@Operation can only be attached to classes");
                 continue;
             }
 
@@ -101,6 +97,9 @@ public class OperationsParser extends AbstractParser<OperationsData> {
     private void processOperation(OperationsData data, TypeElement te) {
         List<ExecutableElement> operationFunctions = new ArrayList<>();
         for (Element el : te.getEnclosedElements()) {
+            if (el.getKind() != ElementKind.CONSTRUCTOR && !el.getModifiers().contains(Modifier.STATIC)) {
+                data.addError(el, "Operations must not contain non-static members");
+            }
             if (el instanceof ExecutableElement) {
                 ExecutableElement cel = (ExecutableElement) el;
                 if (isOperationFunction(cel)) {

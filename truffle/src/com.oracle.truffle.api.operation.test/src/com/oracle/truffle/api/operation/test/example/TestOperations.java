@@ -21,16 +21,8 @@ public class TestOperations {
         }
 
         @Specialization
-        public static String addStrings(String lhs, String rhs, @Cached int test) {
+        public static String addStrings(String lhs, String rhs, @Cached("1") int test) {
             return lhs + rhs;
-        }
-
-        protected static int create() {
-            return 1;
-        }
-
-        protected static int getUncached() {
-            return 1;
         }
     }
 

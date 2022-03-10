@@ -169,7 +169,7 @@ public abstract class Operation {
 
         @Override
         public CodeTree createPushCountCode(BuilderVariables vars) {
-            return CodeTreeBuilder.singleVariable(vars.lastChildPushCount);
+            return null; // does not change it at all
         }
     }
 
