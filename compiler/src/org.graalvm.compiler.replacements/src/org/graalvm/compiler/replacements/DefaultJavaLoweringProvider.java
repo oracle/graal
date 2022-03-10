@@ -96,8 +96,6 @@ import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
-import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
-import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -1263,7 +1261,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         final IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
         final IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
         final StructuredGraph graph = n.graph();
-        if (n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
+        if (!(n instanceof SignedDivNode || n instanceof SignedRemNode)) {
             // Floating integer division is only supported for signed division at the moment
             return;
         }
@@ -1331,7 +1329,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             IntegerStamp allButMin = IntegerStamp.create(bits, NumUtil.minValue(bits) + 1L, NumUtil.maxValue(bits));
             dividend = graph.maybeAddOrUnique(PiNode.create(n.getX(), dividendStamp.join(allButMin), guard2.asNode()));
             assert !SignedDivNode.divOverflowViolatesSemantic(dividend, divisor, divisionOverflowFollowsSemantics);
-            guard = guard == null ? guard2 : MultiGuardNode.combine(guard2, guard);
+            guard = MultiGuardNode.combine(guard2, guard);
         }
 
         ValueNode divRem = null;
@@ -1341,8 +1339,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else if (n instanceof SignedRemNode) {
             divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowFollowsSemantics));
         } else {
-            // do nothing with it
-            return;
+            throw GraalError.shouldNotReachHere("Unkown division node " + n);
         }
         n.replaceAtUsages(divRem);
         graph.replaceFixedWithFloating(n, divRem);

@@ -199,7 +199,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
             @Override
             public boolean divisionOverflowFollowsSemantics() {
-                return true;
+                return false;
             }
 
         }

@@ -73,9 +73,8 @@ public interface CanonicalizerTool extends CoreProviders {
     OptionValues getOptions();
 
     /**
-     * Indicates whether this target platform follows Java semantics (idiv bytecode) and creates an
-     * overflow on the division of MIN/-1 or if it creates an error/trap on an integer division
-     * overflow which means the runtime has to handle the uncommon slowpath.
+     * Indicates whether this target platform follows Java semantics for the idiv bytecode when
+     * performing {@code MIN / -1 (= MIN)}.
      */
     boolean divisionOverflowFollowsSemantics();
 
