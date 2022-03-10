@@ -16,8 +16,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 {
   local that = self,
 
-  local mx_version = (import "../../graal-common.json").mx_version,
-
   // platform-specific snippets
   common: sulong_deps.common + {
     environment+: {
