@@ -32,18 +32,13 @@ import java.util.stream.Stream;
 
 /**
 * A predicate that returns {@code true} iff
-* {@code boolean java.lang.ClassLoader.NativeLibrary.load0(String name, boolean isBuiltin)}
+* {@code boolean java.lang.ClassLoader.NativeLibrary.load(String name, boolean isBuiltin)}
 * exists. It should only be used in conjunction with {@link JDK11OrEarlier} as
 * {@code NativeLibrary} was moved to a top level class in later JDKs.
 */
-public class LoadWith2Args implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        Optional<Class<?>> nativeLibrary = Stream.of(ClassLoader.class.getDeclaredClasses()).filter(c -> c.getSimpleName().equals("NativeLibrary")).findFirst();
-        if (nativeLibrary.isPresent()) {
-            Class<?>[] signature = {String.class, boolean.class};
-            return Stream.of(nativeLibrary.get().getDeclaredMethods()).filter(m -> m.getName().equals("load") && Arrays.equals(m.getParameters(), signature)).findFirst().isPresent();
-        }
-        return false;
+// Checkstyle: stop
+public class LoadWith2Args extends MethodPredicate {
+    public LoadWith2Args() {
+        super(ClassLoader.class, "NativeLibrary", "load", String.class, boolean.class);
     }
 }

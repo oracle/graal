@@ -29,16 +29,32 @@ import java.util.function.BooleanSupplier;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-
 /**
-* A predicate that returns {@code true} iff
-* {@code boolean java.lang.ClassLoader.NativeLibrary.load0(String name, boolean isBuiltin)}
-* exists. It should only be used in conjunction with {@link JDK11OrEarlier} as
-* {@code NativeLibrary} was moved to a top level class in later JDKs.
-*/
+ * A predicate that returns {@code true} iff a specified method exists.
+ */
 // Checkstyle: stop
-public class Load0With2Args extends MethodPredicate {
-    public Load0With2Args() {
-        super(ClassLoader.class, "NativeLibrary", "load0", String.class, boolean.class);
+public class MethodPredicate implements BooleanSupplier {
+
+    private final Class<?> declaringClass;
+    private final String innerClassName;
+    private final String methodName;
+    private final Class<?>[] parameterTypes;
+
+    public MethodPredicate(Class<?> declaringClass, String innerClassName, String methodName, Class<?>... parameterTypes) {
+        this.declaringClass = declaringClass;
+        this.innerClassName = innerClassName;
+        this.methodName = methodName;
+        this.parameterTypes = parameterTypes;
+    }
+
+    @Override
+    public boolean getAsBoolean() {
+        Optional<Class<?>> cls = innerClassName != null ?
+                        Stream.of(declaringClass.getDeclaredClasses()).filter(c -> c.getSimpleName().equals(innerClassName)).findFirst() :
+                        Optional.of(declaringClass);
+        if (cls.isPresent()) {
+            return Stream.of(cls.get().getDeclaredMethods()).filter(m -> m.getName().equals(methodName) && Arrays.equals(m.getParameters(), parameterTypes)).findFirst().isPresent();
+        }
+        return false;
     }
 }
