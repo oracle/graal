@@ -722,8 +722,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         // TODO: need to dispose entry in context and free globals
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
         for (LLVMPointer pointer : threadLocalValue.sections) {
-
-
+            freeThreadLocalGlobalBlock.call(pointer);
         }
     }
 

@@ -55,7 +55,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -273,14 +272,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
             result.add(PrimitiveType.getIntegerType(size * Byte.SIZE));
             remaining -= size;
         }
-    }
-
-    /**
-     * Globals of pointer type need to be handles specially because they can potentially contain a
-     * foreign object.
-     */
-    private static boolean isSpecialGlobalSlot(Type type) {
-        return type instanceof PointerType;
     }
 
     private static int getAlignment(DataLayout dataLayout, GlobalVariable global, Type type) {
