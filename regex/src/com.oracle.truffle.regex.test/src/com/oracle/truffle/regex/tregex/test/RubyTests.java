@@ -426,5 +426,8 @@ public class RubyTests extends RegexTestBase {
     public void atomicGroups() {
         test("(?>foo)(?>bar)", "", "foobar", 0, true, 0, 6);
         test("(?>foo*)obar", "", "foooooooobar", 0, false);
+
+        // quantifiers on atomic groups
+        test("\\A\\s*([0-9]+(?>\\.[0-9a-zA-Z]+)*(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)?\\s*\\z", "", "0.a", 0, true, 0, 3, 0, 3, -1, -1, -1, -1);
     }
 }
