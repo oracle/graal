@@ -412,6 +412,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     // endregion OSR support
 
+    /**
+     * Smaller than int[1], does not kill int[] on write and doesn't need bounds checks.
+     */
+    private static final class BackEdgeCounter {
+        /*
+         * Maintain back edge count in a field so MERGE_EXPLODE can merge states.
+         */
+
+        int count;
+    }
+
     public void execute(WasmContext context, VirtualFrame frame) {
         executeBodyFromOffset(context, frame, functionStartOffset, 0, codeEntry.numLocals());
     }
@@ -426,9 +437,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final byte[] data = wasmCodeEntry.data();
         final int[] extraData = wasmCodeEntry.extraData();
 
-        // This has to be an integer array because of MERGE_EXPLODE. An integer value would prevent
-        // ExplodeLoop from merging branches since the state would be different for every iteration.
-        final int[] loopCount = new int[1];
+        final BackEdgeCounter backEdgeCounter = new BackEdgeCounter();
 
         int offset = startOffset;
         int extraOffset = startExtraOffset;
@@ -436,9 +445,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         final WasmMemory memory = instance.memory();
 
+        // TODO: These checks can lead to invalid frame states in OSR.
         check(data.length, (1 << 31) - 1);
-        // Generates invalid frame states in OSR.
-        // check(extraData.length, (1 << 31) - 1);
+        check(extraData.length, (1 << 31) - 1);
 
         int opcode = UNREACHABLE;
         loop: while (offset < functionEndOffset) {
@@ -460,15 +469,15 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case LOOP:
                     // Skip return type.
                     offset++;
-                    if (CompilerDirectives.hasNextTier() && ++loopCount[0] >= REPORT_LOOP_STRIDE) {
+                    if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                         LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
-                        loopCount[0] = 0;
+                        backEdgeCounter.count = 0;
                     }
                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
                         Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(extraOffset, stackPointer), null, frame);
                         if (result != null) {
-                            if (loopCount[0] > 0) {
-                                LoopNode.reportLoopCount(this, loopCount[0]);
+                            if (backEdgeCounter.count > 0) {
+                                LoopNode.reportLoopCount(this, backEdgeCounter.count);
                             }
                             return result;
                         }
@@ -582,8 +591,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution to resume after the instruction that invoked
                     // the current frame.
-                    if (loopCount[0] > 0) {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
+                    if (backEdgeCounter.count > 0) {
+                        LoopNode.reportLoopCount(this, backEdgeCounter.count);
                     }
                     unwindStack(frame, stackPointer, numLocals, functionReturnLength);
                     return RETURN_VALUE;
