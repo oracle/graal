@@ -8,8 +8,9 @@ local graal_suite_root = root_ci.graal_suite_root;
   local mx = (import "../../graal-common.json").mx_version,
   local common = (import "../../common.jsonnet"),
   local common_json = (import "../../common.json"),
+  local utils = (import "../../common-utils.libsonnet"),
 
-  devkits: common_json.devkits,
+  devkits: utils.composable(common_json.devkits),
 
   gate: {
     targets+: ['gate'],

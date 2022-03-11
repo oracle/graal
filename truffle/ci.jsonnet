@@ -2,13 +2,14 @@
   local common_json = import '../common.json',
   local common = import '../common.jsonnet',
   local bench_hw = (import '../bench-common.libsonnet').bench_hw,
-  local devkits = common_json.devkits,
+  local composable = (import '../common-utils.libsonnet').composable,
+  local devkits = composable(common_json.devkits),
 
   local darwin_amd64 = common.darwin_amd64,
   local linux_amd64 = common.linux_amd64,
   local windows_amd64 = common.windows_amd64,
 
-  local truffle_common = common_json.deps.common + common.mx + {
+  local truffle_common = composable(common_json.deps.common) + common.mx + {
     setup+: [
       ["cd", "./truffle"],
     ],
@@ -16,7 +17,7 @@
     timelimit: "30:00",
   },
 
-  local bench_common = common_json.deps.common + common.mx + {
+  local bench_common = composable(common_json.deps.common) + common.mx + {
     environment+: {
       BENCH_RESULTS_FILE_PATH: "bench-results.json",
     },
@@ -139,7 +140,7 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk11 + truffle_unittest {
+    truffle_common + windows_amd64 + common.oraclejdk11 + truffle_unittest + devkits["windows-jdk11"] +{
       name: "gate-truffle-nfi-windows-11",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
@@ -147,7 +148,6 @@
         ["mx", "build" ],
         ["mx", "unittest", "--verbose" ],
       ],
-      packages+: devkits["windows-jdk11"].packages
     },
 
     truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + {
