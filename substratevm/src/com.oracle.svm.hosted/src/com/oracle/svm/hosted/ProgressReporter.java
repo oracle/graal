@@ -358,10 +358,6 @@ public class ProgressReporter {
         };
     }
 
-    public void printInliningSkipped() {
-        stagePrinter.skipped(BuildStage.INLINING);
-    }
-
     public ReporterClosable printCompiling() {
         Timer timer = getTimer(TimerCollection.Registry.COMPILE);
         timer.start();

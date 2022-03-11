@@ -815,7 +815,6 @@ public class NativeImageGenerator {
                 }
 
                 if (SubstrateOptions.useEconomyCompilerConfig()) {
-                    HostedConfiguration.setInstanceIfEmpty(new EconomyHostedConfiguration());
                     GraalConfiguration.setHostedInstanceIfEmpty(new EconomyGraalConfiguration());
                 }
 
