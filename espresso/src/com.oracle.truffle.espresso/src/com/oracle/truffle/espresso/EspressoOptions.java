@@ -48,6 +48,7 @@ public final class EspressoOptions {
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 
     private static final Path EMPTY = Paths.get("");
+    private static final String PATH_SEPARATOR_INSERT = "\" + java.io.File.pathSeparator + \"";
 
     /**
      * File.pathSeparator-delimited list of paths.
@@ -91,10 +92,10 @@ public final class EspressoOptions {
                     usageSyntax = "<value>") //
     public static final OptionKey<OptionMap<String>> Properties = OptionKey.mapOf(String.class);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR archives, and ZIP archives to search for class files.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories, JAR archives, and ZIP archives to search for class files.", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:...") //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> Classpath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
     @Option(help = "Specifies in which module the main class is located. Can also specify the main class name by appending it after a \\\"/\\\"", //
@@ -103,34 +104,34 @@ public final class EspressoOptions {
                     usageSyntax = "<module>[/<mainclass>]") //
     public static final OptionKey<String> Module = new OptionKey<>("");
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for modules.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for modules.", //
                     category = OptionCategory.USER,//
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:...") //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> ModulePath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of root modules beyond the initial module.\\nEquivalent to '--add-modules=<module>'", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of root modules beyond the initial module.\\nEquivalent to '--add-modules=<module>'", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<module>:<module>:...") //
+                    usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> AddModules = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \"separated list of root modules beyond the initial module.\\nEquivalent to '--add-reads=<module>'", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "'separated list of root modules beyond the initial module.\\nEquivalent to '--add-reads=<module>'", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<module>:<module>:...") //
+                    usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> AddReads = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of root modules beyond the initial module.\\nEquivalent to '--add-exports=<module>'", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of root modules beyond the initial module.\\nEquivalent to '--add-exports=<module>'", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<module>:<module>:...") //
+                    usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> AddExports = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of root modules beyond the initial module.\\nEquivalent to '--add-opens=<module>'", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of root modules beyond the initial module.\\nEquivalent to '--add-opens=<module>'", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<module>:<module>:...") //
+                    usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> AddOpens = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
@@ -139,50 +140,51 @@ public final class EspressoOptions {
                     usageSyntax = "<path>") //
     public static final OptionKey<Path> JavaHome = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for Espresso's (lib)?jvm.(so|dll|dylib).", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for Espresso's (lib)?jvm.(so|dll|dylib).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL,//
-                    usageSyntax = "<path>:<path>:...") //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> JVMLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT +
+                    "' separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:...") //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> BootClasspath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to append to the front of the default bootstrap class path.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories, JAR files, and ZIP archives to append to the front of the default bootstrap class path.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:..." //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> BootClasspathAppend = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to prepend to the end of the default bootstrap class path.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories, JAR files, and ZIP archives to prepend to the end of the default bootstrap class path.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:..." //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> BootClasspathPrepend = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for user libraries.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for user libraries.", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:..." //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> JavaLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for system libraries.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for system libraries.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:..." //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> BootLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for extensions.", //
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for extensions.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "<path>:<path>:..." //
+                    usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> ExtDirs = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
