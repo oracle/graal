@@ -2,6 +2,7 @@
 #Version 
 
 CLSS public abstract interface com.oracle.truffle.api.Assumption
+fld public final static com.oracle.truffle.api.Assumption ALWAYS_VALID
 fld public final static com.oracle.truffle.api.Assumption NEVER_VALID
 meth public abstract boolean isValid()
 meth public abstract java.lang.String getName()
@@ -14,7 +15,7 @@ meth public static com.oracle.truffle.api.Assumption create(java.lang.String)
 meth public void invalidate(java.lang.String)
 
 CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="22.1")
 fld public final static com.oracle.truffle.api.utilities.AlwaysValidAssumption INSTANCE
 intf com.oracle.truffle.api.Assumption
 meth public boolean isValid()
@@ -94,7 +95,7 @@ meth public final java.lang.String toString()
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.utilities.NeverValidAssumption
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="22.1")
 fld public final static com.oracle.truffle.api.utilities.NeverValidAssumption INSTANCE
 intf com.oracle.truffle.api.Assumption
 meth public boolean isValid()
@@ -120,7 +121,7 @@ cons public init({com.oracle.truffle.api.utilities.TruffleWeakReference%0},java.
 supr java.lang.ref.WeakReference<{com.oracle.truffle.api.utilities.TruffleWeakReference%0}>
 
 CLSS public com.oracle.truffle.api.utilities.UnionAssumption
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="22.1")
 cons public init(com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
 cons public init(java.lang.String,com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
 intf com.oracle.truffle.api.Assumption
