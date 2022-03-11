@@ -624,12 +624,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    private void wrapCurTermInGroup() {
-        if (!silent) {
-            astBuilder.wrapCurTermInGroup();
-        }
-    }
-
     // Error reporting
 
     private RegexSyntaxException syntaxErrorAtEnd(String message) {
@@ -2222,13 +2216,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 bailOut("quantifiers on lookaround assertions not supported");
                 lastTerm = TermCategory.Quantifier;
                 break;
+            case Atom:
             case Quantifier:
             case OtherAssertion:
-                wrapCurTermInGroup();
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                lastTerm = TermCategory.Quantifier;
-                break;
-            case Atom:
                 addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
                 lastTerm = TermCategory.Quantifier;
                 break;

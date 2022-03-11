@@ -583,13 +583,13 @@ public final class RegexASTBuilder {
             // x{1,1} -> x
             return;
         }
-        setQuantifier((QuantifiableTerm) curTerm, quantifier);
+        curTerm = setQuantifier(curTerm, quantifier);
         // merge equal successive quantified terms
         if (curSequence.size() > 1) {
             Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
             if (prevTerm.isQuantifiableTerm()) {
                 QuantifiableTerm prev = prevTerm.asQuantifiableTerm();
-                if (prev.hasQuantifier() && ((QuantifiableTerm) curTerm).equalsSemantic(prev, true)) {
+                if (prev.hasQuantifier() && curTerm.asQuantifiableTerm().equalsSemantic(prev, true)) {
                     removeCurTerm();
                     long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
                     long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
@@ -606,12 +606,32 @@ public final class RegexASTBuilder {
         }
     }
 
-    private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
-        term.setQuantifier(quantifier);
-        if (!term.isUnrollingCandidate()) {
+    private QuantifiableTerm setQuantifier(Term term, Token.Quantifier quantifier) {
+        QuantifiableTerm quantifiableTerm = term.isQuantifiableTerm() ? term.asQuantifiableTerm() : wrapTermInGroup(term);
+        if (quantifiableTerm.hasQuantifier()) {
+            quantifiableTerm = wrapTermInGroup(term);
+        }
+        quantifiableTerm.setQuantifier(quantifier);
+        if (!quantifiableTerm.isUnrollingCandidate()) {
             properties.setLargeCountedRepetitions();
         }
         properties.setQuantifiers();
+        return quantifiableTerm;
+    }
+
+    private Group wrapTermInGroup(Term term) {
+        Group wrapperGroup = ast.createGroup();
+        if (term.isGroup()) {
+            wrapperGroup.setEnclosedCaptureGroupsLow(term.asGroup().getEnclosedCaptureGroupsLow());
+            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getEnclosedCaptureGroupsHigh());
+        } else if (term.isAtomicGroup()) {
+            wrapperGroup.setEnclosedCaptureGroupsLow(term.asAtomicGroup().getEnclosedCaptureGroupsLow());
+            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asAtomicGroup().getEnclosedCaptureGroupsHigh());
+        }
+        Sequence wrapperSequence = wrapperGroup.addSequence(ast);
+        term.getParent().asSequence().replace(term.getSeqIndex(), wrapperGroup);
+        wrapperSequence.add(term);
+        return wrapperGroup;
     }
 
     /**
@@ -659,11 +679,7 @@ public final class RegexASTBuilder {
      * quantifiers onto the same term.
      */
     public void wrapCurTermInGroup() {
-        Term wrappedTerm = curTerm;
-        curSequence.removeLastTerm();
-        pushGroup();
-        addTerm(wrappedTerm);
-        popGroup();
+        curTerm = wrapTermInGroup(curTerm);
     }
 
     /* optimizations */
