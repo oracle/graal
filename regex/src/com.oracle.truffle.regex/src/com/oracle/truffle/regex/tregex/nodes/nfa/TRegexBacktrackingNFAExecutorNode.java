@@ -367,8 +367,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             int[] subMatchResult = runSubMatcher(subLocals, codeRange, tString, curState);
             if (subMatchFailed(curState, subMatchResult)) {
                 return IP_BACKTRACK;
-            } else if (!curState.isSubMatcherNegated() && getSubExecutor(curState).writesCaptureGroups()) {
-                locals.overwriteCaptureGroups(subMatchResult);
+            } else {
+                if (!curState.isSubMatcherNegated() && getSubExecutor(curState).writesCaptureGroups()) {
+                    locals.overwriteCaptureGroups(subMatchResult);
+                }
                 if (!curState.isLookAround()) {
                     locals.saveIndex(subLocals.getIndex());
                     locals.restoreIndex();
