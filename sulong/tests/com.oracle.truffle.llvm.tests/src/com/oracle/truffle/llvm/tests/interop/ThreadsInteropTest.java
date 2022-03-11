@@ -109,7 +109,8 @@ public class ThreadsInteropTest extends InteropTestBase {
         // Expected result: THREAD_COUNT * 20 lines, each containing "thread <idx> <lineno>"
         // Where <idx> is the thread index (0 to THREAD_COUNT-1), and <lineno> is from 0 to 19.
         int[] lineno = new int[THREAD_COUNT];
-        result.toString().lines().forEachOrdered(line -> {
+        String[] lines = result.toString().split("\n");
+        for (String line : lines) {
             String[] words = line.split(" ");
 
             String expected = "thread <idx> <lineno>";
@@ -124,7 +125,7 @@ public class ThreadsInteropTest extends InteropTestBase {
             }
 
             Assert.assertEquals("line", expected, line);
-        });
+        }
 
         for (int i = 0; i < THREAD_COUNT; i++) {
             Assert.assertEquals("line count for thread " + i, 20, lineno[i]);
