@@ -16,6 +16,7 @@ hfds UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
 
 CLSS public abstract interface com.oracle.truffle.api.Assumption
 fld public final static com.oracle.truffle.api.Assumption NEVER_VALID
+fld public final static com.oracle.truffle.api.Assumption ALWAYS_VALID
 meth public abstract boolean isValid()
 meth public abstract java.lang.String getName()
 meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
