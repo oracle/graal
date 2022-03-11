@@ -13,14 +13,14 @@ The following images are available:
 
 | Image Name      | Description                                        
 ------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| jdk-ee          | A compact image containing the GraalVM Enterprise JDK. |
-| native-image-ee | A compact image which includes the GraalVM Enterprise `native-image` utility and JDK |
-| enterprise      | Provides the GraalVM Enterprise JDK along with the `gu` (Graal Updater) utility to enable installation of additional features. |
-| nodejs-ee       | Includes the Node.js runtime and the GraalVM Enterprise JDK. |
+| **jdk-ee**          | A compact image containing the GraalVM Enterprise JDK. |
+| **native-image-ee** | A compact image which includes the GraalVM Enterprise `native-image` utility and JDK |
+| **enterprise**      | Provides the GraalVM Enterprise JDK along with the `gu` (Graal Updater) utility to enable installation of additional features. |
+| **nodejs-ee**       | Includes the Node.js runtime and the GraalVM Enterprise JDK. |
 
 ## Images Tagging Structure and Availability
 
-Images are multi-arch (`aarch64` or `amd64` depending on Docker host architecture), and tagged with the format:
+Images are multi-arch (`amd64`, `aarch64` for Java 11 or later, depending on Docker host architecture), and tagged with the format:
 
 ```
 container-registry.oracle.com/graalvm/{IMAGE_NAME}:{IMAGE_TAG}.
@@ -29,7 +29,7 @@ container-registry.oracle.com/graalvm/{IMAGE_NAME}:{IMAGE_TAG}.
 Image tag structure is:
 
 ```
-java{JAVA_VERSION}-{MAJOR_RELEASE}.{MINOR_RELEASE}.{PATCH_RELEASE}-b{BUILD_NUMBER}
+{OS_VERSION}-java{JAVA_VERSION}-{MAJOR_RELEASE}.{MINOR_RELEASE}.{PATCH_RELEASE}-b{BUILD_NUMBER}
 ```
 
 The structure is designed to allow references with different levels of specificity.  The minimum valid tag is `java{JAVA_VERSION}-{MAJOR_RELEASE}`. For example, the following are all valid tags:
@@ -39,9 +39,10 @@ java17-21
 java17-21.3
 java17-21.3.0
 java17-21.3.0-b1
+ol8-java17-21.3.1-b2
 ```
 
-It is recommended that the most specific tag be used, e.g., `java17-21.3.0` or `java17-21.3.0-b1`, where `-b1` indicates that the image required a patch and this specific build will never change.  
+It is recommended that the most specific tag be used, e.g., `ol8-java17-21.3.1` or `ol8-java17-21.3.1-b1`, where `-b1` indicates that the image required a patch and this specific build will never change.
 
 Tags that are not fully specified, e.g., `java17-21`, are not stable and will change over time to refer to the latest available GraalVM 21 release. Using `latest` (or no tag) will always get the latest release available for a given image, the latest OS, the latest Java version, and the latest GraalVM version.
 
@@ -51,7 +52,7 @@ To pull a GraalVM Enterprise image from the Oracle Container Registry, you will 
 
 1. Go to [Oracle Container Registry](https://container-registry.oracle.com/) and click on “GraalVM”. You will be redirected to the GraalVM repositories page.
 
-    ![](../img/ocir.png)
+    ![](../img/ocr.png)
 
 2. Click on an image repository. For example, if you need a compact container image with the JDK click the **jdk-ee** link.
 
