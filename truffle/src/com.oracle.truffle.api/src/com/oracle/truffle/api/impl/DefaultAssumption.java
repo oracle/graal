@@ -50,9 +50,13 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  */
 final class DefaultAssumption extends AbstractAssumption {
 
-    private static final String ALWAYS_VALID = new String("");
+    private static final Object ALWAYS_VALID = new Object();
 
     DefaultAssumption(String name) {
+        super(name);
+    }
+
+    private DefaultAssumption(Object name) {
         super(name);
     }
 

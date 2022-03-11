@@ -70,7 +70,7 @@ public interface Assumption {
      *
      * @since 22.1
      */
-    Assumption NEVER_VALID = createNeverInvalid();
+    Assumption NEVER_VALID = createNeverValid();
 
     /**
      * An assumption that is always valid and fails with an {@link UnsupportedOperationException} if
@@ -80,7 +80,7 @@ public interface Assumption {
      */
     Assumption ALWAYS_VALID = createAlwaysValid();
 
-    private static Assumption createNeverInvalid() {
+    private static Assumption createNeverValid() {
         Assumption assumption = create();
         assumption.invalidate();
         return assumption;

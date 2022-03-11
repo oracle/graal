@@ -44,17 +44,17 @@ import com.oracle.truffle.api.Assumption;
 
 public abstract class AbstractAssumption implements Assumption {
 
-    protected final String name;
+    protected final Object name;
     protected volatile boolean isValid;
 
-    protected AbstractAssumption(String name) {
+    protected AbstractAssumption(Object name) {
         this.name = name;
         this.isValid = true;
     }
 
     @Override
     public final String getName() {
-        return name;
+        return name.toString();
     }
 
     @Override

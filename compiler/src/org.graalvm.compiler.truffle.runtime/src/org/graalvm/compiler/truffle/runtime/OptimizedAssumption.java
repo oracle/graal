@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind.FormatWithToString;
  * {@linkplain #registerDependency() registered} dependencies to be invalidated.
  */
 public final class OptimizedAssumption extends AbstractAssumption implements FormatWithToString {
-    private static final String ALWAYS_VALID_NAME = new String("");
+    private static final Object ALWAYS_VALID_NAME = new Object();
 
     /**
      * Reference to machine code that is dependent on an assumption.
@@ -140,6 +140,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         super(name);
     }
 
+    private OptimizedAssumption(Object name) {
+        super(name);
+    }
+
     static Assumption createAlwaysValid() {
         return new OptimizedAssumption(ALWAYS_VALID_NAME);
     }
@@ -190,7 +194,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             OptimizedAssumptionDependency dependency = e.awaitDependency();
             if (dependency != null) {
                 if (reason == null) {
-                    String useName = name != null ? name : "";
+                    String useName = name != null ? name.toString() : "";
                     String useMessage = message != null ? message : "";
                     if (useName.isEmpty() && useMessage.isEmpty()) {
                         reason = "assumption invalidated";
