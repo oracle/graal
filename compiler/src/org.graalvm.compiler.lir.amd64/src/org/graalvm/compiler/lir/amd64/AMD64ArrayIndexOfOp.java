@@ -179,7 +179,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         Value regSearchValue3 = nValues > 2 ? tool.asAllocatable(searchValues[2]) : Value.ILLEGAL;
         Value regSearchValue4 = nValues > 3 ? tool.asAllocatable(searchValues[3]) : Value.ILLEGAL;
 
-        tool.emitMove(regArray, arrayPtr);
+        tool.emitConvertNullToZero(regArray, arrayPtr);
         tool.emitMove(regOffset, arrayOffset);
         tool.emitMove(regLength, arrayLength);
         tool.emitMove(regFromIndex, fromIndex);
