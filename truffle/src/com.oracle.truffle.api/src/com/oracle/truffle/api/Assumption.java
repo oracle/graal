@@ -81,7 +81,7 @@ public interface Assumption {
     Assumption NEVER_VALID = createNeverValid();
 
     private static Assumption createNeverValid() {
-        Assumption assumption = create();
+        Assumption assumption = create("<never valid>");
         assumption.invalidate();
         return assumption;
     }

@@ -99,7 +99,7 @@ final class DefaultAssumption extends AbstractAssumption {
         static final Object ALWAYS_VALID_NAME = new Object() {
             @Override
             public String toString() {
-                return "";
+                return "<always valid>";
             }
         };
     }
