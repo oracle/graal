@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 /**
  * A predicate that returns {@code true} iff a specified method exists.
  */
-// Checkstyle: stop
+// Checkstyle: allow Class.getSimpleName
 public class MethodPredicate implements BooleanSupplier {
 
     private final Class<?> declaringClass;
@@ -49,9 +49,8 @@ public class MethodPredicate implements BooleanSupplier {
 
     @Override
     public boolean getAsBoolean() {
-        Optional<Class<?>> cls = innerClassName != null ?
-                        Stream.of(declaringClass.getDeclaredClasses()).filter(c -> c.getSimpleName().equals(innerClassName)).findFirst() :
-                        Optional.of(declaringClass);
+        Optional<Class<?>> cls = innerClassName != null ? Stream.of(declaringClass.getDeclaredClasses()).filter(c -> c.getSimpleName().equals(innerClassName)).findFirst()
+                        : Optional.of(declaringClass);
         if (cls.isPresent()) {
             return Stream.of(cls.get().getDeclaredMethods()).filter(m -> m.getName().equals(methodName) && Arrays.equals(m.getParameters(), parameterTypes)).findFirst().isPresent();
         }

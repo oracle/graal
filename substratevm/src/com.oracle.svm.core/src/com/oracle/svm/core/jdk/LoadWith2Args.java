@@ -24,18 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.Arrays;
-import java.util.function.BooleanSupplier;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-
 /**
-* A predicate that returns {@code true} iff
-* {@code boolean java.lang.ClassLoader.NativeLibrary.load(String name, boolean isBuiltin)}
-* exists. It should only be used in conjunction with {@link JDK11OrEarlier} as
-* {@code NativeLibrary} was moved to a top level class in later JDKs.
-*/
+ * A predicate that returns {@code true} iff
+ * {@code boolean java.lang.ClassLoader.NativeLibrary.load(String name, boolean isBuiltin)} exists.
+ * It should only be used in conjunction with {@link JDK11OrEarlier} as {@code NativeLibrary} was
+ * moved to a top level class in later JDKs.
+ */
 // Checkstyle: stop
 public class LoadWith2Args extends MethodPredicate {
     public LoadWith2Args() {
