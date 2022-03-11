@@ -42,11 +42,12 @@ public final class WindowsLibraryLocator extends LibraryLocator {
     Path libraryPath;
 
     public WindowsLibraryLocator(Source source) {
-        libraryPath = Paths.get(source.getPath()).getParent();
+        libraryPath = source != null ? Paths.get(source.getPath()).getParent() : null;
     }
 
     @Override
     public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
+        TruffleFile file;
         Path libPath = Paths.get(lib);
 
         if (libPath.isAbsolute()) {
@@ -54,9 +55,11 @@ public final class WindowsLibraryLocator extends LibraryLocator {
         }
 
         // first try in the same directory
-        TruffleFile file = DefaultLibraryLocator.locateAbsolute(context, libraryPath.resolve(libPath));
-        if (file != null) {
-            return file;
+        if (libraryPath != null) {
+            file = DefaultLibraryLocator.locateAbsolute(context, libraryPath.resolve(libPath));
+            if (file != null) {
+                return file;
+            }
         }
 
         // then try the current directory
