@@ -1121,7 +1121,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      *
      * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
      * specified class or interface C.
-     * 
+     *
      * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
      *
      * 4) Otherwise, field lookup fails.
@@ -1534,7 +1534,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // visible to TypeCheckNode
     public Assumption getRedefineAssumption() {
-        return AlwaysValidAssumption.INSTANCE;
+        return Assumption.ALWAYS_VALID;
     }
 
     // endregion jdwp-specific

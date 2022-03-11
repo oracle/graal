@@ -55,8 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -1148,10 +1146,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 int flags = linkedMethod.getFlags();
                 if (Modifier.isAbstract(flags)) {
                     // Disabled for abstract methods to reduce footprint.
-                    this.isLeaf = NeverValidAssumption.INSTANCE;
+                    this.isLeaf = Assumption.NEVER_VALID;
                 } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
                     // Nothing to assume, spare an assumption.
-                    this.isLeaf = AlwaysValidAssumption.INSTANCE;
+                    this.isLeaf = Assumption.ALWAYS_VALID;
                 } else {
                     this.isLeaf = Truffle.getRuntime().createAssumption();
                 }
