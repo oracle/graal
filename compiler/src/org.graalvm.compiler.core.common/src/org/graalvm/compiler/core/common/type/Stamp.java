@@ -161,6 +161,22 @@ public abstract class Stamp implements SpeculationContextObject {
     public abstract Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement);
 
     /**
+     * Read a value of this stamp from memory where the underlying storage might be of a different
+     * size. {@code accessStamp} is used to specify the size of access if it differs from the size
+     * of the result.
+     *
+     * @return the value read or null if the value can't be read for some reason
+     * @throws IllegalArgumentException if this stamp does not support reading a value of the size
+     *             specified by {@code accessStamp}
+     */
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement, Stamp accessStamp) {
+        if (this.equals(accessStamp)) {
+            return readConstant(provider, base, displacement);
+        }
+        throw new IllegalArgumentException("Access mismatch:" + this + " != " + accessStamp);
+    }
+
+    /**
      * Tries to improve this stamp with the stamp given as parameter. If successful, returns the new
      * improved stamp. Otherwise, returns a stamp equal to this.
      *
