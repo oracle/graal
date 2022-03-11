@@ -456,10 +456,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (mitigateDecodingAsDirectCall) {
             int indirectCallPos = position();
             int directCallPos = indirectCallPos - (DIRECT_CALL_INSTRUCTION_SIZE - indirectCallSize);
-            if (directCallPos >= 0 && getByte(directCallPos) == DIRECT_CALL_INSTRUCTION_CODE) {
+            if (directCallPos < 0 || getByte(directCallPos) == DIRECT_CALL_INSTRUCTION_CODE) {
+                // the previous insertedNops bytes can be trusted -- we assume none of our nops
+                // include 0xe8.
                 int prefixNops = DIRECT_CALL_INSTRUCTION_SIZE - indirectCallSize - insertedNops;
-                assert prefixNops > 0;
-                nop(prefixNops);
+                if (prefixNops > 0) {
+                    nop(prefixNops);
+                }
             }
         }
 
@@ -468,7 +471,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert beforeCall + indirectCallSize == position();
         if (mitigateDecodingAsDirectCall) {
             int directCallPos = position() - DIRECT_CALL_INSTRUCTION_SIZE;
-            assert directCallPos < 0 || getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE;
+            GraalError.guarantee(directCallPos >= 0 && getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE,
+                            "This indirect call can be decoded as a direct call.");
         }
         return beforeCall;
     }
