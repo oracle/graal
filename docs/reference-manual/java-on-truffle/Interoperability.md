@@ -198,3 +198,5 @@ Instead, reference processing can be manually triggered through a special comman
 // Will trigger Reference processing and run finalizers
 polyglot.eval("java", "<ProcessReferences>");
 ```
+
+Note that this command might trigger arbitrary cleaner and finalizer code. As such, this should ideally be run with as few guest java frames on the stack as possible. 

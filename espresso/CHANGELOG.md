@@ -2,7 +2,7 @@
 
 ## Version 22.1.0
 ### User-visible changes
-* New command: "\<ProcessReferences\>". Allows embedders to manually trigger reference processing in single-threaded mode.
+* New command: `<ProcessReferences>`. Allows embedders to manually trigger reference processing in single-threaded mode.
 
 ## Version 22.0.0
 ### User-visible changes
