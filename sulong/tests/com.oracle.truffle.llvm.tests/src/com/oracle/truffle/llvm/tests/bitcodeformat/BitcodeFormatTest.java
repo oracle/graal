@@ -93,7 +93,8 @@ public class BitcodeFormatTest {
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() throws IOException {
         TestCaseCollector.ExcludeMap excluded = TestCaseCollector.getExcludedTests(BitcodeFormatTest.class);
-        return Files.list(testBase).map(f -> new Object[]{f, f.getFileName().toString(), excluded.get(f.getFileName().toString())}).collect(Collectors.toList());
+        return Files.list(testBase).filter(v -> !v.endsWith("KERNEL32.dll")).map(f -> new Object[]{f, f.getFileName().toString(), excluded.get(f.getFileName().toString())}).collect(
+                        Collectors.toList());
     }
 
     @Parameter(value = 0) public Path path;

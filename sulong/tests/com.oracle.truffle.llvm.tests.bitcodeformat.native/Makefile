@@ -40,7 +40,8 @@ TARGETS:=hello-linux-emit-llvm.bc \
          hello-darwin-link-fembed-bitcode.dylib \
          hello-darwin-link.bundle \
          hello-windows-compile-fembed-bitcode.o \
-         hello-windows-link-fembed-bitcode.exe
+         hello-windows-link-fembed-bitcode.exe \
+				 KERNEL32.dll # used as a dummy dependency for running on linux
 
 CLANG?=clang
 
