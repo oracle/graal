@@ -430,4 +430,40 @@ public class RubyTests extends RegexTestBase {
         // quantifiers on atomic groups
         test("\\A\\s*([0-9]+(?>\\.[0-9a-zA-Z]+)*(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)?\\s*\\z", "", "0.a", 0, true, 0, 3, 0, 3, -1, -1, -1, -1);
     }
+
+    @Test
+    public void quantifiersOnLookarounds() {
+        // CRuby doesn't rerun looped lookaround assertions, even though they could be updating the
+        // state on each run. Currently, TRegex does the same on the examples below.
+
+        // ?
+        test("(?<=(a))?", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))?", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))?", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // *
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // +
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // {2}
+        test("(?<=(a)){2}", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a)){2}", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a)){2}", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a)){2}", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // {3}
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+    }
 }

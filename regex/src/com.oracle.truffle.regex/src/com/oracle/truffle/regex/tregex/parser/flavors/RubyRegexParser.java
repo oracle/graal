@@ -2204,18 +2204,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             case None:
                 throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
             case LookAroundAssertion:
-                // A lookaround assertion might contain capture groups and thus have side effects.
-                // ECMAScript regular expressions do not accept extraneous empty matches. Therefore,
-                // an expression like /(?:(?=(a)))?/ would capture the 'a' in a capture group in
-                // Ruby but it would not do so in ECMAScript. To avoid this, we bail out on
-                // quantifiers on complex assertions (i.e. lookaround assertions), which might
-                // contain capture groups.
-                // NB: This could be made more specific. We could target only lookaround assertions
-                // which contain capture groups and only when the quantifier is actually optional
-                // (min = 0, such as ?, *, or {,x}).
-                bailOut("quantifiers on lookaround assertions not supported");
-                lastTerm = TermCategory.Quantifier;
-                break;
             case Atom:
             case Quantifier:
             case OtherAssertion:

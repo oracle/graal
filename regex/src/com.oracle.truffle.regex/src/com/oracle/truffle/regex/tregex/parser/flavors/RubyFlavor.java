@@ -82,29 +82,17 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * have access to extra Unicode character properties (e.g. Age) that we do not support. We could
  * dive through Ruby's implementation to find out which other properties might be used and try
  * providing them too.</li>
- * <li>\g&lt;...&gt; subexpression calls and \k&lt;...+-x&gt; backreferences to other levels: Ruby
- * allows recursive calls into subexpressions of the regular expression. There is nothing like this
- * in ECMAScript or in the TRegex engine. Furthermore, Ruby allows backreferences to access captured
- * groups on different levels (of the call stack), so as we don't support subexpression calls, we
- * also don't support those backreferences.</li>
+ * <li>recursive \g&lt;...&gt; subexpression calls and \k&lt;...+-x&gt; backreferences to other
+ * levels</li>
  * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
  * which uses atomic groups, and it is therefore not supported.</li>
  * <li>possessive quantifiers, e.g. a*+: Possessive quantifiers are quantifiers which consume
  * greedily and also do not allow backtracking, so they are another example of the atomic groups
  * that we do not support (a*+ is equivalent to (?>a*)).</li>
  * <li>(?~...) absent expressions: These constructs can be used in Ruby regular expressions to match
- * strings that do not contain a match for a given expression. ECMAScript doesn't offer a similar
- * operation.</li>
- * <li>quantifiers on lookaround assertions: We translate the Ruby regular expressions to
- * Unicode-mode ECMAScript regular expressions. Among other reasons, this lets us assume that a
- * single character matcher will match a single Unicode code point, not just a UTF-16 code unit, as
- * would be the case in non-Unicode ECMAScript regular expressions. Unicode-mode ECMAScript regular
- * expressions do not allow quantifiers on lookaround assertions, as they rarely make any sense. One
- * would hope to implement this by dropping any lookaround assertions that have a quantifier on them
- * that makes them optional. However, this is not correct as the lookaround assertion might contain
- * capture groups and thus have visible side effects.</li>
- * <li>conditional backreferences (?(group)then|else): There is no counterpart to this in ECMAScript
- * regular expressions.</li>
+ * strings that do not contain a match for a given expression. TRegex doesn't have support for this
+ * kind of construction.</li>
+ * <li>conditional backreferences (?(group)then|else)</li>
  * </ul>
  *
  * <p>
