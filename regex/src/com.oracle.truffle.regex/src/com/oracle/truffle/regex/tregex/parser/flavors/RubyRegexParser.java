@@ -159,34 +159,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     /**
-     * An enumeration of the possible grammatical categories of Ruby regex terms, for use with
-     * parsing quantifiers.
-     */
-    private enum TermCategory {
-        /**
-         * A lookahead or lookbehind assertion.
-         */
-        LookAroundAssertion,
-        /**
-         * An assertion other than lookahead or lookbehind, e.g. beginning-of-string/line,
-         * end-of-string/line or (non)-word-boundary assertion.
-         */
-        OtherAssertion,
-        /**
-         * A literal character, a character class or a group.
-         */
-        Atom,
-        /**
-         * A term followed by any kind of quantifier.
-         */
-        Quantifier,
-        /**
-         * Used as the grammatical category when the term in question does not exist.
-         */
-        None
-    }
-
-    /**
      * Metadata about an enclosing capture group.
      */
     private static final class Group {
@@ -341,10 +313,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private int numberOfCaptureGroups;
 
     /**
-     * The grammatical category of the last term parsed. This is needed to detect improper usage of
-     * quantifiers.
+     * Indicates whether we can parse a quantifier (i.e. did we just parse a term that could be
+     * quantified).
      */
-    private TermCategory lastTerm;
+    private boolean canHaveQuantifier;
 
     private boolean hasSubexpressionCalls;
 
@@ -399,7 +371,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         this.namedCaptureGroups = null;
         this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
-        this.lastTerm = TermCategory.None;
+        this.canHaveQuantifier = false;
         this.hasSubexpressionCalls = false;
         this.astBuilder = astBuilder;
         this.silent = astBuilder == null;
@@ -790,7 +762,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
             if (match("|")) {
                 nextSequence();
-                lastTerm = TermCategory.None;
+                canHaveQuantifier = false;
 
                 if (beginningAnchor() != beginningAnchor) {
                     bailOut("\\G anchor is only supported when used at the start of all top-level alternatives");
@@ -875,7 +847,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 break;
             case '[':
                 characterClass();
-                lastTerm = TermCategory.Atom;
                 break;
             case '*':
             case '+':
@@ -884,45 +855,57 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 quantifier(ch);
                 break;
             case '.':
-                if (getLocalFlags().isMultiline()) {
-                    addCharClass(inSource.getEncoding().getFullSet());
-                } else {
-                    addCharClass(CodePointSet.create('\n').createInverse(inSource.getEncoding()));
-                }
-                lastTerm = TermCategory.Atom;
+                dot();
                 break;
             case '(':
                 parens();
                 break;
             case '^':
-                // (?:^|(?<=[\n])(?=.))
-                pushGroup(); // (?:
-                addCaret(); // ^
-                nextSequence(); // |
-                pushLookBehindAssertion(false); // (?<=
-                addCharClass(CodePointSet.create('\n')); // [\n]
-                popGroup(); // )
-                pushLookAheadAssertion(false); // (?=
-                addCharClass(inSource.getEncoding().getFullSet()); // .
-                popGroup(); // )
-                popGroup(); // )
-                lastTerm = TermCategory.OtherAssertion;
+                caret();
                 break;
             case '$':
-                // (?:$|(?=[\n]))
-                pushGroup(); // (?:
-                addDollar(); // $
-                nextSequence(); // |
-                pushLookAheadAssertion(false); // (?=
-                addCharClass(CodePointSet.create('\n')); // [\n]
-                popGroup(); // )
-                popGroup(); // )
-                lastTerm = TermCategory.OtherAssertion;
+                dollar();
                 break;
             default:
                 string(ch);
                 // NB: string sets lastTerm itself
         }
+    }
+
+    private void dot() {
+        if (getLocalFlags().isMultiline()) {
+            addCharClass(inSource.getEncoding().getFullSet());
+        } else {
+            addCharClass(CodePointSet.create('\n').createInverse(inSource.getEncoding()));
+        }
+        canHaveQuantifier = true;
+    }
+
+    private void caret() {
+        // (?:^|(?<=[\n])(?=.))
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(CodePointSet.create('\n')); // [\n]
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(inSource.getEncoding().getFullSet()); // .
+        popGroup(); // )
+        popGroup(); // )
+        canHaveQuantifier = true;
+    }
+
+    private void dollar() {
+        // (?:$|(?=[\n]))
+        pushGroup(); // (?:
+        addDollar(); // $
+        nextSequence(); // |
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(CodePointSet.create('\n')); // [\n]
+        popGroup(); // )
+        popGroup(); // )
+        canHaveQuantifier = true;
     }
 
     /**
@@ -990,7 +973,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
         }
 
-        lastTerm = TermCategory.Atom;
+        canHaveQuantifier = true;
     }
 
     /**
@@ -1100,25 +1083,15 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * </ul>
      */
     private void escape() {
-        if (assertionEscape()) {
-            lastTerm = TermCategory.OtherAssertion;
-        } else if (categoryEscape(false)) {
-            lastTerm = TermCategory.Atom;
-        } else if (backreference()) {
-            lastTerm = TermCategory.Atom;
-        } else if (namedBackreference()) {
-            lastTerm = TermCategory.Atom;
-        } else if (lineBreak()) {
-            lastTerm = TermCategory.Atom;
-        } else if (extendedGraphemeCluster()) {
-            lastTerm = TermCategory.Atom;
-        } else if (keepCommand()) {
-            lastTerm = TermCategory.OtherAssertion;
-        } else if (subexpressionCall()) {
-            lastTerm = TermCategory.Atom;
-        } else if (stringEscape()) {
-            lastTerm = TermCategory.Atom;
-        } else {
+        if (!(assertionEscape() ||
+                        categoryEscape(false) ||
+                        backreference() ||
+                        namedBackreference() ||
+                        lineBreak() ||
+                        extendedGraphemeCluster() ||
+                        keepCommand() ||
+                        subexpressionCall() ||
+                        stringEscape())) {
             // characterEscape has to come after assertionEscape because of the ambiguity of \b,
             // which (outside of character classes) is resolved in the favor of the assertion.
             // characterEscape also has to come after backreference because of the ambiguity between
@@ -1127,12 +1100,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             Optional<Integer> characterEscape = characterEscape();
             if (characterEscape.isPresent()) {
                 buildChar(characterEscape.get());
-                lastTerm = TermCategory.Atom;
             } else {
                 string(fetchEscapedChar());
                 // NB: string sets lastTerm itself
             }
         }
+        canHaveQuantifier = true;
     }
 
     private CodePointSet getUnicodeCharClass(char className) {
@@ -1775,6 +1748,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         curCharClassClear();
         collectCharClass();
         buildCharClass();
+        canHaveQuantifier = true;
     }
 
     private void buildCharClass() {
@@ -2123,7 +2097,11 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         int start = position - 1;
         Quantifier quantifier = parseQuantifier(ch);
         if (quantifier != null) {
-            buildQuantifier(quantifier, start);
+            if (canHaveQuantifier) {
+                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
+            } else {
+                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
+            }
         } else {
             string(consumeChar());
         }
@@ -2196,20 +2174,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 bailOut("possessive quantifiers not supported");
             }
             return new Quantifier(lower, upper, greedy);
-        }
-    }
-
-    private void buildQuantifier(Quantifier quantifier, int start) {
-        switch (lastTerm) {
-            case None:
-                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
-            case LookAroundAssertion:
-            case Atom:
-            case Quantifier:
-            case OtherAssertion:
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                lastTerm = TermCategory.Quantifier;
-                break;
         }
     }
 
@@ -2357,7 +2321,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             if (capturing) {
                 groupStack.pop();
             }
-            lastTerm = TermCategory.Atom;
+            canHaveQuantifier = true;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
@@ -2374,7 +2338,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         disjunction();
         if (match(")")) {
             popGroup();
-            lastTerm = TermCategory.LookAroundAssertion;
+            canHaveQuantifier = true;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
@@ -2390,7 +2354,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         lookbehindDepth--;
         if (match(")")) {
             popGroup();
-            lastTerm = TermCategory.LookAroundAssertion;
+            canHaveQuantifier = true;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
@@ -2405,7 +2369,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         disjunction();
         if (match(")")) {
             popGroup();
-            lastTerm = TermCategory.Atom;
+            canHaveQuantifier = true;
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
@@ -2437,7 +2401,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (!match(")")) {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        lastTerm = TermCategory.Atom;
+        canHaveQuantifier = true;
     }
 
     /**
@@ -2451,7 +2415,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         } else {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
-        lastTerm = TermCategory.Atom;
+        canHaveQuantifier = true;
     }
 
     /**
@@ -2508,7 +2472,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     private void openEndedLocalFlags(RubyFlags newFlags) {
         setLocalFlags(newFlags);
-        lastTerm = TermCategory.None;
+        canHaveQuantifier = false;
         // Using "open-ended" flag modifiers, e.g. /a(?i)b|c/, makes Ruby wrap the continuation
         // of the flag modifier in parentheses, so that the above regex is equivalent to
         // /a(?i:b|c)/.
