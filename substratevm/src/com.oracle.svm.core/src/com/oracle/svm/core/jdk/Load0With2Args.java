@@ -25,11 +25,11 @@
 package com.oracle.svm.core.jdk;
 
 /**
-* A predicate that returns {@code true} iff
-* {@code boolean java.lang.ClassLoader.NativeLibrary.load0(String name, boolean isBuiltin)}
-* exists. It should only be used in conjunction with {@link JDK11OrEarlier} as
-* {@code NativeLibrary} was moved to a top level class in later JDKs.
-*/
+ * A predicate that returns {@code true} iff
+ * {@code boolean java.lang.ClassLoader.NativeLibrary.load0(String name, boolean isBuiltin)} exists.
+ * It should only be used in conjunction with {@link JDK11OrEarlier} as {@code NativeLibrary} was
+ * moved to a top level class in later JDKs.
+ */
 // Checkstyle: stop
 public class Load0With2Args extends MethodPredicate {
     public Load0With2Args() {
