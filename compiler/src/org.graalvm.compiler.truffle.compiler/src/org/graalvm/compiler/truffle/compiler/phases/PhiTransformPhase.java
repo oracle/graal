@@ -27,12 +27,14 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
@@ -49,15 +51,14 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
-import org.graalvm.compiler.phases.util.GraphOrder;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This phase recognizes phi values that are repeatedly converted back and forth with lossless
- * conversions. The main use case is i64 phis that actually contain i32/f32/f64 values and that use
- * {@link NarrowNode}, {@link ZeroExtendNode} and {@link ReinterpretNode} for conversion. In loop
- * nests and complex control flow, multiple phis may need to be transformed as a group.<br/>
+ * This phase recognizes {@link ValuePhiNode phis} that are repeatedly converted back and forth with
+ * lossless conversions. The main use case is i64 phis that actually contain i32/f32/f64 values and
+ * that use {@link NarrowNode}, {@link ZeroExtendNode} and {@link ReinterpretNode} for conversion.
+ * In loop nests and complex control flow, multiple phis may need to be transformed as a group.<br/>
  *
  * In order to be considered, phis can only have constants, other phis in the group, or an
  * appropriate conversion as an input (see
@@ -279,6 +280,8 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             }
 
             // all preconditions are met, duplicate transformed nodes
+
+            // initialize with unrestricted stamp and let the canonicalizer deal with it:
             Stamp stamp = transformation.stamp(NodeView.DEFAULT).unrestricted();
             for (ValueNode target : EconomicSet.create(nodes)) {
                 ValueNode duplicate;
@@ -324,6 +327,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        GraalError.guarantee(graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL), "not intended to run without loop proxies");
         ResolvedJavaType longClass = context.getMetaAccess().lookupJavaType(long.class);
         EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
         try (NodeEventScope nes = graph.trackNodeEvents(ec)) {
@@ -342,8 +346,5 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             } while (progress && iteration++ < MAX_ITERATIONS);
         }
         canonicalizer.applyIncremental(graph, context, ec.getNodes());
-        assert GraphOrder.assertNonCyclicGraph(graph);
-        assert GraphOrder.assertSchedulableGraph(graph);
     }
-
 }

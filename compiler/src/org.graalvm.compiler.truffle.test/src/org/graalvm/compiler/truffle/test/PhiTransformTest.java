@@ -42,7 +42,6 @@ public class PhiTransformTest extends GraalCompilerTest {
 
     public static float narrowPhiLoopSnippet(int count) {
         long[] values = new long[2];
-
         do {
             values[0] = ((int) values[0] + 1) & 0xffffffffL;
             values[1] = Float.floatToRawIntBits(Float.intBitsToFloat((int) values[1]) + 1) & 0xffffffffL;
@@ -52,18 +51,147 @@ public class PhiTransformTest extends GraalCompilerTest {
 
     @Test
     public void narrowLoopPhiTest() {
-        StructuredGraph graph = parseEager("narrowPhiLoopSnippet", AllowAssumptions.YES);
-
-        CoreProviders context = getProviders();
-        createCanonicalizerPhase().apply(graph, context);
-        new PartialEscapePhase(false, createCanonicalizerPhase(), getInitialOptions()).apply(graph, getDefaultHighTierContext());
-        new PhiTransformPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        StructuredGraph graph = createGraph("narrowPhiLoopSnippet");
         Assert.assertEquals(0, graph.getNodes().filter(ReinterpretNode.class).count());
         Assert.assertEquals(0, graph.getNodes().filter(NarrowNode.class).count());
         // one ZeroExtendNode remains for the loop proxy
         Assert.assertEquals(1, graph.getNodes().filter(ZeroExtendNode.class).count());
         Assert.assertEquals(0, graph.getNodes().filter(SignExtendNode.class).count());
+    }
 
-        test("narrowPhiLoopSnippet", 100);
+    public static float succeed1Snippet(int count) {
+        long[] values = new long[1];
+        float s = 0;
+        do {
+            values[0] = ((int) values[0] + 1) & 0xffffffffL;
+            s++;
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void succeed1() {
+        StructuredGraph graph = createGraph("succeed1Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() == 0);
+    }
+
+    public static float succeed2Snippet(int count) {
+        long[] values = new long[2];
+        float s = 0;
+        do {
+            values[0] = ((int) values[0] + 1) & 0xffffffffL;
+            values[1] = 0L;
+            do {
+                values[1] = ((int) values[1] + 1) & 0xffffffffL;
+                s++;
+            } while ((int) values[1] < count);
+            s++;
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void succeed2() {
+        StructuredGraph graph = createGraph("succeed2Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() == 0);
+    }
+
+    public static float fail1Snippet(int count) {
+        long[] values = new long[1];
+        float s = 0;
+        do {
+            values[0] = ((int) values[0] + 1) & 0x7fffffffL; // not masking to int exactly
+            s++;
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void fail1() {
+        StructuredGraph graph = createGraph("fail1Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() > 0);
+    }
+
+    public static volatile long zero;
+    public static volatile long sink;
+
+    public static float fail2Snippet(int count) {
+        long[] values = new long[1];
+        float s = 0;
+        do {
+            sink = values[0]; // non-narrowed value escapes
+            values[0] = ((int) values[0] + 1) & 0xffffffffL;
+            s++;
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void fail2() {
+        StructuredGraph graph = createGraph("fail2Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() > 0);
+    }
+
+    public static float fail3Snippet(int count) {
+        long[] values = new long[]{zero}; // non-constant starting value
+        float s = 0;
+        do {
+            values[0] = ((int) values[0] + 1) & 0xffffffffL;
+            s++;
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void fail3() {
+        StructuredGraph graph = createGraph("fail3Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() > 0);
+    }
+
+    public static float fail4Snippet(int count) {
+        long[] values = new long[]{0L};
+        float s = 0;
+        do {
+            // mismatch double - float
+            values[0] = Float.floatToRawIntBits((float) Double.longBitsToDouble(values[0]) + 1) & 0xffffffffL;
+            s++;
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void fail4() {
+        StructuredGraph graph = createGraph("fail4Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() > 0);
+        Assert.assertTrue(graph.getNodes().filter(ZeroExtendNode.class).count() > 0);
+    }
+
+    public static float fail5Snippet(int count) {
+        long[] values = new long[]{0L};
+        float s = 0;
+        do {
+            // int casts for double values
+            values[0] = Double.doubleToRawLongBits(Double.longBitsToDouble((int) values[0]) + 1) & 0xffffffffL;
+            s++;
+        } while ((int) values[0] == count);
+        return s;
+    }
+
+    @Test
+    public void fail5() {
+        StructuredGraph graph = createGraph("fail5Snippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() > 0);
+        Assert.assertTrue(graph.getNodes().filter(NarrowNode.class).count() > 0);
+    }
+
+    private StructuredGraph createGraph(String name) {
+        test(name, 100);
+        StructuredGraph graph = parseEager(name, AllowAssumptions.YES);
+
+        CoreProviders context = getProviders();
+        createCanonicalizerPhase().apply(graph, context);
+        new PartialEscapePhase(false, createCanonicalizerPhase(), getInitialOptions()).apply(graph, getDefaultHighTierContext());
+        new PhiTransformPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        return graph;
     }
 }
