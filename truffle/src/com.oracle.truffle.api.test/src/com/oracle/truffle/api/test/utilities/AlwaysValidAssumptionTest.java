@@ -49,7 +49,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@SuppressWarnings("deprecation")
 public class AlwaysValidAssumptionTest {
 
     @BeforeClass

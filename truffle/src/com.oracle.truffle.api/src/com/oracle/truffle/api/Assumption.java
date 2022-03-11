@@ -66,19 +66,19 @@ import com.oracle.truffle.api.nodes.Node;
 public interface Assumption {
 
     /**
-     * An assumption that is never valid.
-     *
-     * @since 22.1
-     */
-    Assumption NEVER_VALID = createNeverValid();
-
-    /**
      * An assumption that is always valid and fails with an {@link UnsupportedOperationException} if
      * invalidated.
      *
      * @since 22.1
      */
     Assumption ALWAYS_VALID = createAlwaysValid();
+
+    /**
+     * An assumption that is never valid.
+     *
+     * @since 22.1
+     */
+    Assumption NEVER_VALID = createNeverValid();
 
     private static Assumption createNeverValid() {
         Assumption assumption = create();

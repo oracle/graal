@@ -50,8 +50,6 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  */
 final class DefaultAssumption extends AbstractAssumption {
 
-    private static final Object ALWAYS_VALID = new Object();
-
     DefaultAssumption(String name) {
         super(name);
     }
@@ -74,7 +72,7 @@ final class DefaultAssumption extends AbstractAssumption {
 
     @Override
     public void invalidate(String message) {
-        if (name != ALWAYS_VALID) {
+        if (name != Lazy.ALWAYS_VALID_NAME) {
             isValid = false;
         } else {
             throw new UnsupportedOperationException("Cannot invalidate this assumption - it is always valid");
@@ -87,6 +85,15 @@ final class DefaultAssumption extends AbstractAssumption {
     }
 
     static DefaultAssumption createAlwaysValid() {
-        return new DefaultAssumption(ALWAYS_VALID);
+        return new DefaultAssumption(Lazy.ALWAYS_VALID_NAME);
+    }
+
+    static class Lazy {
+        static final Object ALWAYS_VALID_NAME = new Object() {
+            @Override
+            public String toString() {
+                return "";
+            }
+        };
     }
 }

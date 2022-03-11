@@ -46,7 +46,6 @@ import jdk.vm.ci.meta.JavaKind.FormatWithToString;
  * {@linkplain #registerDependency() registered} dependencies to be invalidated.
  */
 public final class OptimizedAssumption extends AbstractAssumption implements FormatWithToString {
-    private static final Object ALWAYS_VALID_NAME = new Object();
 
     /**
      * Reference to machine code that is dependent on an assumption.
@@ -145,7 +144,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     }
 
     static Assumption createAlwaysValid() {
-        return new OptimizedAssumption(ALWAYS_VALID_NAME);
+        return new OptimizedAssumption(Lazy.ALWAYS_VALID_NAME);
     }
 
     @Override
@@ -180,7 +179,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return;
         }
 
-        if (this.name == ALWAYS_VALID_NAME) {
+        if (this.name == Lazy.ALWAYS_VALID_NAME) {
             throw new UnsupportedOperationException("Cannot invalidate this assumption - it is always valid");
         }
 
@@ -286,7 +285,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      * (e.g., the compiler) must ensure the dependent code is never executed.
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
-        if (isValid && name != ALWAYS_VALID_NAME) {
+        if (isValid && name != Lazy.ALWAYS_VALID_NAME) {
             if (size >= 2 * sizeAfterLastRemove) {
                 removeInvalidEntries();
             }
@@ -363,6 +362,15 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             }
             return strValue;
         }
+    }
+
+    static class Lazy {
+        static final Object ALWAYS_VALID_NAME = new Object() {
+            @Override
+            public String toString() {
+                return "";
+            }
+        };
     }
 
 }
