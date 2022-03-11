@@ -281,6 +281,7 @@ class EspressoReferenceDrainer implements ContextAccess {
             }
         }
 
+        @TruffleBoundary
         private EspressoReference popQueue(boolean block) throws InterruptedException {
             if (block) {
                 return (EspressoReference) referenceQueue.remove();

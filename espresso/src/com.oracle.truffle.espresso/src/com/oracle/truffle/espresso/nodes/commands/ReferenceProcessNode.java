@@ -27,7 +27,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -51,20 +53,20 @@ public class ReferenceProcessNode extends RootNode {
         super(lang);
         this.context = EspressoContext.get(this);
 
-        Method processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Symbol.Name.processPendingReferences, Symbol.Signature._void,
+        Method processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Name.processPendingReferences, Signature._void,
                         Klass.LookupMode.STATIC_ONLY);
         this.processPendingReferences = DirectCallNode.create(processPendingReferenceMethod.getCallTargetForceInit());
 
-        Field queue = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredField(Symbol.Name.queue, Symbol.Type.java_lang_ref_ReferenceQueue);
+        Field queue = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
         this.finalizerQueue = queue.getObject(context.getMeta().java_lang_ref_Finalizer.tryInitializeAndGetStatics());
 
-        Method poll = finalizerQueue.getKlass().lookupMethod(Symbol.Name.poll, Symbol.Signature.Reference);
+        Method poll = finalizerQueue.getKlass().lookupMethod(Name.poll, Signature.Reference);
         this.queuePoll = DirectCallNode.create(poll.getCallTargetForceInit());
 
-        Method runFinalizerMethod = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredMethod(Symbol.Name.runFinalizer, Symbol.Signature._void_JavaLangAccess, Klass.LookupMode.INSTANCE_ONLY);
+        Method runFinalizerMethod = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredMethod(Name.runFinalizer, Signature._void_JavaLangAccess, Klass.LookupMode.INSTANCE_ONLY);
         this.runFinalizer = DirectCallNode.create(runFinalizerMethod.getCallTargetForceInit());
 
-        Field javaLangAccess = context.getMeta().jdk_internal_access_SharedSecrets.lookupDeclaredField(Symbol.Name.javaLangAccess, Symbol.Type.jdk_internal_access_JavaLangAccess);
+        Field javaLangAccess = context.getMeta().jdk_internal_access_SharedSecrets.lookupDeclaredField(Name.javaLangAccess, Type.jdk_internal_access_JavaLangAccess);
         jla = javaLangAccess.getObject(context.getMeta().jdk_internal_access_SharedSecrets.tryInitializeAndGetStatics());
     }
 
