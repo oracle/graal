@@ -220,6 +220,11 @@ public class AMD64Call {
     private static final int INLINE_CACHE_MOV_SIZE = 10;
 
     /**
+     * Emits a direct call instruction, immediately preceded by a mov instruction. This is used for
+     * emitting HotSpot inline cache call. The runtime will patch the mov instruction to load the
+     * cached receiver type, which will be used in {@code [Entry Point]} code section for receiver
+     * type check.
+     *
      * @param nonOopBits placeholder bit pattern for inline cache receiver type patching
      */
     public static void directInlineCacheCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, MarkId markId, long nonOopBits, LIRFrameState info) {
@@ -267,16 +272,19 @@ public class AMD64Call {
         masm.ensureUniquePC();
     }
 
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
+        return indirectCall(crb, masm, dst, callTarget, info, false);
+    }
+
     /**
      * @return the position of the emitted call instruction
      */
-    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.indirectCall(dst);
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall) {
+        int before = masm.indirectCall(dst, mitigateDecodingAsDirectCall);
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
         return before;
     }
-
 }
