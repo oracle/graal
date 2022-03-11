@@ -143,8 +143,12 @@ public final class ByteValueProfile extends Profile {
      */
     @Override
     public String toString() {
-        return toString(ByteValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                        String.format("value == (byte)%s", cachedValue));
+        if (this == DISABLED) {
+            return toStringDisabled(ByteValueProfile.class);
+        } else {
+            return toString(ByteValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (byte)%s", cachedValue));
+        }
     }
 
     /**

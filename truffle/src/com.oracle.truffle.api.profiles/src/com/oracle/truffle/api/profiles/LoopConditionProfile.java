@@ -242,8 +242,12 @@ public final class LoopConditionProfile extends ConditionProfile {
      */
     @Override
     public String toString() {
-        return toString(LoopConditionProfile.class, falseCount == 0, false, //
-                        String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), trueCount, falseCount));
+        if (this == DISABLED) {
+            return toStringDisabled(LoopConditionProfile.class);
+        } else {
+            return toString(LoopConditionProfile.class, falseCount == 0, false, //
+                            String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), trueCount, falseCount));
+        }
     }
 
     /**

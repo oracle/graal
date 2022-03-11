@@ -156,8 +156,13 @@ public final class LongValueProfile extends Profile {
      */
     @Override
     public String toString() {
-        return toString(LongValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                        String.format("value == (long)%s", cachedValue));
+        if (this == DISABLED) {
+            return toStringDisabled(LongValueProfile.class);
+        } else {
+            return toString(LongValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (long)%s", cachedValue));
+        }
+
     }
 
     /**

@@ -32,6 +32,7 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
@@ -45,6 +46,8 @@ import jdk.vm.ci.meta.JavaKind.FormatWithToString;
  * {@linkplain #registerDependency() registered} dependencies to be invalidated.
  */
 public final class OptimizedAssumption extends AbstractAssumption implements FormatWithToString {
+    private static final String ALWAYS_VALID_NAME = new String("");
+
     /**
      * Reference to machine code that is dependent on an assumption.
      */
@@ -137,6 +140,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         super(name);
     }
 
+    static Assumption createAlwaysValid() {
+        return new OptimizedAssumption(ALWAYS_VALID_NAME);
+    }
+
     @Override
     public void check() throws InvalidAssumptionException {
         if (!this.isValid()) {
@@ -167,6 +174,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
          */
         if (!isValid) {
             return;
+        }
+
+        if (this.name == ALWAYS_VALID_NAME) {
+            throw new UnsupportedOperationException("Cannot invalidate this assumption - it is always valid");
         }
 
         OptionValues engineOptions = null;
@@ -271,7 +282,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      * (e.g., the compiler) must ensure the dependent code is never executed.
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
-        if (isValid) {
+        if (isValid && name != ALWAYS_VALID_NAME) {
             if (size >= 2 * sizeAfterLastRemove) {
                 removeInvalidEntries();
             }
@@ -349,4 +360,5 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return strValue;
         }
     }
+
 }

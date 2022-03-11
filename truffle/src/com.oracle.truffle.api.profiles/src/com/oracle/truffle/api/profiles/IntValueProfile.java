@@ -128,16 +128,31 @@ public final class IntValueProfile extends Profile {
         return cachedValue;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
     @Override
     public void disable() {
         this.state = GENERIC;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
     @Override
     public void reset() {
         this.state = UNINITIALIZED;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
     @Override
     public String toString() {
         return toString(IntValueProfile.class, isUninitialized(), isGeneric(), //

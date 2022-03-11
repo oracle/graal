@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.utilities;
+package com.oracle.truffle.api.test.utilities;
 
-import com.oracle.truffle.api.Assumption;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-/**
- * An assumption that is never valid. Used as a placeholder where an assumption is needed that
- * should be invalid from the start.
- *
- * @since 0.8 or earlier
- * @deprecated use {@link Assumption#NEVER_VALID} instead.
- */
-@Deprecated(since = "22.1", forRemoval = true)
-public final class NeverValidAssumption implements Assumption {
-    /** @since 0.8 or earlier */
-    public static final NeverValidAssumption INSTANCE = new NeverValidAssumption();
+@SuppressWarnings("deprecation")
+public class LegacyAlwaysValidAssumptionTest {
 
-    private NeverValidAssumption() {
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    /** @since 0.8 or earlier */
-    @Override
-    public void check() throws InvalidAssumptionException {
-        throw new InvalidAssumptionException();
+    @Test
+    public void testCheck() throws InvalidAssumptionException {
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
+        assumption.check();
     }
 
-    /** @since 0.8 or earlier */
-    @Override
-    public void invalidate() {
+    @Test
+    public void testIsValid() {
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
+        assertTrue(assumption.isValid());
     }
 
-    /** @since 0.33 */
-    @Override
-    public void invalidate(String message) {
-    }
-
-    /** @since 0.8 or earlier */
-    @Override
-    public String getName() {
-        return getClass().getName();
-    }
-
-    /** @since 0.8 or earlier */
-    @Override
-    public boolean isValid() {
-        return false;
+    @Test(expected = UnsupportedOperationException.class)
+    public void testCannotInvalidate() {
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
+        assumption.invalidate();
     }
 
 }

@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  * @deprecated use arrays of assumptions instead and check them with
  *             {@link Assumption#isValidAssumption(Assumption[])}.
  */
-@Deprecated
+@Deprecated(since = "22.1", forRemoval = true)
 public class UnionAssumption implements Assumption {
 
     private final String name;

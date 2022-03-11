@@ -30,6 +30,7 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
@@ -192,6 +193,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
         return new OptimizedBlockNode<>(elements, executor);
+    }
+
+    @Override
+    public Assumption createAlwaysValidAssumption() {
+        return OptimizedAssumption.createAlwaysValid();
     }
 
     @Override

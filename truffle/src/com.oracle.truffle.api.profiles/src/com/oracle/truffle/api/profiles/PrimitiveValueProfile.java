@@ -301,7 +301,11 @@ public final class PrimitiveValueProfile extends ValueProfile {
      */
     @Override
     public String toString() {
-        return toString(PrimitiveValueProfile.class, isUninitialized(), isGeneric(), formatSpecialization());
+        if (this == DISABLED) {
+            return toStringDisabled(PrimitiveValueProfile.class);
+        } else {
+            return toString(PrimitiveValueProfile.class, isUninitialized(), isGeneric(), formatSpecialization());
+        }
     }
 
     private String formatSpecialization() {

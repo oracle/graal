@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -58,20 +59,17 @@ public class AlwaysValidAssumptionTest {
 
     @Test
     public void testCheck() throws InvalidAssumptionException {
-        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
-        assumption.check();
+        Assumption.ALWAYS_VALID.check();
     }
 
     @Test
     public void testIsValid() {
-        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
-        assertTrue(assumption.isValid());
+        assertTrue(Assumption.ALWAYS_VALID.isValid());
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testCannotInvalidate() {
-        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
-        assumption.invalidate();
+        Assumption.ALWAYS_VALID.invalidate();
     }
 
 }

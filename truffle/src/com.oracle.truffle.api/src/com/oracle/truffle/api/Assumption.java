@@ -72,10 +72,22 @@ public interface Assumption {
      */
     Assumption NEVER_VALID = createNeverInvalid();
 
+    /**
+     * An assumption that is always valid and fails with an {@link UnsupportedOperationException} if
+     * invalidated.
+     *
+     * @since 22.1
+     */
+    Assumption ALWAYS_VALID = createAlwaysValid();
+
     private static Assumption createNeverInvalid() {
         Assumption assumption = create();
         assumption.invalidate();
         return assumption;
+    }
+
+    private static Assumption createAlwaysValid() {
+        return LanguageAccessor.RUNTIME.createAlwaysValidAssumption();
     }
 
     /**

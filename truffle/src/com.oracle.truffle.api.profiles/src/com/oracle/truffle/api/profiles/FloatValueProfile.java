@@ -156,8 +156,12 @@ public final class FloatValueProfile extends Profile {
      */
     @Override
     public String toString() {
-        return toString(FloatValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                        String.format("value == (float)%s (raw %h)", cachedValue, cachedRawValue));
+        if (this == DISABLED) {
+            return toStringDisabled(FloatValueProfile.class);
+        } else {
+            return toString(FloatValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (float)%s (raw %h)", cachedValue, cachedRawValue));
+        }
     }
 
     /**

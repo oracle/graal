@@ -157,8 +157,12 @@ public final class DoubleValueProfile extends Profile {
      */
     @Override
     public String toString() {
-        return toString(DoubleValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                        String.format("value == (double)%s (raw %h)", cachedValue, cachedRawValue));
+        if (this == DISABLED) {
+            return toStringDisabled(DoubleValueProfile.class);
+        } else {
+            return toString(DoubleValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (double)%s (raw %h)", cachedValue, cachedRawValue));
+        }
     }
 
     /**

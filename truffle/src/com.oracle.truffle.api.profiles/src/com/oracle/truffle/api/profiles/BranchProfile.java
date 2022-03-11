@@ -132,7 +132,11 @@ public final class BranchProfile extends Profile {
      */
     @Override
     public String toString() {
-        return toString(BranchProfile.class, !visited, false, "VISITED");
+        if (this == DISABLED) {
+            return toStringDisabled(BranchProfile.class);
+        } else {
+            return toString(BranchProfile.class, !visited, false, "VISITED");
+        }
     }
 
     /**
