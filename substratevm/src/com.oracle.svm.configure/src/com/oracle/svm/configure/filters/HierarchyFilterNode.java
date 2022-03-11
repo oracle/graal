@@ -25,18 +25,19 @@
 package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
 import com.oracle.svm.configure.json.JsonWriter;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.asList;
+
 /** Represents a rule that includes or excludes a set of Java classes. */
-public final class RuleNode {
+public final class HierarchyFilterNode implements ConfigurationFilter {
 
     /** Everything that is not included is considered excluded. */
     private static final Inclusion DEFAULT_INCLUSION = Inclusion.Exclude;
@@ -44,31 +45,10 @@ public final class RuleNode {
     private static final String CHILDREN_PATTERN = "*";
     private static final String DESCENDANTS_PATTERN = "**";
 
-    /** Inclusion status of a {@link RuleNode}. */
-    public enum Inclusion {
-        Include("+"),
-        Exclude("-");
-
-        final String s;
-
-        Inclusion(String s) {
-            this.s = s;
-        }
-
-        @Override
-        public String toString() {
-            return s;
-        }
-
-        public Inclusion invert() {
-            return (this == Include) ? Exclude : Include;
-        }
-    }
-
     /** The non-qualified name. The qualified name is derived from the names of all parents. */
     private final String name;
 
-    /** Inclusion for the exact qualified name when queried via {@link #treeIncludes}. */
+    /** Inclusion for the exact qualified name when queried via {@link #includes}. */
     private Inclusion inclusion;
 
     /** Inclusion for immediate children except those in {@link #children}. */
@@ -78,13 +58,19 @@ public final class RuleNode {
     private Inclusion descendantsInclusion;
 
     /** Explicit rules for all immediate children. */
-    private Map<String, RuleNode> children;
+    private Map<String, HierarchyFilterNode> children;
 
-    public static RuleNode createRoot() {
-        return new RuleNode("");
+    public static HierarchyFilterNode createRoot() {
+        return new HierarchyFilterNode("");
     }
 
-    private RuleNode(String unqualifiedName) {
+    public static HierarchyFilterNode createInclusiveRoot() {
+        HierarchyFilterNode root = new HierarchyFilterNode("");
+        root.addOrGetChildren("**", ConfigurationFilter.Inclusion.Include);
+        return root;
+    }
+
+    private HierarchyFilterNode(String unqualifiedName) {
         this.name = unqualifiedName;
     }
 
@@ -92,7 +78,7 @@ public final class RuleNode {
         if (leafInclusion != Inclusion.Include && leafInclusion != Inclusion.Exclude) {
             throw new IllegalArgumentException(leafInclusion + " not supported");
         }
-        RuleNode parent = this;
+        HierarchyFilterNode parent = this;
         StringTokenizer tokenizer = new StringTokenizer(qualifiedName, ".", false);
         /*
          * We split the qualified name, such as "com.sun.crypto.**", into its individual tokens.
@@ -125,7 +111,7 @@ public final class RuleNode {
                     }
                 }
             } else {
-                RuleNode node = null;
+                HierarchyFilterNode node = null;
                 if (parent.children != null) {
                     node = parent.children.get(token);
                 } else {
@@ -136,7 +122,7 @@ public final class RuleNode {
                         node.inclusion = leafInclusion;
                     }
                 } else {
-                    node = new RuleNode(token);
+                    node = new HierarchyFilterNode(token);
                     node.inclusion = isLeaf ? leafInclusion : null;
                     parent.children.put(token, node);
                 }
@@ -157,7 +143,7 @@ public final class RuleNode {
      */
     public void reduceExhaustiveTree() {
         if (children != null) {
-            for (RuleNode child : children.values()) {
+            for (HierarchyFilterNode child : children.values()) {
                 child.reduceExhaustiveTree0();
             }
         }
@@ -170,7 +156,7 @@ public final class RuleNode {
         }
         if (children != null) {
             int sum = 0;
-            for (RuleNode child : children.values()) {
+            for (HierarchyFilterNode child : children.values()) {
                 sum += child.reduceExhaustiveTree0();
             }
             if (descendantsInclusion == null) {
@@ -226,16 +212,23 @@ public final class RuleNode {
         return inclusion == null && childrenInclusion == null && descendantsInclusion == null && isLeafNode();
     }
 
-    public void printJsonTree(OutputStream out) throws IOException {
-        try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(out))) {
-            writer.append('{');
-            writer.indent().newline();
-            writer.quote("rules").append(": [").indent().newline();
-            final boolean[] isFirstRule = {true};
-            printJsonEntries(writer, isFirstRule, "");
-            writer.unindent().newline();
-            writer.append(']').unindent().newline();
-            writer.append('}').newline();
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.quote("rules").append(": [").indent().newline();
+        final boolean[] isFirstRule = {true};
+        printJsonEntries(writer, isFirstRule, "");
+        writer.unindent().newline();
+        writer.append(']');
+    }
+
+    @Override
+    public void parseFromJson(Map<String, Object> top) {
+        Object rulesObject = top.get("rules");
+        if (rulesObject != null) {
+            List<Object> rulesList = asList(rulesObject, "Attribute 'list' must be a list of rule objects");
+            for (Object entryObject : rulesList) {
+                FilterConfigurationParser.parseEntry(entryObject, this::addOrGetChildren);
+            }
         }
     }
 
@@ -243,45 +236,21 @@ public final class RuleNode {
         String qualified = parentQualified.isEmpty() ? name : (parentQualified + '.' + name);
         // NOTE: the order in which these rules are printed is important!
         String patternBegin = qualified.isEmpty() ? qualified : (qualified + ".");
-        printJsonRule(writer, isFirstRule, patternBegin + DESCENDANTS_PATTERN, descendantsInclusion);
-        printJsonRule(writer, isFirstRule, patternBegin + CHILDREN_PATTERN, childrenInclusion);
-        printJsonRule(writer, isFirstRule, qualified, inclusion);
+        FilterConfigurationParser.printEntry(writer, isFirstRule, descendantsInclusion, patternBegin + DESCENDANTS_PATTERN);
+        FilterConfigurationParser.printEntry(writer, isFirstRule, childrenInclusion, patternBegin + CHILDREN_PATTERN);
+        FilterConfigurationParser.printEntry(writer, isFirstRule, inclusion, qualified);
         if (children != null) {
-            RuleNode[] sorted = children.values().toArray(new RuleNode[0]);
+            HierarchyFilterNode[] sorted = children.values().toArray(new HierarchyFilterNode[0]);
             Arrays.sort(sorted, Comparator.comparing(child -> child.name));
-            for (RuleNode child : sorted) {
+            for (HierarchyFilterNode child : sorted) {
                 child.printJsonEntries(writer, isFirstRule, qualified);
             }
         }
     }
 
-    private static void printJsonRule(JsonWriter writer, boolean[] isFirstRule, String qualified, Inclusion inclusion) throws IOException {
-        if (inclusion == null) {
-            return;
-        }
-        if (!isFirstRule[0]) {
-            writer.append(',').newline();
-        } else {
-            isFirstRule[0] = false;
-        }
-        writer.append('{');
-        switch (inclusion) {
-            case Include:
-                writer.quote("includeClasses");
-                break;
-            case Exclude:
-                writer.quote("excludeClasses");
-                break;
-            default:
-                throw new IllegalStateException("Unsupported inclusion value: " + inclusion.name());
-        }
-        writer.append(':');
-        writer.quote(qualified);
-        writer.append("}");
-    }
-
-    public boolean treeIncludes(String qualifiedName) {
-        RuleNode current = this;
+    @Override
+    public boolean includes(String qualifiedName) {
+        HierarchyFilterNode current = this;
         Inclusion inheritedInclusion = DEFAULT_INCLUSION;
         StringTokenizer tokenizer = new StringTokenizer(qualifiedName, ".", false);
         while (tokenizer.hasMoreTokens()) {
@@ -289,7 +258,7 @@ public final class RuleNode {
                 inheritedInclusion = current.descendantsInclusion;
             }
             String part = tokenizer.nextToken();
-            RuleNode child = (current.children != null) ? current.children.get(part) : null;
+            HierarchyFilterNode child = (current.children != null) ? current.children.get(part) : null;
             if (child == null) {
                 boolean isDirectChild = !tokenizer.hasMoreTokens();
                 if (isDirectChild && current.childrenInclusion != null) {
@@ -302,15 +271,15 @@ public final class RuleNode {
         return (current.inclusion == Inclusion.Include);
     }
 
-    public RuleNode copy() {
-        RuleNode copy = new RuleNode(name);
+    public HierarchyFilterNode copy() {
+        HierarchyFilterNode copy = new HierarchyFilterNode(name);
         copy.inclusion = inclusion;
         copy.childrenInclusion = childrenInclusion;
         copy.descendantsInclusion = descendantsInclusion;
         if (children != null) {
             copy.children = new HashMap<>();
-            for (Map.Entry<String, RuleNode> entry : children.entrySet()) {
-                RuleNode childCopy = entry.getValue().copy();
+            for (Map.Entry<String, HierarchyFilterNode> entry : children.entrySet()) {
+                HierarchyFilterNode childCopy = entry.getValue().copy();
                 copy.children.put(entry.getKey(), childCopy);
             }
         }

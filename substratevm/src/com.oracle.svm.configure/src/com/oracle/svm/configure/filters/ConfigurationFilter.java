@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.trace;
+package com.oracle.svm.configure.filters;
 
-import com.oracle.svm.configure.config.ConfigurationSet;
-
-import java.util.Base64;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
-public abstract class AbstractProcessor {
-    AbstractProcessor() {
-    }
+import com.oracle.svm.configure.json.JsonPrintable;
 
-    abstract void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet);
+public interface ConfigurationFilter extends JsonPrintable {
 
-    void setInLivePhase(@SuppressWarnings("unused") boolean live) {
-    }
+    void parseFromJson(Map<String, Object> topJsonObject);
 
-    static void logWarning(String warning) {
-        System.err.println("Warning: " + warning);
-    }
+    boolean includes(String qualifiedName);
 
-    @SuppressWarnings("unchecked")
-    static <T> T singleElement(List<?> list) {
-        expectSize(list, 1);
-        return (T) list.get(0);
-    }
+    /** Inclusion status of a filter. */
+    enum Inclusion {
+        Include("+"),
+        Exclude("-");
 
-    static void expectSize(Collection<?> collection, int size) {
-        if (collection.size() != size) {
-            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
+        final String s;
+
+        Inclusion(String s) {
+            this.s = s;
         }
-    }
 
-    static byte[] asBinary(Object obj) {
-        if (obj instanceof byte[]) {
-            return (byte[]) obj;
+        @Override
+        public String toString() {
+            return s;
         }
-        return Base64.getDecoder().decode((String) obj);
+
+        public Inclusion invert() {
+            return (this == Include) ? Exclude : Include;
+        }
     }
 }

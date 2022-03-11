@@ -22,44 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.agent.configwithorigins;
 
-public enum ConfigurationFile {
-    DYNAMIC_PROXY("proxy", true),
-    RESOURCES("resource", true),
-    JNI("jni", true),
-    REFLECTION("reflect", true),
-    SERIALIZATION("serialization", true),
-    SERIALIZATION_DENY("serialization-deny", false),
-    PREDEFINED_CLASSES_NAME("predefined-classes", true);
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 
-    public static final String DEFAULT_FILE_NAME_SUFFIX = "-config.json";
-    private final String name;
-    private final boolean canAgentGenerate;
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
+import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.trace.TraceProcessor;
 
-    public static final String LOCK_FILE_NAME = ".lock";
-    public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
-    public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
+public class ConfigurationWithOriginsWriter extends ConfigurationWithOriginsTracer implements TracingResultWriter {
 
-    ConfigurationFile(String name, boolean canAgentGenerate) {
-        this.name = name;
-        this.canAgentGenerate = canAgentGenerate;
+    public static final String CONFIG_WITH_ORIGINS_SUFFIX = "-origins.txt";
+
+    public ConfigurationWithOriginsWriter(TraceProcessor processor, MethodInfoRecordKeeper methodInfoRecordKeeper) {
+        super(processor, methodInfoRecordKeeper);
     }
 
-    public String getName() {
-        return name;
+    @Override
+    public boolean supportsPeriodicTraceWriting() {
+        return false;
     }
 
-    public String getFileName() {
-        return name + DEFAULT_FILE_NAME_SUFFIX;
+    @Override
+    public boolean supportsOnUnloadTraceWriting() {
+        return true;
     }
 
-    public String getFileName(String suffix) {
-        return name + suffix;
+    @Override
+    public List<Path> writeToDirectory(Path directoryPath) throws IOException {
+        return ConfigurationSet.writeConfiguration(configFile -> directoryPath.resolve(configFile.getFileName(CONFIG_WITH_ORIGINS_SUFFIX)),
+                        configFile -> new HumanReadableConfigurationWithOrigins(rootNode, configFile));
     }
-
-    public boolean canBeGeneratedByAgent() {
-        return canAgentGenerate;
-    }
-
 }
