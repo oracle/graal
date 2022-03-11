@@ -427,12 +427,49 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
+    private static final int DIRECT_CALL_INSTRUCTION_CODE = 0xE8;
+    private static final int DIRECT_CALL_INSTRUCTION_SIZE = 5;
+
+    /**
+     * Emits an indirect call instruction.
+     */
     public final int indirectCall(Register callReg) {
-        int bytesToEmit = needsRex(callReg) ? 3 : 2;
-        mitigateJCCErratum(bytesToEmit);
+        return indirectCall(callReg, false);
+    }
+
+    /**
+     * Emits an indirect call instruction.
+     *
+     * The {@code NativeCall::is_call_before(address pc)} function in HotSpot determines that there
+     * is a direct call instruction whose last byte is at {@code pc - 1} if the byte at
+     * {@code pc - 5} is 0xE8. An indirect call can thus be incorrectly decoded as a direct call if
+     * the preceding instructions match this pattern. To avoid this,
+     * {@code mitigateDecodingAsDirectCall == true} will insert sufficient nops to avoid the false
+     * decoding.
+     *
+     * @return the position of the emitted call instruction
+     */
+    public final int indirectCall(Register callReg, boolean mitigateDecodingAsDirectCall) {
+        int indirectCallSize = needsRex(callReg) ? 3 : 2;
+        int insertedNops = mitigateJCCErratum(indirectCallSize);
+
+        if (mitigateDecodingAsDirectCall) {
+            int indirectCallPos = position();
+            int directCallPos = indirectCallPos - (DIRECT_CALL_INSTRUCTION_SIZE - indirectCallSize);
+            if (directCallPos >= 0 && getByte(directCallPos) == DIRECT_CALL_INSTRUCTION_CODE) {
+                int prefixNops = DIRECT_CALL_INSTRUCTION_SIZE - indirectCallSize - insertedNops;
+                assert prefixNops > 0;
+                nop(prefixNops);
+            }
+        }
+
         int beforeCall = position();
         call(callReg);
-        assert beforeCall + bytesToEmit == position();
+        assert beforeCall + indirectCallSize == position();
+        if (mitigateDecodingAsDirectCall) {
+            int directCallPos = position() - DIRECT_CALL_INSTRUCTION_SIZE;
+            assert directCallPos < 0 || getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE;
+        }
         return beforeCall;
     }
 
