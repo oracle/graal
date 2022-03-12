@@ -212,6 +212,11 @@ public final class Management extends NativeEnv {
         return context;
     }
 
+    @Override
+    protected String getName() {
+        return "Management";
+    }
+
     // Checkstyle: stop method name check
 
     @ManagementImpl

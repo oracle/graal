@@ -149,10 +149,6 @@ public final class JniEnv extends NativeEnv {
     // The maximum value supported by the native size_t e.g. SIZE_MAX.
     private long cachedSizeMax = 0;
 
-    Method getMethod(long handle) {
-        return methodIds.getObject(handle);
-    }
-
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
 
@@ -340,6 +336,11 @@ public final class JniEnv extends NativeEnv {
         this.handles = new JNIHandles();
 
         assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
+    }
+
+    @Override
+    protected String getName() {
+        return "JniEnv";
     }
 
     @Override

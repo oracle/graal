@@ -90,6 +90,11 @@ public final class JVMTIEnv extends NativeEnv {
         return context;
     }
 
+    @Override
+    protected String getName() {
+        return "JVMTIEnv";
+    }
+
     // Checkstyle: stop method name check
 
     @JvmtiImpl

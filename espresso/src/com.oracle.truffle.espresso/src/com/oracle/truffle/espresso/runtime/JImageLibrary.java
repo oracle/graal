@@ -54,8 +54,6 @@ class JImageLibrary implements ContextAccess {
     private static final String PACKAGE_TO_MOODULE = "JIMAGE_PackageToModule";
     private static final String FIND_RESOURCE = "JIMAGE_FindResource";
     private static final String GET_RESOURCE = "JIMAGE_GetResource";
-    private static final String RESOURCE_ITERATOR = "JIMAGE_ResourceIterator";
-    private static final String RESOURCE_PATH = "JIMAGE_ResourcePath";
 
     private static final NativeSignature OPEN_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
     private static final NativeSignature CLOSE_SIGNATURE = NativeSignature.create(NativeType.VOID, NativeType.POINTER);
@@ -68,9 +66,6 @@ class JImageLibrary implements ContextAccess {
     private static final NativeSignature RESOURCE_PATH_SIGNATURE = NativeSignature.create(NativeType.BOOLEAN, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
 
     private final InteropLibrary uncached;
-
-    // Library pointer
-    private final TruffleObject jimageLibrary;
 
     // Buffers associated with caches are there to prevent GCing of the cached encoded strings.
 
@@ -98,14 +93,6 @@ class JImageLibrary implements ContextAccess {
     // char* buffer, jlong size);
     private final TruffleObject getResource;
 
-    // bool (*JImageResourceVisitor_t)(JImageFile* jimage,
-    // const char* module_name, const char* version, const char* package,
-    // const char* name, const char* extension, void* arg);
-    private final TruffleObject resourceIterator;
-    // bool JIMAGE_ResourcePath(JImageFile* image, JImageLocationRef locationRef,
-    // char* path, size_t max);
-    private final TruffleObject resourcePath;
-
     private final EspressoContext context;
 
     JImageLibrary(EspressoContext context) {
@@ -113,15 +100,14 @@ class JImageLibrary implements ContextAccess {
         EspressoProperties props = getContext().getVmProperties();
 
         // Load guest's libjimage.
-        jimageLibrary = getNativeAccess().loadLibrary(props.bootLibraryPath(), LIBJIMAGE_NAME, true);
+        // Library pointer
+        TruffleObject jimageLibrary = getNativeAccess().loadLibrary(props.bootLibraryPath(), LIBJIMAGE_NAME, true);
 
         open = getNativeAccess().lookupAndBindSymbol(jimageLibrary, OPEN, OPEN_SIGNATURE);
         close = getNativeAccess().lookupAndBindSymbol(jimageLibrary, CLOSE, CLOSE_SIGNATURE);
         packageToModule = getNativeAccess().lookupAndBindSymbol(jimageLibrary, PACKAGE_TO_MOODULE, PACKAGE_TO_MODULE_SIGNATURE);
         findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, FIND_RESOURCE_SIGNATURE);
         getResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, GET_RESOURCE, GET_RESOURCE_SIGNATURE);
-        resourceIterator = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_ITERATOR, RESOURCE_ITERATOR_SIGNATURE);
-        resourcePath = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_PATH, RESOURCE_PATH_SIGNATURE);
 
         this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);
         this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING);
