@@ -270,7 +270,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.align(16);
         masm.bind(searchByChunkLoopHead);
         masm.cmp(64, refAddress, chunkToReadAddress);
-        masm.branchConditionally(ConditionFlag.LE, processTail);
+        masm.branchConditionally(ConditionFlag.LS, processTail);
         masm.bind(searchByChunkLoopTail);
         masm.sub(64, currOffset, chunkToReadAddress, baseAddress);
 
@@ -300,7 +300,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.align(16);
         masm.bind(processTail);
         masm.cmp(64, chunkToReadAddress, endOfString);
-        masm.branchConditionally(ConditionFlag.GE, end);
+        masm.branchConditionally(ConditionFlag.HS, end);
         masm.sub(64, chunkToReadAddress, endOfString, 32);
         /*
          * Move back the 'endOfString' by 32-bytes because at the end of 'searchByChunkLoopTail',
