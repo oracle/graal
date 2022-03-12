@@ -76,13 +76,94 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see ValueProfile
  * @since 0.10
  */
-public abstract class DoubleValueProfile extends Profile {
+public final class DoubleValueProfile extends Profile {
+
+    private static final DoubleValueProfile DISABLED;
+    static {
+        DoubleValueProfile profile = new DoubleValueProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
+    private static final byte UNINITIALIZED = 0;
+    private static final byte SPECIALIZED = 1;
+    private static final byte GENERIC = 2;
+
+    @CompilationFinal private double cachedValue;
+    @CompilationFinal private long cachedRawValue;
+    @CompilationFinal private byte state = UNINITIALIZED;
 
     DoubleValueProfile() {
     }
 
     /** @since 0.10 */
-    public abstract double profile(double value);
+    public double profile(double value) {
+        byte localState = this.state;
+        if (localState != GENERIC) {
+            if (localState == SPECIALIZED) {
+                if (cachedRawValue == Double.doubleToRawLongBits(value)) {
+                    return cachedValue;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (localState == UNINITIALIZED) {
+                this.cachedValue = value;
+                this.cachedRawValue = Double.doubleToRawLongBits(value);
+                this.state = SPECIALIZED;
+            } else {
+                this.state = GENERIC;
+            }
+        }
+        return value;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        this.state = GENERIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        if (this != DISABLED) {
+            this.state = UNINITIALIZED;
+        }
+    }
+
+    boolean isGeneric() {
+        return state == GENERIC;
+    }
+
+    boolean isUninitialized() {
+        return state == UNINITIALIZED;
+    }
+
+    double getCachedValue() {
+        return cachedValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled(DoubleValueProfile.class);
+        } else {
+            return toString(DoubleValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (double)%s (raw %h)", cachedValue, cachedRawValue));
+        }
+    }
 
     /**
      * Returns a value profile that profiles the exact value of a <code>double</code> using
@@ -92,10 +173,21 @@ public abstract class DoubleValueProfile extends Profile {
      * @since 0.10
      */
     public static DoubleValueProfile createRawIdentityProfile() {
+        return create();
+    }
+
+    /**
+     * Returns a value profile that profiles the exact value of a <code>double</code> using
+     * {@link Double#doubleToRawLongBits(double)}.
+     *
+     * @see IntValueProfile
+     * @since 22.1
+     */
+    public static DoubleValueProfile create() {
         if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+            return new DoubleValueProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -105,93 +197,7 @@ public abstract class DoubleValueProfile extends Profile {
      * @since 19.0
      */
     public static DoubleValueProfile getUncached() {
-        return Disabled.INSTANCE;
-    }
-
-    static final class Enabled extends DoubleValueProfile {
-
-        private static final byte UNINITIALIZED = 0;
-        private static final byte SPECIALIZED = 1;
-        private static final byte GENERIC = 2;
-
-        @CompilationFinal private double cachedValue;
-        @CompilationFinal private long cachedRawValue;
-        @CompilationFinal private byte state = UNINITIALIZED;
-
-        @Override
-        public double profile(double value) {
-            byte localState = this.state;
-            if (localState != GENERIC) {
-                if (localState == SPECIALIZED) {
-                    if (cachedRawValue == Double.doubleToRawLongBits(value)) {
-                        return cachedValue;
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (localState == UNINITIALIZED) {
-                    this.cachedValue = value;
-                    this.cachedRawValue = Double.doubleToRawLongBits(value);
-                    this.state = SPECIALIZED;
-                } else {
-                    this.state = GENERIC;
-                }
-            }
-            return value;
-        }
-
-        @Override
-        public void disable() {
-            this.state = GENERIC;
-        }
-
-        @Override
-        public void reset() {
-            this.state = UNINITIALIZED;
-        }
-
-        boolean isGeneric() {
-            return state == GENERIC;
-        }
-
-        boolean isUninitialized() {
-            return state == UNINITIALIZED;
-        }
-
-        double getCachedValue() {
-            return cachedValue;
-        }
-
-        @Override
-        public String toString() {
-            return toString(DoubleValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                            String.format("value == (double)%s (raw %h)", cachedValue, cachedRawValue));
-        }
-
-        /* Needed for lazy class loading. */
-        static DoubleValueProfile create() {
-            return new Enabled();
-        }
-    }
-
-    static final class Disabled extends DoubleValueProfile {
-
-        static final DoubleValueProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public double profile(double value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(DoubleValueProfile.class);
-        }
-
+        return DISABLED;
     }
 
 }

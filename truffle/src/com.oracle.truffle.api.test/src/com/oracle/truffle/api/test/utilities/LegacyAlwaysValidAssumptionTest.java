@@ -40,17 +40,16 @@
  */
 package com.oracle.truffle.api.test.utilities;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-public class NeverValidAssumptionTest {
+@SuppressWarnings("deprecation")
+public class LegacyAlwaysValidAssumptionTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -58,29 +57,20 @@ public class NeverValidAssumptionTest {
     }
 
     @Test
-    public void testCheck() {
-        final Assumption assumption = Assumption.NEVER_VALID;
-
-        try {
-            assumption.check();
-            fail();
-        } catch (InvalidAssumptionException e) {
-        } catch (Exception e) {
-            fail();
-        }
+    public void testCheck() throws InvalidAssumptionException {
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
+        assumption.check();
     }
 
     @Test
     public void testIsValid() {
-        final Assumption assumption = Assumption.NEVER_VALID;
-        assertFalse(assumption.isValid());
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
+        assertTrue(assumption.isValid());
     }
 
-    @Test
-    public void testInvalidateDoesNothing() {
-        final Assumption assumption = Assumption.NEVER_VALID;
-        assumption.invalidate();
-        assumption.invalidate();
+    @Test(expected = UnsupportedOperationException.class)
+    public void testCannotInvalidate() {
+        final com.oracle.truffle.api.utilities.AlwaysValidAssumption assumption = com.oracle.truffle.api.utilities.AlwaysValidAssumption.INSTANCE;
         assumption.invalidate();
     }
 

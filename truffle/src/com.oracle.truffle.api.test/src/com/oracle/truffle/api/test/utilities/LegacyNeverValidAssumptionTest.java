@@ -46,11 +46,11 @@ import static org.junit.Assert.fail;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-public class NeverValidAssumptionTest {
+@SuppressWarnings("deprecation")
+public class LegacyNeverValidAssumptionTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -59,7 +59,8 @@ public class NeverValidAssumptionTest {
 
     @Test
     public void testCheck() {
-        final Assumption assumption = Assumption.NEVER_VALID;
+
+        final com.oracle.truffle.api.utilities.NeverValidAssumption assumption = com.oracle.truffle.api.utilities.NeverValidAssumption.INSTANCE;
 
         try {
             assumption.check();
@@ -72,13 +73,13 @@ public class NeverValidAssumptionTest {
 
     @Test
     public void testIsValid() {
-        final Assumption assumption = Assumption.NEVER_VALID;
+        final com.oracle.truffle.api.utilities.NeverValidAssumption assumption = com.oracle.truffle.api.utilities.NeverValidAssumption.INSTANCE;
         assertFalse(assumption.isValid());
     }
 
     @Test
     public void testInvalidateDoesNothing() {
-        final Assumption assumption = Assumption.NEVER_VALID;
+        final com.oracle.truffle.api.utilities.NeverValidAssumption assumption = com.oracle.truffle.api.utilities.NeverValidAssumption.INSTANCE;
         assumption.invalidate();
         assumption.invalidate();
         assumption.invalidate();

@@ -83,6 +83,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
@@ -1083,6 +1084,8 @@ public abstract class Accessor {
         public abstract void initializeProfile(CallTarget target, Class<?>[] argumentTypes);
 
         public abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
+
+        public abstract Assumption createAlwaysValidAssumption();
 
         public abstract String getSavedProperty(String key);
 
