@@ -88,7 +88,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
 
     private static String getDefaultLanguageId(Element annotatedElement) {
         String className = annotatedElement.toString();
-        assert className.startsWith(TruffleTypes.TEST_PACKAGE);
+        assert TruffleTypes.TEST_PACKAGES.stream().anyMatch(className::startsWith);
         return className.replaceAll("[.$]", "_").toLowerCase();
     }
 
@@ -185,7 +185,8 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
 
         String id = ElementUtils.getAnnotationValue(String.class, registrationMirror, "id");
         if (id.isEmpty()) {
-            if (!annotatedElement.toString().startsWith(TruffleTypes.TEST_PACKAGE)) {
+            String className = annotatedElement.toString();
+            if (TruffleTypes.TEST_PACKAGES.stream().noneMatch(className::startsWith)) {
                 emitError("The attribute id is mandatory.", annotatedElement, registrationMirror, null);
                 return false;
             }

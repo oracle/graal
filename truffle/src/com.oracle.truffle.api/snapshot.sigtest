@@ -240,8 +240,11 @@ CLSS public final com.oracle.truffle.api.TruffleContext$Builder
 meth public com.oracle.truffle.api.TruffleContext build()
 meth public com.oracle.truffle.api.TruffleContext$Builder config(java.lang.String,java.lang.Object)
 meth public com.oracle.truffle.api.TruffleContext$Builder initializeCreatorContext(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder onCancelled(java.lang.Runnable)
+meth public com.oracle.truffle.api.TruffleContext$Builder onClosed(java.lang.Runnable)
+meth public com.oracle.truffle.api.TruffleContext$Builder onExited(java.util.function.Consumer<java.lang.Integer>)
 supr java.lang.Object
-hfds config,initializeCreatorContext,sourceEnvironment
+hfds config,initializeCreatorContext,onCancelledRunnable,onClosedRunnable,onExitedRunnable,sourceEnvironment
 
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
@@ -827,9 +830,9 @@ CLSS public final static com.oracle.truffle.api.frame.FrameDescriptor$Builder
  outer com.oracle.truffle.api.frame.FrameDescriptor
 meth public com.oracle.truffle.api.frame.FrameDescriptor build()
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValue(java.lang.Object)
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
 meth public int addSlot(com.oracle.truffle.api.frame.FrameSlotKind,java.lang.Object,java.lang.Object)
 meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
-meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
 supr java.lang.Object
 hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags
 
