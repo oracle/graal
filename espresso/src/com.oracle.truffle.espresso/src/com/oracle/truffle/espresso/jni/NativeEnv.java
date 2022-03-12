@@ -35,6 +35,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -277,7 +278,7 @@ public abstract class NativeEnv implements ContextAccess {
     private Callback intrinsicWrapper(CallableFromNative.Factory factory) {
         int extraArg = (factory.prependEnv()) ? 1 : 0;
         return new Callback(factory.parameterCount() + extraArg, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private volatile CallTarget target = null;
+            @CompilationFinal private volatile CallTarget target;
 
             @Override
             public Object call(Object... args) {

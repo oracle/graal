@@ -296,11 +296,24 @@ mx.update_commands(_suite, {
     'espresso-meta': [_run_espresso_meta, '[args]'],
 })
 
+
 # Build configs
-# pylint: disable=bad-whitespace
-tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
-mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                                           , 'elau'                                           ] + tools, _suite, env_file='jvm')
-mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
-mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
-mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm'                                      , 'spolyglot'] + tools, _suite, env_file='native-ce')
-mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                      , 'spolyglot'] + tools, _suite, env_file='native-ee')
+def register_espresso_envs(suite):
+    # pylint: disable=bad-whitespace
+    # pylint: disable=line-too-long
+    tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
+    if LLVM_JAVA_HOME:
+        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'                                           , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='jvm-ce-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='jvm-ee-llvm')
+        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'         , 'svm', 'svmnfi'         , 'tflm'                                      , 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='native-ce-llvm')
+        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                      , 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='native-ee-llvm')
+    else:
+        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                                                           , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools, suite, env_file='jvm-ce')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                , 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools, suite, env_file='jvm-ee')
+        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                         , 'svm', 'svmnfi'         , 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools, suite, env_file='native-ce')
+        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                , 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools, suite, env_file='native-ee')
+
+
+register_espresso_envs(_suite)
