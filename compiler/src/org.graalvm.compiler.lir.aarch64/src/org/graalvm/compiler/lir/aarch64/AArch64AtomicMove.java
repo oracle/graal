@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -48,6 +51,24 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64AtomicMove {
+
+    /**
+     * This helper method moves sp to a scratch gp register before generating the code. This is
+     * needed when instructions within the codeGen cannot directly refer to the sp register. This
+     * can happen because both ZR and SP are encoded as '31'.
+     */
+    public static void moveSPAndEmitCode(AArch64MacroAssembler masm, Register input, Consumer<Register> codeGen) {
+        if (input.equals(sp)) {
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                Register newInput = scratch.getRegister();
+                masm.mov(64, newInput, sp);
+                codeGen.accept(newInput);
+            }
+        } else {
+            codeGen.accept(input);
+        }
+    }
+
     /**
      * Compare and swap instruction. Does the following atomically:
      *
@@ -112,7 +133,6 @@ public class AArch64AtomicMove {
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
-            Register newVal = asRegister(newValue);
             Register expected = asRegister(expectedValue);
 
             /*
@@ -145,7 +165,9 @@ public class AArch64AtomicMove {
 
             if (AArch64LIRFlags.useLSE(masm)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);
-                masm.cas(memAccessSize, result, newVal, address, acquire, release);
+                moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
+                    masm.cas(memAccessSize, result, newVal, address, acquire, release);
+                });
                 if (setConditionFlags) {
                     emitCompare(masm, memAccessSize, result, expected);
                 }
@@ -168,24 +190,26 @@ public class AArch64AtomicMove {
                     masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
                 }
 
-                try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
-                    Register scratch = scratchRegister.getRegister();
-                    Label retry = new Label();
-                    Label fail = new Label();
-                    masm.bind(retry);
-                    masm.loadExclusive(memAccessSize, result, address, acquire);
-                    emitCompare(masm, memAccessSize, result, expected);
-                    masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                    /*
-                     * Even with the prior dmb, for releases it is still necessary to use stlxr
-                     * instead of stxr to guarantee subsequent lda(x)r/stl(x)r cannot be hoisted
-                     * above this instruction and thereby violate volatile semantics.
-                     */
-                    masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
-                    // if scratch == 0 then write successful, else retry.
-                    masm.cbnz(32, scratch, retry);
-                    masm.bind(fail);
-                }
+                moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
+                    try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                        Register scratch = scratchRegister.getRegister();
+                        Label retry = new Label();
+                        Label fail = new Label();
+                        masm.bind(retry);
+                        masm.loadExclusive(memAccessSize, result, address, acquire);
+                        emitCompare(masm, memAccessSize, result, expected);
+                        masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
+                        /*
+                         * Even with the prior dmb, for releases it is still necessary to use stlxr
+                         * instead of stxr to guarantee subsequent lda(x)r/stl(x)r cannot be hoisted
+                         * above this instruction and thereby violate volatile semantics.
+                         */
+                        masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
+                        // if scratch == 0 then write successful, else retry.
+                        masm.cbnz(32, scratch, retry);
+                        masm.bind(fail);
+                    }
+                });
             }
         }
     }
@@ -316,9 +340,10 @@ public class AArch64AtomicMove {
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
-            Register delta = asRegister(deltaValue);
             Register result = asRegister(resultValue);
-            masm.ldadd(memAccessSize, delta, result, address, true, true);
+            moveSPAndEmitCode(masm, asRegister(deltaValue), delta -> {
+                masm.ldadd(memAccessSize, delta, result, address, true, true);
+            });
         }
     }
 
@@ -356,33 +381,34 @@ public class AArch64AtomicMove {
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
-            Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
-            if (AArch64LIRFlags.useLSE(masm)) {
-                masm.swp(memAccessSize, value, result, address, true, true);
-            } else {
-                try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
-                    Register scratch = scratchRegister.getRegister();
-                    Label retry = new Label();
-                    masm.bind(retry);
-                    masm.loadExclusive(memAccessSize, result, address, false);
-                    masm.storeExclusive(memAccessSize, scratch, value, address, true);
-                    // if scratch == 0 then write successful, else retry
-                    masm.cbnz(32, scratch, retry);
-                    /*
-                     * Use a full barrier for the acquire semantics instead of ldaxr to guarantee
-                     * that the instruction sequence:
-                     *
-                     * A -> ldaxr -> stlxr -> B
-                     *
-                     * cannot be executed as:
-                     *
-                     * ldaxr -> B -> A -> stlxr
-                     */
-                    masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+            moveSPAndEmitCode(masm, asRegister(newValue), value -> {
+                if (AArch64LIRFlags.useLSE(masm)) {
+                    masm.swp(memAccessSize, value, result, address, true, true);
+                } else {
+                    try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                        Register scratch = scratchRegister.getRegister();
+                        Label retry = new Label();
+                        masm.bind(retry);
+                        masm.loadExclusive(memAccessSize, result, address, false);
+                        masm.storeExclusive(memAccessSize, scratch, value, address, true);
+                        // if scratch == 0 then write successful, else retry
+                        masm.cbnz(32, scratch, retry);
+                        /*
+                         * Use a full barrier for the acquire semantics instead of ldaxr to
+                         * guarantee that the instruction sequence:
+                         *
+                         * A -> ldaxr -> stlxr -> B
+                         *
+                         * cannot be executed as:
+                         *
+                         * ldaxr -> B -> A -> stlxr
+                         */
+                        masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+                    }
                 }
-            }
+            });
         }
     }
 }
