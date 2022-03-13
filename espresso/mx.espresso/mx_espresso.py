@@ -113,7 +113,6 @@ def _espresso_gate_runner(args, tasks):
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
         if t:
-            import mx_sdk_vm_impl
             run_instructions = "$ mx --dynamicimports=/substratevm --native-images=lib:javavm gate --all-suites --task '{}'".format(mokapot_header_gate_name)
             if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
                 mx.abort("""\
