@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

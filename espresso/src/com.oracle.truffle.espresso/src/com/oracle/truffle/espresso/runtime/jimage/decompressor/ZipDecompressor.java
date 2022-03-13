@@ -22,15 +22,12 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
-
 import java.nio.ByteBuffer;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-/**
- * ZIP Decompressor
- */
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
+
 final class ZipDecompressor implements ResourceDecompressor {
     public static final String NAME = "zip";
 

@@ -276,6 +276,7 @@ public abstract class NativeEnv implements ContextAccess {
             return node.invoke(nativeEnv, frame.getArguments());
         }
 
+        @Override
         public String toString() {
             return name;
         }

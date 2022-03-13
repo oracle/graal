@@ -86,6 +86,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
     }
 
     public static final class NotAnImageFile extends IOException {
+        static final long serialVersionUID = -3240111096036918189L;
     }
 
     public static BasicImageReader open(Path path) throws IOException {

@@ -78,7 +78,8 @@ public class StringSharingDecompressor implements ResourceDecompressor {
             output.putLong(input.getLong());  // magic/4, minor/2, major/2
             char count = input.getChar();
             output.putChar(count);
-            for (int i = 1; i < count; i++) {
+            int i = 1;
+            while (i < count) {
                 byte tag = input.get();
                 switch (tag) {
                     case CONSTANT_Utf8: {
@@ -143,6 +144,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
                         throw new RuntimeException("Unexpected tag: " + (tag & 0xff));
                     }
                 }
+                i++;
             }
         } finally {
             input.order(originalOrder);

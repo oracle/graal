@@ -134,6 +134,7 @@ public final class ImageHeader {
                         getStringsSize();
     }
 
+    @SuppressWarnings("static-method")
     int getRedirectOffset() {
         return getHeaderSize();
     }

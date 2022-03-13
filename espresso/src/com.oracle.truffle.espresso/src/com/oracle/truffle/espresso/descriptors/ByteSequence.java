@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
