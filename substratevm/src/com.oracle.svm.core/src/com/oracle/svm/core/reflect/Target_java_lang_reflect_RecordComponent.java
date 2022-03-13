@@ -22,32 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.target;
+package com.oracle.svm.core.reflect;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.lang.reflect.Method;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 
-public class MethodMetadataEncoding {
-    @UnknownObjectField(types = {byte[].class}) private byte[] methodsEncoding;
-    @UnknownObjectField(types = {byte[].class}) private byte[] indexEncoding;
+@TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK17OrLater.class)
+public final class Target_java_lang_reflect_RecordComponent {
+    @Alias public Class<?> clazz;
 
-    public byte[] getMethodsEncoding() {
-        return methodsEncoding;
-    }
+    @Alias public String name;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMethodsEncoding(byte[] methodsEncoding) {
-        this.methodsEncoding = methodsEncoding;
-    }
+    @Alias public Class<?> type;
 
-    public byte[] getIndexEncoding() {
-        return indexEncoding;
-    }
+    @Alias public Method accessor;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setIndexEncoding(byte[] indexEncoding) {
-        this.indexEncoding = indexEncoding;
-    }
+    @Alias public String signature;
+
+    @Alias public byte[] annotations;
+
+    @Alias public byte[] typeAnnotations;
 }

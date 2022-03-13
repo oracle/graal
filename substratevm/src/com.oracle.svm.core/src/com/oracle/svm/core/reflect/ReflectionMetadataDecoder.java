@@ -22,24 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.target;
+package com.oracle.svm.core.reflect;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.DynamicHub;
 
-@TargetClass(Parameter.class)
-public final class Target_java_lang_reflect_Parameter {
+public interface ReflectionMetadataDecoder {
+    int NO_DATA = -1;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private Type parameterTypeCache;
+    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
 
-    @Alias //
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    public native void constructor(String name, int modifiers, Executable executable, int index);
+    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
+
+    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
+
+    Class<?>[] parseClasses(int index);
+
+    Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
+
+    Parameter[] parseReflectParameters(Executable executable, byte[] encoding);
+
+    Object[] parseEnclosingMethod(int index);
+
+    byte[] parseByteArray(int index);
+
+    boolean isHidingMethod(int modifiers);
+
+    long getMetadataByteLength();
 }

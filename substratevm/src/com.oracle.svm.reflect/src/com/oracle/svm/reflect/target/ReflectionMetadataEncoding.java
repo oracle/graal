@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,20 @@
  */
 package com.oracle.svm.reflect.target;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.UnknownObjectField;
 
-@TargetClass(Parameter.class)
-public final class Target_java_lang_reflect_Parameter {
+public class ReflectionMetadataEncoding {
+    @UnknownObjectField(types = {byte[].class}) private byte[] encoding;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private Type parameterTypeCache;
+    public byte[] getEncoding() {
+        return encoding;
+    }
 
-    @Alias //
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    public native void constructor(String name, int modifiers, Executable executable, int index);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setEncoding(byte[] encoding) {
+        this.encoding = encoding;
+    }
 }
