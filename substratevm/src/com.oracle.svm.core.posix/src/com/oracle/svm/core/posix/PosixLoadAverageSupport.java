@@ -22,44 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.management;
+package com.oracle.svm.core.posix;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import sun.management.VMManagement;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.LoadAverageSupport;
+import com.oracle.svm.core.posix.headers.Stdlib;
 
-@SuppressWarnings("static-method")
-@TargetClass(className = "sun.management.BaseOperatingSystemImpl")
-final class Target_sun_management_BaseOperatingSystemImpl {
-    @Alias double[] loadavg;
-
-    @Alias
-    Target_sun_management_BaseOperatingSystemImpl(@SuppressWarnings("unused") VMManagement vm) {
+class PosixLoadAverageSupport implements LoadAverageSupport {
+    @Override
+    public int getLoadAverage(double[] loadavg, int nelems) {
+        /*
+         * Adapted from `os::loadavg` which is the same in both `src/hotspot/os/linux/os_linux.cpp`
+         * and `src/hotspot/os/bsd/os_bsd.cpp`.
+         */
+        try (PinnedObject pinnedLoadavg = PinnedObject.create(loadavg)) {
+            return Stdlib.getloadavg(pinnedLoadavg.addressOfArrayElement(0), nelems);
+        }
     }
+}
 
-    /*
-     * The following substitutions eliminate the use of the `BaseOperatingSystemImpl.jvm` field,
-     * which we set to `null` to avoid dealing with `VMManagementImpl` that we do not support.
-     */
-    @Substitute
-    public String getName() {
-        return System.getProperty("os.name");
-    }
-
-    @Substitute
-    public String getArch() {
-        return System.getProperty("os.arch");
-    }
-
-    @Substitute
-    public String getVersion() {
-        return System.getProperty("os.version");
-    }
-
-    @Substitute
-    public int getAvailableProcessors() {
-        return Runtime.getRuntime().availableProcessors();
+@AutomaticFeature
+class PosixLoadAverageSupportFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LoadAverageSupport.class, new PosixLoadAverageSupport());
     }
 }

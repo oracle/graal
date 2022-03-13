@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.jdk;
 
-import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
-
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CDoublePointer;
-
-// Checkstyle: stop
-
-/**
- * Definitions manually translated from the C header file stdlib.h.
- */
-@CContext(PosixDirectives.class)
-public class Stdlib {
-
-    @CFunction(transition = NO_TRANSITION)
-    public static native CCharPointer getenv(CCharPointer name);
-
-    @CFunction
-    public static native CCharPointer realpath(CCharPointer name, CCharPointer resolved);
-
-    @CFunction
-    public static native int getloadavg(CDoublePointer loadavg, int nelem);
+public interface LoadAverageSupport {
+    int getLoadAverage(double[] loadavg, int nelems);
 }

@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.WordFactory;
 
@@ -144,8 +145,12 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     }
 
     @Substitute
-    private int getLoadAverage(double[] loadavg, int nelems) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
+    private int getLoadAverage0(double[] loadavg, int nelems) {
+        /* Adapted from `Unsafe_GetLoadAverage0` in `src/hotspot/share/prims/unsafe.cpp`. */
+        if (ImageSingletons.contains(LoadAverageSupport.class)) {
+            return ImageSingletons.lookup(LoadAverageSupport.class).getLoadAverage(loadavg, nelems);
+        }
+        return -1; /* The load average is unobtainable. */
     }
 
     /*
@@ -195,9 +200,6 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     @Delete
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     private native Class<?> defineAnonymousClass0(Class<?> hostClass, byte[] data, Object[] cpPatches);
-
-    @Delete
-    private native int getLoadAverage0(double[] loadavg, int nelems);
 
     @Delete
     @TargetElement(onlyWith = JDK11OrEarlier.class)
