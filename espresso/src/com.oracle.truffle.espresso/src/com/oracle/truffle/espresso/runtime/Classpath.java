@@ -52,18 +52,19 @@ public final class Classpath {
         final File pathFile = new File(name);
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
-        }
-        // regular file.
-        EspressoContext context = EspressoContext.get(null);
-        if (context.getJavaVersion().modulesEnabled()) {
-            JImageHelper helper = context.createJImageHelper(name);
-            if (helper != null) {
-                return new Modules(pathFile, helper);
+        } else if (pathFile.isFile()) {
+            // regular file.
+            EspressoContext context = EspressoContext.get(null);
+            if (context.getJavaVersion().modulesEnabled()) {
+                JImageHelper helper = context.createJImageHelper(name);
+                if (helper != null) {
+                    return new Modules(pathFile, helper);
+                }
             }
-        }
-        if (name.endsWith(".zip") || name.endsWith(".jar")) {
-            if (pathFile.exists() && pathFile.isFile()) {
-                return new Archive(pathFile);
+            try {
+                ZipFile zipFile = new ZipFile(pathFile);
+                return new Archive(pathFile, zipFile);
+            } catch (IOException e) {
             }
         }
         return new PlainFile(pathFile);
@@ -181,35 +182,20 @@ public final class Classpath {
      * Represents a classpath entry that is a path to an existing zip/jar archive file.
      */
     static final class Archive extends Entry {
-
         private final File file;
+        private final ZipFile zipFile;
 
-        private ZipFile zipFile;
-
-        Archive(File file) {
+        Archive(File file, ZipFile zipFile) {
             this.file = file;
-        }
-
-        public ZipFile zipFile() {
-            if (zipFile == null && file != null) {
-                try {
-                    zipFile = new ZipFile(file);
-                } catch (IOException e) {
-                }
-            }
-            return zipFile;
+            this.zipFile = zipFile;
         }
 
         @Override
         ClasspathFile readFile(ByteSequence archiveName) {
-            final ZipFile zf = zipFile();
-            if (zf == null) {
-                return null;
-            }
             try {
-                final ZipEntry zipEntry = zf.getEntry(archiveName.toString());
+                ZipEntry zipEntry = zipFile.getEntry(archiveName.toString());
                 if (zipEntry != null) {
-                    return new ClasspathFile(readZipEntry(zf, zipEntry), this, archiveName);
+                    return new ClasspathFile(readZipEntry(zipFile, zipEntry), this, archiveName);
                 }
             } catch (IOException ioException) {
             }

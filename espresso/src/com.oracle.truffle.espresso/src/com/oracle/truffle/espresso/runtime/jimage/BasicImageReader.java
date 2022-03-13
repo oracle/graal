@@ -63,7 +63,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
 
         int headerSize = ImageHeader.getHeaderSize();
         if (map.capacity() < headerSize) {
-            throw new IOException("\"" + name + "\" is not an image file");
+            throw new NotAnImageFile();
         }
 
         // Interpret the image file header
@@ -85,6 +85,9 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         decompressor = new Decompressor();
     }
 
+    public static final class NotAnImageFile extends IOException {
+    }
+
     public static BasicImageReader open(Path path) throws IOException {
         return new BasicImageReader(path, ByteOrder.nativeOrder());
     }
@@ -93,7 +96,7 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         ImageHeader result = ImageHeader.readFrom(buffer);
 
         if (result.getMagic() != ImageHeader.MAGIC) {
-            throw new IOException("\"" + name + "\" is not an image file");
+            throw new NotAnImageFile();
         }
 
         if (result.getMajorVersion() != ImageHeader.MAJOR_VERSION ||
