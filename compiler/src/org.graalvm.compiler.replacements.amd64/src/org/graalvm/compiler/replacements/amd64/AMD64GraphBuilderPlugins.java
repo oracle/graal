@@ -379,7 +379,17 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return templates.indexOf;
             }
         });
-        r.register(new StringLatin1IndexOfCharPlugin());
+        if (JavaVersionUtil.JAVA_SPEC < 16) {
+            r.register(new StringLatin1IndexOfCharPlugin());
+        } else {
+            r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
+                    b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Byte, false, false, value, ConstantNode.forLong(0), max, fromIndex, ch));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
