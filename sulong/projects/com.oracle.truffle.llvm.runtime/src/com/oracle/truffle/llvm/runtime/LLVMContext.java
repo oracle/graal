@@ -1018,8 +1018,8 @@ public final class LLVMContext {
         assert !allRunningThreads.contains(thread);
     }
 
-    public List<Thread> getAllRunningThreads() {
-        return allRunningThreads;
+    public Thread[] getAllRunningThreads() {
+        return allRunningThreads.toArray(Thread[]::new);
     }
 
     public synchronized void addThreadLocalGlobalInitializer(CallTarget callTarget) {
