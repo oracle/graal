@@ -742,7 +742,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
         if (!threadLocalValue.isFinalized()) {
-            freeThreadLocalGlobalBlock.call(threadLocalValue);
+            if (freeThreadLocalGlobalBlock != null) {
+                freeThreadLocalGlobalBlock.call(threadLocalValue);
+            }
         }
     }
 
