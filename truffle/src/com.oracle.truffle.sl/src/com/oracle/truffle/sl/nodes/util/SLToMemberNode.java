@@ -69,35 +69,35 @@ public abstract class SLToMemberNode extends Node {
     public abstract String execute(Object value) throws UnknownIdentifierException;
 
     @Specialization
-    protected static String fromString(String value) {
+    public static String fromString(String value) {
         return value;
     }
 
     @Specialization
-    protected static String fromTruffleString(TruffleString value,
+    public static String fromTruffleString(TruffleString value,
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         return toJavaStringNode.execute(value);
     }
 
     @Specialization
-    protected static String fromBoolean(boolean value) {
+    public static String fromBoolean(boolean value) {
         return String.valueOf(value);
     }
 
     @Specialization
     @TruffleBoundary
-    protected static String fromLong(long value) {
+    public static String fromLong(long value) {
         return String.valueOf(value);
     }
 
     @Specialization
     @TruffleBoundary
-    protected static String fromBigNumber(SLBigNumber value) {
+    public static String fromBigNumber(SLBigNumber value) {
         return value.toString();
     }
 
     @Specialization(limit = "LIMIT")
-    protected static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownIdentifierException {
+    public static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownIdentifierException {
         try {
             if (interop.fitsInLong(value)) {
                 return longToString(interop.asLong(value));
@@ -114,17 +114,17 @@ public abstract class SLToMemberNode extends Node {
     }
 
     @TruffleBoundary
-    private static UnknownIdentifierException error(Object value) {
+    public static UnknownIdentifierException error(Object value) {
         return UnknownIdentifierException.create(value.toString());
     }
 
     @TruffleBoundary
-    private static String bigNumberToString(SLBigNumber value) {
+    public static String bigNumberToString(SLBigNumber value) {
         return value.toString();
     }
 
     @TruffleBoundary
-    private static String longToString(long longValue) {
+    public static String longToString(long longValue) {
         return String.valueOf(longValue);
     }
 

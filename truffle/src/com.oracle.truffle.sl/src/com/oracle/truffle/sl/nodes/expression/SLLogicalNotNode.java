@@ -56,13 +56,13 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 public abstract class SLLogicalNotNode extends SLExpressionNode {
 
     @Specialization
-    protected boolean doBoolean(boolean value) {
+    public static boolean doBoolean(boolean value) {
         return !value;
     }
 
     @Fallback
-    protected Object typeError(Object value) {
-        throw SLException.typeError(this, value);
+    public static Object typeError(Object value) {
+        throw SLException.typeError(null, value);
     }
 
 }

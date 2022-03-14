@@ -55,19 +55,19 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
 public abstract class SLMulNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected long mul(long left, long right) {
+    public static long mulLong(long left, long right) {
         return Math.multiplyExact(left, right);
     }
 
-    @Specialization
+    @Specialization(replaces = "mulLong")
     @TruffleBoundary
-    protected SLBigNumber mul(SLBigNumber left, SLBigNumber right) {
+    public static SLBigNumber mul(SLBigNumber left, SLBigNumber right) {
         return new SLBigNumber(left.getValue().multiply(right.getValue()));
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    public static Object typeError(Object left, Object right) {
+        throw SLException.typeError(null, left, right);
     }
 
 }

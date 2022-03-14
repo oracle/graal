@@ -73,43 +73,43 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     static final int LIBRARY_LIMIT = 3;
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
-    protected Object readArray(Object receiver, Object index,
+    public static Object readArray(Object receiver, Object index,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
             return arrays.readArrayElement(receiver, numbers.asLong(index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(this, index);
+            throw SLUndefinedNameException.undefinedProperty(null, index);
         }
     }
 
     @Specialization(limit = "LIBRARY_LIMIT")
-    protected Object readSLObject(SLObject receiver, Object name,
+    public static Object readSLObject(SLObject receiver, Object name,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
         TruffleString nameTS = toTruffleStringNode.execute(name);
         Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(this, nameTS);
+            throw SLUndefinedNameException.undefinedProperty(null, nameTS);
         }
         return result;
     }
 
     @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
-    protected Object readObject(Object receiver, Object name,
+    public static Object readObject(Object receiver, Object name,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {
         try {
             return objects.readMember(receiver, asMember.execute(name));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(this, name);
+            throw SLUndefinedNameException.undefinedProperty(null, name);
         }
     }
 
-    static boolean isSLObject(Object receiver) {
+    public static boolean isSLObject(Object receiver) {
         return receiver instanceof SLObject;
     }
 

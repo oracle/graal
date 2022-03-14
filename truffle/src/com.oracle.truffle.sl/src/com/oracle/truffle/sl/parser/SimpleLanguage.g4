@@ -55,6 +55,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -95,7 +96,7 @@ private static void throwParseError(Source source, int line, int charPositionInL
     throw new SLParseError(source, line, col, length, String.format("Error(s) parsing script:%n" + location + message));
 }
 
-public static Map<String, RootCallTarget> parseSL(SLLanguage language, Source source) {
+public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
     SimpleLanguageLexer lexer = new SimpleLanguageLexer(CharStreams.fromString(source.getCharacters().toString()));
     SimpleLanguageParser parser = new SimpleLanguageParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();

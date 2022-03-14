@@ -513,6 +513,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         {
             CodeExecutableElement mExecute = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(Object.class), "execute", new CodeVariableElement(types.VirtualFrame, "frame"));
+            builderBytecodeNodeType.add(mExecute);
 
             CodeTreeBuilder builder = mExecute.getBuilder();
             builder.startReturn();
@@ -523,7 +524,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             builder.end(2);
 
-            builderBytecodeNodeType.add(mExecute);
         }
 
         {
@@ -532,6 +532,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             CodeExecutableElement mContinueAt = new CodeExecutableElement(
                             Set.of(Modifier.PUBLIC), context.getType(Object.class), "continueAt",
                             argFrame, argStartIndex);
+            builderBytecodeNodeType.add(mContinueAt);
 
             {
                 CodeAnnotationMirror annExplodeLoop = new CodeAnnotationMirror(types.ExplodeLoop);
@@ -622,7 +623,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             vars.sp = null;
             vars.returnValue = null;
 
-            builderBytecodeNodeType.add(mContinueAt);
         }
 
         {

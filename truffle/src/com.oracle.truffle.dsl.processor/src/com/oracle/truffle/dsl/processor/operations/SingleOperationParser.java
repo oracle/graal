@@ -96,8 +96,8 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         for (ExecutableElement fun : operationFunctions) {
             MethodProperties props2 = processMethod(data, te, fun);
-
             props2.checkMatches(data, props);
+            data.getThrowDeclarations().addAll(fun.getThrownTypes());
         }
 
         if (data.hasErrors()) {
@@ -110,19 +110,26 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         clonedType.setEnclosingElement(te.getEnclosingElement());
         clonedType.setSuperClass(types.Node);
 
-        CodeExecutableElement metExecute = new CodeExecutableElement(
-                        Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
-                        context.getType(props.returnsValue ? Object.class : void.class), "execute");
-
-        for (int i = 0; i < props.numParameters; i++) {
-            TypeMirror typParam = context.getType(Object.class);
-            if (props.isVariadic && i == props.numParameters - 1) {
-                typParam = new ArrayCodeTypeMirror(context.getType(Object.class));
-            }
-
-            metExecute.addParameter(new CodeVariableElement(typParam, "arg" + i));
+        if (proxyType != null) {
+            clonedType.addOptional(ElementUtils.findExecutableElement(proxyType, "execute"));
         }
-        clonedType.add(metExecute);
+
+        if (ElementUtils.findExecutableElement(te, "execute") == null) {
+
+            CodeExecutableElement metExecute = new CodeExecutableElement(
+                            Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
+                            context.getType(props.returnsValue ? Object.class : void.class), "execute");
+
+            for (int i = 0; i < props.numParameters; i++) {
+                TypeMirror typParam = context.getType(Object.class);
+                if (props.isVariadic && i == props.numParameters - 1) {
+                    typParam = new ArrayCodeTypeMirror(context.getType(Object.class));
+                }
+
+                metExecute.addParameter(new CodeVariableElement(typParam, "arg" + i));
+            }
+            clonedType.add(metExecute);
+        }
 
         if (ElementUtils.findAnnotationMirror(clonedType, types.GenerateUncached) == null) {
             clonedType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));

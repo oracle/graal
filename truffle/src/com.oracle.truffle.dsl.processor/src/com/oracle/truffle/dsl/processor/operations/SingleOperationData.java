@@ -1,9 +1,12 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -15,6 +18,7 @@ public class SingleOperationData extends Template {
     private MethodProperties mainProperties;
     private NodeData nodeData;
     private OperationsData parent;
+    private final Set<TypeMirror> throwDeclarations = new HashSet<>();
 
     static class MethodProperties {
         public final ExecutableElement element;
@@ -62,6 +66,10 @@ public class SingleOperationData extends Template {
 
     public String getName() {
         return name;
+    }
+
+    public Set<TypeMirror> getThrowDeclarations() {
+        return throwDeclarations;
     }
 
     public MethodProperties getMainProperties() {

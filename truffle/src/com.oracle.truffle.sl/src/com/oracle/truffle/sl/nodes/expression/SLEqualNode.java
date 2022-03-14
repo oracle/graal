@@ -68,40 +68,40 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization
-    protected boolean doLong(long left, long right) {
+    public static boolean doLong(long left, long right) {
         return left == right;
     }
 
     @Specialization
     @TruffleBoundary
-    protected boolean doBigNumber(SLBigNumber left, SLBigNumber right) {
+    public static boolean doBigNumber(SLBigNumber left, SLBigNumber right) {
         return left.equals(right);
     }
 
     @Specialization
-    protected boolean doBoolean(boolean left, boolean right) {
+    public static boolean doBoolean(boolean left, boolean right) {
         return left == right;
     }
 
     @Specialization
-    protected boolean doString(String left, String right) {
+    public static boolean doString(String left, String right) {
         return left.equals(right);
     }
 
     @Specialization
-    protected boolean doTruffleString(TruffleString left, TruffleString right,
+    public static boolean doTruffleString(TruffleString left, TruffleString right,
                     @Cached TruffleString.EqualNode equalNode) {
         return equalNode.execute(left, right, SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    protected boolean doNull(SLNull left, SLNull right) {
+    public static boolean doNull(SLNull left, SLNull right) {
         /* There is only the singleton instance of SLNull, so we do not need equals(). */
         return left == right;
     }
 
     @Specialization
-    protected boolean doFunction(SLFunction left, Object right) {
+    public static boolean doFunction(SLFunction left, Object right) {
         /*
          * Our function registry maintains one canonical SLFunction object per function name, so we
          * do not need equals().
@@ -124,7 +124,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
      * replace the previous specializations, as they are still more efficient in the interpeter.
      */
     @Specialization(limit = "4")
-    public boolean doGeneric(Object left, Object right,
+    public static boolean doGeneric(Object left, Object right,
                     @CachedLibrary("left") InteropLibrary leftInterop,
                     @CachedLibrary("right") InteropLibrary rightInterop) {
         /*

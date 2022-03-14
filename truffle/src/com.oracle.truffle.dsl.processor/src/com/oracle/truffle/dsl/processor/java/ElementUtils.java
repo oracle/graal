@@ -185,7 +185,11 @@ public class ElementUtils {
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
+        return findExecutableElement(type.asElement(), name);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name) {
+        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(element.getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
             if (executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
@@ -195,8 +199,11 @@ public class ElementUtils {
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name, int argumentCount) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
-        for (ExecutableElement executableElement : elements) {
+        return findExecutableElement(type.asElement(), name, argumentCount);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name, int argumentCount) {
+        for (ExecutableElement executableElement : ElementFilter.methodsIn(element.getEnclosedElements())) {
             if (executableElement.getParameters().size() == argumentCount && executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }

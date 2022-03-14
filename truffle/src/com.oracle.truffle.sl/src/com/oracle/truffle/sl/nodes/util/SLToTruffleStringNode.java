@@ -76,47 +76,47 @@ public abstract class SLToTruffleStringNode extends Node {
     public abstract TruffleString execute(Object value);
 
     @Specialization
-    protected static TruffleString fromNull(@SuppressWarnings("unused") SLNull value) {
+    public static TruffleString fromNull(@SuppressWarnings("unused") SLNull value) {
         return SLStrings.NULL;
     }
 
     @Specialization
-    protected static TruffleString fromString(String value,
+    public static TruffleString fromString(String value,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    protected static TruffleString fromTruffleString(TruffleString value) {
+    public static TruffleString fromTruffleString(TruffleString value) {
         return value;
     }
 
     @Specialization
-    protected static TruffleString fromBoolean(boolean value) {
+    public static TruffleString fromBoolean(boolean value) {
         return value ? TRUE : FALSE;
     }
 
     @Specialization
     @TruffleBoundary
-    protected static TruffleString fromLong(long value,
+    public static TruffleString fromLong(long value,
                     @Cached TruffleString.FromLongNode fromLongNode) {
         return fromLongNode.execute(value, SLLanguage.STRING_ENCODING, true);
     }
 
     @Specialization
     @TruffleBoundary
-    protected static TruffleString fromBigNumber(SLBigNumber value,
+    public static TruffleString fromBigNumber(SLBigNumber value,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value.toString(), SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    protected static TruffleString fromFunction(SLFunction value) {
+    public static TruffleString fromFunction(SLFunction value) {
         return value.getName();
     }
 
     @Specialization(limit = "LIMIT")
-    protected static TruffleString fromInterop(Object value,
+    public static TruffleString fromInterop(Object value,
                     @CachedLibrary("value") InteropLibrary interop,
                     @Cached TruffleString.FromLongNode fromLongNode,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {

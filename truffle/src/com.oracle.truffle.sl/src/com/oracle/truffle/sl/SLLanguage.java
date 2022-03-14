@@ -106,6 +106,7 @@ import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.SLNodeFactory;
 import com.oracle.truffle.sl.parser.SimpleLanguageLexer;
 import com.oracle.truffle.sl.parser.SimpleLanguageParser;
+import com.oracle.truffle.sl.parser.operations.SLNodeVisitor;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -309,7 +310,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * the functions with the SLContext happens lazily in SLEvalRootNode.
          */
         if (request.getArgumentNames().isEmpty()) {
-            functions = SimpleLanguageParser.parseSL(this, source);
+            functions = SLNodeVisitor.parseSL(this, source);
         } else {
             StringBuilder sb = new StringBuilder();
             sb.append("function main(");
@@ -324,7 +325,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             sb.append(";}");
             String language = source.getLanguage() == null ? ID : source.getLanguage();
             Source decoratedSource = Source.newBuilder(language, sb.toString(), source.getName()).build();
-            functions = SimpleLanguageParser.parseSL(this, decoratedSource);
+            functions = SLNodeVisitor.parseSL(this, decoratedSource);
         }
 
         RootCallTarget main = functions.get(SLStrings.MAIN);

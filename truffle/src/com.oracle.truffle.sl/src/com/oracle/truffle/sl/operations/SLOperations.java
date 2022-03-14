@@ -1,132 +1,47 @@
 package com.oracle.truffle.sl.operations;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.Variadic;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.expression.SLAddNode;
+import com.oracle.truffle.sl.nodes.expression.SLDivNode;
+import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLLessThanNode;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalNotNode;
+import com.oracle.truffle.sl.nodes.expression.SLMulNode;
+import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
+import com.oracle.truffle.sl.nodes.expression.SLSubNode;
+import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToMemberNode;
 import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
-import com.oracle.truffle.sl.runtime.SLObject;
+import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations
 public class SLOperations {
 
-    @Operation
+    @Operation(proxyNode = SLAddNode.class)
     public static class SLAddOperation {
-        @Specialization(rewriteOn = ArithmeticException.class)
-        public static long add(long left, long right) {
-            return Math.addExact(left, right);
-        }
-
-        @Specialization(replaces = "add")
-        @TruffleBoundary
-        public static SLBigNumber addBig(SLBigNumber left, SLBigNumber right) {
-            return new SLBigNumber(left.getValue().add(right.getValue()));
-        }
-
-        @Specialization(guards = "isString(left, right)")
-        @TruffleBoundary
-        public static TruffleString addString(Object left, Object right,
-                        @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
-                        @Cached SLToTruffleStringNode toTruffleStringNodeRight,
-                        @Cached TruffleString.ConcatNode concatNode) {
-            return concatNode.execute(
-                            toTruffleStringNodeLeft.execute(left),
-                            toTruffleStringNodeRight.execute(right),
-                            SLLanguage.STRING_ENCODING,
-                            true);
-        }
-
-        public static boolean isString(Object a, Object b) {
-            return a instanceof TruffleString || b instanceof TruffleString;
-        }
-
-        @Fallback
-        public static Object typeError(Object left, Object right) {
-            throw new RuntimeException("+ type error: " + left + ", " + right);
-        }
     }
 
-    @Operation
-    public static class SLReadPropertyOperation {
-
-        public static final int LIBRARY_LIMIT = 3;
-
-        @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
-        public static Object readArray(Object receiver, Object index,
-                        @CachedLibrary("receiver") InteropLibrary arrays,
-                        @CachedLibrary("index") InteropLibrary numbers) {
-            try {
-                return arrays.readArrayElement(receiver, numbers.asLong(index));
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                // read was not successful. In SL we only have basic support for errors.
-                throw SLUndefinedNameException.undefinedProperty(null, index);
-            }
-        }
-
-        @Specialization(limit = "3")
-        public static Object readSLObject(SLObject receiver, Object name,
-                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
-                        @Cached SLToTruffleStringNode toTruffleStringNode) {
-            TruffleString nameTS = toTruffleStringNode.execute(name);
-            Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
-            if (result == null) {
-                // read was not successful. In SL we only have basic support for errors.
-                throw SLUndefinedNameException.undefinedProperty(null, nameTS);
-            }
-            return result;
-        }
-
-        @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
-        public static Object readObject(Object receiver, Object name,
-                        @CachedLibrary("receiver") InteropLibrary objects,
-                        @Cached SLToMemberNode asMember) {
-            try {
-                return objects.readMember(receiver, asMember.execute(name));
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                // read was not successful. In SL we only have basic support for errors.
-                throw SLUndefinedNameException.undefinedProperty(null, name);
-            }
-        }
-
-        protected static boolean isSLObject(Object receiver) {
-            return receiver instanceof SLObject;
-        }
+    @Operation(proxyNode = SLDivNode.class)
+    public static class SLDivOperation {
     }
 
-    @Operation
-    public static class SLInvokeNode {
+    @Operation(proxyNode = SLEqualNode.class)
+    public static class SLEqualOperation {
+    }
 
-        // @Child private SLExpressionNode functionNode;
-        // @Children private final SLExpressionNode[] argumentNodes;
-        // @Child private InteropLibrary library;
-        //
-        // public SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
-        // this.functionNode = functionNode;
-        // this.argumentNodes = argumentNodes;
-        // this.library = InteropLibrary.getFactory().createDispatched(3);
-        // }
-
+    public static class SLInvokeOperation {
         @Specialization
-        public static Object call(
-                        Object function,
-                        @Variadic Object[] argumentValues,
-                        @CachedLibrary(limit = "3") InteropLibrary library) {
+        public static Object execute(Object function, @Variadic Object[] argumentValues, @CachedLibrary(limit = "3") InteropLibrary library) {
             try {
                 return library.execute(function, argumentValues);
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
@@ -134,6 +49,37 @@ public class SLOperations {
                 throw SLUndefinedNameException.undefinedFunction(null, function);
             }
         }
+    }
 
+    @Operation(proxyNode = SLLessOrEqualNode.class)
+    public static class SLLessOrEqualOperation {
+    }
+
+    @Operation(proxyNode = SLLessThanNode.class)
+    public static class SLLessThanOperation {
+    }
+
+    @Operation(proxyNode = SLLogicalNotNode.class)
+    public static class SLLogicalNotOperation {
+    }
+
+    @Operation(proxyNode = SLMulNode.class)
+    public static class SLMulOperation {
+    }
+
+    @Operation(proxyNode = SLReadPropertyNode.class)
+    public static class SLReadPropertyOperation {
+    }
+
+    @Operation(proxyNode = SLSubNode.class)
+    public static class SLSubOperation {
+    }
+
+    @Operation(proxyNode = SLWritePropertyNode.class)
+    public static class SLWritePropertyOperation {
+    }
+
+    @Operation(proxyNode = SLUnboxNode.class)
+    public static class SLUnboxOperation {
     }
 }
