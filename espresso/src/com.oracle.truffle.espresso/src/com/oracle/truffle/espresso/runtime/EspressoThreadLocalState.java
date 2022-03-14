@@ -53,7 +53,7 @@ public class EspressoThreadLocalState {
      * </ul>
      * For these two last cases, coupling is performed right as the supporting guest thread is
      * allocated (see
-     * {@link com.oracle.truffle.espresso.threads.EspressoThreadRegistry#createGuestThreadFromHost(Thread, Meta, VM, String, StaticObject)}).
+     * {@link com.oracle.truffle.espresso.threads.EspressoThreadRegistry#createGuestThreadFromHost(Thread, Meta, VM, String, StaticObject, boolean)}).
      */
     @CompilationFinal //
     private StaticObject currentThread;

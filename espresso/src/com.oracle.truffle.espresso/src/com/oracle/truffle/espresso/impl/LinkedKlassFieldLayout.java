@@ -260,7 +260,7 @@ final class LinkedKlassFieldLayout {
                 return new HiddenField[]{
                                 new HiddenField(Name.HIDDEN_INTERRUPTED, Type._boolean, VersionRange.lower(13), NO_ADDITIONAL_FLAGS),
                                 new HiddenField(Name.HIDDEN_HOST_THREAD),
-                                new HiddenField(Name.HIDDEN_ESPRESSO_MANAGED, Type._boolean, VersionRange.ALL),
+                                new HiddenField(Name.HIDDEN_ESPRESSO_MANAGED, Type._boolean, VersionRange.ALL, NO_ADDITIONAL_FLAGS),
                                 new HiddenField(Name.HIDDEN_DEPRECATION_SUPPORT),
 
                                 // Only used for j.l.management bookkeeping.
