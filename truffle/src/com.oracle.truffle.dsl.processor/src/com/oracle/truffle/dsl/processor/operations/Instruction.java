@@ -1,14 +1,27 @@
 package com.oracle.truffle.dsl.processor.operations;
 
-import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.*;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createClearStackSlot;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createReadLocal;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createReadStack;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteLocal;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteStackObject;
 
 import java.util.List;
 
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 
@@ -18,7 +31,11 @@ public abstract class Instruction {
     public final int id;
     public final Argument[] arguments;
 
+    public CodeVariableElement opcodeIdField;
+
     public static class ExecuteVariables {
+        CodeTypeElement bytecodeNodeType;
+
         CodeVariableElement bc;
         CodeVariableElement bci;
         CodeVariableElement nextBci;
@@ -35,6 +52,10 @@ public abstract class Instruction {
         this.name = name;
         this.id = id;
         this.arguments = arguments;
+    }
+
+    public void setOpcodeIdField(CodeVariableElement opcodeIdField) {
+        this.opcodeIdField = opcodeIdField;
     }
 
     public int length() {
@@ -83,7 +104,7 @@ public abstract class Instruction {
         b.startStatement();
         b.variable(vars.bc).string("[").variable(vars.bci).string("++]");
         b.string(" = ");
-        b.string("" + id + " /* " + name + " */");
+        b.variable(opcodeIdField);
         b.end();
 
         assert argValues.length == arguments.length;
@@ -334,19 +355,21 @@ public abstract class Instruction {
 
     public static class Custom extends Instruction {
 
+        public final SingleOperationData data;
+
         public final int stackPops;
         public final int stackPushes;
         public final boolean isVarArgs;
-        public final TypeElement type;
 
-        private CodeVariableElement uncachedInstance;
-
-        public Custom(String name, int id, int stackPops, boolean isVarArgs, boolean isVoid, TypeElement type, Argument... arguments) {
+        public Custom(String name, int id, SingleOperationData data, Argument... arguments) {
             super(name, id, arguments);
-            this.stackPops = stackPops;
-            this.isVarArgs = isVarArgs;
-            this.stackPushes = isVoid ? 0 : 1;
-            this.type = type;
+            this.data = data;
+            this.stackPops = data.getMainProperties().numParameters;
+            this.isVarArgs = data.getMainProperties().isVariadic;
+            this.stackPushes = data.getMainProperties().returnsValue ? 1 : 0;
+
+            if (data.getMainProperties().isVariadic && arguments.length == 0)
+                throw new IllegalArgumentException("Must have at least the VarArgCount argument");
         }
 
         @Override
@@ -357,10 +380,6 @@ public abstract class Instruction {
         @Override
         public CodeTree createPushCountCode(BuilderVariables vars) {
             return CodeTreeBuilder.singleString("" + stackPushes);
-        }
-
-        public void setUncachedInstance(CodeVariableElement uncachedInstance) {
-            this.uncachedInstance = uncachedInstance;
         }
 
         @Override
@@ -412,26 +431,68 @@ public abstract class Instruction {
                 }
             }
 
-            int resultOffset = 1 - stackPops;
-
-            CodeTree instance = CodeTreeBuilder.createBuilder() //
-                            // .field(uncachedInstance.getEnclosingElement().getSimpleName().toString(),
-                            // uncachedInstance)//
-                            .staticReference(uncachedInstance) //
-                            .build();
-
-            CodeTreeBuilder bCall = CodeTreeBuilder.createBuilder();
-            bCall.startCall(instance, "execute");
-            for (int i = 0; i < stackPops; i++) {
-                bCall.tree(vals[i]);
-            }
-            bCall.end(2);
-
             if (stackPushes > 0) {
-                b.tree(createWriteStackObject(vars, resultOffset, bCall.build()));
+                b.tree(createWriteStackObject(vars, 1 - stackPops, createActualExecuteCallCode(vars, vals)));
             } else {
-                b.statement(bCall.build());
+                b.statement(createActualExecuteCallCode(vars, vals));
             }
+
+            return b.build();
+        }
+
+        private CodeTree createActualExecuteCallCode(ExecuteVariables vars, CodeTree[] vals) {
+            String executeName = "execute" + data.getTemplateType().getSimpleName() + "_";
+
+            CodeTypeElement topElem = new NodeCodeGenerator().create(data.getContext(), null, data.getNodeData()).get(0);
+
+            TypeElement typUncached = null;
+            ExecutableElement metExecute = null;
+
+            outer: for (TypeElement elem : ElementFilter.typesIn(topElem.getEnclosedElements())) {
+                if (elem.getSimpleName().toString().equals("Uncached")) {
+                    typUncached = elem;
+                    for (ExecutableElement exElem : ElementFilter.methodsIn(elem.getEnclosedElements())) {
+                        if (exElem.getSimpleName().toString().equals("execute")) {
+                            metExecute = exElem;
+                            break outer;
+                        }
+                    }
+                }
+            }
+
+            if (metExecute == null) {
+                data.addError("Generated node did not have a proper execute element, what for?");
+                return CodeTreeBuilder.singleString(topElem.toString());
+            }
+
+            CodeExecutableElement copy = CodeExecutableElement.clone(metExecute);
+            copy.setSimpleName(CodeNames.of(executeName));
+            GeneratorUtils.addSuppressWarnings(ProcessorContext.getInstance(), copy, "static-method");
+
+            vars.bytecodeNodeType.add(copy);
+
+            for (VariableElement elem : ElementFilter.fieldsIn(topElem.getEnclosedElements())) {
+                if (elem.getModifiers().contains(Modifier.STATIC) && !elem.getSimpleName().toString().equals("UNCACHED")) {
+                    CodeVariableElement fldCopy = CodeVariableElement.clone(elem);
+                    fldCopy.setSimpleName(CodeNames.of(data.getName() + "_" + elem.getSimpleName()));
+                    fldCopy.setInit(((CodeVariableElement) elem).getInit());
+                    // fldCopy.getModifiers().remove(Modifier.STATIC);
+
+                    OperationGeneratorUtils.changeAllVariables(copy.getBodyTree(), elem, fldCopy);
+
+                    vars.bytecodeNodeType.add(fldCopy);
+                }
+            }
+
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startCall("this", copy);
+
+            for (CodeTree val : vals) {
+                b.tree(val);
+            }
+
+            b.end();
 
             return b.build();
         }

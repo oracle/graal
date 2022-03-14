@@ -2,33 +2,19 @@ package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 public class OperationsData extends Template {
 
-    static class OperationData {
-        final String name;
-        final int numParameters;
-        final boolean isVariadic;
-        final boolean returnsValue;
-
-        public OperationData(String name, int numParameters, boolean isVariadic, boolean returnsValue) {
-            this.name = name;
-            this.numParameters = numParameters;
-            this.isVariadic = isVariadic;
-            this.returnsValue = returnsValue;
-        }
-    }
-
-    private final OperationsBuilder builder = new OperationsBuilder();
+    private final List<SingleOperationData> operations = new ArrayList<>();
+    private final OperationsContext context = new OperationsContext();
 
     private boolean tracing;
 
@@ -36,8 +22,17 @@ public class OperationsData extends Template {
         super(context, templateType, annotation);
     }
 
-    public OperationsBuilder getOperationsBuilder() {
-        return builder;
+    public OperationsContext getOperationsContext() {
+        return context;
+    }
+
+    public void addOperationData(SingleOperationData data) {
+        operations.add(data);
+    }
+
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        return List.copyOf(operations);
     }
 
     public void setTracing(boolean tracing) {
@@ -49,18 +44,21 @@ public class OperationsData extends Template {
     }
 
     public Collection<Instruction> getInstructions() {
-        return builder.instructions;
+        return context.instructions;
     }
 
-    public Collection<Operation.Custom> getCustomOperations() {
-        return builder.operations.stream()//
-                        .filter(x -> x instanceof Operation.Custom)//
-                        .map(x -> (Operation.Custom) x)//
-                        .toList();
+    public Collection<SingleOperationData> getOperationData() {
+        return operations;
     }
 
     public Collection<Operation> getOperations() {
-        return builder.operations;
+        return context.operations;
+    }
+
+    public void initializeContext() {
+        for (SingleOperationData data : operations) {
+            context.processOperation(data);
+        }
     }
 
 }

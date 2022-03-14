@@ -21,12 +21,14 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
 
-    public final OperationsBuilder builder;
+    public final OperationsContext builder;
     public final String name;
     public final int id;
     public final int children;
 
-    protected Operation(OperationsBuilder builder, String name, int id, int children) {
+    public CodeVariableElement idConstantField;
+
+    protected Operation(OperationsContext builder, String name, int id, int children) {
         this.builder = builder;
         this.name = name;
         this.id = id;
@@ -35,6 +37,10 @@ public abstract class Operation {
 
     public final boolean isVariableChildren() {
         return children == VARIABLE_CHILDREN;
+    }
+
+    public void setIdConstantField(CodeVariableElement idConstantField) {
+        this.idConstantField = idConstantField;
     }
 
     public static class BuilderVariables {
@@ -89,7 +95,7 @@ public abstract class Operation {
     public static class Custom extends Operation {
         final Instruction.Custom instruction;
 
-        protected Custom(OperationsBuilder builder, String name, int id, int children, Instruction.Custom instruction) {
+        protected Custom(OperationsContext builder, String name, int id, int children, Instruction.Custom instruction) {
             super(builder, name, id, instruction.isVarArgs ? VARIABLE_CHILDREN : children);
             this.instruction = instruction;
         }
@@ -123,7 +129,7 @@ public abstract class Operation {
 
         private final Instruction instruction;
 
-        protected Simple(OperationsBuilder builder, String name, int id, int children, Instruction instruction) {
+        protected Simple(OperationsContext builder, String name, int id, int children, Instruction instruction) {
             super(builder, name, id, children);
             this.instruction = instruction;
         }
@@ -149,7 +155,7 @@ public abstract class Operation {
     }
 
     public static class Block extends Operation {
-        protected Block(OperationsBuilder builder, int id) {
+        protected Block(OperationsContext builder, int id) {
             super(builder, "Block", id, VARIABLE_CHILDREN);
         }
 
@@ -174,7 +180,7 @@ public abstract class Operation {
     }
 
     public static class IfThen extends Operation {
-        protected IfThen(OperationsBuilder builder, int id) {
+        protected IfThen(OperationsContext builder, int id) {
             super(builder, "IfThen", id, 2);
         }
 
@@ -223,7 +229,7 @@ public abstract class Operation {
 
         private final boolean hasValue;
 
-        public IfThenElse(OperationsBuilder builder, int id, boolean hasValue) {
+        public IfThenElse(OperationsContext builder, int id, boolean hasValue) {
             super(builder, hasValue ? "Conditional" : "IfThenElse", id, 3);
             this.hasValue = hasValue;
         }
@@ -310,7 +316,7 @@ public abstract class Operation {
     }
 
     public static class While extends Operation {
-        public While(OperationsBuilder builder, int id) {
+        public While(OperationsContext builder, int id) {
             super(builder, "While", id, 2);
         }
 
@@ -376,7 +382,7 @@ public abstract class Operation {
     }
 
     public static class Label extends Operation {
-        public Label(OperationsBuilder builder, int id) {
+        public Label(OperationsContext builder, int id) {
             super(builder, "Label", id, 0);
         }
 
@@ -397,7 +403,7 @@ public abstract class Operation {
     }
 
     public static class TryCatch extends Operation {
-        public TryCatch(OperationsBuilder builder, int id) {
+        public TryCatch(OperationsContext builder, int id) {
             super(builder, "TryCatch", id, 2);
         }
 

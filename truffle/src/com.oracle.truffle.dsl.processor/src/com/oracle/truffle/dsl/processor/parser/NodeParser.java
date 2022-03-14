@@ -158,7 +158,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     public enum ParseMode {
         DEFAULT,
-        EXPORTED_MESSAGE
+        EXPORTED_MESSAGE,
+        OPERATION
     }
 
     private boolean nodeOnly;
@@ -191,6 +192,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     public static NodeParser createDefaultParser() {
         return new NodeParser(ParseMode.DEFAULT, null, null, false);
+    }
+
+    public static NodeParser createOperationParser() {
+        return new NodeParser(ParseMode.OPERATION, null, null, true);
     }
 
     @Override
@@ -284,7 +289,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        if (ElementUtils.findAnnotationMirror(templateType.getAnnotationMirrors(), types.Operation) != null) {
+        if (mode == ParseMode.DEFAULT && ElementUtils.findAnnotationMirror(templateType.getAnnotationMirrors(), types.Operation) != null) {
             return null;
         }
 
@@ -1721,7 +1726,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                             "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
         }
 
-        if (nodeChildDeclarations > 0 && executions.size() == node.getMinimalEvaluatedParameters()) {
+        if (mode == ParseMode.DEFAULT && nodeChildDeclarations > 0 && executions.size() == node.getMinimalEvaluatedParameters()) {
             for (NodeChildData child : node.getChildren()) {
                 child.addError("Unnecessary @NodeChild declaration. All evaluated child values are provided as parameters in execute methods.");
             }

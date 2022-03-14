@@ -2,7 +2,9 @@ package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
 
-public class OperationsBuilder {
+import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
+
+public class OperationsContext {
 
     private int instructionId = 1;
     private int operationId = 1;
@@ -14,7 +16,7 @@ public class OperationsBuilder {
     public final ArrayList<Instruction> instructions = new ArrayList<>();
     public final ArrayList<Operation> operations = new ArrayList<>();
 
-    public OperationsBuilder() {
+    public OperationsContext() {
         createCommonInstructions();
         createBuiltinOperations();
     }
@@ -53,12 +55,33 @@ public class OperationsBuilder {
     }
 
     public int getNextInstructionId() {
-        // TODO Auto-generated method stub
         return instructionId++;
     }
 
     public int getNextOperationId() {
-        // TODO Auto-generated method stub
         return operationId++;
+    }
+
+    public void processOperation(SingleOperationData opData) {
+        Argument[] arguments;
+
+        MethodProperties props = opData.getMainProperties();
+
+        if (props == null) {
+            opData.addError("Operation %s not initialized", opData.getName());
+            return;
+        }
+
+        if (props.isVariadic) {
+            arguments = new Argument[]{new Argument.VarArgsCount(props.numParameters - 1)};
+        } else {
+            arguments = new Argument[0];
+        }
+
+        Instruction.Custom instr = new Instruction.Custom("custom." + opData.getName(), getNextInstructionId(), opData, arguments);
+        add(instr);
+
+        Operation.Custom op = new Operation.Custom(this, opData.getName(), getNextOperationId(), props.numParameters, instr);
+        add(op);
     }
 }

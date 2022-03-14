@@ -1,10 +1,15 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.List;
+
+import javax.lang.model.element.VariableElement;
+
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Instruction.ExecuteVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
@@ -15,7 +20,9 @@ public class OperationGeneratorUtils {
         return ProcessorContext.getInstance().getTypes();
     }
 
-    // new
+    public static String toScreamCase(String s) {
+        return s.replaceAll("([a-z])([A-Z])", "$1_$2").replace('.', '_').toUpperCase();
+    }
 
     public static CodeTree createEmitInstruction(BuilderVariables vars, Instruction instr, CodeVariableElement... arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
@@ -84,5 +91,23 @@ public class OperationGeneratorUtils {
                         .startGroup().tree(offset).end() //
                         .tree(value) //
                         .end(3).build();
+    }
+
+    public static CodeTree changeAllVariables(CodeTree tree, VariableElement from, VariableElement to) {
+        // EXTREME HACK
+
+        if (tree.getCodeKind() == CodeTreeKind.STRING && tree.getString().equals(from.getSimpleName().toString())) {
+            return CodeTreeBuilder.singleString(to.getSimpleName().toString());
+        } else {
+            List<CodeTree> enc = tree.getEnclosedElements();
+            if (enc == null) {
+                return tree;
+            }
+            for (int i = 0; i < enc.size(); i++) {
+                CodeTree res = changeAllVariables(enc.get(i), from, to);
+                enc.set(i, res);
+            }
+            return tree;
+        }
     }
 }

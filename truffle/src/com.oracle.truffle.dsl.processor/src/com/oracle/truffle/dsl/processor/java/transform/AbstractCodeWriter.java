@@ -725,7 +725,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             case STATIC_METHOD_REFERENCE:
                 if (e.getString() != null) {
                     if (imports == null) {
-                        write("############");
+                        write(ElementUtils.getSimpleName(e.getType()) + "." + e.getString());
                     } else {
                         write(imports.createStaticMethodReference(enclosingElement, e.getType(), e.getString()));
                     }

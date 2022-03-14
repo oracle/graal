@@ -6,57 +6,37 @@ import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.AnnotationValueVisitor;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.Instruction.ExecuteVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
     private ProcessorContext context;
-    private AnnotationProcessor<?> processor;
     private OperationsData m;
 
-    private final Set<Modifier> MOD_PUBLIC = Set.of(Modifier.PUBLIC);
     private final Set<Modifier> MOD_PUBLIC_ABSTRACT = Set.of(Modifier.PUBLIC, Modifier.ABSTRACT);
     private final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
-    private final Set<Modifier> MOD_PUBLIC_STATIC_FINAL = Set.of(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
-    private final Set<Modifier> MOD_PUBLIC_STATIC_ABSTRACT = Set.of(Modifier.PUBLIC, Modifier.STATIC, Modifier.ABSTRACT);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
     private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
-    private final Set<Modifier> MOD_PRIVATE = Set.of(Modifier.PRIVATE);
-    private final Set<Modifier> MOD_STATIC = Set.of(Modifier.STATIC);
 
     /**
      * Creates the builder class itself. This class only contains abstract methods, the builder
@@ -95,17 +75,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 CodeExecutableElement metEmit = new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, context.getType(void.class), "emit" + op.name, paramsArr);
                 typBuilder.add(metEmit);
             }
-
-            if (op instanceof Operation.Custom) {
-                Operation.Custom customOp = (Operation.Custom) op;
-                List<CodeTypeElement> genNode = createOperationNode(typBuilder, customOp.instruction);
-                typBuilder.addAll(genNode);
-            }
         }
 
         if (m.hasErrors()) {
-            // throw new RuntimeException(String.join("\n", m.collectMessages().stream().map(x ->
-            // x.getText()).toList()));
             return typBuilder;
         }
 
@@ -133,6 +105,22 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         byteArraySupportType, "LE_BYTES");
         leBytes.createInitBuilder().startStaticCall(byteArraySupportType, "littleEndian").end();
         typBuilderImpl.add(leBytes);
+
+        for (Operation op : m.getOperationsContext().operations) {
+            CodeVariableElement fldId = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(int.class), "OP_" + OperationGeneratorUtils.toScreamCase(op.name));
+            CodeTreeBuilder b = fldId.createInitBuilder();
+            b.string("" + op.id);
+            op.setIdConstantField(fldId);
+            typBuilderImpl.add(fldId);
+        }
+
+        for (Instruction instr : m.getOperationsContext().instructions) {
+            CodeVariableElement fldId = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(int.class), "INSTR_" + OperationGeneratorUtils.toScreamCase(instr.name));
+            CodeTreeBuilder b = fldId.createInitBuilder();
+            b.string("" + instr.id);
+            instr.setOpcodeIdField(fldId);
+            typBuilderImpl.add(fldId);
+        }
 
         CodeTypeElement builderLabelImplType = createBuilderLabelImpl(simpleName + "Label");
         typBuilderImpl.add(builderLabelImplType);
@@ -281,7 +269,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 if (afterChild == null)
                     continue;
 
-                b.startCase().string(parentOp.id + " /* " + parentOp.name + " */").end();
+                b.startCase().variable(parentOp.idConstantField).end();
                 b.startBlock();
 
                 b.tree(afterChild);
@@ -316,7 +304,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 if (afterChild == null)
                     continue;
 
-                b.startCase().string(parentOp.id + " /* " + parentOp.name + " */").end();
+                b.startCase().variable(parentOp.idConstantField).end();
                 b.startBlock();
 
                 b.tree(afterChild);
@@ -365,7 +353,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     b.statement("doBeforeChild()");
 
-                    b.startStatement().startCall(fldTypeStack, "push").string("" + op.id).end(2);
+                    b.startStatement().startCall(fldTypeStack, "push").variable(op.idConstantField).end(2);
                     b.startStatement().startCall(fldChildIndexStack, "push").string("0").end(2);
 
                     vars.arguments = metBegin.getParameters().toArray(new CodeVariableElement[0]);
@@ -395,7 +383,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                     // doAfterChild();
                     CodeTreeBuilder b = metEnd.getBuilder();
 
-                    b.startAssert().startCall(fldTypeStack, "pop").end().string(" == " + op.id).end();
+                    b.startAssert().startCall(fldTypeStack, "pop").end().string(" == ").variable(op.idConstantField).end();
 
                     vars.numChildren = new CodeVariableElement(context.getType(int.class), "numChildren");
                     b.declaration("int", "numChildren", "childIndexStack.pop()");
@@ -421,8 +409,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                             // some non-implicit parameters
                             b.declaration("Object[]", "args", fldArgumentStack.getName() + ".pop()");
                         }
-
-                        int actualParamIndex = 0;
 
                         CodeVariableElement[] varArgs = new CodeVariableElement[argInfo.size()];
                         for (int i = 0; i < argInfo.size(); i++) {
@@ -519,6 +505,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         ExecuteVariables vars = new ExecuteVariables();
+        vars.bytecodeNodeType = builderBytecodeNodeType;
         vars.bc = fldBc;
         vars.consts = fldConsts;
         vars.maxStack = new CodeVariableElement(context.getType(int.class), "maxStack");
@@ -586,7 +573,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startBlock();
 
             for (Instruction op : m.getInstructions()) {
-                b.startCase().string(op.id + " /* " + op.name + " */").end();
+                b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
                 b.tree(op.createExecuteCode(vars));
@@ -599,7 +586,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.end(); // switch block
 
-            b.end().startCatchBlock(context.getType(Throwable.class), "ex");
+            b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
 
             b.startFor().string("int handlerIndex = 0; handlerIndex < " + vars.handlers.getName() + ".length; handlerIndex++").end();
             b.startBlock();
@@ -662,7 +649,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startBlock();
 
             for (Instruction op : m.getInstructions()) {
-                b.startCase().string("" + op.id).end();
+                b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
                 b.statement("sb.append(\"" + op.name + " \")");
@@ -720,14 +707,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startBlock();
 
             for (Instruction op : m.getInstructions()) {
-                b.startCase().string("" + op.id).end();
+                b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
                 b.startStatement();
                 b.startCall("insts", "add");
                 b.startNew(types.InstructionTrace);
 
-                b.string("" + op.id);
+                b.variable(op.opcodeIdField);
                 b.startGroup().variable(fldHitCount).string("[bci]").end();
 
                 int ofs = 1;
@@ -779,129 +766,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return element;
     }
 
-    private List<CodeTypeElement> createOperationNode(CodeTypeElement typEnc, Instruction.Custom instruction) {
-        TypeElement t = instruction.type;
-
-        PackageElement pack = ElementUtils.findPackageElement(t);
-        CodeTypeElement typProxy = new CodeTypeElement(MOD_PUBLIC_STATIC_ABSTRACT, ElementKind.CLASS, pack,
-                        t.getSimpleName() + "Gen");
-
-        typProxy.setSuperClass(types.Node);
-        typProxy.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
-        GeneratorUtils.addGeneratedBy(context, typProxy, t);
-        typProxy.setEnclosingElement(typEnc);
-
-        {
-            TypeMirror retType = instruction.stackPushes > 0 ? context.getType(Object.class) : context.getType(void.class);
-            CodeExecutableElement metExecute = new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, retType, "execute");
-            typProxy.add(metExecute);
-
-            for (int i = 0; i < instruction.stackPops; i++) {
-                CodeVariableElement par;
-                if (i == instruction.stackPops - 1 && instruction.isVarArgs) {
-                    par = new CodeVariableElement(arrayOf(context.getType(Object.class)), "arg" + i);
-                } else {
-                    par = new CodeVariableElement(context.getType(Object.class), "arg" + i);
-                }
-                metExecute.addParameter(par);
-            }
-        }
-
-        for (VariableElement el : ElementFilter.fieldsIn(instruction.type.getEnclosedElements())) {
-            if (el.getModifiers().contains(Modifier.FINAL)) {
-                CodeVariableElement fldProxy = new CodeVariableElement(el.getModifiers(), el.asType(), el.getSimpleName().toString());
-                fldProxy.createInitBuilder().staticReference(el);
-                typProxy.add(fldProxy);
-            }
-        }
-
-        for (ExecutableElement el : ElementFilter.methodsIn(instruction.type.getEnclosedElements())) {
-            CodeExecutableElement metProxy = new CodeExecutableElement(el.getModifiers(), el.getReturnType(),
-                            el.getSimpleName().toString());
-            for (VariableElement par : el.getParameters()) {
-                metProxy.addParameter(par);
-            }
-            for (AnnotationMirror ann : el.getAnnotationMirrors()) {
-                metProxy.addAnnotationMirror(ann);
-            }
-
-            CodeTreeBuilder b = metProxy.getBuilder();
-
-            if (metProxy.getReturnType().getKind() != TypeKind.VOID) {
-                b.startReturn();
-            } else {
-                b.startStatement();
-            }
-
-            b.startStaticCall(el);
-            for (VariableElement par : el.getParameters()) {
-                b.variable(par);
-            }
-            b.end();
-
-            b.end();
-
-            typProxy.add(metProxy);
-        }
-
-        List<CodeTypeElement> result = new ArrayList<>(2);
-        result.add(typProxy);
-
-        NodeParser parser = NodeParser.createDefaultParser();
-        NodeData data = parser.parse(typProxy);
-        if (data == null) {
-            m.addError(t, "Could not generate node data");
-            return List.of(typProxy);
-        }
-
-        data.redirectMessagesOnGeneratedElements(m);
-
-        if (data.hasErrors()) {
-            return List.of(typProxy);
-        }
-
-        NodeCodeGenerator gen = new NodeCodeGenerator();
-        List<CodeTypeElement> genList = gen.create(context, processor, data);
-        if (genList == null) {
-            return List.of(typProxy);
-        }
-        CodeTypeElement genResult = genList.get(0);
-
-        CodeTypeElement genUncached = null;
-
-        for (TypeElement el : ElementFilter.typesIn(genResult.getEnclosedElements())) {
-            if (el.getSimpleName().toString().equals("Uncached")) {
-                genUncached = (CodeTypeElement) el;
-                break;
-            }
-        }
-
-        assert genUncached != null;
-
-        for (VariableElement v : ElementFilter.fieldsIn(genResult.getEnclosedElements())) {
-            if (v.getModifiers().contains(Modifier.STATIC) && !v.getSimpleName().toString().equals("UNCACHED")) {
-                genUncached.add(v);
-            }
-        }
-
-        genUncached.setSimpleName(CodeNames.of(t.getSimpleName() + "Uncached"));
-        GeneratorUtils.addGeneratedBy(context, genUncached, t);
-
-        {
-            CodeVariableElement fldInstance = new CodeVariableElement(MOD_PUBLIC_STATIC_FINAL, genUncached.asType(), "UNCACHED");
-            CodeTreeBuilder b = fldInstance.createInitBuilder();
-            b.startNew(genUncached.asType());
-            b.end();
-            genUncached.add(fldInstance);
-
-            instruction.setUncachedInstance(fldInstance);
-        }
-
-        result.add(genUncached);
-
-        return result;
-    }
-
     private static TypeMirror generic(TypeElement el, TypeMirror... params) {
         return new DeclaredCodeTypeMirror(el, Arrays.asList(params));
     }
@@ -914,7 +778,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     @SuppressWarnings("hiding")
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsData m) {
         this.context = context;
-        this.processor = processor;
         this.m = m;
 
         String simpleName = m.getTemplateType().getSimpleName() + "Builder";
