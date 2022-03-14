@@ -86,9 +86,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * levels</li>
  * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
  * which uses atomic groups, and it is therefore not supported.</li>
- * <li>possessive quantifiers, e.g. a*+: Possessive quantifiers are quantifiers which consume
- * greedily and also do not allow backtracking, so they are another example of the atomic groups
- * that we do not support (a*+ is equivalent to (?>a*)).</li>
  * <li>(?~...) absent expressions: These constructs can be used in Ruby regular expressions to match
  * strings that do not contain a match for a given expression. TRegex doesn't have support for this
  * kind of construction.</li>

@@ -175,14 +175,16 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private static final class Quantifier {
         public static final int INFINITY = -1;
 
-        public int lower;
-        public int upper;
-        public boolean greedy;
+        public final int lower;
+        public final int upper;
+        public final boolean greedy;
+        public final boolean possessive;
 
-        Quantifier(int lower, int upper, boolean greedy) {
+        Quantifier(int lower, int upper, boolean greedy, boolean possessive) {
             this.lower = lower;
             this.upper = upper;
             this.greedy = greedy;
+            this.possessive = possessive;
         }
 
         @Override
@@ -205,6 +207,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
             if (!greedy) {
                 output.append("?");
+            }
+            if (possessive) {
+                output.append("+");
             }
             return output.toString();
         }
@@ -593,6 +598,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private void addDeadNode() {
         if (!silent) {
             astBuilder.addDeadNode();
+        }
+    }
+
+    private void wrapCurTermInAtomicGroup() {
+        if (!silent) {
+            astBuilder.wrapCurTermInAtomicGroup();
         }
     }
 
@@ -2099,6 +2110,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (quantifier != null) {
             if (canHaveQuantifier) {
                 addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
+                if (quantifier.possessive) {
+                    wrapCurTermInAtomicGroup();
+                }
             } else {
                 throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
             }
@@ -2146,7 +2160,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 }
                 return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
                                 upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
-                                greedy);
+                                greedy, false);
             }
         } else {
             int lower;
@@ -2168,12 +2182,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     throw new IllegalStateException("should not reach here");
             }
             boolean greedy = true;
+            boolean possessive = false;
             if (match("?")) {
                 greedy = false;
             } else if (match("+")) {
-                bailOut("possessive quantifiers not supported");
+                possessive = true;
             }
-            return new Quantifier(lower, upper, greedy);
+            return new Quantifier(lower, upper, greedy, possessive);
         }
     }
 

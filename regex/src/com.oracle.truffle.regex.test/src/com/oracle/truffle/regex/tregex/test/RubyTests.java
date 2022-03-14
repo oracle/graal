@@ -466,4 +466,15 @@ public class RubyTests extends RegexTestBase {
         test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
         test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
     }
+
+    @Test
+    public void possessiveQuantifiers() {
+        test("fooA++bar", "", "fooAAAbar", 0, true, 0, 9);
+        test("fooA++Abar", "", "fooAAAbar", 0, false);
+        test("fooA?+Abar", "", "fooAAAbar", 0, false);
+        test("fooA*+Abar", "", "fooAAAbar", 0, false);
+
+        // Intervals cannot be possessive, the + is treated as another quantifier
+        test("foo(A{0,1}+)Abar", "", "fooAAAbar", 0, true, 0, 9, 3, 5);
+    }
 }

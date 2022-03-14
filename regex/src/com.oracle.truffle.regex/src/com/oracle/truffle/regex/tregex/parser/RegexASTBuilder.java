@@ -674,12 +674,22 @@ public final class RegexASTBuilder {
     }
 
     /**
-     * Wraps the current {@link Term} in a non-capturing group. This can be useful when putting
-     * quantifiers on terms which are not {@link QuantifiableTerm}s or when trying to add multiple
-     * quantifiers onto the same term.
+     * Wraps the current {@link Term} in a non-capturing group.
      */
     public void wrapCurTermInGroup() {
         curTerm = wrapTermInGroup(curTerm);
+    }
+
+    /**
+     * Wraps the current {@link Term} in an atomic group. This can be useful when implementing
+     * possessive quantifiers.
+     */
+    public void wrapCurTermInAtomicGroup() {
+        Group atomicGroupContents = wrapTermInGroup(curTerm);
+        AtomicGroup atomicGroup = ast.createAtomicGroup();
+        curSequence.replace(atomicGroupContents.getSeqIndex(), atomicGroup);
+        atomicGroup.setGroup(atomicGroupContents);
+        curTerm = atomicGroup;
     }
 
     /* optimizations */
