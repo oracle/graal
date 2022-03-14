@@ -213,10 +213,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         final WeakReference<Thread> thread;
         LLVMStack stack;
         LLVMPointer localStorage;
+        boolean isFinalized;
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
             this.thread = new WeakReference<>(thread);
+            isFinalized = false;
         }
 
         public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
@@ -258,6 +260,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             LLVMStack tmp = stack;
             this.stack = null;
             return tmp;
+        }
+
+        public void setFinalized() {
+            isFinalized = true;
+        }
+
+        public boolean isFinalized() {
+            return isFinalized;
         }
     }
 
@@ -526,10 +536,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (frame.getArguments()[0] instanceof LLVMPointer) {
-                LLVMPointer store = (LLVMPointer) frame.getArguments()[0];
-                if (store != null) {
-                    freeTLGlobals.execute(store);
+            LLVMThreadLocalValue threadLocalValue = (LLVMThreadLocalValue) frame.getArguments()[0];
+            synchronized (threadLocalValue) {
+                if (!threadLocalValue.isFinalized()) {
+                    for (LLVMPointer section : threadLocalValue.sections) {
+                        if (section != null) {
+                            freeTLGlobals.execute(section);
+                        }
+                    }
+                    threadLocalValue.setFinalized();
                 }
             }
             return null;
@@ -586,6 +601,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (freeThreadLocalGlobalBlock == null) {
             freeThreadLocalGlobalBlock = new FreeThreadLocalGlobalsNode(this, nodeFactory).getCallTarget();
         }
+    }
+
+    public CallTarget getFreeThreadLocalGlobalBlock() {
+        return freeThreadLocalGlobalBlock;
     }
 
     public CallTarget getFreeGlobalBlocks() {
@@ -719,10 +738,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
 
-        // TODO: need to dispose entry in context and free globals
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
-        for (LLVMPointer pointer : threadLocalValue.sections) {
-            freeThreadLocalGlobalBlock.call(pointer);
+        if (!threadLocalValue.isFinalized()) {
+            freeThreadLocalGlobalBlock.call(threadLocalValue);
         }
     }
 
