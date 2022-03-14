@@ -521,18 +521,12 @@ public class ProgressReporter {
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
         l().printLineSeparator();
         printResourceStatistics();
-        l().printLineSeparator();
 
-        l().yellowBold().a("Produced artifacts:").reset().println();
-        generator.getBuildArtifacts().forEach((artifactType, paths) -> {
-            for (Path p : paths) {
-                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
-            }
-        });
-        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
+        Map<ArtifactType, List<Path>> artifacts = generator.getBuildArtifacts();
+        if (!artifacts.isEmpty()) {
+            l().printLineSeparator();
+            printArtifacts(imageName, generator, parsedHostedOptions, artifacts);
         }
-        l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).println();
 
         l().printHeadlineSeparator();
 
@@ -546,6 +540,19 @@ public class ProgressReporter {
         l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
         executor.shutdown();
+    }
+
+    private void printArtifacts(String imageName, NativeImageGenerator generator, OptionValues parsedHostedOptions, Map<ArtifactType, List<Path>> artifacts) {
+        l().yellowBold().a("Produced artifacts:").reset().println();
+        artifacts.forEach((artifactType, paths) -> {
+            for (Path p : paths) {
+                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
+            }
+        });
+        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
+            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
+        }
+        l().a(" ").link(reportBuildArtifacts(imageName, artifacts)).println();
     }
 
     private Path reportImageBuildStatistics(String imageName, BigBang bb) {
