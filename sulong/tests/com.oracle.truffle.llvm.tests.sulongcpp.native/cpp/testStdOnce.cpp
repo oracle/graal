@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,45 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <pthread.h>
 #include <stdio.h>
-#include <graalvm/llvm/polyglot.h>
+#include <pthread.h>
+#include <mutex>
 
-pthread_t threads[3];
+std::once_flag flag;
 
-pthread_t get_self(int i) {
-    pthread_t self = pthread_self();
-    threads[i] = self;
-    return self;
+void *thread(void *arg) {
+    std::call_once(flag, []() { printf("called once\n"); });
+    return 0;
 }
 
-int check_different() {
-    int i, j;
-    for (i = 0; i < 3; i++) {
-        for (j = i + 1; j < 3; j++) {
-            if (threads[i] == threads[j]) {
-                return 0;
-            }
-        }
+int main() {
+    pthread_t threads[5];
+    for (int i = 0; i < 5; i++) {
+        pthread_create(&threads[i], NULL, thread, NULL);
     }
-    return 1;
-}
 
-char buffer[10240];
-
-FILE *open_buffer() {
-    return fmemopen(buffer, sizeof(buffer), "w");
-}
-
-void concurrent_put(FILE *f, int id) {
-    for (int i = 0; i < 20; i++) {
-        fprintf(f, "thread %d %d\n", id, i);
+    for (int i = 0; i < 5; i++) {
+        pthread_join(threads[i], NULL);
     }
-}
 
-void *finalize_buffer(FILE *f) {
-    int length = ftell(f);
-    fclose(f);
-
-    return polyglot_from_string_n(buffer, length, "ASCII");
+    return 0;
 }
