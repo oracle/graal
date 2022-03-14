@@ -31,7 +31,7 @@ concurrency:
 env:
   LANG: en_US.UTF-8
   MX_GIT_CACHE: refcache
-  MX_PYTHON: python3
+  MX_PYTHON: python3.9
   JAVA_HOME: ${{ github.workspace }}/jdk
   JDT: builtin
   MX_PATH: ${{ github.workspace }}/mx
@@ -39,7 +39,7 @@ env:
 jobs:
   build-graalvm:
     name: ${{ matrix.env.JDK }} ${{ matrix.env.GATE }} ${{ matrix.env.PRIMARY }} ${{ matrix.env.WITHOUT_VCS }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +120,10 @@ jobs:
         fetch-depth: 1
         ref: master
         path: ${{ env.MX_PATH }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
     - uses: actions/cache@v1
       with:
         path: ~/.mx
@@ -139,7 +143,7 @@ jobs:
     - name: Style dependencies
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
-        sudo apt install python-pip python-setuptools 
+        sudo apt install python3-pip python-setuptools
         cat common.json |
           jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
           xargs sudo pip install

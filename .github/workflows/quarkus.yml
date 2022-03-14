@@ -19,7 +19,7 @@ env:
   COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
   NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
   MX_GIT_CACHE: refcache
-  MX_PYTHON: python3
+  MX_PYTHON: python3.9
   MX_PATH: ${{ github.workspace }}/mx
   JAVA_HOME: ${{ github.workspace }}/jdk
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
@@ -28,7 +28,7 @@ env:
 jobs:
   build-quarkus-and-graalvm:
     name: Nightly quarkus and GraalVM build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     outputs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
@@ -41,6 +41,10 @@ jobs:
         fetch-depth: 1
         ref: master
         path: ${{ env.MX_PATH }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
     - name: Get latest quarkus release
       run: |
         export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
