@@ -537,14 +537,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         @Override
         public Object execute(VirtualFrame frame) {
             LLVMThreadLocalValue threadLocalValue = (LLVMThreadLocalValue) frame.getArguments()[0];
-            synchronized (threadLocalValue) {
-                if (!threadLocalValue.isFinalized()) {
-                    for (LLVMPointer section : threadLocalValue.sections) {
-                        if (section != null) {
-                            freeTLGlobals.execute(section);
+            if (threadLocalValue != null) {
+                synchronized (threadLocalValue) {
+                    if (!threadLocalValue.isFinalized()) {
+                        for (LLVMPointer section : threadLocalValue.sections) {
+                            if (section != null) {
+                                freeTLGlobals.execute(section);
+                            }
                         }
+                        threadLocalValue.setFinalized();
                     }
-                    threadLocalValue.setFinalized();
                 }
             }
             return null;
