@@ -42,8 +42,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 class EspressoReferenceDrainer implements ContextAccess {
     private final EspressoContext context;
-    private Thread hostToGuestReferenceDrainThread;
-    private ReferenceDrain drain;
+    private volatile Thread hostToGuestReferenceDrainThread;
+    private volatile ReferenceDrain drain;
 
     private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
     private volatile StaticObject referencePendingList = StaticObject.NULL;
@@ -123,9 +123,11 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     void shutdownAndWaitReferenceDrain() throws InterruptedException {
         if (hostToGuestReferenceDrainThread != null) {
-            context.getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
-            hostToGuestReferenceDrainThread.interrupt();
-            hostToGuestReferenceDrainThread.join();
+            while (hostToGuestReferenceDrainThread.isAlive()) {
+                context.getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
+                hostToGuestReferenceDrainThread.interrupt();
+                hostToGuestReferenceDrainThread.join(10);
+            }
         }
     }
 
@@ -226,7 +228,7 @@ class EspressoReferenceDrainer implements ContextAccess {
             try {
                 getVM().attachThread(Thread.currentThread());
                 final StaticObject lock = getGuestLock(meta);
-                while (!Thread.currentThread().isInterrupted()) {
+                for (;;) {
                     drain(meta, lock, true);
                 }
             } finally {
@@ -239,52 +241,51 @@ class EspressoReferenceDrainer implements ContextAccess {
         }
 
         private void drain(Meta meta, StaticObject lock, boolean block) {
-            try {
-                // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
-                // HotSpot's "new behavior": Walk down the list, self-looping the next field
-                // so that the References are not considered active.
-                EspressoReference head;
-                do {
-                    safepoint();
-                    head = popQueue(block);
-                    if (head == null) {
-                        assert !meta.getContext().multiThreadingEnabled();
-                        return;
-                    }
-                } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
-
-                lock.getLock(getContext()).lock();
-                try {
-                    assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
-                    casNextIfNullAndMaybeClear(head);
-
-                    EspressoReference prev = head;
-                    EspressoReference ref;
-                    while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
-                        if (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(ref.getGuestReference()))) {
-                            continue;
-                        }
-                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
-                        casNextIfNullAndMaybeClear(ref);
-                        prev = ref;
-                        safepoint();
-                    }
-
-                    meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                    updateReferencePendingList(head, prev, lock);
-                } finally {
-                    lock.getLock(getContext()).unlock();
+            // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
+            // HotSpot's "new behavior": Walk down the list, self-looping the next field
+            // so that the References are not considered active.
+            EspressoReference head;
+            do {
+                safepoint();
+                head = popQueue(block);
+                if (head == null) {
+                    assert !block;
+                    return;
                 }
-            } catch (InterruptedException | EspressoExitException e) {
-                // Expected from context closing.
-                return;
+            } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
+
+            lock.getLock(getContext()).lock();
+            try {
+                assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
+                casNextIfNullAndMaybeClear(head);
+
+                EspressoReference prev = head;
+                EspressoReference ref;
+                while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
+                    if (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(ref.getGuestReference()))) {
+                        continue;
+                    }
+                    meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                    casNextIfNullAndMaybeClear(ref);
+                    prev = ref;
+                    safepoint();
+                }
+
+                meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                updateReferencePendingList(head, prev, lock);
+            } finally {
+                lock.getLock(getContext()).unlock();
             }
         }
 
         @TruffleBoundary
-        private EspressoReference popQueue(boolean block) throws InterruptedException {
+        private EspressoReference popQueue(boolean block) {
             if (block) {
-                return (EspressoReference) referenceQueue.remove();
+                EspressoReference[] box = new EspressoReference[1];
+                TruffleSafepoint.setBlockedThreadInterruptible(profiler, (queue) -> {
+                    box[0] = (EspressoReference) queue.remove();
+                }, referenceQueue);
+                return box[0];
             } else {
                 return (EspressoReference) referenceQueue.poll();
             }
