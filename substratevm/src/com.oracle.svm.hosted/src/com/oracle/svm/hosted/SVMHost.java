@@ -657,12 +657,11 @@ public class SVMHost extends HostVM {
             return true;
         }
 
-        List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
-        if (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method))) {
-            return true;
+        if (!SubstrateOptions.NeverInline.hasBeenSet()) {
+            return false;
         }
 
-        return false;
+        return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
     }
 
     private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl();
