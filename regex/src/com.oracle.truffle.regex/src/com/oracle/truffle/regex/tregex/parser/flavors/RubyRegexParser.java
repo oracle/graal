@@ -45,12 +45,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
@@ -296,16 +294,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private final Deque<Group> groupStack;
     /**
-     * A map from names of capture groups to their indices. Is null if the pattern contained no
-     * named capture groups so far.
+     * A map from names of capture groups to their indices. Is null if the pattern contains no named
+     * capture groups.
      */
-    private Map<String, Integer> namedCaptureGroups;
-    /**
-     * A set of capture groups names which occur repeatedly in the expression. Backreferences to
-     * such capture groups can refer to either of the homonymous capture groups, depending on which
-     * of them matched most recently. Such backreferences are not supported in TRegex.
-     */
-    private Set<String> ambiguousCaptureGroups;
+    private Map<String, List<Integer>> namedCaptureGroups;
 
     /**
      * The number of capture groups encountered in the input pattern so far, i.e. the (zero-based)
@@ -374,7 +366,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         this.lookbehindDepth = 0;
         this.groupStack = new ArrayDeque<>();
         this.namedCaptureGroups = null;
-        this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
         this.canHaveQuantifier = false;
         this.hasSubexpressionCalls = false;
@@ -391,8 +382,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     @Override
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return namedCaptureGroups;
+    public AbstractRegexObject getNamedCaptureGroups() {
+        return AbstractRegexObject.createNamedCaptureGroupMapListInt(namedCaptureGroups);
     }
 
     @Override
@@ -658,7 +649,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                             // skip contents of group name (which might contain syntax chars)
                             int c = consumeChar();
                             if (match("<")) {
-                                parseGroupReference('>', true, true, c == 'k', true);
+                                parseGroupReference('>', true, true, c == 'k', false);
                             }
                             break;
                         default:
@@ -692,21 +683,18 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                                 String groupName = parseGroupName('>');
                                 if (namedCaptureGroups == null) {
                                     namedCaptureGroups = new HashMap<>();
-                                    ambiguousCaptureGroups = new HashSet<>();
                                     numberOfCaptureGroups = 0;
                                 }
-                                if (namedCaptureGroups.containsKey(groupName)) {
-                                    ambiguousCaptureGroups.add(groupName);
-                                }
                                 numberOfCaptureGroups++;
-                                namedCaptureGroups.put(groupName, numberOfCaptureGroups);
+                                namedCaptureGroups.computeIfAbsent(groupName, k -> new ArrayList<>());
+                                namedCaptureGroups.get(groupName).add(numberOfCaptureGroups);
                             } else if (match("(")) {
                                 if (match("<")) {
-                                    parseGroupReference('>', true, true, true, true);
+                                    parseGroupReference('>', true, true, true, false);
                                 } else if (match("'")) {
-                                    parseGroupReference('\'', true, true, true, true);
+                                    parseGroupReference('\'', true, true, true, false);
                                 } else if (isDecDigit(curChar())) {
-                                    parseGroupReference(')', true, false, true, true);
+                                    parseGroupReference(')', true, false, true, false);
                                 }
                             }
                         } else {
@@ -1395,17 +1383,20 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private boolean namedBackreference() {
         if (match("k<")) {
-            int groupNumber = parseGroupReference('>', true, true, true, false);
-            buildBackreference(groupNumber);
+            int nameStart = position;
+            List<Integer> groupNumbers = parseGroupReference('>', true, true, true, true);
+            int nameEnd = position - 1;
+            // named references cannot point forward, so filter out reference > groupIndex
+            buildNamedBackreference(groupNumbers.stream().filter(groupNumber -> groupNumber <= groupIndex).toArray(n -> new Integer[n]), inPattern.substring(nameStart, nameEnd));
             return true;
         } else {
             return false;
         }
     }
 
-    private int parseGroupReference(char terminator, boolean allowNumeric, boolean allowNamed, boolean allowLevels, boolean ignoreUnresolved) {
+    private List<Integer> parseGroupReference(char terminator, boolean allowNumeric, boolean allowNamed, boolean allowLevels, boolean resolveReference) {
         String groupName;
-        int groupNumber;
+        List<Integer> groupNumbers = null;
         int beginPos = position;
         if (curChar() == '-' || isDecDigit(curChar())) {
             if (!allowNumeric) {
@@ -1413,19 +1404,24 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
             int sign = match("-") ? -1 : 1;
             groupName = getMany(RubyRegexParser::isDecDigit);
+            int groupNumber;
             try {
                 groupNumber = sign * Integer.parseInt(groupName);
-                if (groupNumber < 0) {
-                    groupNumber = numberOfCaptureGroups() + 1 + groupNumber;
-                }
             } catch (NumberFormatException e) {
                 throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
+            }
+            if (groupNumber < 0) {
+                groupNumber = numberOfCaptureGroups() + 1 + groupNumber;
             }
             if (containsNamedCaptureGroups()) {
                 throw syntaxErrorAt(RbErrorMessages.NUMBERED_BACKREF_CALL_IS_NOT_ALLOWED, beginPos);
             }
-            if (!ignoreUnresolved && (groupNumber <= 0 || groupNumber > numberOfCaptureGroups())) {
-                throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(groupName), beginPos);
+            if (resolveReference) {
+                if (groupNumber <= 0 || groupNumber > numberOfCaptureGroups()) {
+                    throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(groupName), beginPos);
+                }
+                groupNumbers = new ArrayList<>(1);
+                groupNumbers.add(groupNumber);
             }
         } else {
             if (!allowNamed) {
@@ -1441,17 +1437,11 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             if (groupName.isEmpty()) {
                 throw syntaxErrorAt(RbErrorMessages.MISSING_GROUP_NAME, beginPos);
             }
-            if (namedCaptureGroups == null || !namedCaptureGroups.containsKey(groupName)) {
-                if (ignoreUnresolved) {
-                    groupNumber = -1;
-                } else {
+            if (resolveReference) {
+                if (namedCaptureGroups == null || !namedCaptureGroups.containsKey(groupName)) {
                     throw syntaxErrorAt(RbErrorMessages.unknownGroupName(groupName), beginPos);
                 }
-            } else {
-                if (ambiguousCaptureGroups.contains(groupName)) {
-                    bailOut("backreferences to multiple homonymous named capture groups are not supported");
-                }
-                groupNumber = namedCaptureGroups.get(groupName);
+                groupNumbers = namedCaptureGroups.get(groupName);
             }
         }
         if (allowLevels && (curChar() == '+' || curChar() == '-')) {
@@ -1468,7 +1458,23 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (lookbehindDepth > 0) {
             throw syntaxErrorAt(RbErrorMessages.INVALID_PATTERN_IN_LOOK_BEHIND, beginPos);
         }
-        return groupNumber;
+        return groupNumbers;
+    }
+
+    private void buildNamedBackreference(Integer[] groupNumbers, String name) {
+        if (groupNumbers.length == 0) {
+            throw syntaxErrorHere(RbErrorMessages.undefinedReference(name));
+        } else if (groupNumbers.length == 1) {
+            buildBackreference(groupNumbers[0]);
+        } else {
+            pushGroup();
+            buildBackreference(groupNumbers[groupNumbers.length - 1]);
+            for (int i = groupNumbers.length - 2; i >= 0; i--) {
+                nextSequence();
+                buildBackreference(groupNumbers[i]);
+            }
+            popGroup();
+        }
     }
 
     private void buildBackreference(int groupNumber) {
@@ -1563,8 +1569,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private boolean subexpressionCall() {
         if (match("g<")) {
-            int targetGroup = parseGroupReference('>', true, true, false, false);
-            addSubexpressionCall(targetGroup);
+            int nameStart = position;
+            List<Integer> targetGroups = parseGroupReference('>', true, true, false, true);
+            int nameEnd = position - 1;
+            if (targetGroups.size() > 1) {
+                throw syntaxErrorHere(RbErrorMessages.multiplexCall(inPattern.substring(nameStart, nameEnd)));
+            }
+            addSubexpressionCall(targetGroups.get(0));
             hasSubexpressionCalls = true;
             return true;
         } else {
@@ -2396,13 +2407,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private void conditionalBackreference() {
         bailOut("conditional backreference groups not supported");
         if (match("<")) {
-            parseGroupReference('>', true, true, true, false);
+            parseGroupReference('>', true, true, true, true);
             mustMatch(")");
         } else if (match("'")) {
-            parseGroupReference('\'', true, true, true, false);
+            parseGroupReference('\'', true, true, true, true);
             mustMatch(")");
         } else if (isDecDigit(curChar())) {
-            parseGroupReference(')', true, false, true, false);
+            parseGroupReference(')', true, false, true, true);
         } else {
             throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
         }

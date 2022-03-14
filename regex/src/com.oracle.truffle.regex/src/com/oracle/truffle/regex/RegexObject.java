@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -71,10 +69,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
-import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
-import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
@@ -108,6 +103,10 @@ import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
  * The return value is a {@link RegexResult}. The contents of the {@code exec} can be compiled
  * lazily and so its first invocation might involve a longer delay as the regular expression is
  * compiled on the fly.
+ * <li>{@link TruffleObject} {@code groups}: a map from names of capture groups to their indices. If
+ * the flavor of regular expressions allows homonymous capture groups (as Ruby does), then the
+ * values of this map will be lists of indices. If the regular expression has no capture groups,
+ * this will be a Truffle null value.</li>
  * <li>{@code boolean isBacktracking}: whether or not matching with this regular expression will use
  * backtracking when matching, which could result in an exponential runtime in the worst case
  * scenario</li>
@@ -136,12 +135,12 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @CompilationFinal private RegexRootNode execBooleanRootNode;
     private final boolean backtracking;
 
-    public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
+    public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, AbstractRegexObject namedCaptureGroups) {
         this.language = execNode.getRegexLanguage();
         this.source = source;
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
-        this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
+        this.namedCaptureGroups = namedCaptureGroups;
         RegexRootNode rootNode = new RegexRootNode(execNode.getRegexLanguage(), execNode);
         if (execNode.isBooleanMatch()) {
             this.execBooleanRootNode = rootNode;
@@ -149,14 +148,6 @@ public final class RegexObject extends AbstractConstantKeysObject {
             this.execRootNode = rootNode;
         }
         this.backtracking = execNode.isBacktracking();
-    }
-
-    @TruffleBoundary
-    private static AbstractRegexObject createNamedCaptureGroupMap(Map<String, Integer> namedCaptureGroups) {
-        if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
-            return TruffleSmallReadOnlyStringToIntMap.create(namedCaptureGroups);
-        }
-        return new TruffleReadOnlyMap(namedCaptureGroups);
     }
 
     public RegexSource getSource() {

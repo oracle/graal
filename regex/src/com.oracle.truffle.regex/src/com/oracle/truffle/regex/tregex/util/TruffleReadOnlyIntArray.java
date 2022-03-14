@@ -38,37 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser;
+package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractRegexObject;
-import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
-public interface RegexParser {
+import java.util.Arrays;
 
-    /**
-     * Runs the parser and produces an AST.
-     *
-     * @throws RegexSyntaxException when the pattern or the flags are not well-formed
-     * @throws UnsupportedRegexException when the pattern cannot be translated to an equivalent
-     *             ECMAScript pattern
-     */
-    RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException;
+@ExportLibrary(InteropLibrary.class)
+public class TruffleReadOnlyIntArray extends AbstractRegexObject {
 
-    /**
-     * Returns a {@link TruffleObject} representing the compilation flags which were set for the
-     * regular expression. The returned object responds to 'READ' messages on names which correspond
-     * to the names of the flags as used in the language from which the flavor originates. This
-     * method has to be called after calling {@link #parse}.
-     */
-    AbstractRegexObject getFlags();
+    @CompilationFinal(dimensions = 1) private final int[] array;
 
-    /**
-     * Returns a map from the names of capture groups to their indices. If the regular expression
-     * had no named capture groups, returns null. This method has to be called after calling
-     * {@link #parse}.
-     */
-    AbstractRegexObject getNamedCaptureGroups();
+    public TruffleReadOnlyIntArray(int[] array) {
+        this.array = array;
+    }
+
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < array.length;
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return array.length;
+    }
+
+    @ExportMessage
+    int readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return array[(int) index];
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "TRegexReadOnlyIntArray{" + "array=" + Arrays.toString(array) + '}';
+    }
 }

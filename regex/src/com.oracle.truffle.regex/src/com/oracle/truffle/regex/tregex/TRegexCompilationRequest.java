@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import java.util.Map;
 import java.util.StringJoiner;
 import java.util.logging.Level;
 
@@ -99,7 +98,7 @@ public final class TRegexCompilationRequest {
     private final RegexSource source;
     private RegexAST ast = null;
     private AbstractRegexObject flags = null;
-    private Map<String, Integer> namedCaptureGroups = null;
+    private AbstractRegexObject namedCaptureGroups = null;
     private PureNFAMap pureNFA = null;
     private NFA nfa = null;
     private NFA traceFinderNFA = null;
@@ -137,7 +136,7 @@ public final class TRegexCompilationRequest {
         return flags;
     }
 
-    public Map<String, Integer> getNamedCaptureGroups() {
+    public AbstractRegexObject getNamedCaptureGroups() {
         return namedCaptureGroups;
     }
 

@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
@@ -54,8 +55,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-
-import java.util.Map;
 
 public final class JSRegexParser implements RegexParser {
 
@@ -92,8 +91,8 @@ public final class JSRegexParser implements RegexParser {
     }
 
     @Override
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return lexer.getNamedCaptureGroups();
+    public AbstractRegexObject getNamedCaptureGroups() {
+        return AbstractRegexObject.createNamedCaptureGroupMapInt(lexer.getNamedCaptureGroups());
     }
 
     @Override

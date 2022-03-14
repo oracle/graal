@@ -368,8 +368,8 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
     }
 
     @Override
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return namedCaptureGroups;
+    public AbstractRegexObject getNamedCaptureGroups() {
+        return AbstractRegexObject.createNamedCaptureGroupMapInt(namedCaptureGroups);
     }
 
     @Override

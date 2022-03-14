@@ -94,6 +94,16 @@ public interface RbErrorMessages {
     }
 
     @TruffleBoundary
+    static String multiplexCall(String name) {
+        return "multiplex definition name <" + name + "> call";
+    }
+
+    @TruffleBoundary
+    static String undefinedReference(String name) {
+        return "undefined name <" + name + "> reference";
+    }
+
+    @TruffleBoundary
     static String unknownExtension(int c) {
         return "unknown extension ?" + new String(Character.toChars(c));
     }

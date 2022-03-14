@@ -68,11 +68,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * state so that it deletes any characters matched so far and considers the current position as the
  * start of the reported match. There is no operator like this in ECMAScript that would allow one to
  * tinker with the matcher's state.</li>
- * <li>backreferences to named capture groups with the same name: Ruby admits regular expressions
- * with named capture groups that share the same name. These situations can't be handled by
- * replacing those capture groups with regular numbered capture groups and then mapping the capture
- * group names to lists of capture group indices as we wouldn't know which of the homonymous capture
- * groups was matched last and therefore which value should be used.</li>
  * <li>Unicode character properties not supported by ECMAScript and not covered by the POSIX
  * character classes: Ruby regular expressions use the syntax \p{...} for Unicode character
  * properties. Similar to ECMAScript, they offer access to Unicode Scripts, General Categories and
