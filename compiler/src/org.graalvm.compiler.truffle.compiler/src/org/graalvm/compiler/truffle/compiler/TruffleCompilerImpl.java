@@ -116,7 +116,6 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
@@ -130,7 +129,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     private volatile ExpansionStatistics expansionStatistics;
     private volatile boolean expansionStatisticsInitialized;
     private volatile boolean initialized;
-    TruffleTier truffleTier;
+    // Effectivelly final, but initialized in #initialize
+    private TruffleTier truffleTier;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -327,7 +327,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     // Hook for SVM
     protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
-                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.config.snippetReflection(), partialEvaluator.getInstrumentation()),
+                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
                         new PostPartialEvaluationSuite(options.get(IterativePartialEscape)));
     }
 
@@ -545,6 +545,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         try (DebugCloseable a = PartialEvaluationTime.start(debug);
                         DebugCloseable c = PartialEvaluationMemUse.start(debug);
                         PerformanceInformationHandler handler = PerformanceInformationHandler.install(wrapper.options)) {
+            /*
+             * TODO GR-37097 Merge TruffleTierConfiguration and TruffleCompilationWrapper so that
+             * there is one place where compilation data lives
+             */
             TruffleTierContext context = new TruffleTierContext(partialEvaluator, wrapper, debug, handler);
             try (Scope s = context.debug.scope("CreateGraph", context.graph);
                             Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {

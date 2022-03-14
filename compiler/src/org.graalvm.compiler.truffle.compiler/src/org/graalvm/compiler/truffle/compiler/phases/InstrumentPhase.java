@@ -63,7 +63,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
-// TODO: make sure the subclasses of this are thread-safe
 public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
 
     private static boolean checkMethodExists(String declaringClassName, String methodName) {

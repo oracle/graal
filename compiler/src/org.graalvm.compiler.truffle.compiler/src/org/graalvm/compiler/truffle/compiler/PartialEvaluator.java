@@ -92,7 +92,8 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 public abstract class PartialEvaluator {
 
     // Configs
-    public final TruffleCompilerConfiguration config;
+    protected final TruffleCompilerConfiguration config;
+    // TODO GR-37097 Move to TruffleCompilerImpl
     volatile GraphBuilderConfiguration configForParsing;
     // Methods
     final ResolvedJavaMethod callDirectMethod;
@@ -112,6 +113,7 @@ public abstract class PartialEvaluator {
      * Holds instrumentation options initialized in {@link #initialize(OptionValues)} method before
      * the first compilation. These options are not engine aware.
      */
+    // TODO GR-37097 Move to TruffleCompilerImpl
     public volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
     /**
      * The instrumentation object is used by the Truffle instrumentation to count executions. The
@@ -119,6 +121,7 @@ public abstract class PartialEvaluator {
      * options, and tests that need the instrumentation table need to override these options after
      * the TruffleRuntime object is created.
      */
+    // TODO GR-37097 Move to TruffleCompilerImpl
     protected volatile InstrumentPhase.Instrumentation instrumentation;
     protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
 

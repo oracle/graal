@@ -79,7 +79,8 @@ public final class TruffleTierContext extends HighTierContext {
     }
 
     public TruffleTierContext(PartialEvaluator partialEvaluator, TruffleCompilerImpl.TruffleCompilationWrapper wrapper, DebugContext debug, PerformanceInformationHandler handler) {
-        this(partialEvaluator, wrapper.options, debug, wrapper.compilable, partialEvaluator.rootForCallTarget(wrapper.compilable), wrapper.compilationId, getSpeculationLog(wrapper), wrapper.task, handler);
+        this(partialEvaluator, wrapper.options, debug, wrapper.compilable, partialEvaluator.rootForCallTarget(wrapper.compilable), wrapper.compilationId, getSpeculationLog(wrapper), wrapper.task,
+                        handler);
     }
 
     public boolean isFirstTier() {
