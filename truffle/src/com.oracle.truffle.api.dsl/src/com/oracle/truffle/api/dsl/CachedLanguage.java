@@ -52,7 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
  * @deprecated in 21.3, use static final language references instead. See {@link LanguageReference}
  *             for the new intended usage.
  */
-@Deprecated
+@Deprecated(since = "21.3")
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface CachedLanguage {

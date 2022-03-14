@@ -85,7 +85,7 @@ public abstract class Message {
      * @since 19.0
      * @deprecated Use {@link #Message(Class, String, int, Class, Class[])}.
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     protected Message(Class<? extends Library> libraryClass, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
         this(libraryClass, -1, messageName, returnType, parameterTypes);
     }

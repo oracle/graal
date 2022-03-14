@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -643,7 +643,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link LanguageReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     @SuppressWarnings({"unchecked", "rawtypes"})
     @TruffleBoundary
     protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
@@ -687,7 +687,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link LanguageReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {

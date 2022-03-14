@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ import com.oracle.truffle.api.object.Shape.Allocator;
  * @since 0.8 or earlier
  * @deprecated since 21.1. Use {@link Shape.Builder} instead.
  */
-@Deprecated
+@Deprecated(since = "21.1")
 public abstract class Layout {
     /** @since 0.8 or earlier */
     public static final String OPTION_PREFIX = "truffle.object.";
@@ -86,7 +86,7 @@ public abstract class Layout {
      * @deprecated since 21.1. Use {@link Shape.Builder#allowImplicitCastIntToDouble(boolean)} and
      *             {@link Shape.Builder#allowImplicitCastIntToLong(boolean)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public enum ImplicitCast {
         /**
          * Enables values be implicitly cast from int to double.
@@ -109,7 +109,7 @@ public abstract class Layout {
      * @since 0.8 or earlier
      * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public static Builder newLayout() {
         CompilerAsserts.neverPartOfCompilation();
         return new Builder();
@@ -122,7 +122,7 @@ public abstract class Layout {
      * @since 0.8 or earlier
      * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public static Layout createLayout() {
         return newLayout().build();
     }
@@ -131,7 +131,7 @@ public abstract class Layout {
      * @since 0.8 or earlier
      * @deprecated use {@link Shape#newInstance()} instead
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract DynamicObject newInstance(Shape shape);
 
     /** @since 0.8 or earlier */
@@ -226,7 +226,7 @@ public abstract class Layout {
      * @since 0.8 or earlier
      * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
         private boolean polymorphicUnboxing;
@@ -278,7 +278,7 @@ public abstract class Layout {
          * @since 0.8 or earlier
          * @deprecated unsupported, has no effect
          */
-        @Deprecated
+        @Deprecated(since = "20.2")
         public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {
             this.polymorphicUnboxing = polymorphicUnboxing;
             return this;
