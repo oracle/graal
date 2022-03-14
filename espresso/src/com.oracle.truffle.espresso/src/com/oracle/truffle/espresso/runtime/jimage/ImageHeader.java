@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,6 @@ package com.oracle.truffle.espresso.runtime.jimage;
 import java.nio.IntBuffer;
 import java.util.Objects;
 
-/**
- * @implNote This class needs to maintain JDK 8 source compatibility.
- *
- *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
- *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
- *           the shipped JDK by tools running on JDK 8.
- */
 public final class ImageHeader {
     public static final int MAGIC = 0xCAFEDADA;
     public static final int MAJOR_VERSION = 1;

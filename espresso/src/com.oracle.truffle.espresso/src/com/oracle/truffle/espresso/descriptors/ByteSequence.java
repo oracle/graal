@@ -91,7 +91,7 @@ public abstract class ByteSequence {
     public static ByteSequence from(ByteBuffer buffer) {
         int length = buffer.remaining();
         if (buffer.hasArray()) {
-            int offset = buffer.position();
+            int offset = buffer.position() + buffer.arrayOffset();
             byte[] array = buffer.array();
             return wrap(array, offset, length);
         } else {
