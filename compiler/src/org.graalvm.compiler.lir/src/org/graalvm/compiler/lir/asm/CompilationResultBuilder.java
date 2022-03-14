@@ -32,7 +32,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -159,9 +158,6 @@ public class CompilationResultBuilder {
     private final DebugContext debug;
     private final EconomicMap<Constant, Data> dataCache;
 
-    private Consumer<LIRInstruction> beforeOp;
-    private Consumer<LIRInstruction> afterOp;
-
     /**
      * These position maps are used for estimating offsets of forward branches. Used for
      * architectures where certain branch instructions have limited displacement such as ARM tbz.
@@ -240,12 +236,22 @@ public class CompilationResultBuilder {
         compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
     }
 
-    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId id) {
-        CompilationResult.CodeMark mark = compilationResult.recordMark(asm.position(), id);
-        if (currentCallContext != null) {
-            currentCallContext.recordMark(mark);
-        }
-        return mark;
+    /**
+     * Associates {@code markId} with position {@code codePos} in the compilation result.
+     *
+     * @return the recorded entry for the mark
+     */
+    public CompilationResult.CodeMark recordMark(int codePos, CompilationResult.MarkId markId) {
+        return compilationResult.recordMark(codePos, markId);
+    }
+
+    /**
+     * Associates {@code markId} with the current assembler position in the compilation result.
+     *
+     * @return the recorded entry for the mark
+     */
+    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId markId) {
+        return recordMark(asm.position(), markId);
     }
 
     public void blockComment(String s) {
@@ -322,12 +328,9 @@ public class CompilationResultBuilder {
         return false;
     }
 
-    public void recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
+    public Call recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        Call call = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
-        if (currentCallContext != null) {
-            currentCallContext.recordCall(call);
-        }
+        return compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
@@ -574,13 +577,7 @@ public class CompilationResultBuilder {
             }
 
             try {
-                if (beforeOp != null) {
-                    beforeOp.accept(op);
-                }
                 emitOp(op);
-                if (afterOp != null) {
-                    afterOp.accept(op);
-                }
             } catch (GraalError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
@@ -634,11 +631,6 @@ public class CompilationResultBuilder {
         }
         lir = null;
         currentBlockIndex = 0;
-    }
-
-    public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
-        this.beforeOp = beforeOp;
-        this.afterOp = afterOp;
     }
 
     public OptionValues getOptions() {
@@ -712,40 +704,6 @@ public class CompilationResultBuilder {
             }
         }
         return false;
-    }
-
-    private CallContext currentCallContext;
-
-    public final class CallContext implements AutoCloseable {
-        private CompilationResult.CodeMark mark;
-        private Call call;
-
-        @Override
-        public void close() {
-            currentCallContext = null;
-            compilationResult.recordCallContext(mark, call);
-        }
-
-        void recordCall(Call c) {
-            assert this.call == null : "Recording call twice";
-            this.call = c;
-        }
-
-        void recordMark(CompilationResult.CodeMark m) {
-            assert this.mark == null : "Recording mark twice";
-            this.mark = m;
-        }
-    }
-
-    public CallContext openCallContext(boolean direct) {
-        if (currentCallContext != null) {
-            throw GraalError.shouldNotReachHere("Call context already open");
-        }
-        // Currently only AOT requires call context information and only for direct calls.
-        if (compilationResult.isImmutablePIC() && direct) {
-            currentCallContext = new CallContext();
-        }
-        return currentCallContext;
     }
 
     public void setNeedsMHDeoptHandler() {

@@ -43,6 +43,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -397,49 +398,89 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
-     * Emit a direct call to a fixed address, which will be patched later during code installation.
+     * Emits alignment before a direct call to a fixed address. The alignment consists of two parts:
+     * 1) when {@code align} is true, the fixed address, i.e., the displacement of the call
+     * instruction, should be aligned to 4 bytes; 2) when {@code useBranchesWithin32ByteBoundary} is
+     * true, the call instruction should be aligned with 32-bytes boundary.
      *
-     * @param align indicates whether the displacement bytes (offset by
-     *            {@code callDisplacementOffset}) of this call instruction should be aligned to
-     *            {@code wordSize}.
-     * @return where the actual call instruction starts.
+     * @param prefixInstructionSize size of the additional instruction to be emitted before the call
+     *            instruction. This is used in HotSpot inline cache convention where a movq
+     *            instruction of the cached receiver type to {@code rax} register must be emitted
+     *            before the call instruction.
      */
-    public final int directCall(boolean align, int callDisplacementOffset, int wordSize) {
-        emitAlignmentForDirectCall(align, callDisplacementOffset, wordSize);
-        testAndAlign(5);
-        // After padding to mitigate JCC erratum, the displacement may be unaligned again. The
-        // previous pass is essential because JCC erratum padding may not trigger without the
-        // displacement alignment.
-        emitAlignmentForDirectCall(align, callDisplacementOffset, wordSize);
-        int beforeCall = position();
-        call();
-        return beforeCall;
+    public void alignBeforeCall(boolean align, int prefixInstructionSize) {
+        emitAlignmentForDirectCall(align, prefixInstructionSize);
+        if (mitigateJCCErratum(position() + prefixInstructionSize, 5) != 0) {
+            // If JCC erratum padding was emitted, the displacement may be unaligned again. The
+            // first call to emitAlignmentForDirectCall is essential as it may trigger the
+            // JCC erratum padding.
+            emitAlignmentForDirectCall(align, prefixInstructionSize);
+        }
     }
 
-    private void emitAlignmentForDirectCall(boolean align, int callDisplacementOffset, int wordSize) {
+    private void emitAlignmentForDirectCall(boolean align, int additionalInstructionSize) {
         if (align) {
-            // make sure that the displacement word of the call ends up word aligned
-            int offset = position();
-            offset += callDisplacementOffset;
-            int modulus = wordSize;
-            if (offset % modulus != 0) {
-                nop(modulus - offset % modulus);
+            // make sure that the 4-byte call displacement will be 4-byte aligned
+            int displacementPos = position() + target.arch.getMachineCodeCallDisplacementOffset() + additionalInstructionSize;
+            if (displacementPos % 4 != 0) {
+                nop(4 - displacementPos % 4);
             }
         }
     }
 
+    private static final int DIRECT_CALL_INSTRUCTION_CODE = 0xE8;
+    private static final int DIRECT_CALL_INSTRUCTION_SIZE = 5;
+
+    /**
+     * Emits an indirect call instruction.
+     */
     public final int indirectCall(Register callReg) {
-        int bytesToEmit = needsRex(callReg) ? 3 : 2;
-        testAndAlign(bytesToEmit);
+        return indirectCall(callReg, false);
+    }
+
+    /**
+     * Emits an indirect call instruction.
+     *
+     * The {@code NativeCall::is_call_before(address pc)} function in HotSpot determines that there
+     * is a direct call instruction whose last byte is at {@code pc - 1} if the byte at
+     * {@code pc - 5} is 0xE8. An indirect call can thus be incorrectly decoded as a direct call if
+     * the preceding instructions match this pattern. To avoid this,
+     * {@code mitigateDecodingAsDirectCall == true} will insert sufficient nops to avoid the false
+     * decoding.
+     *
+     * @return the position of the emitted call instruction
+     */
+    public final int indirectCall(Register callReg, boolean mitigateDecodingAsDirectCall) {
+        int indirectCallSize = needsRex(callReg) ? 3 : 2;
+        int insertedNops = mitigateJCCErratum(indirectCallSize);
+
+        if (mitigateDecodingAsDirectCall) {
+            int indirectCallPos = position();
+            int directCallPos = indirectCallPos - (DIRECT_CALL_INSTRUCTION_SIZE - indirectCallSize);
+            if (directCallPos < 0 || getByte(directCallPos) == DIRECT_CALL_INSTRUCTION_CODE) {
+                // the previous insertedNops bytes can be trusted -- we assume none of our nops
+                // include 0xe8.
+                int prefixNops = DIRECT_CALL_INSTRUCTION_SIZE - indirectCallSize - insertedNops;
+                if (prefixNops > 0) {
+                    nop(prefixNops);
+                }
+            }
+        }
+
         int beforeCall = position();
         call(callReg);
-        assert beforeCall + bytesToEmit == position();
+        assert beforeCall + indirectCallSize == position();
+        if (mitigateDecodingAsDirectCall) {
+            int directCallPos = position() - DIRECT_CALL_INSTRUCTION_SIZE;
+            GraalError.guarantee(directCallPos >= 0 && getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE,
+                            "This indirect call can be decoded as a direct call.");
+        }
         return beforeCall;
     }
 
     public final int directCall(long address, Register scratch) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeCall = position();
         movq(scratch, address);
         call(scratch);
@@ -449,7 +490,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final int directJmp(long address, Register scratch) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
         movq(scratch, address);
         jmpWithoutAlignment(scratch);
@@ -461,16 +502,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private void alignFusedPair(Label branchTarget, boolean isShortJmp, int prevOpInBytes) {
         assert prevOpInBytes < 26 : "Fused pair may be longer than 0x20 bytes.";
         if (branchTarget == null) {
-            testAndAlign(prevOpInBytes + 6);
+            mitigateJCCErratum(prevOpInBytes + 6);
         } else if (isShortJmp) {
-            testAndAlign(prevOpInBytes + 2);
+            mitigateJCCErratum(prevOpInBytes + 2);
         } else if (!branchTarget.isBound()) {
-            testAndAlign(prevOpInBytes + 6);
+            mitigateJCCErratum(prevOpInBytes + 6);
         } else {
             long disp = branchTarget.position() - (position() + prevOpInBytes);
             // assuming short jump first
             if (isByte(disp - 2)) {
-                testAndAlign(prevOpInBytes + 2);
+                mitigateJCCErratum(prevOpInBytes + 2);
                 // After alignment, isByte(disp - shortSize) might not hold. Need to check
                 // again.
                 disp = branchTarget.position() - (position() + prevOpInBytes);
@@ -478,7 +519,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     return;
                 }
             }
-            testAndAlign(prevOpInBytes + 6);
+            mitigateJCCErratum(prevOpInBytes + 6);
         }
     }
 
