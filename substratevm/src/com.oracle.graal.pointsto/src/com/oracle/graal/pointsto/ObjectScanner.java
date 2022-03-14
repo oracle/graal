@@ -159,6 +159,9 @@ public class ObjectScanner {
                 throw AnalysisError.shouldNotReachHere("Could not find field " + field.format("%H.%n") +
                                 (receiver == null ? "" : " on " + constantType(bb, receiver).toJavaName()) +
                                 System.lineSeparator() + backtrace);
+            } else if (fieldValue.getJavaKind() == JavaKind.Illegal) {
+                /* The value is not available yet */
+                return;
             }
 
             if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(constantAsObject(bb, fieldValue))) {

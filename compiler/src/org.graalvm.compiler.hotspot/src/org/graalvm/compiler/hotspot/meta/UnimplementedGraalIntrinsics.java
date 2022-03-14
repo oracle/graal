@@ -307,9 +307,6 @@ public final class UnimplementedGraalIntrinsics {
 
         if (isJDK16OrHigher()) {
             add(toBeInvestigated,
-                            // Added by JDK-8173585: Intrinsify StringLatin1.indexOf(char)
-                            // TODO: Enhance StringLatin1IndexOfNode to support this
-                            "java/lang/StringLatin1.indexOfChar([BIII)I",
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
                             // JDK-8223347: Integration of Vector API (Incubator)

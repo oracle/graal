@@ -86,7 +86,7 @@ public class InteropMapObject implements TruffleObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    void put(String key, Object value) {
+    public void put(String key, Object value) {
         map.put(key, value);
     }
 

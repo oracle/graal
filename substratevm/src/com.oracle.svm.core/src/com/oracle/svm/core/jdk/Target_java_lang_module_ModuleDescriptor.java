@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect;
+package com.oracle.svm.core.jdk;
 
-import java.lang.reflect.Executable;
+import java.lang.module.ModuleDescriptor;
+import java.util.Locale;
+import java.util.Set;
 
-import org.graalvm.collections.Pair;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import com.oracle.svm.core.hub.DynamicHub;
-
-public interface MethodMetadataDecoder {
-    Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
-
-    MethodDescriptor[] getAllReachableMethods();
-
-    long getMetadataByteLength();
-
-    class MethodDescriptor {
-        private final Class<?> declaringClass;
-        private final String name;
-        private final Class<?>[] parameterTypes;
-
-        public MethodDescriptor(Class<?> declaringClass, String name, Class<?>[] parameterTypes) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-            this.parameterTypes = parameterTypes;
+@TargetClass(ModuleDescriptor.class)
+public final class Target_java_lang_module_ModuleDescriptor {
+    /* Substituted to prevent including stream classes in basic images */
+    @Substitute
+    private static <M> String toString(Set<M> mods, String what) {
+        StringBuilder builder = new StringBuilder();
+        for (M mod : mods) {
+            builder.append(mod.toString().toLowerCase(Locale.ROOT));
+            builder.append(" ");
         }
-
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Class<?>[] getParameterTypes() {
-            return parameterTypes;
-        }
+        builder.append(what);
+        return builder.toString();
     }
-
 }

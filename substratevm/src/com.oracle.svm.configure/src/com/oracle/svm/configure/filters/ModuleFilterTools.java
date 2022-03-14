@@ -29,11 +29,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.configure.filters.RuleNode.Inclusion;
+import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
 
 public class ModuleFilterTools {
 
-    public static RuleNode generateFromModules(String[] moduleNames, Inclusion rootInclusion, Inclusion exportedInclusion, Inclusion unexportedInclusion, boolean reduce) {
+    public static HierarchyFilterNode generateFromModules(String[] moduleNames, Inclusion rootInclusion, Inclusion exportedInclusion, Inclusion unexportedInclusion, boolean reduce) {
         Set<String> includedModuleNameSet = new HashSet<>();
         Collections.addAll(includedModuleNameSet, moduleNames);
         for (Module module : ModuleLayer.boot().modules()) {
@@ -41,7 +41,7 @@ public class ModuleFilterTools {
                 checkDependencies(module, includedModuleNameSet);
             }
         }
-        RuleNode rootNode = RuleNode.createRoot();
+        HierarchyFilterNode rootNode = HierarchyFilterNode.createRoot();
         rootNode.addOrGetChildren("**", rootInclusion);
         for (Module module : ModuleLayer.boot().modules()) {
             for (String qualifiedPkg : module.getPackages()) {

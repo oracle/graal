@@ -110,7 +110,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             } else {
                 if (collector.isIncluded(null, relativeFilePath)) {
                     try (InputStream is = Files.newInputStream(entry)) {
-                        collector.addResource(null, relativeFilePath, is);
+                        collector.addResource(null, relativeFilePath, is, false);
                     }
                 }
             }
@@ -127,7 +127,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
         matchedDirectoryResources.forEach((dir, content) -> {
             content.sort(Comparator.naturalOrder());
-            collector.addDirectoryResource(null, dir, String.join(System.lineSeparator(), content));
+            collector.addDirectoryResource(null, dir, String.join(System.lineSeparator(), content), false);
         });
     }
 
@@ -140,12 +140,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     String dirName = entry.getName().substring(0, entry.getName().length() - 1);
                     if (collector.isIncluded(null, dirName)) {
                         // Register the directory with empty content to preserve Java behavior
-                        collector.addDirectoryResource(null, dirName, "");
+                        collector.addDirectoryResource(null, dirName, "", true);
                     }
                 } else {
                     if (collector.isIncluded(null, entry.getName())) {
                         try (InputStream is = jf.getInputStream(entry)) {
-                            collector.addResource(null, entry.getName(), is);
+                            collector.addResource(null, entry.getName(), is, true);
                         }
                     }
                 }

@@ -398,7 +398,12 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
      */
 
     @Delete
+    @TargetElement(onlyWith = Load0With2Args.class)
     private native boolean load0(String name, boolean isBuiltin);
+
+    @Delete
+    @TargetElement(onlyWith = Load0With3Args.class)
+    private native boolean load0(String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete
     private native long findEntry(String name);

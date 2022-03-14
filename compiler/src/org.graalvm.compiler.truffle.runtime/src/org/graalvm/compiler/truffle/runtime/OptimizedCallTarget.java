@@ -200,13 +200,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         @CompilationFinal(dimensions = 1) final Class<?>[] types;
 
         private ArgumentsProfile() {
-            this.assumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            this.assumption = (OptimizedAssumption) Assumption.NEVER_VALID;
             this.types = null;
         }
 
         private ArgumentsProfile(Class<?>[] types, String assumptionName) {
             assert types != null;
-            this.assumption = createValidAssumption(assumptionName);
+            this.assumption = (OptimizedAssumption) Assumption.create(assumptionName);
             this.types = types;
         }
 
@@ -231,13 +231,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         final Class<?> type;
 
         private ReturnProfile() {
-            this.assumption = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.assumption = (OptimizedAssumption) Assumption.NEVER_VALID;
             this.type = null;
         }
 
         private ReturnProfile(Class<?> type) {
             assert type != null;
-            this.assumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.assumption = (OptimizedAssumption) Assumption.create(RETURN_TYPE_ASSUMPTION_NAME);
             this.type = type;
         }
 
@@ -1406,16 +1406,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             return null;
         }
-    }
-
-    private static OptimizedAssumption createInvalidAssumption(String name) {
-        OptimizedAssumption result = createValidAssumption(name);
-        result.invalidate();
-        return result;
-    }
-
-    private static OptimizedAssumption createValidAssumption(String name) {
-        return (OptimizedAssumption) Truffle.getRuntime().createAssumption(name);
     }
 
     /*

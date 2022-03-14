@@ -785,6 +785,15 @@ final class Target_java_lang_ProcessBuilder {
 }
 
 /*
+ * Ensure ProcessBuilder is not reachable through the enclosing class of Redirect.
+ */
+@Delete
+@TargetClass(className = "java.lang.ProcessBuilder", innerClass = "Redirect", onlyWith = {TruffleBaseFeature.IsEnabled.class,
+                TruffleBaseFeature.IsCreateProcessDisabled.class})
+final class Target_java_lang_ProcessBuilder_Redirect {
+}
+
+/*
  * If allowProcess() is disabled at build time, then we ensure ObjdumpDisassemblerProvider does not
  * try to invoke the nonexistent ProcessBuilder.
  */

@@ -26,17 +26,24 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
@@ -81,8 +88,11 @@ import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
@@ -229,28 +239,79 @@ public abstract class NativeImageCodeCache {
             codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
         }
 
-        MethodMetadataEncoder methodMetadataEncoder = ImageSingletons.lookup(MethodMetadataEncoderFactory.class).create(encoders);
-        if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
-            for (Executable queriedMethod : ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods()) {
-                HostedMethod method = imageHeap.getMetaAccess().lookupJavaMethod(queriedMethod);
-                methodMetadataEncoder.addReflectionMethodMetadata(imageHeap.getMetaAccess(), method, queriedMethod);
+        ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
+        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        HostedUniverse hUniverse = imageHeap.getUniverse();
+        HostedMetaAccess hMetaAccess = imageHeap.getMetaAccess();
+
+        Map<Class<?>, Set<Class<?>>> innerClasses = reflectionSupport.getReflectionInnerClasses();
+        Set<?> heapDynamicHubs = reflectionSupport.getHeapDynamicHubs();
+        for (HostedType type : hUniverse.getTypes()) {
+            if (type.getWrapped().isReachable() && heapDynamicHubs.contains(type.getHub())) {
+                Class<?>[] typeInnerClasses = innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]);
+                reflectionMetadataEncoder.addClassMetadata(hMetaAccess, type, typeInnerClasses);
             }
-            for (Object method : ImageSingletons.lookup(RuntimeReflectionSupport.class).getHidingMethods()) {
-                AnalysisMethod hidingMethod = (AnalysisMethod) method;
-                HostedType declaringType = imageHeap.getUniverse().lookup(hidingMethod.getDeclaringClass());
+        }
+
+        Set<HostedField> includedFields = new HashSet<>();
+        Set<HostedMethod> includedMethods = new HashSet<>();
+
+        for (AccessibleObject object : reflectionSupport.getHeapReflectionObjects()) {
+            if (object instanceof Field) {
+                includedFields.add(hMetaAccess.lookupJavaField((Field) object));
+            } else if (object instanceof Method || object instanceof Constructor) {
+                includedMethods.add(hMetaAccess.lookupJavaMethod((Executable) object));
+            }
+            reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object);
+        }
+
+        for (Field reflectField : reflectionSupport.getReflectionFields()) {
+            HostedField field = hMetaAccess.lookupJavaField(reflectField);
+            if (!includedFields.contains(field)) {
+                reflectionMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, field, reflectField);
+                includedFields.add(field);
+            }
+        }
+
+        for (Executable reflectMethod : reflectionSupport.getReflectionExecutables()) {
+            HostedMethod method = hMetaAccess.lookupJavaMethod(reflectMethod);
+            if (!includedMethods.contains(method)) {
+                Object accessor = reflectionSupport.getAccessor(reflectMethod);
+                reflectionMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
+                includedMethods.add(method);
+            }
+        }
+
+        for (Object method : reflectionSupport.getHidingReflectionMethods()) {
+            AnalysisMethod hidingMethod = (AnalysisMethod) method;
+            HostedMethod hostedMethod = hUniverse.optionalLookup(hidingMethod);
+            if (hostedMethod == null || !includedMethods.contains(hostedMethod)) {
+                HostedType declaringType = hUniverse.lookup(hidingMethod.getDeclaringClass());
                 String name = hidingMethod.getName();
                 JavaType[] analysisParameterTypes = hidingMethod.getSignature().toParameterTypes(null);
                 HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
                 for (int i = 0; i < analysisParameterTypes.length; ++i) {
-                    parameterTypes[i] = imageHeap.getUniverse().lookup(analysisParameterTypes[i]);
+                    parameterTypes[i] = hUniverse.lookup(analysisParameterTypes[i]);
                 }
-                methodMetadataEncoder.addHidingMethodMetadata(declaringType, name, parameterTypes);
+                int modifiers = hidingMethod.getModifiers();
+                HostedType returnType = hUniverse.lookup(hidingMethod.getSignature().getReturnType(null));
+                reflectionMetadataEncoder.addHidingMethodMetadata(hidingMethod, declaringType, name, parameterTypes, modifiers, returnType);
+                if (hostedMethod != null) {
+                    includedMethods.add(hostedMethod);
+                }
             }
         }
+
         if (SubstrateOptions.IncludeMethodData.getValue()) {
-            for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
-                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod()) {
-                    methodMetadataEncoder.addReachableMethodMetadata(method);
+            for (HostedField field : hUniverse.getFields()) {
+                if (field.isAccessed() && !includedFields.contains(field)) {
+                    reflectionMetadataEncoder.addReachableFieldMetadata(field);
+                }
+            }
+
+            for (HostedMethod method : hUniverse.getMethods()) {
+                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod() && !includedMethods.contains(method)) {
+                    reflectionMetadataEncoder.addReachableExecutableMetadata(method);
                 }
             }
         }
@@ -262,7 +323,7 @@ public abstract class NativeImageCodeCache {
 
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
-        methodMetadataEncoder.encodeAllAndInstall();
+        reflectionMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
@@ -554,17 +615,35 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public interface MethodMetadataEncoder {
-        void addReflectionMethodMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod);
+    public interface ReflectionMetadataEncoder {
+        void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] reflectionClasses);
 
-        void addHidingMethodMetadata(HostedType declType, String name, HostedType[] paramTypes);
+        void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, Field reflectField);
 
-        void addReachableMethodMetadata(HostedMethod method);
+        void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod, Object accessor);
+
+        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, AccessibleObject object);
+
+        void addHidingMethodMetadata(AnalysisMethod analysisMethod, HostedType declType, String name, HostedType[] paramTypes, int modifiers, HostedType returnType);
+
+        void addReachableFieldMetadata(HostedField field);
+
+        void addReachableExecutableMetadata(HostedMethod method);
 
         void encodeAllAndInstall();
+
+        byte[] getAnnotationsEncoding(AccessibleObject object);
+
+        byte[] getParameterAnnotationsEncoding(Executable object);
+
+        byte[] getAnnotationDefaultEncoding(Method object);
+
+        byte[] getTypeAnnotationsEncoding(AccessibleObject object);
+
+        byte[] getReflectParametersEncoding(Executable object);
     }
 
-    public interface MethodMetadataEncoderFactory {
-        MethodMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
+    public interface ReflectionMetadataEncoderFactory {
+        ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
     }
 }
