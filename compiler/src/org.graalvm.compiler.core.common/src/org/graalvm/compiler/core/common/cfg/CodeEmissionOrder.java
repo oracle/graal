@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@ package org.graalvm.compiler.core.common.cfg;
 import org.graalvm.compiler.options.OptionValues;
 
 /**
- * Interface to computes an ordering of the blocks that can be used by the machine code generator.
+ * Interface to compute an ordering of the blocks that can be used by the machine code generator.
  */
 public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
 

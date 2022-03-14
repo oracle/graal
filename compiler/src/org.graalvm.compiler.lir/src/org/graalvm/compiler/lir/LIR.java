@@ -137,12 +137,12 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * order is not available.
      *
      * @return the blocks in code emitting order
-     * @throws IllegalArgumentException if the code emitting order is not
+     * @throws IllegalStateException if the code emitting order is not
      *             {@linkplain #codeEmittingOrderAvailable() available}
      */
     public AbstractBlockBase<?>[] codeEmittingOrder() {
         if (!codeEmittingOrderAvailable()) {
-            throw new IllegalArgumentException("codeEmittingOrder not computed, consider using getBlocks() or linearScanOrder()");
+            throw new IllegalStateException("codeEmittingOrder not computed, consider using getBlocks() or linearScanOrder()");
         }
         return codeEmittingOrder;
     }
