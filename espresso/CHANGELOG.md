@@ -1,6 +1,10 @@
 # Espresso Changelog
 
 ## Version 22.1.0
+### User-visible changes
+* Added HotSwap support for changing the super class and implemented interfaces.
+* Added HotSwap support for 'Move Field in Hierarchy' refactoring where state is preserved.
+* HotSwap support for changing fields and class access modifiers are now turned on by default.
 ### Internal changes
 * The truffle `AbstractTruffleException` API is now fully adopted.
 * Add new implementation for reading jimages (`libs/modules`) . It is used by default, `--java.JImage=native` can be used to revert to the old implementation.
