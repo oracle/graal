@@ -38,10 +38,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
+import com.oracle.svm.reflect.hosted.ReflectionMetadataComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -50,10 +50,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public final class Target_java_lang_reflect_Constructor {
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotationsComputer.class)//
-    @UnknownObjectField(types = {byte[].class}) byte[] annotations;
+    byte[] annotations;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class)//
-    @UnknownObjectField(types = {byte[].class}) byte[] parameterAnnotations;
+    byte[] parameterAnnotations;
 
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
@@ -76,26 +76,14 @@ public final class Target_java_lang_reflect_Constructor {
         return constructorAccessor;
     }
 
-    static class AnnotationsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
-
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterCompilation;
-        }
-
+    static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 
-    static class ParameterAnnotationsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
-
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterCompilation;
-        }
-
+    static class ParameterAnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getParameterAnnotationsEncoding((Executable) receiver);

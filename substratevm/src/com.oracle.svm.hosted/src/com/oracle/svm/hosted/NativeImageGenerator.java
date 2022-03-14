@@ -639,6 +639,7 @@ public class NativeImageGenerator {
                 codeCache.layoutConstants();
                 codeCache.layoutMethods(debug, imageName, bb, compilationExecutor);
 
+                BuildPhaseProvider.markCompilationFinished();
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), heap, debug, runtime);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
             }

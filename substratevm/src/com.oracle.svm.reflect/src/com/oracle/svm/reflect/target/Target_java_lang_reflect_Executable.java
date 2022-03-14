@@ -38,9 +38,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.reflect.hosted.ReflectionMetadataComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -55,7 +55,7 @@ public final class Target_java_lang_reflect_Executable {
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = RawParametersComputer.class)//
-    @UnknownObjectField(types = {byte[].class}) byte[] rawParameters;
+    byte[] rawParameters;
 
     @Substitute
     private Parameter[] getParameters0() {
@@ -70,13 +70,7 @@ public final class Target_java_lang_reflect_Executable {
         return SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations;
     }
 
-    static class RawParametersComputer implements RecomputeFieldValue.CustomFieldValueComputer {
-
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterCompilation;
-        }
-
+    static class RawParametersComputer extends ReflectionMetadataComputer {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getReflectParametersEncoding((Executable) receiver);

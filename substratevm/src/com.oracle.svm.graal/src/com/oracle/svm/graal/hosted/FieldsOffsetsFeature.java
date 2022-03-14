@@ -85,6 +85,11 @@ public class FieldsOffsetsFeature implements Feature {
             return replacement.newIterationInitMask;
         }
 
+        @Override
+        public Class<?>[] types() {
+            return new Class<?>[]{long.class};
+        }
+
         protected abstract Edges getEdges(NodeClass<?> nodeClass);
     }
 
