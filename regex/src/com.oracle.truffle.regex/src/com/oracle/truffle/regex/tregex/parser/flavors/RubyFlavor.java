@@ -84,8 +84,9 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * providing them too.</li>
  * <li>recursive \g&lt;...&gt; subexpression calls and \k&lt;...+-x&gt; backreferences to other
  * levels</li>
- * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
- * which uses atomic groups, and it is therefore not supported.</li>
+ * <li>\X extended grapheme cluster escapes: This escape sequence expands into a complex expression
+ * that references a lot of Unicode character sets that we currently do not have support for in
+ * TRegex.</li>
  * <li>(?~...) absent expressions: These constructs can be used in Ruby regular expressions to match
  * strings that do not contain a match for a given expression. TRegex doesn't have support for this
  * kind of construction.</li>
