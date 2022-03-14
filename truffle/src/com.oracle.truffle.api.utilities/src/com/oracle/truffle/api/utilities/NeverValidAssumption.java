@@ -50,7 +50,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  * @since 0.8 or earlier
  * @deprecated use {@link Assumption#NEVER_VALID} instead.
  */
-@Deprecated(since = "22.1", forRemoval = true)
+@Deprecated(since = "22.1")
 public final class NeverValidAssumption implements Assumption {
     /** @since 0.8 or earlier */
     public static final NeverValidAssumption INSTANCE = new NeverValidAssumption();
