@@ -541,17 +541,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     @SuppressWarnings("try")
     private StructuredGraph truffleTier(TruffleCompilationWrapper wrapper, DebugContext debug) {
-        SpeculationLog speculationLog = wrapper.compilable.getCompilationSpeculationLog();
-        if (speculationLog != null) {
-            speculationLog.collectFailedSpeculations();
-        }
         StructuredGraph graph;
         try (DebugCloseable a = PartialEvaluationTime.start(debug);
                         DebugCloseable c = PartialEvaluationMemUse.start(debug);
                         PerformanceInformationHandler handler = PerformanceInformationHandler.install(wrapper.options)) {
-            // SpeculationLog can be read from wrapper.compilable, but I'm not sure of the machinery
-            // around it
-            TruffleTierContext context = new TruffleTierContext(partialEvaluator, wrapper, debug, speculationLog, handler);
+            TruffleTierContext context = new TruffleTierContext(partialEvaluator, wrapper, debug, handler);
             try (Scope s = context.debug.scope("CreateGraph", context.graph);
                             Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
                 truffleTier.apply(context.graph, context);
