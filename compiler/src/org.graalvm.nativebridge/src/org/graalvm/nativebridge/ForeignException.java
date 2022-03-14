@@ -126,6 +126,10 @@ public final class ForeignException extends RuntimeException {
      * @return the stack trace combining both local and foreign stack trace elements
      */
     public static StackTraceElement[] mergeStackTrace(StackTraceElement[] foreignExceptionStack) {
+        if (foreignExceptionStack.length == 0) {
+            // Exception has no stack trace, nothing to merge.
+            return foreignExceptionStack;
+        }
         ForeignException localException = pendingException.get();
         if (localException != null) {
             switch (localException.kind) {

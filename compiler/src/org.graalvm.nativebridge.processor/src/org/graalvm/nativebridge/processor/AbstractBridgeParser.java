@@ -727,7 +727,7 @@ abstract class AbstractBridgeParser {
         return newModifiers;
     }
 
-    private static String marshallerName(TypeMirror type, List<? extends AnnotationMirror> annotations) {
+    private static String marshallerName(TypeMirror type, List<? extends AnnotationMirror> annotations, boolean legacy) {
         StringBuilder className = new StringBuilder();
         buildMarshallerNameFromType(className, type);
         if (!annotations.isEmpty()) {
@@ -735,6 +735,9 @@ abstract class AbstractBridgeParser {
             for (AnnotationMirror annotation : annotations) {
                 className.append(annotation.getAnnotationType().asElement().getSimpleName());
             }
+        }
+        if (legacy) {
+            className.append("Legacy");
         }
         className.append("Marshaller");
         className.setCharAt(0, Character.toLowerCase(className.charAt(0)));
@@ -1102,7 +1105,7 @@ abstract class AbstractBridgeParser {
         }
 
         static MarshallerData marshalled(TypeMirror forType, List<? extends AnnotationMirror> annotations, boolean legacy) {
-            String name = marshallerName(forType, annotations);
+            String name = marshallerName(forType, annotations, legacy);
             return new MarshallerData(Kind.CUSTOM, forType, name, legacy, false, true, annotations, null, null);
         }
 
@@ -1201,7 +1204,7 @@ abstract class AbstractBridgeParser {
         }
 
         MarshallerData getCustomMarshaller(DeclaredType forType, DeclaredType annotationType, Types types) {
-            return getAllCustomMarshallers().stream().filter((m) -> types.isSameType(forType, m.forType)).filter((m) -> annotationType == null ? m.annotations.isEmpty()
+            return getAllCustomMarshallers().stream().filter((m) -> !m.legacy).filter((m) -> types.isSameType(forType, m.forType)).filter((m) -> annotationType == null ? m.annotations.isEmpty()
                             : Utilities.contains(m.annotations.stream().map(AnnotationMirror::getAnnotationType).collect(Collectors.toList()), annotationType, types)).findFirst().orElseThrow(
                                             () -> new IllegalStateException(String.format("No custom marshaller for type %s.", Utilities.getTypeName(forType))));
         }
