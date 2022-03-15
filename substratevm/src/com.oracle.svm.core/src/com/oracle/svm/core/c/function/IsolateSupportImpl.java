@@ -46,6 +46,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
+import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
 
 public final class IsolateSupportImpl implements IsolateSupport {
     private static final String ISOLATES_DISABLED_MESSAGE = "Spawning of multiple isolates is disabled, use " +
@@ -73,11 +74,13 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setVersion(3);
 
             if (MemoryProtectionProvider.isAvailable()) {
-                int pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
-                if (pkey == MemoryProtectionProvider.DOMAIN_UNRECOGNIZED) {
-                    throw new IsolateException(PROTECTION_DOMAIN_UNSUPPORTED_MESSAGE);
+
+                try {
+                    int pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
+                    params.setProtectionKey(pkey);
+                } catch (UnsupportedDomainException e) {
+                    throw new IsolateException(e.getMessage());
                 }
-                params.setProtectionKey(pkey);
             } else if (!ProtectionDomain.NO_DOMAIN.equals(parameters.getProtectionDomain())) {
                 throw new IsolateException(PROTECTION_DOMAIN_UNSUPPORTED_MESSAGE);
             }

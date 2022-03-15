@@ -67,7 +67,14 @@ public interface MemoryProtectionProvider {
      */
     ProtectionDomain getProtectionDomain();
 
-    int DOMAIN_UNRECOGNIZED = -2;
+    class UnsupportedDomainException extends Exception {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String getMessage() {
+            return "Protection domain unrecognized.";
+        }
+    }
 
     /**
      * Return a protection key representation of the given protection domain that can be used in the
@@ -77,6 +84,8 @@ public interface MemoryProtectionProvider {
      *
      * @param domain memory protection domain
      * @return the protection key for a given protection domain
+     * @throws UnsupportedDomainException if the passed protection domain is not supported by this
+     *             MemoryProtectionProvider
      */
-    int asProtectionKey(ProtectionDomain domain);
+    int asProtectionKey(ProtectionDomain domain) throws UnsupportedDomainException;
 }
