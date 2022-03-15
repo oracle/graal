@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.nodes.commands;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -37,6 +36,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -52,9 +52,9 @@ public class ReferenceProcessNode extends RootNode {
      * (j.i.misc vs j.i.access). Since we cannot select a type according to the version, we try all
      * known names here.
      */
-    private static final List<Symbol<Type>> SHARED_SECRETS_TYPES = Arrays.asList(Type.jdk_internal_access_SharedSecrets, Type.sun_misc_SharedSecrets, Type.jdk_internal_misc_SharedSecrets);
-    private static final List<Symbol<Type>> JAVA_LANG_ACCESS_TYPES = Arrays.asList(Type.jdk_internal_access_JavaLangAccess, Type.sun_misc_JavaLangAccess, Type.jdk_internal_misc_JavaLangAccess);
-    private static final List<Symbol<Signature>> RUN_FINALIZER_SIGNATURES = Arrays.asList(Signature._void_jdk_internal_access_JavaLangAccess, Signature._void_sun_misc_JavaLangAccess,
+    private static final List<Symbol<Type>> SHARED_SECRETS_TYPES = List.of(Type.jdk_internal_access_SharedSecrets, Type.sun_misc_SharedSecrets, Type.jdk_internal_misc_SharedSecrets);
+    private static final List<Symbol<Type>> JAVA_LANG_ACCESS_TYPES = List.of(Type.jdk_internal_access_JavaLangAccess, Type.sun_misc_JavaLangAccess, Type.jdk_internal_misc_JavaLangAccess);
+    private static final List<Symbol<Signature>> RUN_FINALIZER_SIGNATURES = List.of(Signature._void_jdk_internal_access_JavaLangAccess, Signature._void_sun_misc_JavaLangAccess,
                     Signature._void_jdk_internal_misc_JavaLangAccess);
 
     private final EspressoContext context;
@@ -71,17 +71,17 @@ public class ReferenceProcessNode extends RootNode {
                 return k;
             }
         }
-        throw throwIllegalStateException("Could not find SharedSecrets for reference processing.");
+        throw EspressoError.shouldNotReachHere("Could not find SharedSecrets for reference processing.");
     }
 
-    private Field findJlaField(Klass sharedSecrets) {
+    private static Field findJlaField(Klass sharedSecrets) {
         for (Symbol<Type> type : JAVA_LANG_ACCESS_TYPES) {
             Field f = sharedSecrets.lookupField(Name.javaLangAccess, type, Klass.LookupMode.STATIC_ONLY);
             if (f != null) {
                 return f;
             }
         }
-        throw throwIllegalStateException("Could not find SharedSecrets#javaLangAccess field for reference processing.");
+        throw EspressoError.shouldNotReachHere("Could not find SharedSecrets#javaLangAccess field for reference processing.");
     }
 
     private Method findRunFinalizer() {
@@ -91,7 +91,7 @@ public class ReferenceProcessNode extends RootNode {
                 return m;
             }
         }
-        throw throwIllegalStateException("Could not find Finalizer.runFinalizer method for reference processing.");
+        throw EspressoError.shouldNotReachHere("Could not find Finalizer.runFinalizer method for reference processing.");
 
     }
 
@@ -103,7 +103,7 @@ public class ReferenceProcessNode extends RootNode {
             processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Name.processPendingReferences, Signature._void, Klass.LookupMode.STATIC_ONLY);
         }
         if (processPendingReferenceMethod == null) {
-            throw throwIllegalStateException("Could not find pending reference processing method.");
+            throw EspressoError.shouldNotReachHere("Could not find pending reference processing method.");
         }
         return processPendingReferenceMethod;
     }
