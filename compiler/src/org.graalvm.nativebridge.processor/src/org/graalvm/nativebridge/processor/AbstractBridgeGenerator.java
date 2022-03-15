@@ -608,22 +608,24 @@ abstract class AbstractBridgeGenerator {
         private final Collection<TypeElement> toImport;
         private final StringBuilder body;
         private int indentLevel;
+        private Scope scope;
 
         CodeBuilder(PackageElement pkg, Types types, AbstractTypeCache typeCache) {
-            this(null, pkg, types, typeCache, new TreeSet<>(FQN_COMPARATOR), new StringBuilder());
+            this(null, pkg, types, typeCache, new TreeSet<>(FQN_COMPARATOR), new StringBuilder(), null);
         }
 
         CodeBuilder(CodeBuilder parent) {
-            this(parent, parent.pkg, parent.types, parent.typeCache, parent.toImport, new StringBuilder());
+            this(parent, parent.pkg, parent.types, parent.typeCache, parent.toImport, new StringBuilder(), parent.scope);
         }
 
-        private CodeBuilder(CodeBuilder parent, PackageElement pkg, Types types, AbstractTypeCache typeCache, Collection<TypeElement> toImport, StringBuilder body) {
+        private CodeBuilder(CodeBuilder parent, PackageElement pkg, Types types, AbstractTypeCache typeCache, Collection<TypeElement> toImport, StringBuilder body, Scope scope) {
             this.parent = parent;
             this.pkg = pkg;
             this.types = types;
             this.typeCache = typeCache;
             this.toImport = toImport;
             this.body = body;
+            this.scope = scope;
         }
 
         CodeBuilder indent() {
@@ -637,6 +639,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         CodeBuilder classStart(Set<Modifier> modifiers, CharSequence name, DeclaredType superClass, List<DeclaredType> superInterfaces) {
+            scope = new Scope(superClass != null ? superClass : typeCache.object, superInterfaces, scope);
             lineStart();
             writeModifiers(modifiers).spaceIfNeeded().write("class ").write(name);
             if (superClass != null) {
@@ -653,6 +656,11 @@ abstract class AbstractBridgeGenerator {
             }
             lineEnd(" {");
             return this;
+        }
+
+        CodeBuilder classEnd() {
+            scope = scope.parent;
+            return write("}");
         }
 
         CodeBuilder methodStart(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType,
@@ -944,10 +952,14 @@ abstract class AbstractBridgeGenerator {
 
         CodeBuilder write(TypeElement te) {
             Element teEnclosing = te.getEnclosingElement();
-            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing)) {
+            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing) && !isInScope(te)) {
                 toImport.add(te);
             }
             return write(te.getSimpleName());
+        }
+
+        private boolean isInScope(TypeElement te) {
+            return scope != null && scope.isInScope(te, types);
         }
 
         private static boolean isJavaLang(Element element) {
@@ -1060,6 +1072,61 @@ abstract class AbstractBridgeGenerator {
                 this.type = type;
                 this.name = name;
                 this.annotations = annotations;
+            }
+        }
+
+        private static final class Scope {
+
+            private Scope parent;
+
+            private DeclaredType superClass;
+            private List<DeclaredType> superInterfaces;
+
+            Scope(DeclaredType superClass, List<DeclaredType> superInterfaces, Scope parent) {
+                this.superClass = superClass;
+                this.superInterfaces = superInterfaces;
+                this.parent = parent;
+            }
+
+            boolean isInScope(TypeElement type, Types types) {
+                Element owner = type.getEnclosingElement();
+                if (owner.getKind().isClass() || owner.getKind().isInterface()) {
+                    return isInScopeImpl((TypeElement) owner, types);
+                }
+                return false;
+            }
+
+            private boolean isInScopeImpl(TypeElement owner, Types types) {
+                if (isInherited(owner, (TypeElement) ((DeclaredType) types.erasure(superClass)).asElement(), types)) {
+                    return true;
+                }
+                for (DeclaredType superInterface : superInterfaces) {
+                    if (isInherited(owner, (TypeElement) ((DeclaredType) types.erasure(superInterface)).asElement(), types)) {
+                        return true;
+                    }
+                }
+                if (parent != null) {
+                    return parent.isInScopeImpl(owner, types);
+                }
+                return false;
+            }
+
+            private static boolean isInherited(TypeElement toCheck, TypeElement type, Types types) {
+                if (toCheck.equals(type)) {
+                    return true;
+                }
+                TypeMirror superClz = type.getSuperclass();
+                if (superClz.getKind() != TypeKind.NONE) {
+                    if (isInherited(toCheck, (TypeElement) ((DeclaredType) types.erasure(superClz)).asElement(), types)) {
+                        return true;
+                    }
+                }
+                for (TypeMirror superIfc : type.getInterfaces()) {
+                    if (isInherited(toCheck, (TypeElement) ((DeclaredType) types.erasure(superIfc)).asElement(), types)) {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
     }

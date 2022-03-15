@@ -93,7 +93,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.lineEnd("");
         generateHSToNativeEndPoint(builder, data);
         builder.dedent();
-        builder.line("}");
+        builder.classEnd();
     }
 
     private void generateHSToNativeStartPoint(CodeBuilder builder, DefinitionData data,
@@ -137,7 +137,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         }
 
         builder.dedent();
-        builder.line("}");
+        builder.classEnd();
     }
 
     private void generateHSToNativeStartMethod(CodeBuilder builder, CacheSnippets cacheSnippets,
@@ -294,7 +294,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             generateHSToNativeEndMethod(builder, data, methodData, entryPointSymbolName);
         }
         builder.dedent();
-        builder.line("}");
+        builder.classEnd();
     }
 
     private void generateHSToNativeEndMethod(CodeBuilder builder, DefinitionData data, MethodData methodData, String entryPointName) {

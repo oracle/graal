@@ -93,7 +93,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         builder.lineEnd("");
         generateNativeToHSEndPoint(builder, data);
         builder.dedent();
-        builder.line("}");
+        builder.classEnd();
     }
 
     private void generateNativeToHSStartPoint(CodeBuilder builder, DefinitionData data, FactoryMethodInfo factoryMethodInfo) {
@@ -132,7 +132,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             builder.line("}");
 
             builder.dedent();
-            builder.line("}");
+            builder.classEnd();
 
             builder.emptyLine();
             builder.lineStart().writeModifiers(EnumSet.of(Modifier.FINAL)).space().write("JNIData").space().write("jniMethods_").lineEnd(";");
@@ -167,7 +167,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         }
 
         builder.dedent();
-        builder.line("}");
+        builder.classEnd();
     }
 
     private CodeBuilder.Parameter findParameterOfType(TypeMirror requiredType, Collection<CodeBuilder.Parameter> parameters) {
@@ -474,7 +474,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             generateNativeToHSEndMethod(builder, data, methodData);
         }
         builder.dedent();
-        builder.line("}");
+        builder.classEnd();
     }
 
     private void generateNativeToHSEndMethod(CodeBuilder builder, DefinitionData data, MethodData methodData) {
