@@ -42,7 +42,7 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
-        if (inlinedMethod.leafAssumption()) {
+        if (getContext().getClassHierarchyOracle().isLeafMethod(inlinedMethod.getMethodVersion()).isValid()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                             : nullCheck(BytecodeNode.popObject(frame, top - 1));

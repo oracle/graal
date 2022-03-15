@@ -82,7 +82,6 @@ public final class VirtualTable {
                         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, "Overriding final method: " + override);
                     }
                 }
-                override.invalidateLeaf();
                 int pos = override.getVTableIndex();
                 if (count > 1) {
                     toSet = new Method(m.getMethod()).getMethodVersion();

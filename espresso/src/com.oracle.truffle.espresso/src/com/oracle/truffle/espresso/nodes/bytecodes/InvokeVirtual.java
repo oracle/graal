@@ -33,6 +33,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -116,6 +117,10 @@ public abstract class InvokeVirtual extends Node {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
+        protected ClassHierarchyAssumption readLeafAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().isLeafMethod(resolutionSeed.getMethodVersion());
+        }
+
         // The implementor assumption might be invalidated right between the assumption check and
         // the value retrieval. To ensure that the single implementor value is safe to use, check
         // that it's not null.
@@ -133,7 +138,7 @@ public abstract class InvokeVirtual extends Node {
 
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
-                                        "resolutionSeed.getLeafAssumption()",
+                                        "readLeafAssumption().getAssumption()",
                                         "resolvedMethod.getRedefineAssumption()"
                         })
         Object callLeafMethod(Object[] args,

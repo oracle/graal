@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -58,7 +59,7 @@ public interface ClassHierarchyOracle {
      *         of {@code klass} is created.
      */
 
-    ClassHierarchyAssumption isLeaf(ObjectKlass klass);
+    ClassHierarchyAssumption isLeafKlass(ObjectKlass klass);
 
     /**
      * @return the assumption, valid only if {@code klass} has no implementors, including itself
@@ -71,4 +72,8 @@ public interface ClassHierarchyOracle {
     SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass);
 
     AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass);
+
+    ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method.MethodVersion newMethod);
+
+    ClassHierarchyAssumption isLeafMethod(Method.MethodVersion method);
 }

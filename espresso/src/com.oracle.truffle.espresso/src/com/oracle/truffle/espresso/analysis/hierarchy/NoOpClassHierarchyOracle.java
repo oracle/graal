@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -41,7 +42,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+    public ClassHierarchyAssumption isLeafKlass(ObjectKlass klass) {
         if (klass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
@@ -61,5 +62,27 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
         return NotSingleImplementor;
+    }
+
+    @Override
+    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method.MethodVersion newMethod) {
+        if (newMethod.isAbstract()) {
+            // Disabled for abstract methods to reduce footprint.
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
+        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet() || newMethod.getKlassVersion().isFinalFlagSet()) {
+            // Nothing to assume, spare an assumption.
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
+        }
+        return ClassHierarchyAssumptionImpl.NeverValid;
+    }
+
+    @Override
+    public ClassHierarchyAssumption isLeafMethod(Method.MethodVersion method) {
+        if (method.isStatic() || method.isPrivate() || method.isFinalFlagSet() || method.getDeclaringKlass().isFinalFlagSet()) {
+            // Nothing to assume, spare an assumption.
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
+        }
+        return ClassHierarchyAssumptionImpl.NeverValid;
     }
 }

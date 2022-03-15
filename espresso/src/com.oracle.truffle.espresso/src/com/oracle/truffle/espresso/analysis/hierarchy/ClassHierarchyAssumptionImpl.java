@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 final class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
@@ -42,8 +43,13 @@ final class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
         underlying = Truffle.getRuntime().createAssumption(assumptionName);
     }
 
+    // TODO: version?
     ClassHierarchyAssumptionImpl(ObjectKlass klass) {
         this(klass.getNameAsString() + " has no concrete subclasses");
+    }
+
+    ClassHierarchyAssumptionImpl(Method.MethodVersion method) {
+        this(method.toString() + " is leaf");
     }
 
     @Override

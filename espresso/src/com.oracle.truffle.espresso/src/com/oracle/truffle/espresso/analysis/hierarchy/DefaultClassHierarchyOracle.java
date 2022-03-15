@@ -24,7 +24,10 @@
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+
+import java.util.ArrayList;
 
 /**
  * Computes the classes that are effectively final by keeping track of currently loaded classes. To
@@ -37,6 +40,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         if (newKlass.isConcrete()) {
             addImplementorToAncestors(newKlass);
+            updateVirtualAndInterfaceTables(newKlass);
         }
         if (newKlass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
@@ -45,7 +49,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+    public ClassHierarchyAssumption isLeafKlass(ObjectKlass klass) {
         if (klass.isConcrete()) {
             return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
         } else {
@@ -67,7 +71,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
      * parent interfaces.
      */
     private void addImplementor(ObjectKlass superInterface, ObjectKlass.KlassVersion implementor) {
-        superInterface.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+        superInterface.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).invalidate();
         superInterface.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(implementor);
         for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
             addImplementor(ancestorInterface, implementor);
@@ -81,13 +85,71 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
 
         ObjectKlass currentKlass = newKlass.getSuperKlass();
         while (currentKlass != null) {
-            currentKlass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+            currentKlass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).invalidate();
             currentKlass.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(newKlass);
 
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
             }
             currentKlass = currentKlass.getSuperKlass();
+        }
+    }
+
+    private void updateVirtualAndInterfaceTables(ObjectKlass.KlassVersion newKlass) {
+        for (Method.MethodVersion m : newKlass.getDeclaredMethodVersions()) {
+            if (!m.isPrivate() && !m.isStatic() && !Symbol.Name._clinit_.equals(m.getName()) && !Symbol.Name._init_.equals(m.getName())) {
+                // Do not bloat the vtable with methods that cannot be called through
+                // virtual invocation.
+                ArrayList<Method.MethodVersion> overrides = new ArrayList<>();
+                if (newKlass.getSuperKlass() != null) {
+                    newKlass.getSuperKlass().lookupVirtualMethodOverrides(m.getMethod(), newKlass.getKlass(), overrides);
+                    for (Method.MethodVersion override : overrides) {
+                        override.getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
+                    }
+                }
+            }
+        }
+        Method.MethodVersion[][] itables = newKlass.getItable();
+        for (int tableIndex = 0; tableIndex < itables.length; tableIndex++) {
+            // itable == klass.itables[tableIndex]
+            // currInterface == klass.iKlassTable[tableIndex].getKlass()
+            updateLeafAssumptions(itables[tableIndex], newKlass.getiKlassTable()[tableIndex].getKlass());
+        }
+    }
+
+    // TODO: is the note still correct in presence of redefinition?
+    /**
+     * Note: Leaf assumptions are not invalidated on creation of an interface. This means that in
+     * the following example:
+     *
+     * <pre>
+     * interface A {
+     *     default void m() {
+     *     }
+     * }
+     *
+     * interface B extends A {
+     *     default void m() {
+     *     }
+     * }
+     * </pre>
+     *
+     * Unless a concrete class that implements B is loaded, the leaf assumption for A.m() will not
+     * be invalidated.
+     */
+    private void updateLeafAssumptions(Method.MethodVersion[] itable, ObjectKlass currInterface) {
+        for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
+            Method.MethodVersion m = itable[methodIndex];
+            // This class' itable entry for this method is not the interface's declared method.
+            if (m.getDeclaringKlassRef() != currInterface) {
+                Method.MethodVersion intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
+                // sanity checks
+                assert intfMethod.getDeclaringKlassRef() == currInterface;
+                assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
+                if (isLeafMethod(intfMethod).isValid()) {
+                    isLeafMethod(intfMethod).invalidate();
+                }
+            }
         }
     }
 
@@ -106,5 +168,23 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
         return klass.getImplementor(ClassHierarchyAccessor.accessor).read();
+    }
+
+    @Override
+    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method.MethodVersion newMethod) {
+        if (newMethod.isAbstract()) {
+            // Disabled for abstract methods to reduce footprint.
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
+        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet() || newMethod.getKlassVersion().isFinalFlagSet()) {
+            // Nothing to assume, spare an assumption.
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
+        }
+        return new ClassHierarchyAssumptionImpl(newMethod);
+    }
+
+    @Override
+    public ClassHierarchyAssumption isLeafMethod(Method.MethodVersion method) {
+        return method.getLeafAssumption(ClassHierarchyAccessor.accessor);
     }
 }

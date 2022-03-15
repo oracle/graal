@@ -977,7 +977,7 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
+    public void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
         Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method.MethodVersion m : getVTable()) {
@@ -1532,7 +1532,7 @@ public final class ObjectKlass extends Klass {
      * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
      * classes and corresponding assumptions.
      *
-     * @see ClassHierarchyOracle#isLeaf(ObjectKlass)
+     * @see ClassHierarchyOracle#isLeafKlass(ObjectKlass)
      * @see ClassHierarchyOracle#hasNoImplementors(ObjectKlass)
      */
     public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
@@ -1727,6 +1727,9 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
+            // TODO: we should not create a new valid assumption in case the old version's
+            // assumption has already been invalidated.
+            // However, we should notify the oracle about changes in either case
             this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
             this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         }

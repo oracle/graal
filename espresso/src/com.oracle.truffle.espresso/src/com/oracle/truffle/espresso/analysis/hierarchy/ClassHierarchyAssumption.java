@@ -31,4 +31,12 @@ import com.oracle.truffle.api.Assumption;
  */
 public interface ClassHierarchyAssumption {
     Assumption getAssumption();
+
+    default boolean isValid() {
+        return getAssumption().isValid();
+    }
+
+    default void invalidate() {
+        getAssumption().invalidate();
+    }
 }

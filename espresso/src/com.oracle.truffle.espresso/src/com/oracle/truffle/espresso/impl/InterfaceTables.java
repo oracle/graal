@@ -208,51 +208,11 @@ final class InterfaceTables {
             fixVTable(self, tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getKlass().getInterfaceMethodsTable());
         }
         // Third step
-        for (int tableIndex = 0; tableIndex < tables.length; tableIndex++) {
-            Entry[] entries = tables[tableIndex];
+        for (Entry[] entries : tables) {
             Method.MethodVersion[] itable = getITable(entries, vtable, mirandas, declaredMethods);
             tmpTables.add(itable);
-
-            // Update leaf assumptions for super interfaces
-            ObjectKlass currInterface = iklassTable[tableIndex].getKlass();
-            updateLeafAssumptions(itable, currInterface);
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
-    }
-
-    /**
-     * Note: Leaf assumptions are not invalidated on creation of an interface. This means that in
-     * the following example:
-     * 
-     * <pre>
-     * interface A {
-     *     default void m() {
-     *     }
-     * }
-     * 
-     * interface B extends A {
-     *     default void m() {
-     *     }
-     * }
-     * </pre>
-     * 
-     * Unless a concrete class that implements B is loaded, the leaf assumption for A.m() will not
-     * be invalidated.
-     */
-    private static void updateLeafAssumptions(Method.MethodVersion[] itable, ObjectKlass currInterface) {
-        for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
-            Method.MethodVersion m = itable[methodIndex];
-            // This class' itable entry for this method is not the interface's declared method.
-            if (m.getDeclaringKlassRef() != currInterface) {
-                Method.MethodVersion intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
-                // sanity checks
-                assert intfMethod.getDeclaringKlassRef() == currInterface;
-                assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
-                if (intfMethod.leafAssumption()) {
-                    intfMethod.invalidateLeaf();
-                }
-            }
-        }
     }
 
     // Actual implementations

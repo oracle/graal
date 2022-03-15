@@ -44,6 +44,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 
@@ -53,10 +54,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -678,7 +680,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public boolean isInlinableGetter() {
         if (getSubstitutions().get(this) == null) {
             if (getParameterCount() == 0 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
                     return hasGetterBytecodes();
                 }
             }
@@ -703,7 +705,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public boolean isInlinableSetter() {
         if (getSubstitutions().get(this) == null) {
             if (getParameterCount() == 1 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
                     return hasSetterBytecodes();
                 }
             }
@@ -723,14 +725,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
         }
         return false;
-    }
-
-    public Assumption getLeafAssumption() {
-        return getMethodVersion().isLeaf;
-    }
-
-    public boolean leafAssumption() {
-        return getMethodVersion().leafAssumption();
     }
 
     public void unregisterNative() {
@@ -1075,7 +1069,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final LinkedMethod linkedMethod;
         private final CodeAttribute codeAttribute;
         private final ExceptionsAttribute exceptionsAttribute;
-        private final Assumption isLeaf;
+        private final ClassHierarchyAssumption isLeaf;
 
         @CompilationFinal private CallTarget callTarget;
 
@@ -1096,7 +1090,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Multiple maximally-specific interface methods. Fail on call.
         @CompilationFinal private boolean poisonPill;
 
-        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, Assumption leafAssumption, boolean poisonPill, CodeAttribute codeAttribute) {
+        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, ClassHierarchyAssumption leafAssumption, boolean poisonPill,
+                        CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
             this.pool = pool;
             this.linkedMethod = linkedMethod;
@@ -1106,16 +1101,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (leafAssumption != null) {
                 this.isLeaf = leafAssumption;
             } else {
-                int flags = linkedMethod.getFlags();
-                if (Modifier.isAbstract(flags)) {
-                    // Disabled for abstract methods to reduce footprint.
-                    this.isLeaf = Assumption.NEVER_VALID;
-                } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
-                    // Nothing to assume, spare an assumption.
-                    this.isLeaf = Assumption.ALWAYS_VALID;
-                } else {
-                    this.isLeaf = Truffle.getRuntime().createAssumption();
-                }
+                this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
             }
             this.poisonPill = poisonPill;
             initRefKind();
@@ -1167,7 +1153,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return linkedMethod.getName();
         }
 
-        protected Symbol<Signature> getRawSignature() {
+        public Symbol<Signature> getRawSignature() {
             return getMethod().getRawSignature();
         }
 
@@ -1175,12 +1161,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return klassVersion.getAssumption();
         }
 
-        public boolean leafAssumption() {
-            return isLeaf.isValid();
-        }
-
-        public void invalidateLeaf() {
-            isLeaf.invalidate();
+        public ClassHierarchyAssumption getLeafAssumption(ClassHierarchyOracle.ClassHierarchyAccessor accessor) {
+            Objects.requireNonNull(accessor);
+            return getMethodVersion().isLeaf;
         }
 
         public CodeAttribute getCodeAttribute() {
