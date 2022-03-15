@@ -145,7 +145,7 @@ public class ConfigurationTool {
         List<URI> traceInputs = new ArrayList<>();
         boolean builtinCallerFilter = true;
         boolean builtinHeuristicFilter = true;
-        List<Path> callerFilterFiles = new ArrayList<>();
+        List<URI> callerFilters = new ArrayList<>();
 
         ConfigurationSet omittedInputSet = new ConfigurationSet();
         ConfigurationSet inputSet = new ConfigurationSet();
@@ -223,7 +223,7 @@ public class ConfigurationTool {
                     builtinHeuristicFilter = false;
                     break;
                 case "--caller-filter-file":
-                    callerFilterFiles.add(requirePath(current, value));
+                    callerFilters.add(requirePathUri(current, value));
                     break;
                 case "--":
                     if (acceptTraceFileArgs) {
@@ -246,16 +246,16 @@ public class ConfigurationTool {
             callersFilter = RuleNode.createRoot();
             callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
         }
-        if (!callerFilterFiles.isEmpty()) {
+        if (!callerFilters.isEmpty()) {
             if (callersFilter == null) {
                 callersFilter = AccessAdvisor.copyBuiltinCallerFilterTree();
             }
-            for (Path path : callerFilterFiles) {
+            for (URI uri : callerFilters) {
                 try {
                     FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
-                    parser.parseAndRegister(path);
+                    parser.parseAndRegister(uri);
                 } catch (Exception e) {
-                    throw new UsageException("Cannot parse filter file " + path + ": " + e);
+                    throw new UsageException("Cannot parse filter file " + uri + ": " + e);
                 }
             }
             callersFilter.removeRedundantNodes();
@@ -386,7 +386,7 @@ public class ConfigurationTool {
 
                 case "--input-file":
                     rootNode = maybeCreateRootNode(rootNode);
-                    new FilterConfigurationParser(rootNode).parseAndRegister(requirePath(current, value));
+                    new FilterConfigurationParser(rootNode).parseAndRegister(requirePathUri(current, value));
                     break;
 
                 case "--output-file":

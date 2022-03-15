@@ -1058,7 +1058,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options);
-        masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
             patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();

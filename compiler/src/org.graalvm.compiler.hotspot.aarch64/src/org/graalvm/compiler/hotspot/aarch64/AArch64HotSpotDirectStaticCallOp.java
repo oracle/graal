@@ -32,6 +32,7 @@ import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64Call.DirectCallOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -62,18 +63,16 @@ final class AArch64HotSpotDirectStaticCallOp extends DirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
-            // The mark for an invocation that uses an inline cache must be placed at the
-            // instruction that loads the Klass from the inline cache.
-            // For the first invocation this is set to a bitpattern that is guaranteed to never be a
-            // valid object which causes the called function to call a handler that installs the
-            // correct inline cache value here.
-            crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
-            masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
-            if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget) && invokeKind != InvokeKind.Static) {
-                crb.setNeedsMHDeoptHandler();
-            }
-            super.emitCode(crb, masm);
+        // The mark for an invocation that uses an inline cache must be placed at the
+        // instruction that loads the Klass from the inline cache.
+        // For the first invocation this is set to a bitpattern that is guaranteed to never be a
+        // valid object which causes the called function to call a handler that installs the
+        // correct inline cache value here.
+        crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
+        masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
+        if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget) && invokeKind != InvokeKind.Static) {
+            crb.setNeedsMHDeoptHandler();
         }
+        AArch64Call.directCall(crb, masm, callTarget, null, state);
     }
 }

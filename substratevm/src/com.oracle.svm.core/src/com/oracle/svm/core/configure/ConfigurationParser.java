@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.configure;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.net.URI;
+import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,9 +41,21 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.JavaNetSubstitutions;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
+    public static InputStream openStream(URI uri) throws IOException {
+        URL url = uri.toURL();
+        if ("file".equals(url.getProtocol()) || "jar".equalsIgnoreCase(url.getProtocol()) ||
+                        (!SubstrateUtil.HOSTED && JavaNetSubstitutions.RESOURCE_PROTOCOL.equals(url.getProtocol()))) {
+            return url.openStream();
+        }
+        throw VMError.shouldNotReachHere("For security reasons, reading configurations is not supported from URIs with protocol: " + url.getProtocol());
+    }
+
     public static final String CONDITIONAL_KEY = "condition";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
@@ -50,10 +65,14 @@ public abstract class ConfigurationParser {
         this.strictConfiguration = strictConfiguration;
     }
 
-    public void parseAndRegister(Path path) throws IOException {
-        try (Reader reader = Files.newBufferedReader(path)) {
+    public void parseAndRegister(URI uri) throws IOException {
+        try (Reader reader = openReader(uri)) {
             parseAndRegister(reader);
         }
+    }
+
+    protected static BufferedReader openReader(URI uri) throws IOException {
+        return new BufferedReader(new InputStreamReader(openStream(uri)));
     }
 
     public abstract void parseAndRegister(Reader reader) throws IOException;

@@ -81,20 +81,26 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
     static final  Object[]  STABLE_OBJECT_ARRAY = register(new  Object[4]);
 
     static {
+        // Tests will set/reset the first element of those arrays.
+        // Place a canary on the second element to catch issues involving reading more than the first element.
+        STABLE_BYTE_ARRAY[1] = 0x10;
+        STABLE_SHORT_ARRAY[1] = 0x10;
+        STABLE_CHAR_ARRAY[1] = 0x10;
+        STABLE_BOOLEAN_ARRAY[1] = true;
         Setter.reset();
     }
     static final Unsafe U = Unsafe.getUnsafe();
 
     static class Setter {
-        private static void setZ(boolean defaultVal) { STABLE_BOOLEAN_ARRAY[0] = defaultVal ? false :                true; }
-        private static void setB(boolean defaultVal) { STABLE_BYTE_ARRAY[0]    = defaultVal ?     0 :      Byte.MAX_VALUE; }
-        private static void setS(boolean defaultVal) { STABLE_SHORT_ARRAY[0]   = defaultVal ?     0 :     Short.MAX_VALUE; }
-        private static void setC(boolean defaultVal) { STABLE_CHAR_ARRAY[0]    = defaultVal ?     0 : Character.MAX_VALUE; }
-        private static void setI(boolean defaultVal) { STABLE_INT_ARRAY[0]     = defaultVal ?     0 :   Integer.MAX_VALUE; }
-        private static void setJ(boolean defaultVal) { STABLE_LONG_ARRAY[0]    = defaultVal ?     0 :      Long.MAX_VALUE; }
-        private static void setF(boolean defaultVal) { STABLE_FLOAT_ARRAY[0]   = defaultVal ?     0 :     Float.MAX_VALUE; }
-        private static void setD(boolean defaultVal) { STABLE_DOUBLE_ARRAY[0]  = defaultVal ?     0 :    Double.MAX_VALUE; }
-        private static void setL(boolean defaultVal) { STABLE_OBJECT_ARRAY[0]  = defaultVal ?  null :        new Object(); }
+        private static void setZ(boolean defaultVal) { STABLE_BOOLEAN_ARRAY[0] = defaultVal ? false : Test.nonDefaultZ(); }
+        private static void setB(boolean defaultVal) { STABLE_BYTE_ARRAY[0]    = defaultVal ?     0 : Test.nonDefaultB(); }
+        private static void setS(boolean defaultVal) { STABLE_SHORT_ARRAY[0]   = defaultVal ?     0 : Test.nonDefaultS(); }
+        private static void setC(boolean defaultVal) { STABLE_CHAR_ARRAY[0]    = defaultVal ?     0 : Test.nonDefaultC(); }
+        private static void setI(boolean defaultVal) { STABLE_INT_ARRAY[0]     = defaultVal ?     0 : Test.nonDefaultI(); }
+        private static void setJ(boolean defaultVal) { STABLE_LONG_ARRAY[0]    = defaultVal ?     0 : Test.nonDefaultJ(); }
+        private static void setF(boolean defaultVal) { STABLE_FLOAT_ARRAY[0]   = defaultVal ?     0 : Test.nonDefaultF(); }
+        private static void setD(boolean defaultVal) { STABLE_DOUBLE_ARRAY[0]  = defaultVal ?     0 : Test.nonDefaultD(); }
+        private static void setL(boolean defaultVal) { STABLE_OBJECT_ARRAY[0]  = defaultVal ?  null :       new Object(); }
 
         static void reset() {
             setZ(false);
@@ -120,6 +126,16 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static void changeD() { Setter.setD(true); }
         static void changeL() { Setter.setL(true); }
 
+        static boolean nonDefaultZ() { return true; }
+        // the integer values are selected to make sure sign/zero-extension behaviour is tested.
+        static byte    nonDefaultB() { return -1; }
+        static short   nonDefaultS() { return -1; }
+        static char    nonDefaultC() { return Character.MAX_VALUE; }
+        static int     nonDefaultI() { return -1; }
+        static long    nonDefaultJ() { return -1; }
+        static float   nonDefaultF() { return Float.MAX_VALUE; }
+        static double  nonDefaultD() { return Double.MAX_VALUE; }
+
         static boolean testZ_Z() { return U.getBoolean(STABLE_BOOLEAN_ARRAY, ARRAY_BOOLEAN_BASE_OFFSET); }
         static byte    testZ_B() { return U.getByte(   STABLE_BOOLEAN_ARRAY, ARRAY_BOOLEAN_BASE_OFFSET); }
         static short   testZ_S() { return U.getShort(  STABLE_BOOLEAN_ARRAY, ARRAY_BOOLEAN_BASE_OFFSET); }
@@ -137,6 +153,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static long    testB_J() { return U.getLong(   STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
         static float   testB_F() { return U.getFloat(  STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
         static double  testB_D() { return U.getDouble( STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
+        static int     testB_Bw() { return U.getByte(   STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
 
         static boolean testS_Z() { return U.getBoolean(STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
         static byte    testS_B() { return U.getByte(   STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
@@ -146,6 +163,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static long    testS_J() { return U.getLong(   STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
         static float   testS_F() { return U.getFloat(  STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
         static double  testS_D() { return U.getDouble( STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
+        static int     testS_Sw() { return U.getShort(  STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
 
         static boolean testC_Z() { return U.getBoolean(STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
         static byte    testC_B() { return U.getByte(   STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
@@ -155,6 +173,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static long    testC_J() { return U.getLong(   STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
         static float   testC_F() { return U.getFloat(  STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
         static double  testC_D() { return U.getDouble( STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
+        static int     testC_Cw() { return U.getChar(   STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
 
         static boolean testI_Z() { return U.getBoolean(STABLE_INT_ARRAY, ARRAY_INT_BASE_OFFSET); }
         static byte    testI_B() { return U.getByte(   STABLE_INT_ARRAY, ARRAY_INT_BASE_OFFSET); }
@@ -234,6 +253,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
                 Object obj = snippetReflection.asObject(Object.class, javaConstant);
                 if (StableArrays.contains(obj)) {
                     ConstantNode stableConstant = ConstantNode.forConstant(javaConstant, 1, cn.isDefaultStable(), getMetaAccess());
+                    graph.unique(stableConstant);
                     cn.replace(graph, stableConstant);
                     break;
                 }
@@ -315,6 +335,29 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
     }
 
     /**
+     * Similar to {@link #testMatched(Callable, Runnable)} with the additional check that the value
+     * read from the array is {@code nonDefaultValue}.
+     *
+     * This is meant to be used for sub-int types to catch cases where more bytes than necessary are
+     * read from the stable array.
+     *
+     * The return type of {@code c} should be {@code int} to catch issues since sub-int return types
+     * apply masking.
+     */
+    void testMatchedSubInt(Callable<?> c, Runnable setDefaultAction, int nonDefaultValue) throws Exception {
+        Object first = c.call();
+        Assert.assertEquals(nonDefaultValue, first);
+        CompiledMethod cm = compile(c);
+
+        if (setDefaultAction != null) {
+            setDefaultAction.run();
+            assertEQ(cm, first, cm.call());
+        }
+
+        Setter.reset();
+    }
+
+    /**
      * Tests this sequence:
      *
      * <pre>
@@ -337,101 +380,373 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         Setter.reset();
     }
 
-    void testUnsafeAccess() throws Exception {
-        // boolean[], aligned accesses
+    @org.junit.Test
+    public void test1() throws Exception {
         testMatched(Test::testZ_Z, Test::changeZ);
-        testMatched(Test::testZ_B, Test::changeZ);
-        testMatched(Test::testZ_S, Test::changeZ);
-        testMatched(Test::testZ_C, Test::changeZ);
-        testMatched(Test::testZ_I, Test::changeZ);
-        testMatched(Test::testZ_J, Test::changeZ);
-        testMatched(Test::testZ_F, Test::changeZ);
-        testMatched(Test::testZ_D, Test::changeZ);
-
-        // byte[], aligned accesses
-        testMatched(Test::testB_Z, Test::changeB);
-        testMatched(Test::testB_B, Test::changeB);
-        testMatched(Test::testB_S, Test::changeB);
-        testMatched(Test::testB_C, Test::changeB);
-        testMatched(Test::testB_I, Test::changeB);
-        testMatched(Test::testB_J, Test::changeB);
-        testMatched(Test::testB_F, Test::changeB);
-        testMatched(Test::testB_D, Test::changeB);
-
-        // short[], aligned accesses
-        testMatched(Test::testS_Z, Test::changeS);
-        testMatched(Test::testS_B, Test::changeS);
-        testMatched(Test::testS_S, Test::changeS);
-        testMatched(Test::testS_C, Test::changeS);
-        testMatched(Test::testS_I, Test::changeS);
-        testMatched(Test::testS_J, Test::changeS);
-        testMatched(Test::testS_F, Test::changeS);
-        testMatched(Test::testS_D, Test::changeS);
-
-        // char[], aligned accesses
-        testMatched(Test::testC_Z, Test::changeC);
-        testMatched(Test::testC_B, Test::changeC);
-        testMatched(Test::testC_S, Test::changeC);
-        testMatched(Test::testC_C, Test::changeC);
-        testMatched(Test::testC_I, Test::changeC);
-        testMatched(Test::testC_J, Test::changeC);
-        testMatched(Test::testC_F, Test::changeC);
-        testMatched(Test::testC_D, Test::changeC);
-
-        // int[], aligned accesses
-        testMatched(Test::testI_Z, Test::changeI);
-        testMatched(Test::testI_B, Test::changeI);
-        testMatched(Test::testI_S, Test::changeI);
-        testMatched(Test::testI_C, Test::changeI);
-        testMatched(Test::testI_I, Test::changeI);
-        testMatched(Test::testI_J, Test::changeI);
-        testMatched(Test::testI_F, Test::changeI);
-        testMatched(Test::testI_D, Test::changeI);
-
-        // long[], aligned accesses
-        testMatched(Test::testJ_Z, Test::changeJ);
-        testMatched(Test::testJ_B, Test::changeJ);
-        testMatched(Test::testJ_S, Test::changeJ);
-        testMatched(Test::testJ_C, Test::changeJ);
-        testMatched(Test::testJ_I, Test::changeJ);
-        testMatched(Test::testJ_J, Test::changeJ);
-        testMatched(Test::testJ_F, Test::changeJ);
-        testMatched(Test::testJ_D, Test::changeJ);
-
-        // float[], aligned accesses
-        testMatched(Test::testF_Z, Test::changeF);
-        testMatched(Test::testF_B, Test::changeF);
-        testMatched(Test::testF_S, Test::changeF);
-        testMatched(Test::testF_C, Test::changeF);
-        testMatched(Test::testF_I, Test::changeF);
-        testMatched(Test::testF_J, Test::changeF);
-        testMatched(Test::testF_F, Test::changeF);
-        testMatched(Test::testF_D, Test::changeF);
-
-        // double[], aligned accesses
-        testMatched(Test::testD_Z, Test::changeD);
-        testMatched(Test::testD_B, Test::changeD);
-        testMatched(Test::testD_S, Test::changeD);
-        testMatched(Test::testD_C, Test::changeD);
-        testMatched(Test::testD_I, Test::changeD);
-        testMatched(Test::testD_J, Test::changeD);
-        testMatched(Test::testD_F, Test::changeD);
-        testMatched(Test::testD_D, Test::changeD);
-
-        // Object[], aligned accesses
-        testMatched(Test::testL_L, Test::changeL);
-        testMismatched(Test::testL_J, Test::changeL); // long & double are always as large as an OOP
-        testMismatched(Test::testL_D, Test::changeL);
-
-        // Unaligned accesses
-        testMismatched(Test::testS_U, Test::changeS);
-        testMismatched(Test::testC_U, Test::changeC);
-        testMismatched(Test::testI_U, Test::changeI);
-        testMismatched(Test::testJ_U, Test::changeJ);
     }
 
     @org.junit.Test
-    public void main() throws Exception {
-        testUnsafeAccess();
+    public void test2() throws Exception {
+        testMatched(Test::testZ_B, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test3() throws Exception {
+        testMatched(Test::testZ_S, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test4() throws Exception {
+        testMatched(Test::testZ_C, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test5() throws Exception {
+        testMatched(Test::testZ_I, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test6() throws Exception {
+        testMatched(Test::testZ_J, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test7() throws Exception {
+        testMatched(Test::testZ_F, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test8() throws Exception {
+        testMatched(Test::testZ_D, Test::changeZ);
+    }
+
+    @org.junit.Test
+    public void test9() throws Exception {
+        testMatched(Test::testB_Z, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test10() throws Exception {
+        testMatched(Test::testB_B, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test11() throws Exception {
+        testMatched(Test::testB_S, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test12() throws Exception {
+        testMatched(Test::testB_C, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test13() throws Exception {
+        testMatched(Test::testB_I, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test14() throws Exception {
+        testMatched(Test::testB_J, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test15() throws Exception {
+        testMatched(Test::testB_F, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test16() throws Exception {
+        testMatched(Test::testB_D, Test::changeB);
+    }
+
+    @org.junit.Test
+    public void test17() throws Exception {
+        testMatchedSubInt(Test::testB_Bw, Test::changeB, Test.nonDefaultB());
+    }
+
+    @org.junit.Test
+    public void test18() throws Exception {
+        testMatched(Test::testS_Z, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test19() throws Exception {
+        testMatched(Test::testS_B, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test20() throws Exception {
+        testMatched(Test::testS_S, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test21() throws Exception {
+        testMatched(Test::testS_C, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test22() throws Exception {
+        testMatched(Test::testS_I, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test23() throws Exception {
+        testMatched(Test::testS_J, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test24() throws Exception {
+        testMatched(Test::testS_F, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test25() throws Exception {
+        testMatched(Test::testS_D, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test26() throws Exception {
+        testMatchedSubInt(Test::testS_Sw, Test::changeS, Test.nonDefaultS());
+    }
+
+    @org.junit.Test
+    public void test27() throws Exception {
+        testMatched(Test::testC_Z, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test28() throws Exception {
+        testMatched(Test::testC_B, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test29() throws Exception {
+        testMatched(Test::testC_S, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test30() throws Exception {
+        testMatched(Test::testC_C, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test31() throws Exception {
+        testMatched(Test::testC_I, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test32() throws Exception {
+        testMatched(Test::testC_J, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test33() throws Exception {
+        testMatched(Test::testC_F, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test34() throws Exception {
+        testMatched(Test::testC_D, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test35() throws Exception {
+        testMatchedSubInt(Test::testC_Cw, Test::changeC, Test.nonDefaultC());
+    }
+
+    @org.junit.Test
+    public void test36() throws Exception {
+        testMatched(Test::testI_Z, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test37() throws Exception {
+        testMatched(Test::testI_B, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test38() throws Exception {
+        testMatched(Test::testI_S, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test39() throws Exception {
+        testMatched(Test::testI_C, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test40() throws Exception {
+        testMatched(Test::testI_I, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test41() throws Exception {
+        testMatched(Test::testI_J, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test42() throws Exception {
+        testMatched(Test::testI_F, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test43() throws Exception {
+        testMatched(Test::testI_D, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test44() throws Exception {
+        testMatched(Test::testJ_Z, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test45() throws Exception {
+        testMatched(Test::testJ_B, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test46() throws Exception {
+        testMatched(Test::testJ_S, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test47() throws Exception {
+        testMatched(Test::testJ_C, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test48() throws Exception {
+        testMatched(Test::testJ_I, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test49() throws Exception {
+        testMatched(Test::testJ_J, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test50() throws Exception {
+        testMatched(Test::testJ_F, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test51() throws Exception {
+        testMatched(Test::testJ_D, Test::changeJ);
+    }
+
+    @org.junit.Test
+    public void test52() throws Exception {
+        testMatched(Test::testF_Z, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test53() throws Exception {
+        testMatched(Test::testF_B, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test54() throws Exception {
+        testMatched(Test::testF_S, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test55() throws Exception {
+        testMatched(Test::testF_C, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test56() throws Exception {
+        testMatched(Test::testF_I, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test57() throws Exception {
+        testMatched(Test::testF_J, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test58() throws Exception {
+        testMatched(Test::testF_F, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test59() throws Exception {
+        testMatched(Test::testF_D, Test::changeF);
+    }
+
+    @org.junit.Test
+    public void test60() throws Exception {
+        testMatched(Test::testD_Z, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test61() throws Exception {
+        testMatched(Test::testD_B, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test62() throws Exception {
+        testMatched(Test::testD_S, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test63() throws Exception {
+        testMatched(Test::testD_C, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test64() throws Exception {
+        testMatched(Test::testD_I, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test65() throws Exception {
+        testMatched(Test::testD_J, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test66() throws Exception {
+        testMatched(Test::testD_F, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test67() throws Exception {
+        testMatched(Test::testD_D, Test::changeD);
+    }
+
+    @org.junit.Test
+    public void test68() throws Exception {
+        testMatched(Test::testL_L, Test::changeL);
+    }
+
+    @org.junit.Test
+    public void test69() throws Exception {
+        testMismatched(Test::testL_J, Test::changeL); // long & double are always as large as an OOP
+    }
+
+    @org.junit.Test
+    public void test70() throws Exception {
+        testMismatched(Test::testL_D, Test::changeL);
+    }
+
+    @org.junit.Test
+    public void test71() throws Exception {
+        testMismatched(Test::testS_U, Test::changeS);
+    }
+
+    @org.junit.Test
+    public void test72() throws Exception {
+        testMismatched(Test::testC_U, Test::changeC);
+    }
+
+    @org.junit.Test
+    public void test73() throws Exception {
+        testMismatched(Test::testI_U, Test::changeI);
+    }
+
+    @org.junit.Test
+    public void test74() throws Exception {
+        testMismatched(Test::testJ_U, Test::changeJ);
     }
 }

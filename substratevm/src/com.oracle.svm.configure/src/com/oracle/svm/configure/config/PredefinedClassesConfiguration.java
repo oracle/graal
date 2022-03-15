@@ -26,8 +26,11 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -36,6 +39,7 @@ import java.util.function.Predicate;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 
 public class PredefinedClassesConfiguration implements ConfigurationBase {
@@ -67,19 +71,27 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
         classes.put(hash, clazz);
     }
 
-    public void add(String nameInfo, String hash, Path directory) {
+    public void add(String nameInfo, String hash, URI baseUri) {
         if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
             return;
         }
         if (classDestinationDirs != null) {
             ensureDestinationDirsExist();
+            Path localBaseDir;
+            try {
+                localBaseDir = Paths.get(baseUri);
+            } catch (Exception ignored) {
+                localBaseDir = null;
+            }
             for (Path destDir : classDestinationDirs) {
-                if (!destDir.equals(directory)) {
+                if (!destDir.equals(localBaseDir)) {
                     try {
                         String fileName = getFileName(hash);
                         Path target = destDir.resolve(fileName);
-                        if (directory != null) {
-                            Files.copy(directory.resolve(fileName), target, StandardCopyOption.REPLACE_EXISTING);
+                        if (baseUri != null) {
+                            try (InputStream is = PredefinedClassesConfigurationParser.openClassdataStream(baseUri, hash)) {
+                                Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
+                            }
                         } else if (!Files.exists(target)) {
                             throw new RuntimeException("Cannot copy class data file for predefined class " + nameInfo + " with hash " + hash + ": " +
                                             "source directory is unknown and file does not already exist in target directory.");
