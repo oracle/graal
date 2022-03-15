@@ -573,7 +573,6 @@ public final class RegexASTBuilder {
                 return;
             }
         }
-        ast.addSourceSection(curTerm, quantifier);
         if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
             // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
             // ignore.
@@ -583,7 +582,7 @@ public final class RegexASTBuilder {
             // x{1,1} -> x
             return;
         }
-        curTerm = setQuantifier(curTerm, quantifier);
+        curTerm = addQuantifier(curTerm, quantifier);
         // merge equal successive quantified terms
         if (curSequence.size() > 1) {
             Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
@@ -606,17 +605,22 @@ public final class RegexASTBuilder {
         }
     }
 
-    private QuantifiableTerm setQuantifier(Term term, Token.Quantifier quantifier) {
+    private QuantifiableTerm addQuantifier(Term term, Token.Quantifier quantifier) {
         QuantifiableTerm quantifiableTerm = term.isQuantifiableTerm() ? term.asQuantifiableTerm() : wrapTermInGroup(term);
         if (quantifiableTerm.hasQuantifier()) {
             quantifiableTerm = wrapTermInGroup(term);
         }
-        quantifiableTerm.setQuantifier(quantifier);
-        if (!quantifiableTerm.isUnrollingCandidate()) {
+        ast.addSourceSection(quantifiableTerm, quantifier);
+        setQuantifier(quantifiableTerm, quantifier);
+        return quantifiableTerm;
+    }
+
+    private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
+        term.setQuantifier(quantifier);
+        if (!term.isUnrollingCandidate()) {
             properties.setLargeCountedRepetitions();
         }
         properties.setQuantifiers();
-        return quantifiableTerm;
     }
 
     private Group wrapTermInGroup(Term term) {
