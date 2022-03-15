@@ -44,25 +44,20 @@ import org.graalvm.nativebridge.processor.AbstractBridgeParser.MethodData;
 import org.graalvm.nativebridge.processor.NativeToHotSpotBridgeParser.TypeCache;
 
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
 public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
 
     private static final String END_POINT_SIMPLE_NAME = "NativeToHotSpotEndPoint";
     private static final String END_POINT_CLASS_FIELD = "endPointClass";
-    private static final String HOTSPOT_CALLS_FIELD = "hotSpotCalls";
     private static final String START_POINT_SIMPLE_NAME = "NativeToHotSpotStartPoint";
     static final String START_POINT_FACTORY_NAME = "createNativeToHotSpot";
-    private static final String EXCEPTION_HANDLER_IMPL_NAME = "ExceptionHandlerImpl";
     private static final String REFERENCE_ISOLATE_ADDRESS_NAME = "referenceIsolateAddress";
 
     private final TypeCache typeCache;
@@ -97,10 +92,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         generateNativeToHSStartPoint(builder, data, factoryMethod);
         builder.lineEnd("");
         generateNativeToHSEndPoint(builder, data);
-        if (data.exceptionHandler != null) {
-            builder.lineEnd("");
-            generateExceptionHandlerImpl(builder, data);
-        }
         builder.dedent();
         builder.line("}");
     }
@@ -111,9 +102,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                         data.annotatedType, Collections.emptyList());
         builder.indent();
         builder.lineEnd("");
-        if (data.exceptionHandler != null) {
-            generateHotSpotCallsField(builder);
-        }
         generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
@@ -180,13 +168,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
 
         builder.dedent();
         builder.line("}");
-    }
-
-    private void generateHotSpotCallsField(CodeBuilder builder) {
-        Set<Modifier> modSet = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
-        CodeBuilder handlerImplSnippet = new CodeBuilder(builder).newInstance(EXCEPTION_HANDLER_IMPL_NAME);
-        builder.lineStart().writeModifiers(modSet).space().write(typeCache.hotSpotCalls).space().write(HOTSPOT_CALLS_FIELD).write(" = ").invokeStatic(typeCache.hotSpotCalls,
-                        "createWithExceptionHandler", handlerImplSnippet.build()).lineEnd(";");
     }
 
     private CodeBuilder.Parameter findParameterOfType(TypeMirror requiredType, Collection<CodeBuilder.Parameter> parameters) {
@@ -264,7 +245,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
             boolean hasPostMarshall = generatePreMarshall(builder, data, methodData, nonReceiverParameterStart, env, parameterValueOverrides);
             args = generatePushArgs(builder, data, methodData, nonReceiverParameterStart, env, receiver, parameterValueOverrides);
-            CharSequence jniCall = callHotSpot(builder, data, methodData, env, args, resultMarshallerSnippets);
+            CharSequence jniCall = callHotSpot(builder, methodData, env, args, resultMarshallerSnippets);
             CharSequence endPointResultVariable = resultMarshallerSnippets.preUnmarshallResult(builder, returnType, jniCall, receiver, env);
             builder.lineStart().write(resultVariable).write(" = ");
             builder.write(resultMarshallerSnippets.unmarshallResult(builder, returnType, endPointResultVariable != null ? endPointResultVariable : jniCall, receiver, env));
@@ -290,7 +271,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
             boolean hasPostMarshall = generatePreMarshall(builder, data, methodData, nonReceiverParameterStart, env, parameterValueOverrides);
             args = generatePushArgs(builder, data, methodData, nonReceiverParameterStart, env, receiver, parameterValueOverrides);
-            CharSequence jniCall = callHotSpot(builder, data, methodData, env, args, resultMarshallerSnippets);
+            CharSequence jniCall = callHotSpot(builder, methodData, env, args, resultMarshallerSnippets);
             CharSequence endPointResultVariable = resultMarshallerSnippets.preUnmarshallResult(builder, returnType, jniCall, receiver, env);
             builder.lineStart();
             CharSequence resultVariable = null;
@@ -428,13 +409,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         }
     }
 
-    private CharSequence callHotSpot(CodeBuilder builder, DefinitionData data, MethodData methodData, CharSequence jniEnv, CharSequence args, MarshallerSnippets marshallerSnippets) {
-        CharSequence hsCallsInstance;
-        if (data.exceptionHandler != null) {
-            hsCallsInstance = HOTSPOT_CALLS_FIELD;
-        } else {
-            hsCallsInstance = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "getHotSpotCalls").build();
-        }
+    private CharSequence callHotSpot(CodeBuilder builder, MethodData methodData, CharSequence jniEnv, CharSequence args, MarshallerSnippets marshallerSnippets) {
+        CharSequence hsCallsInstance = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "getHotSpotCalls").build();
         TypeMirror retType = methodData.type.getReturnType();
         return new CodeBuilder(builder).invoke(hsCallsInstance, callHotSpotName(marshallerSnippets.getEndPointMethodParameterType(retType)),
                         jniEnv, "jniMethods_." + END_POINT_CLASS_FIELD, "jniMethods_." + jMethodIdField(methodData), args).build();
@@ -574,46 +550,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         builder.lineStart("} catch (").write(typeCache.throwable).space().write(e).lineEnd(") {");
         builder.indent();
         builder.lineStart("throw ").invokeStatic(typeCache.foreignException, "forException", e, data.getCustomMarshaller(typeCache.throwable, null, types).name).lineEnd(";");
-        builder.dedent();
-        builder.line("}");
-        builder.dedent();
-        builder.line("}");
-    }
-
-    private void generateExceptionHandlerImpl(CodeBuilder builder, DefinitionData data) {
-        ExecutableElement handleExceptionMethod = ElementFilter.methodsIn(typeCache.jNIExceptionHandler.asElement().getEnclosedElements()).stream().filter(
-                        (e) -> "handleException".contentEquals(e.getSimpleName())).findAny().get();
-        builder.classStart(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), EXCEPTION_HANDLER_IMPL_NAME,
-                        null, Collections.singletonList(typeCache.jNIExceptionHandler));
-        builder.indent();
-        builder.lineEnd("");
-        // Implement ExceptionHandler#handleException method
-        overrideMethod(builder, handleExceptionMethod, (ExecutableType) handleExceptionMethod.asType());
-        builder.indent();
-        builder.lineStart().write(types.getPrimitiveType(TypeKind.BOOLEAN)).space().write("exceptionHandled").lineEnd(";");
-        builder.line("try {");
-        builder.indent();
-        builder.lineStart("exceptionHandled").write(" = ").invokeStatic((DeclaredType) data.exceptionHandler.getEnclosingElement().asType(), data.exceptionHandler.getSimpleName(), "context").lineEnd(
-                        ";");
-        builder.dedent();
-        builder.lineStart("} catch (").write(typeCache.throwable).space().write("throwable").lineEnd(") {");
-        builder.indent();
-        builder.lineStart("throw").space().invoke(null, "silenceException", new CodeBuilder(builder).classLiteral(typeCache.runtimeException).build(), "throwable").lineEnd(";");
-        builder.dedent();
-        builder.line("}");
-        builder.line("if (!exceptionHandled) {");
-        builder.indent();
-        builder.lineStart().invoke("context", "throwJNIExceptionWrapper").lineEnd(";");
-        builder.dedent();
-        builder.line("}");
-        builder.dedent();
-        builder.line("}");
-        // Generate helper silenceException method
-        builder.lineEnd("");
-        builder.lineStart().annotation(typeCache.suppressWarnings, new CharSequence[]{"unchecked", "unused"}).lineEnd("");
-        builder.line("private static <E extends Throwable> E silenceException(Class<E> type, Throwable throwable) throws E {");
-        builder.indent();
-        builder.line("throw (E) throwable;");
         builder.dedent();
         builder.line("}");
         builder.dedent();

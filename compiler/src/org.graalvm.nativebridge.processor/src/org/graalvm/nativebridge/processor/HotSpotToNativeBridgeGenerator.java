@@ -422,17 +422,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         CharSequence newForeignException = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "forException",
                         exceptionVariable, data.getCustomMarshaller(typeCache.throwable, null, types).name).build();
-        CodeBuilder defaultExceptionHandler = new CodeBuilder(builder).invoke(newForeignException, "throwInHotSpot", jniEnvVariable).write(";");
-        if (data.exceptionHandler != null) {
-            CharSequence[] args = new CharSequence[]{jniEnvVariable, exceptionVariable};
-            builder.lineStart("if (!").invokeStatic(data.annotatedType, data.exceptionHandler.getSimpleName(), args).lineEnd(") {");
-            builder.indent();
-            builder.line(defaultExceptionHandler.build());
-            builder.dedent();
-            builder.line("}");
-        } else {
-            builder.line(defaultExceptionHandler.build());
-        }
+        builder.lineStart().invoke(newForeignException, "throwInHotSpot", jniEnvVariable).lineEnd(";");
         if (primitiveReturnType) {
             builder.lineStart("return ").writeDefaultValue(returnType).lineEnd(";");
         } else if (objectReturnType) {
