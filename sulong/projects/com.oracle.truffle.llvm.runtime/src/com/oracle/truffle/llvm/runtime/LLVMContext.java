@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -59,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -116,7 +118,7 @@ public final class LLVMContext {
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     private final List<Thread> allRunningThreads = new ArrayList<>();
-    private final List<CallTarget> threadLocalGlobalInitializer = new ArrayList<>();
+    private final List<AggregateTLGlobalInPlaceNode> threadLocalGlobalInitializer = new ArrayList<>();
 
     @CompilationFinal private LLVMThreadingStack threadingStack;
     private Object[] mainArguments;     // effectively final after initialization
@@ -566,7 +568,6 @@ public final class LLVMContext {
     void finalizeContext() {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
-
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {
@@ -1023,16 +1024,16 @@ public final class LLVMContext {
         return allRunningThreads.toArray(Thread[]::new);
     }
 
-    public synchronized void addThreadLocalGlobalInitializer(CallTarget callTarget) {
-        assert !threadLocalGlobalInitializer.contains(callTarget);
-        threadLocalGlobalInitializer.add(callTarget);
+    public synchronized void addThreadLocalGlobalInitializer(AggregateTLGlobalInPlaceNode inPlaceNode) {
+        assert !threadLocalGlobalInitializer.contains(inPlaceNode);
+        threadLocalGlobalInitializer.add(inPlaceNode);
     }
 
-    public synchronized List<CallTarget> getThreadLocalGlobalInitializer() {
+    public synchronized List<AggregateTLGlobalInPlaceNode> getThreadLocalGlobalInitializer() {
         return threadLocalGlobalInitializer;
     }
 
-    public synchronized void removeThreadLocalGlobalInitializer(CallTarget callTarget) {
+    public synchronized void removeThreadLocalGlobalInitializer(RootNode callTarget) {
         threadLocalGlobalInitializer.remove(callTarget);
         assert !threadLocalGlobalInitializer.contains(callTarget);
     }

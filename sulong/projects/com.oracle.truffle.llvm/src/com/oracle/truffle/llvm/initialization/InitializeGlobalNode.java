@@ -99,7 +99,9 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             for (Thread thread : threads) {
                 threadGlobalVarInit.call(thread);
             }
-            context.addThreadLocalGlobalInitializer(threadGlobalVarInit.getCallTarget());
+            // TODO: remove the rootnode for the call target of the node, once code can be ran
+            // inside initialize thread.
+            context.addThreadLocalGlobalInitializer((AggregateTLGlobalInPlaceNode) threadGlobalVarInit.getCurrentRootNode());
         }
     }
 
@@ -228,7 +230,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             assert isThreadLocal;
             LLVMLanguage language = LLVMLanguage.get(node);
             AggregateLiteralInPlaceNode aggregateLiteralInPlaceNode = (AggregateLiteralInPlaceNode) createNode(bufferOffsets, descriptors, isThreadLocal);
-            LLVMAllocateNode allocateNode = dataSectionFactory.getThreadLocalSection().createAllocateNode(runtime.getNodeFactory(), "tlglobals_struct", true);
+            LLVMAllocateNode allocateNode = dataSectionFactory.getThreadLocalSection().createAllocateNode(runtime.getNodeFactory(), "tlglobals_struct", false);
             return new AggregateTLGlobalInPlaceNode(language, aggregateLiteralInPlaceNode, allocateNode, runtime.getBitcodeID());
         }
     }

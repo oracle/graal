@@ -68,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
@@ -297,16 +298,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void initializeThread(LLVMContext context, Thread thread) {
-        // need to get the contextthreadlocal for this thread, which would call get and this would
-        // trigger the factory
         getCapability(PlatformCapability.class).initializeThread(context, thread);
         synchronized (context.threadInitLock) {
-            // need to duplicate the thread local value for this thread.
-            List<CallTarget> globalInitializers = context.getThreadLocalGlobalInitializer();
-            for (CallTarget globalInitializer : globalInitializers) {
-                globalInitializer.call(thread);
+            // need to duplicate the thread local globals for this thread.
+            List<AggregateTLGlobalInPlaceNode> globalInitializers = context.getThreadLocalGlobalInitializer();
+            for (AggregateTLGlobalInPlaceNode globalInitializer : globalInitializers) {
+                // TODO: use the call target of AggregateTLGlobalInPlaceNode, rather than the node
+                // itself (GR-37471).
+                globalInitializer.executeWithThread(null, thread);
             }
-            // put it into context
             context.registerLiveThread(thread);
         }
     }
