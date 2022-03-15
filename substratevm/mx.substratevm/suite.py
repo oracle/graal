@@ -430,6 +430,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
+                    "jdk.internal.vm.annotation",
                     "jdk.internal.org.objectweb.asm",
                     "sun.reflect.annotation",
                     "sun.security.jca",

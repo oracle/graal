@@ -81,6 +81,7 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.UnknownClass;
@@ -307,7 +308,7 @@ public class SVMHost extends HostVM {
              * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
              * later.
              */
-            return SubstrateOptions.optimizationLevel() <= 0;
+            return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
 
         } else {
             /*
