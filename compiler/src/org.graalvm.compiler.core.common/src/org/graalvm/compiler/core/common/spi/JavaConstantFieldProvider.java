@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.core.common.spi;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -67,6 +69,14 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
             }
             stringValueField = valueField;
             stringHashField = hashField;
+            ArrayList<StableFieldProvider> matchers = new ArrayList<>();
+            for (StableFieldProviderProvider p : GraalServices.load(StableFieldProviderProvider.class)) {
+                StableFieldProvider matcher = p.get(metaAccess);
+                if (matcher != null) {
+                    matchers.add(matcher);
+                }
+            }
+            stableFieldProviders = matchers.toArray(new StableFieldProvider[0]);
         } catch (SecurityException e) {
             throw new GraalError(e);
         }
@@ -89,8 +99,28 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         return null;
     }
 
+    @Override
+    public boolean maybeFinal(ResolvedJavaField field) {
+        for (StableFieldProvider matcher : stableFieldProviders) {
+            if (matcher.maybeStableField(field)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected <T> T foldStableArray(JavaConstant value, ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        return tool.foldStableArray(value, getArrayDimension(field.getType()), isDefaultStableField(field, tool));
+        return tool.foldStableArray(value, getArrayDimension(field), isDefaultStableField(field, tool));
+    }
+
+    private int getArrayDimension(ResolvedJavaField field) {
+        for (StableFieldProvider matcher : stableFieldProviders) {
+            int dimensions = matcher.getArrayDimension(field);
+            if (dimensions >= 0) {
+                return dimensions;
+            }
+        }
+        return getArrayDimension(field.getType());
     }
 
     private static int getArrayDimension(JavaType type) {
@@ -130,6 +160,11 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         }
         if (field.equals(stringHashField)) {
             return true;
+        }
+        for (StableFieldProvider matcher : stableFieldProviders) {
+            if (matcher.isStableField(field, tool)) {
+                return true;
+            }
         }
         return false;
     }
@@ -174,6 +209,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         return false;
     }
 
+    private final StableFieldProvider[] stableFieldProviders;
     private final ResolvedJavaField stringValueField;
     private final ResolvedJavaField stringHashField;
 

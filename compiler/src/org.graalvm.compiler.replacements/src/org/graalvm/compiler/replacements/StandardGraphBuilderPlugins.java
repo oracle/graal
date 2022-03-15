@@ -176,6 +176,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNo
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
@@ -231,6 +232,9 @@ public class StandardGraphBuilderPlugins {
         registerMethodHandleImplPlugins(plugins, replacements);
         registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
+        for (GraalInvocationPluginProvider p : GraalServices.load(GraalInvocationPluginProvider.class)) {
+            p.registerInvocationPlugins(lowerer.getTarget().arch, plugins, replacements);
+        }
     }
 
     public static final Field STRING_VALUE_FIELD;

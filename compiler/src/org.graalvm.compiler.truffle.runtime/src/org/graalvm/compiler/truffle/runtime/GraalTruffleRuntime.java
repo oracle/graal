@@ -50,6 +50,8 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -399,7 +401,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         ConditionProfile.class,
                         Objects.class,
                         TruffleSafepoint.class,
-                        BaseOSRRootNode.class
+                        BaseOSRRootNode.class,
+                        TruffleString.class,
+                        AbstractTruffleString.class
         }) {
             m.put(c.getName(), c);
         }

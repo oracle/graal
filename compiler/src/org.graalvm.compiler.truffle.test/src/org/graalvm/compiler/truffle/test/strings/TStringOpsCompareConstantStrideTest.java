@@ -24,42 +24,36 @@
  */
 package org.graalvm.compiler.truffle.test.strings;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import static org.junit.runners.Parameterized.Parameters;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.GraalOptions;
+import java.util.List;
+
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
-public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndexOfTwoConsecutiveTest {
+public class TStringOpsCompareConstantStrideTest extends TStringOpsCompareTest {
 
-    final Object[] constantArgs;
+    Object[] constantArgs = new Object[10];
 
-    public TStringOpsIndexOfTwoConsecutiveConstantTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int v0, int v1, int mask0, int mask1) {
-        super(arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1, mask0, mask1);
-        constantArgs = new Object[]{DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1, mask0, mask1};
+    public TStringOpsCompareConstantStrideTest(
+                    byte[] arrayA, int offsetA, int strideA,
+                    byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
+        super(arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
     }
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
+    @Parameters(name = "{index}: offset: {1}, {4}, stride: {2}, {5}, length: {6}")
     public static List<Object[]> data() {
-        return TStringOpsIndexOfTwoConsecutiveTest.data().stream().filter(args -> {
-            int length = (int) args[2];
-            int fromIndex = (int) args[4];
-            // this test takes much longer than TStringOpsIndexOfTwoConsecutiveTest, reduce number
-            // of test cases
-            return length == 0 || length == 1 || length == 7 || length == 16 && fromIndex < 2;
-        }).collect(Collectors.toList());
+        return TStringOpsCompareTest.data();
     }
 
     @Override
@@ -68,30 +62,25 @@ public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndex
         return super.editGraphBuilderConfiguration(conf);
     }
 
-    @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
-        return makeAllArraysStable(super.parseForCompile(method, compilationId, options));
-    }
+    private static final ThreadLocal<InstalledCode[]> cache = ThreadLocal.withInitial(() -> new InstalledCode[9]);
 
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        return super.getCode(installedCodeOwner, graph, true, false, options);
+        return cacheInstalledCodeConstantStride(installedCodeOwner, graph, options, getMemcmpWithStrideIntl(), cache.get(), strideA, strideB);
     }
 
     @Override
     @Test
-    public void testIndexOfTwoConsecutive() {
-        constantArgs[6] = v0;
-        constantArgs[7] = v1;
-        test(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
+    public void testMemCmp() {
+        constantArgs[3] = strideA;
+        constantArgs[6] = strideB;
+        test(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
+                        arrayA, offsetA, strideA,
+                        arrayB, offsetB, strideB, lengthCMP);
     }
 
     @Override
-    protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64) {
-            if (arrayA.length < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) {
-                assertConstantReturn(graph);
-            }
-        }
+    protected void checkIntrinsicNode(ArrayRegionCompareToNode node) {
+        Assert.assertTrue(node.getDirectStubCallIndex() >= 0);
     }
 }

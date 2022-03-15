@@ -50,6 +50,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
+import org.graalvm.compiler.replacements.StrideUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -115,19 +116,29 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
      */
     @Input protected ValueNode length;
 
+    @OptionalInput protected ValueNode stride;
+
     @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, JavaKind strideA, JavaKind strideB, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, strideA, strideB, locationIdentity);
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, locationIdentity);
+    }
+
+    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride, LocationIdentity locationIdentity) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, stride, null, null, locationIdentity);
+    }
+
+    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, stride, null, null, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     @ConstantNodeParameter JavaKind strideA,
                     @ConstantNodeParameter JavaKind strideB) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, strideA, strideB, strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
     }
 
-    protected ArrayRegionCompareToNode(NodeClass<? extends ArrayRegionCompareToNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
+    protected ArrayRegionCompareToNode(NodeClass<? extends ArrayRegionCompareToNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride,
                     JavaKind strideA,
                     JavaKind strideB,
                     LocationIdentity locationIdentity) {
@@ -140,10 +151,9 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
         this.arrayB = arrayB;
         this.offsetB = offsetB;
         this.length = length;
-
-        GraalError.guarantee(allowedStrides().contains(strideA), "unsupported strideA");
-        GraalError.guarantee(allowedStrides().contains(strideB), "unsupported strideB");
-        GraalError.guarantee(strideA.getByteCount() >= strideB.getByteCount(), "strideA must be greater or equal to strideB");
+        this.stride = stride;
+        GraalError.guarantee(strideA == null || allowedStrides().contains(strideA), "unsupported strideA");
+        GraalError.guarantee(strideB == null || allowedStrides().contains(strideB), "unsupported strideB");
     }
 
     private static EnumSet<JavaKind> allowedStrides() {
@@ -152,6 +162,9 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
 
     @NodeIntrinsic
     public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, @ConstantNodeParameter JavaKind strideA, @ConstantNodeParameter JavaKind strideB);
+
+    @NodeIntrinsic
+    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride);
 
     public ValueNode getArrayA() {
         return arrayA;
@@ -181,12 +194,22 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
         return length;
     }
 
+    public int getDirectStubCallIndex() {
+        return StrideUtil.getDirectStubCallIndex(stride, strideA, strideB);
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         if (UseGraalStubs.getValue(graph().getOptions())) {
             ForeignCallLinkage linkage = gen.lookupGraalStub(this);
             if (linkage != null) {
-                Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
+                final Value result;
+                if (getDirectStubCallIndex() < 0) {
+                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length),
+                                    gen.operand(stride));
+                } else {
+                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
+                }
                 gen.setResult(this, result);
                 return;
             }
@@ -200,8 +223,13 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
     }
 
     protected void generateArrayCompare(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(strideA, strideB, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB),
-                        gen.operand(length)));
+        if (getDirectStubCallIndex() < 0) {
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(
+                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(stride)));
+        } else {
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(StrideUtil.getStrideA(stride, strideA), StrideUtil.getStrideB(stride, strideB),
+                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length)));
+        }
     }
 
     @Override
@@ -222,27 +250,28 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (length.isJavaConstant()) {
+        if ((stride == null || stride.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
-            if (len * Math.max(strideA.getByteCount(), strideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
-                            ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, strideA, len, this) &&
-                            ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, strideB, len, this)) {
-                Integer startIndex1 = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), strideA, this);
-                Integer startIndex2 = ConstantReflectionUtil.startIndex(tool, arrayB, offsetB.asJavaConstant(), strideB, this);
-                return ConstantNode.forInt(foldResult(tool, arrayA, startIndex1, arrayB, startIndex2, len));
+            JavaKind constStrideA = StrideUtil.getStrideA(stride, strideA);
+            JavaKind constStrideB = StrideUtil.getStrideB(stride, strideB);
+            if (len * Math.max(constStrideA.getByteCount(), constStrideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
+                            ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
+                            ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this)) {
+                Integer startIndex1 = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), constStrideA, this);
+                Integer startIndex2 = ConstantReflectionUtil.startIndex(tool, arrayB, offsetB.asJavaConstant(), constStrideB, this);
+                return ConstantNode.forInt(foldResult(tool, constStrideA, constStrideB, arrayA, startIndex1, arrayB, startIndex2, len));
             }
         }
-
         return this;
     }
 
-    protected int foldResult(CanonicalizerTool tool, ValueNode a, int startIndexA, ValueNode b, int startIndexB, int len) {
+    private static int foldResult(CanonicalizerTool tool, JavaKind constStrideA, JavaKind constStrideB, ValueNode a, int startIndexA, ValueNode b, int startIndexB, int len) {
         JavaKind arrayKindA = a.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         JavaKind arrayKindB = b.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         ConstantReflectionProvider constantReflection = tool.getConstantReflection();
         for (int i = 0; i < len; i++) {
-            int valueA = ConstantReflectionUtil.readTypePunned(constantReflection, a.asJavaConstant(), arrayKindA, strideA, startIndexA + i);
-            int valueB = ConstantReflectionUtil.readTypePunned(constantReflection, b.asJavaConstant(), arrayKindB, strideB, startIndexB + i);
+            int valueA = ConstantReflectionUtil.readTypePunned(constantReflection, a.asJavaConstant(), arrayKindA, constStrideA, startIndexA + i);
+            int valueB = ConstantReflectionUtil.readTypePunned(constantReflection, b.asJavaConstant(), arrayKindB, constStrideB, startIndexB + i);
             int cmp = valueA - valueB;
             if (cmp != 0) {
                 return cmp;

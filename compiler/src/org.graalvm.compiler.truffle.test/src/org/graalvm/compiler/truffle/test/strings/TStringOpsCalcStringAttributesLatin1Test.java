@@ -75,7 +75,7 @@ public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<AMD
     }
 
     @Test
-    public void testLatin1() throws ClassNotFoundException {
+    public void testLatin1() {
         test(getTStringOpsMethod("calcStringAttributesLatin1", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

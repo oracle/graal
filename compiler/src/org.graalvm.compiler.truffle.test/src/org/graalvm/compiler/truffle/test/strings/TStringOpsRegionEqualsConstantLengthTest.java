@@ -27,11 +27,17 @@ package org.graalvm.compiler.truffle.test.strings;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.StrideUtil;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -39,30 +45,28 @@ import org.junit.runners.Parameterized.Parameters;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
-public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTest {
+public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEqualsTest {
 
-    final Object[] constantArgs;
+    static final int[] lengthFilter = {1, 7, 16, 31};
 
-    public TStringOpsRegionEqualsConstantTest(
+    final Object[] constantArgs = new Object[13];
+
+    public TStringOpsRegionEqualsConstantLengthTest(
                     byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
                     byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
-        constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, JavaConstant.NULL_POINTER, lengthCMP};
     }
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
+    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
         return TStringOpsRegionEqualsTest.data().stream().filter(args -> {
             int length = (int) args[10];
             // this test takes much longer than TStringOpsRegionEqualsTest, reduce number of test
             // cases
-            return length == 0 || length == 1 || length == 7 || length == 16;
+            return contains(lengthFilter, length);
         }).collect(Collectors.toList());
     }
 
@@ -72,30 +76,39 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
         return super.editGraphBuilderConfiguration(conf);
     }
 
-    @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
-        return makeAllArraysStable(super.parseForCompile(method, compilationId, options));
-    }
+    private static final ThreadLocal<InstalledCode[]> cache = ThreadLocal.withInitial(() -> new InstalledCode[9 * lengthFilter.length]);
 
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        return super.getCode(installedCodeOwner, graph, true, false, options);
+        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, getRegionEqualsWithOrMaskWithStrideIntl(), cache.get(), strideA, strideB, indexOf(lengthFilter, lengthCMP));
     }
 
     @Override
     @Test
     public void testRegionEquals() {
+        Assume.assumeTrue(getTarget().arch instanceof AMD64);
+        Assume.assumeTrue(AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(getTarget(), StrideUtil.log2ToStride(strideA), StrideUtil.log2ToStride(strideB), lengthCMP, getMaxVectorSize()));
+        constantArgs[4] = strideA;
+        constantArgs[9] = strideB;
+        constantArgs[12] = lengthCMP;
         test(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }
 
     @Override
-    protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64) {
-            if ((lengthCMP << Math.max(strideA, strideB)) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(graph.getOptions())) {
-                assertConstantReturn(graph);
-            }
+    protected void checkIntrinsicNode(ArrayRegionEqualsNode node) {
+        Assert.assertTrue(node.getDirectStubCallIndex() >= 0);
+        ValueNode stride = node.getStride();
+        Assert.assertTrue(stride == null || stride.isJavaConstant());
+        Assert.assertTrue(node.getLength().isJavaConstant());
+    }
+
+    @Override
+    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (method.getName().equals("stubStride")) {
+            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
         }
+        return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 }

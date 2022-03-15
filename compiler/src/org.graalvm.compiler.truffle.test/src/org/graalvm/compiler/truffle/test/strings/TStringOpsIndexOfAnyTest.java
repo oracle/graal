@@ -33,8 +33,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 @RunWith(Parameterized.class)
 public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
 
@@ -113,33 +111,25 @@ public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
     }
 
     @Test
-    public void testIndexOfAny() throws ClassNotFoundException {
+    public void testIndexOfAny() {
         if (strideA == 0) {
-            ResolvedJavaMethod method = getTStringOpsMethod("indexOfAnyByteIntl",
-                            Object.class, int.class, int.class, int.class, byte[].class);
             byte[] valuesB = new byte[values.length];
             for (int i = 0; i < values.length; i++) {
                 valuesB[i] = (byte) values[i];
             }
-            test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
+            test(getIndexOfAnyByteIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
         }
-
         if (strideA < 2) {
-            ResolvedJavaMethod method = getTStringOpsMethod("indexOfAnyCharIntl",
-                            Object.class, int.class, int.class, int.class, int.class, char[].class);
             char[] valuesC = new char[values.length];
             for (int i = 0; i < values.length; i++) {
                 valuesC[i] = (char) (strideA == 0 ? values[i] & 0xff : values[i]);
             }
-            test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
+            test(getIndexOfAnyCharIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
         }
-
-        ResolvedJavaMethod method = getTStringOpsMethod("indexOfAnyIntIntl",
-                        Object.class, int.class, int.class, int.class, int.class, int[].class);
         int[] valuesI = new int[values.length];
         for (int i = 0; i < values.length; i++) {
             valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];
         }
-        test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
+        test(getIndexOfAnyIntIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
     }
 }

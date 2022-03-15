@@ -40,20 +40,17 @@ import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 
 public final class AMD64CalcStringAttributesStub extends SnippetStub {
 
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_LATIN1 = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesLatin1", int.class, Object.class, long.class, int.class);
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_BMP = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesBMP", int.class, Object.class, long.class, int.class);
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF8_VALID = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesUTF8Valid", long.class, Object.class, long.class, int.class);
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF8_UNKNOWN = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesUTF8Unknown", long.class, Object.class, long.class, int.class);
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16_VALID = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesUTF16Valid", long.class, Object.class, long.class, int.class);
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16_UNKNOWN = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesUTF16Unknown", long.class, Object.class, long.class, int.class);
-    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF32 = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "calcStringAttributesUTF32", int.class, Object.class, long.class, int.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_LATIN1 = foreignCallDescriptor("calcStringAttributesLatin1", int.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_BMP = foreignCallDescriptor("calcStringAttributesBMP", int.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF8_VALID = foreignCallDescriptor("calcStringAttributesUTF8Valid", long.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF8_UNKNOWN = foreignCallDescriptor("calcStringAttributesUTF8Unknown", long.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16_VALID = foreignCallDescriptor("calcStringAttributesUTF16Valid", long.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16_UNKNOWN = foreignCallDescriptor("calcStringAttributesUTF16Unknown", long.class);
+    private static final HotSpotForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF32 = foreignCallDescriptor("calcStringAttributesUTF32", int.class);
+
+    private static HotSpotForeignCallDescriptor foreignCallDescriptor(String name, Class<?> resultType) {
+        return new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS, name, resultType, Object.class, long.class, int.class);
+    }
 
     public static final HotSpotForeignCallDescriptor[] STUBS = {
                     STUB_CALC_STRING_ATTRIBUTES_LATIN1,

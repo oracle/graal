@@ -24,20 +24,24 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movdqu;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.packusdw;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.packuswb;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovSZx;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
@@ -89,25 +93,25 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
     private static final Register REG_ARRAY_DST = rdi;
     private static final Register REG_OFFSET_DST = rcx;
     private static final Register REG_LENGTH = rdx;
+    private static final Register REG_STRIDE = r8;
 
-    private final JavaKind strideSrc;
-    private final JavaKind strideDst;
-    private final Scale scaleSrc;
-    private final Scale scaleDst;
+    private final Scale scaleSrcConst;
+    private final Scale scaleDstConst;
     private final AMD64MacroAssembler.ExtendMode extendMode;
-    private final Op op;
 
     @Use({REG}) private Value arraySrc;
     @Use({REG}) private Value offsetSrc;
     @Use({REG}) private Value arrayDst;
     @Use({REG}) private Value offsetDst;
     @Use({REG}) private Value length;
+    @Use({REG, ILLEGAL}) private Value stride;
 
     @Temp({REG}) private Value arraySrcTmp;
     @Temp({REG}) private Value offsetSrcTmp;
     @Temp({REG}) private Value arrayDstTmp;
     @Temp({REG}) private Value offsetDstTmp;
     @Temp({REG}) private Value lengthTmp;
+    @Temp({REG, ILLEGAL}) private Value strideTmp;
 
     @Temp({REG}) private Value[] vectorTemp;
 
@@ -127,28 +131,30 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
      * @param length length of the region to copy, scaled to strideDst.
      * @param extendMode sign- or zero-extend array elements when inflating to a bigger stride.
      */
-    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length,
+    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride,
                     AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE, tool, YMM);
-        this.strideSrc = strideSrc;
-        this.strideDst = strideDst;
         this.extendMode = extendMode;
 
         assert ((AMD64) tool.target().arch).getFeatures().contains(CPUFeature.SSE2);
-
-        assert this.strideSrc.isNumericInteger() && this.strideDst.isNumericInteger();
-
-        this.scaleSrc = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(this.strideSrc)));
-        this.scaleDst = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(this.strideDst)));
-        this.op = getOp(scaleDst, scaleSrc);
 
         this.arraySrcTmp = this.arraySrc = arraySrc;
         this.offsetSrcTmp = this.offsetSrc = offsetSrc;
         this.arrayDstTmp = this.arrayDst = arrayDst;
         this.offsetDstTmp = this.offsetDst = offsetDst;
         this.lengthTmp = this.length = length;
+        this.strideTmp = this.stride = stride;
 
-        this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(op)];
+        if (isIllegal(stride)) {
+            assert strideSrc.isNumericInteger() && strideDst.isNumericInteger();
+            this.scaleSrcConst = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideSrc)));
+            this.scaleDstConst = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideDst)));
+            this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(getOp(scaleDstConst, scaleSrcConst))];
+        } else {
+            scaleSrcConst = null;
+            scaleDstConst = null;
+            this.vectorTemp = new Value[5];
+        }
         for (int i = 0; i < vectorTemp.length; i++) {
             vectorTemp[i] = tool.newVariable(LIRKind.value(getVectorKind(JavaKind.Byte)));
         }
@@ -156,17 +162,34 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
     public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst,
                     Value length, AMD64MacroAssembler.ExtendMode extendMode) {
+        return movParamsAndCreate(tool, strideSrc, strideDst, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, extendMode);
+    }
+
+    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride,
+                    AMD64MacroAssembler.ExtendMode extendMode) {
+        return movParamsAndCreate(tool, null, null, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, extendMode);
+    }
+
+    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst,
+                    Value length, Value stride, AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArraySrc = REG_ARRAY_SRC.asValue(arraySrc.getValueKind());
         RegisterValue regOffsetSrc = REG_OFFSET_SRC.asValue(offsetSrc.getValueKind());
         RegisterValue regArrayDst = REG_ARRAY_DST.asValue(arrayDst.getValueKind());
         RegisterValue regOffsetDst = REG_OFFSET_DST.asValue(offsetDst.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
+        final Value regStride;
         tool.emitConvertNullToZero(regArraySrc, arraySrc);
         tool.emitMove(regOffsetSrc, offsetSrc);
         tool.emitConvertNullToZero(regArrayDst, arrayDst);
         tool.emitMove(regOffsetDst, offsetDst);
         tool.emitMove(regLength, length);
-        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, extendMode);
+        if (isIllegal(stride)) {
+            regStride = Value.ILLEGAL;
+        } else {
+            regStride = REG_STRIDE.asValue(stride.getValueKind());
+            tool.emitMove((RegisterValue) regStride, stride);
+        }
+        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, regStride, extendMode);
     }
 
     private static Op getOp(Scale scaleDst, Scale scaleSrc) {
@@ -232,12 +255,49 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         asm.leaq(src, new AMD64Address(src, sro, Scale.Times1));
         asm.leaq(dst, new AMD64Address(dst, dso, Scale.Times1));
 
-        if (scaleSrc.value < scaleDst.value) {
-            emitInflate(crb, asm, src, dst, len, sro);
-        } else if (scaleSrc.value == scaleDst.value) {
-            emitCopy(crb, asm, src, dst, len, sro);
+        if (isIllegal(stride)) {
+            emitOp(crb, asm, this.scaleSrcConst, this.scaleDstConst, src, sro, dst, len);
         } else {
-            emitCompress(crb, asm, src, dst, len, sro);
+            Label[] variants = new Label[9];
+            Label end = new Label();
+            for (int i = 0; i < variants.length; i++) {
+                variants[i] = new Label();
+            }
+            AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, asm, dso, asRegister(stride), 0, 8, Arrays.stream(variants));
+
+            asm.align(crb.target.wordSize * 2);
+            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Scale.Times4, Scale.Times4)]);
+            asm.shll(len, 1);
+            asm.align(crb.target.wordSize * 2);
+            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Scale.Times2, Scale.Times2)]);
+            asm.shll(len, 1);
+            asm.align(crb.target.wordSize * 2);
+            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Scale.Times1, Scale.Times1)]);
+            emitOp(crb, asm, Scale.Times1, Scale.Times1, src, sro, dst, len);
+            asm.jmp(end);
+
+            for (Scale scaleSrc : new Scale[]{Scale.Times1, Scale.Times2, Scale.Times4}) {
+                for (Scale scaleDst : new Scale[]{Scale.Times1, Scale.Times2, Scale.Times4}) {
+                    if (scaleSrc == scaleDst) {
+                        continue;
+                    }
+                    asm.align(crb.target.wordSize * 2);
+                    asm.bind(variants[StrideUtil.getDirectStubCallIndex(scaleSrc, scaleDst)]);
+                    emitOp(crb, asm, scaleSrc, scaleDst, src, sro, dst, len);
+                    asm.jmp(end);
+                }
+            }
+            asm.bind(end);
+        }
+    }
+
+    private void emitOp(CompilationResultBuilder crb, AMD64MacroAssembler asm, Scale scaleSrc, Scale scaleDst, Register src, Register sro, Register dst, Register len) {
+        if (scaleSrc.value < scaleDst.value) {
+            emitInflate(crb, asm, scaleSrc, scaleDst, src, dst, len, sro);
+        } else if (scaleSrc.value == scaleDst.value) {
+            emitCopy(crb, asm, scaleSrc, scaleDst, src, dst, len, sro);
+        } else {
+            emitCompress(crb, asm, scaleSrc, scaleDst, src, dst, len, sro);
         }
     }
 
@@ -247,10 +307,13 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
      * {@code src} are zero. Breaking this assumption will lead to incorrect results.
      */
     private void emitCompress(CompilationResultBuilder crb, AMD64MacroAssembler asm,
+                    Scale scaleSrc,
+                    Scale scaleDst,
                     Register src,
                     Register dst,
                     Register len,
                     Register tmp) {
+        Op op = getOp(scaleDst, scaleSrc);
         Label labelScalarLoop = new Label();
         Label labelDone = new Label();
 
@@ -260,7 +323,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             Label labelPack8Bytes = new Label();
             Label labelCopyTail = new Label();
 
-            int vectorLength = vectorSize.getBytes() / strideDst.getByteCount();
+            int vectorLength = vectorSize.getBytes() / scaleDst.value;
 
             asm.movl(tmp, len);
 
@@ -289,31 +352,31 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             // vectorized loop
             asm.align(crb.target.wordSize * 2);
             asm.bind(labelPackVectorLoop);
-            packVector(asm, vectorSize, src, dst, len, 0, false);
+            packVector(asm, vectorSize, op, scaleSrc, scaleDst, src, dst, len, 0, false);
             asm.addqAndJcc(len, vectorLength, ConditionFlag.NotZero, labelPackVectorLoop, true);
 
             // vectorized tail
-            packVector(asm, vectorSize, src, dst, tmp, -vectorSize.getBytes(), false);
+            packVector(asm, vectorSize, op, scaleSrc, scaleDst, src, dst, tmp, -vectorSize.getBytes(), false);
             asm.jmp(labelDone);
 
             if (supportsAVX2AndYMM()) {
                 asm.bind(labelPack16Bytes);
-                int vectorSizeXMM = XMM.getBytes() / strideDst.getByteCount();
+                int vectorSizeXMM = XMM.getBytes() / scaleDst.value;
                 asm.cmplAndJcc(tmp, vectorSizeXMM, ConditionFlag.Less, labelPack8Bytes, true);
-                packVector(asm, XMM, src, dst, len, 0, true);
-                packVector(asm, XMM, src, dst, tmp, -XMM.getBytes(), false);
+                packVector(asm, XMM, op, scaleSrc, scaleDst, src, dst, len, 0, true);
+                packVector(asm, XMM, op, scaleSrc, scaleDst, src, dst, tmp, -XMM.getBytes(), false);
                 asm.jmpb(labelDone);
             }
 
             asm.bind(labelPack8Bytes);
-            int vectorSizeQ = 8 / strideDst.getByteCount();
+            int vectorSizeQ = 8 / scaleDst.value;
             asm.cmplAndJcc(tmp, vectorSizeQ, ConditionFlag.Less, labelCopyTail, true);
 
             // array is too small for vectorized loop, use half vectors
             // pack aligned to beginning
-            pack8Bytes(asm, src, dst, len, 0, true);
+            pack8Bytes(asm, op, scaleSrc, scaleDst, src, dst, len, 0, true);
             // pack aligned to end
-            pack8Bytes(asm, src, dst, tmp, -8, false);
+            pack8Bytes(asm, op, scaleSrc, scaleDst, src, dst, tmp, -8, false);
             asm.jmpb(labelDone);
 
             asm.bind(labelCopyTail);
@@ -350,12 +413,12 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         movdqu(asm, vectorSize, vecMask, (AMD64Address) crb.recordDataReferenceInCode(mask, align));
     }
 
-    private void packVector(AMD64MacroAssembler asm, AVXSize vecSize, Register src, Register dst, Register index, int displacement, boolean direct) {
+    private void packVector(AMD64MacroAssembler asm, AVXSize vecSize, Op op, Scale scaleSrc, Scale scaleDst, Register src, Register dst, Register index, int displacement, boolean direct) {
         int displacementSrc = displacement << scaleSrc.log2 - scaleDst.log2;
         Register vec1 = asRegister(vectorTemp[0]);
         Register vec2 = asRegister(vectorTemp[1]);
-        movdqu(asm, vecSize, vec1, indexAddressOrDirect(src, index, displacementSrc, 0, direct));
-        movdqu(asm, vecSize, vec2, indexAddressOrDirect(src, index, displacementSrc, vecSize.getBytes(), direct));
+        movdqu(asm, vecSize, vec1, indexAddressOrDirect(scaleSrc, src, index, displacementSrc, 0, direct));
+        movdqu(asm, vecSize, vec2, indexAddressOrDirect(scaleSrc, src, index, displacementSrc, vecSize.getBytes(), direct));
         switch (op) {
             case compressCharToByte:
                 packuswb(asm, vecSize, vec1, vec2);
@@ -366,8 +429,8 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             case compressIntToByte:
                 Register vec3 = asRegister(vectorTemp[2]);
                 Register vec4 = asRegister(vectorTemp[3]);
-                movdqu(asm, vecSize, vec3, indexAddressOrDirect(src, index, displacementSrc, vecSize.getBytes() * 2, direct));
-                movdqu(asm, vecSize, vec4, indexAddressOrDirect(src, index, displacementSrc, vecSize.getBytes() * 3, direct));
+                movdqu(asm, vecSize, vec3, indexAddressOrDirect(scaleSrc, src, index, displacementSrc, vecSize.getBytes() * 2, direct));
+                movdqu(asm, vecSize, vec4, indexAddressOrDirect(scaleSrc, src, index, displacementSrc, vecSize.getBytes() * 3, direct));
                 packusdw(asm, vecSize, vec1, vec2);
                 packusdw(asm, vecSize, vec3, vec4);
                 packuswb(asm, vecSize, vec1, vec3);
@@ -383,11 +446,11 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         movdqu(asm, vecSize, new AMD64Address(dst, index, scaleDst, displacement), vec1);
     }
 
-    private void pack8Bytes(AMD64MacroAssembler masm, Register src, Register dst, Register index, int displacement, boolean direct) {
+    private void pack8Bytes(AMD64MacroAssembler masm, Op op, Scale scaleSrc, Scale scaleDst, Register src, Register dst, Register index, int displacement, boolean direct) {
         Register vec1 = asRegister(vectorTemp[0]);
         Register vec2 = asRegister(vectorTemp[1]);
         int displacementSrc = displacement << scaleSrc.log2 - scaleDst.log2;
-        masm.movdqu(vec1, indexAddressOrDirect(src, index, displacementSrc, 0, direct));
+        masm.movdqu(vec1, indexAddressOrDirect(scaleSrc, src, index, displacementSrc, 0, direct));
         switch (op) {
             case compressCharToByte:
                 masm.pxor(vec2, vec2);
@@ -398,7 +461,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                 masm.packusdw(vec1, vec2);
                 break;
             case compressIntToByte:
-                masm.movdqu(vec2, indexAddressOrDirect(src, index, displacementSrc, 16, direct));
+                masm.movdqu(vec2, indexAddressOrDirect(scaleSrc, src, index, displacementSrc, 16, direct));
                 masm.packusdw(vec1, vec2);
                 masm.packuswb(vec1, vec2);
                 break;
@@ -406,15 +469,18 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         masm.movq(new AMD64Address(dst, index, scaleDst, displacement), vec1);
     }
 
-    private AMD64Address indexAddressOrDirect(Register array, Register index, int baseOffset, int displacement, boolean direct) {
+    private static AMD64Address indexAddressOrDirect(Scale scaleSrc, Register array, Register index, int baseOffset, int displacement, boolean direct) {
         return direct ? new AMD64Address(array, displacement) : new AMD64Address(array, index, scaleSrc, baseOffset + displacement);
     }
 
     private void emitInflate(CompilationResultBuilder crb, AMD64MacroAssembler asm,
+                    Scale scaleSrc,
+                    Scale scaleDst,
                     Register src,
                     Register dst,
                     Register len,
                     Register tmp) {
+        Op op = getOp(scaleDst, scaleSrc);
         Register vec = asRegister(vectorTemp[0]);
         Label labelScalarLoop = new Label();
         Label labelDone = new Label();
@@ -427,8 +493,8 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             Label labelXMMTail = new Label();
             Label labelTail = new Label();
 
-            int vectorLength = vectorSize.getBytes() / strideDst.getByteCount();
-            int vectorLengthXMM = XMM.getBytes() / strideDst.getByteCount();
+            int vectorLength = vectorSize.getBytes() / scaleDst.value;
+            int vectorLengthXMM = XMM.getBytes() / scaleDst.value;
 
             int scaleDelta = scaleDst.log2 - scaleSrc.log2;
 
@@ -513,6 +579,8 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
     }
 
     private void emitCopy(CompilationResultBuilder crb, AMD64MacroAssembler masm,
+                    Scale scaleSrc,
+                    Scale scaleDst,
                     Register src,
                     Register dst,
                     Register len,
@@ -525,7 +593,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         Label labelTailBYTE = new Label();
         Label labelDone = new Label();
 
-        int vectorLength = vectorSize.getBytes() / strideDst.getByteCount();
+        int vectorLength = vectorSize.getBytes() / scaleDst.value;
 
         masm.movl(tmp, len);
 
@@ -554,7 +622,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
             // half vector size
             masm.bind(labelTailXMM);
-            masm.cmplAndJcc(tmp, 16 / strideDst.getByteCount(), ConditionFlag.Less, labelTailQWORD, true);
+            masm.cmplAndJcc(tmp, 16 / scaleDst.value, ConditionFlag.Less, labelTailQWORD, true);
             masm.movdqu(vec, new AMD64Address(src));
             masm.movdqu(new AMD64Address(dst), vec);
 
@@ -587,7 +655,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
          */
 
         masm.bind(labelTailQWORD);
-        masm.cmplAndJcc(tmp, 8 / strideDst.getByteCount(), ConditionFlag.Less, labelTailDWORD, true);
+        masm.cmplAndJcc(tmp, 8 / scaleDst.value, ConditionFlag.Less, labelTailDWORD, true);
         masm.movq(len, new AMD64Address(src));
         masm.movq(new AMD64Address(dst), len);
 
@@ -597,7 +665,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
         masm.bind(labelTailDWORD);
         if (scaleDst.value < 4) {
-            masm.cmplAndJcc(tmp, 4 / strideDst.getByteCount(), ConditionFlag.Less, labelTailWORD, true);
+            masm.cmplAndJcc(tmp, 4 / scaleDst.value, ConditionFlag.Less, labelTailWORD, true);
         } else {
             masm.testlAndJcc(tmp, tmp, ConditionFlag.Zero, labelDone, true);
         }
@@ -610,7 +678,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             masm.jmpb(labelDone);
             masm.bind(labelTailWORD);
             if (scaleDst.value < 2) {
-                masm.cmplAndJcc(tmp, 2 / strideDst.getByteCount(), ConditionFlag.Less, labelTailBYTE, true);
+                masm.cmplAndJcc(tmp, 2 / scaleDst.value, ConditionFlag.Less, labelTailBYTE, true);
             } else {
                 masm.testlAndJcc(tmp, tmp, ConditionFlag.Zero, labelDone, true);
             }

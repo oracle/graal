@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
+import org.graalvm.compiler.core.common.spi.StableFieldProviderProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -79,6 +80,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.GraalInvocationPluginProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
@@ -430,6 +432,8 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeatur
         GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(DisassemblerProvider.class);
+        GraalServices.load(GraalInvocationPluginProvider.class);
+        GraalServices.load(StableFieldProviderProvider.class);
 
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
             // Instantiate the truffle compiler ensure the backends it uses are initialized.
