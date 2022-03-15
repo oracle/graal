@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,7 +76,7 @@ public final class GlobalAlias extends GlobalValueSymbol {
         } else if (symbol.isThreadLocalSymbol()) {
             LLVMThreadLocalSymbol value = symbol.asThreadLocalSymbol();
             return CommonNodeFactory.createLiteral(value, getType());
-        }else if (symbol.isElemPtrExpression()) {
+        } else if (symbol.isElemPtrExpression()) {
             LLVMElemPtrSymbol value = symbol.asElemPtrExpression();
             return CommonNodeFactory.createLiteral(value, getType());
         } else {
