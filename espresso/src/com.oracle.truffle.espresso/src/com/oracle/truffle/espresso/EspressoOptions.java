@@ -105,7 +105,7 @@ public final class EspressoOptions {
     public static final OptionKey<String> Module = new OptionKey<>("");
 
     @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for modules.", //
-                    category = OptionCategory.USER,//
+                    category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
                     usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> ModulePath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
@@ -142,7 +142,7 @@ public final class EspressoOptions {
 
     @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories to search for Espresso's (lib)?jvm.(so|dll|dylib).", //
                     category = OptionCategory.EXPERT, //
-                    stability = OptionStability.EXPERIMENTAL,//
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> JVMLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
@@ -266,7 +266,7 @@ public final class EspressoOptions {
 
     @Option(help = "Enable inlining through method handle calls.", //
                     category = OptionCategory.EXPERT, //
-                    stability = OptionStability.EXPERIMENTAL,//
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "true|false") //
     public static final OptionKey<Boolean> InlineMethodHandle = new OptionKey<>(true);
 
@@ -398,7 +398,7 @@ public final class EspressoOptions {
     });
 
     @Option(help = "JDWP agent Options. e.g. -agentlib:jdwp=transport=dt_socket,server=y,address=localhost:8000,suspend=y", //
-                    category = OptionCategory.EXPERT,//
+                    category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
                     usageSyntax = "[transport=dt_socket],[server=y|n],[address=[<host>:]<port>,[suspend=y|n]]") //
     public static final OptionKey<JDWPOptions> JDWPOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_TYPE);
@@ -518,7 +518,7 @@ public final class EspressoOptions {
                     "Keys represent the agent library full absolute path, values are the corresponding agent options.\\n" +
                     "Agents are not fully implemented yet.", //
                     category = OptionCategory.INTERNAL, //
-                    stability = OptionStability.EXPERIMENTAL,//
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "<librarypath>=<agentOptions>") //
     public static final OptionKey<OptionMap<String>> AgentPath = OptionKey.mapOf(String.class);
 
