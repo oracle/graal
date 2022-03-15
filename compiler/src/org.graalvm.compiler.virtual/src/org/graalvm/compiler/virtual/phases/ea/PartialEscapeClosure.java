@@ -891,6 +891,40 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             }
                         }
                     }
+                    if (virtualObjTemp.length == 0 && forceMaterialization && merge.isPhiAtMerge(forcedMaterializationValue)) {
+                        /*
+                         * We never entered the virtualObjTemp loop above but still need to force
+                         * materialization of this phi's inputs.
+                         */
+                        PhiNode phi = (PhiNode) forcedMaterializationValue;
+                        for (int i = 0; i < states.length; i++) {
+                            ValueNode value = phi.valueAt(i);
+                            ValueNode alias = getAlias(value);
+                            if (alias instanceof VirtualObjectNode) {
+                                VirtualObjectNode virtual = (VirtualObjectNode) alias;
+                                if (states[i].hasObjectState(virtual.getObjectId())) {
+                                    Block predecessor = getPredecessor(i);
+                                    materialized |= ensureMaterialized(states[i], virtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
+                                }
+                            }
+                        }
+                    } else if (virtualObjTemp.length == 0 && forceMaterialization) {
+                        /*
+                         * We must materialize everything.
+                         */
+                        for (VirtualObjectNode virtualObject : virtualObjects) {
+                            ValueNode alias = getAlias(virtualObject);
+                            if (alias instanceof VirtualObjectNode) {
+                                VirtualObjectNode virtual = (VirtualObjectNode) alias;
+                                for (int i = 0; i < states.length; i++) {
+                                    if (states[i].hasObjectState(virtual.getObjectId())) {
+                                        Block predecessor = getPredecessor(i);
+                                        materialized |= ensureMaterialized(states[i], virtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 for (PhiNode phi : getPhis()) {
