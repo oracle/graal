@@ -30,13 +30,12 @@
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64GetTlsNode extends LLVMExpressionNode {
 
     @Specialization
     public Object doGetTLS() {
-        return LLVMLanguage.get(this).contextThreadLocal.get().getThreadLocalStorage();
+        return getLanguage().contextThreadLocal.get().getThreadLocalStorage();
     }
 }

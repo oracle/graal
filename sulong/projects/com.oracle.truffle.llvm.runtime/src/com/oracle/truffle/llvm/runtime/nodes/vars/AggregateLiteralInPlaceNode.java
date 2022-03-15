@@ -108,10 +108,13 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         LLVMPointer address;
         for (int i = 0; i < descriptors.length; i++) {
             if (isThreadLocal) {
+                LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get(thread).getSection(descriptors[i].getBitcodeID(exception));
+                if (base == null) {
+                    continue;
+                }
                 LLVMPointer pointer = getContext().getSymbol(descriptors[i], exception);
                 LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
                 long tlsOffset = threadLocalPointer.getOffset();
-                LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get(thread).getSection(descriptors[i].getBitcodeID(exception));
                 address = base.increment(tlsOffset);
             } else {
                 address = context.getSymbol(descriptors[i], exception);

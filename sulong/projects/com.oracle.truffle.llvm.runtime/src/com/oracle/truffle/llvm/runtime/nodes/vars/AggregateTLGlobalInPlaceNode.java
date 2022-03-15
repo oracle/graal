@@ -64,9 +64,7 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
     public void executeWithThread(VirtualFrame frame, Thread thread) {
         LLVMPointer tlgBase = allocOrNull(allocTLSection);
         contextThreadLocal.get().addSection(tlgBase, bitcodeID);
-        if (tlgBase != null) {
-            inPlaceNode.execute(frame, thread);
-        }
+        inPlaceNode.execute(frame, thread);
     }
 
     private static LLVMPointer allocOrNull(LLVMAllocateNode allocNode) {

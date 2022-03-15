@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.IntValueProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -61,12 +62,15 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
     private long exec(long code, LLVMPointer addr, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS: {
-                getLanguage().contextThreadLocal.get().setThreadLocalStorage(addr);
+                LLVMThreadLocalValue value = getLanguage().contextThreadLocal.get(Thread.currentThread());
+                assert value != null;
+                value.setThreadLocalStorage(addr);
                 return 0;
             }
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
-                LLVMPointer tls = getLanguage().contextThreadLocal.get().getThreadLocalStorage();
-                store.executeWithTarget(addr, tls);
+                LLVMThreadLocalValue value = getLanguage().contextThreadLocal.get(Thread.currentThread());
+                assert value != null;
+                store.executeWithTarget(addr, value.getThreadLocalStorage());
                 return 0;
             }
             default: {
