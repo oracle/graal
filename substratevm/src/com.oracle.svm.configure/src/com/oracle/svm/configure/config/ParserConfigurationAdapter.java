@@ -77,6 +77,11 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
+    public void registerUnsafeAllocated(ConfigurationType type) {
+        type.setUnsafeAllocated();
+    }
+
+    @Override
     public void registerMethod(boolean queriedOnly, ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
         type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);

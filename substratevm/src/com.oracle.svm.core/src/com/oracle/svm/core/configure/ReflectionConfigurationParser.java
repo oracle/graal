@@ -50,7 +50,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
-                    "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods");
+                    "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
         this(delegate, true);
@@ -163,6 +163,11 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     case "queryAllPublicMethods":
                         if (asBoolean(value, "queryAllPublicMethods")) {
                             delegate.registerPublicMethods(true, clazz);
+                        }
+                        break;
+                    case "unsafeAllocated":
+                        if (asBoolean(value, "unsafeAllocated")) {
+                            delegate.registerUnsafeAllocated(clazz);
                         }
                         break;
                     case "methods":
