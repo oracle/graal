@@ -123,6 +123,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         final int bodyEndPos = bodyNode.getSourceEndIndex();
         final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
         final SLStatementNode methodBlock = new SLBlockNode(methodNodes.toArray(new SLStatementNode[methodNodes.size()]));
+        methodBlock.setSourceSection(functionStartPos, bodyEndPos - functionStartPos);
 
         assert scope == null : "Wrong scoping of blocks in parser";
 
@@ -478,7 +479,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
                 result = SLWritePropertyNodeGen.create(assignmentReceiver, assignmentName, valueNode);
 
                 final int start = assignmentReceiver.getSourceCharIndex();
-                final int length = valueNode.getSourceEndIndex() - start;
+                final int length = valueNode.getSourceEndIndex() - start + 1;
                 result.setSourceSection(start, length);
                 result.addExpressionTag();
             }
@@ -563,11 +564,14 @@ public class SLNodeVisitor extends SLBaseVisitor {
         }
         SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, assignmentName, newVariable);
 
+        assert index != null || valueNode.hasSource();
+
         if (valueNode.hasSource()) {
             final int start = assignmentName.getSourceCharIndex();
             final int length = valueNode.getSourceEndIndex() - start;
             result.setSourceSection(start, length);
         }
+
         if (index == null) {
             result.addExpressionTag();
         }

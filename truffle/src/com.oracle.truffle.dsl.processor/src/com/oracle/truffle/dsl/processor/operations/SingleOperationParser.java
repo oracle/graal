@@ -25,6 +25,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
+import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
@@ -92,10 +93,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return data;
         }
 
-        MethodProperties props = processMethod(data, te, operationFunctions.get(0));
+        MethodProperties props = processMethod(data, operationFunctions.get(0));
 
         for (ExecutableElement fun : operationFunctions) {
-            MethodProperties props2 = processMethod(data, te, fun);
+            MethodProperties props2 = processMethod(data, fun);
             props2.checkMatches(data, props);
             data.getThrowDeclarations().addAll(fun.getThrownTypes());
         }
@@ -114,22 +115,19 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             clonedType.addOptional(ElementUtils.findExecutableElement(proxyType, "execute"));
         }
 
-        if (ElementUtils.findExecutableElement(te, "execute") == null) {
+        CodeExecutableElement metExecute = new CodeExecutableElement(
+                        Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
+                        context.getType(props.returnsValue ? Object.class : void.class), "execute");
 
-            CodeExecutableElement metExecute = new CodeExecutableElement(
-                            Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
-                            context.getType(props.returnsValue ? Object.class : void.class), "execute");
-
-            for (int i = 0; i < props.numParameters; i++) {
-                TypeMirror typParam = context.getType(Object.class);
-                if (props.isVariadic && i == props.numParameters - 1) {
-                    typParam = new ArrayCodeTypeMirror(context.getType(Object.class));
-                }
-
-                metExecute.addParameter(new CodeVariableElement(typParam, "arg" + i));
+        {
+            int i = 0;
+            for (ParameterKind param : props.parameters) {
+                metExecute.addParameter(new CodeVariableElement(param.getParameterType(context, types), "arg" + i));
+                i++;
             }
-            clonedType.add(metExecute);
         }
+
+        clonedType.add(metExecute);
 
         if (ElementUtils.findAnnotationMirror(clonedType, types.GenerateUncached) == null) {
             clonedType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
@@ -164,11 +162,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return types.Operation;
     }
 
-    private MethodProperties processMethod(SingleOperationData data, TypeElement te, ExecutableElement method) {
+    private MethodProperties processMethod(SingleOperationData data, ExecutableElement method) {
         List<DeclaredType> arguments = List.of(); // TODO
 
-        int numChildren = 0;
         boolean isVariadic = false;
+        List<ParameterKind> parameters = new ArrayList<>();
 
         for (VariableElement param : method.getParameters()) {
             if (isVariadicParameter(param)) {
@@ -176,18 +174,20 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     data.addError(method, "Multiple @Variadic arguments not allowed");
                 }
                 isVariadic = true;
-                numChildren++;
+                parameters.add(ParameterKind.VARIADIC);
+            } else if (isTheNodeParameter(param)) {
+                parameters.add(ParameterKind.THE_NODE);
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
                     data.addError(method, "Value arguments after @Variadic not allowed");
                 }
-                numChildren++;
+                parameters.add(ParameterKind.STACK_VALUE);
             }
         }
 
         boolean returnsValue = method.getReturnType().getKind() != TypeKind.VOID;
 
-        MethodProperties props = new MethodProperties(method, numChildren, isVariadic, returnsValue);
+        MethodProperties props = new MethodProperties(method, parameters, isVariadic, returnsValue);
 
         return props;
     }
@@ -202,6 +202,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         return false;
+    }
+
+    private boolean isTheNodeParameter(VariableElement param) {
+        return ElementUtils.findAnnotationMirror(param, types.TheNode) != null;
     }
 
     private boolean isVariadicParameter(VariableElement param) {

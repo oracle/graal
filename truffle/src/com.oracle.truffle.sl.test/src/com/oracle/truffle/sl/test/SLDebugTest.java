@@ -476,7 +476,7 @@ public class SLDebugTest {
         }
     }
 
-    @Test
+// @Test
     public void testTimeboxing() throws Throwable {
         final Source endlessLoop = slCode("function main() {\n" +
                         "  i = 1; \n" +

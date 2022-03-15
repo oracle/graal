@@ -37,6 +37,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
     private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
+    private final Set<Modifier> MOD_PRIVATE = Set.of(Modifier.PRIVATE);
 
     /**
      * Creates the builder class itself. This class only contains abstract methods, the builder
@@ -147,6 +148,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("new byte[65535]");
         }
 
+        CodeVariableElement fldIndent = new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "indent");
+        typBuilderImpl.add(fldIndent);
+
         CodeVariableElement fldExceptionHandlers = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), types.BuilderExceptionHandler), "exceptionHandlers");
         typBuilderImpl.add(fldExceptionHandlers);
         {
@@ -198,6 +202,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startAssign(fldCurStack).string("0").end();
             b.startAssign(fldMaxStack).string("0").end();
             b.startAssign(fldMaxLocal).string("-1").end();
+            b.startAssign(fldIndent).string("0").end();
             b.startStatement().startCall(fldChildIndexStack.getName(), "clear").end(2);
             b.startStatement().startCall(fldChildIndexStack.getName(), "add").string("0").end(2);
             b.startStatement().startCall(fldArgumentStack.getName(), "clear").end(2);
@@ -212,8 +217,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mBuild.getBuilder();
 
-            b.startAssert();
-            b.string(fldChildIndexStack.getName() + ".size() == 1");
+            b.startIf().string(fldChildIndexStack.getName() + ".size() != 1").end();
+            b.startBlock();
+            b.startThrow().startNew(context.getType(IllegalStateException.class)).doubleQuote("Not all operations ended").end(2);
             b.end();
 
             b.declaration("byte[]", "bcCopy", "java.util.Arrays.copyOf(bc, bci)");
@@ -272,6 +278,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.startCase().variable(parentOp.idConstantField).end();
                 b.startBlock();
 
+// b.statement("System.out.println(\"\\n## beforechild " + parentOp.name + " \" + childIndex)");
+
                 b.tree(afterChild);
 
                 b.statement("break");
@@ -306,6 +314,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 b.startCase().variable(parentOp.idConstantField).end();
                 b.startBlock();
+
+// b.statement("System.out.println(\"\\n## afterchild " + parentOp.name + " \" + childIndex)");
 
                 b.tree(afterChild);
 
@@ -351,6 +361,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     CodeTreeBuilder b = metBegin.getBuilder();
 
+                    b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + "\")");
+                    b.statement("indent++");
+
                     b.statement("doBeforeChild()");
 
                     b.startStatement().startCall(fldTypeStack, "push").variable(op.idConstantField).end(2);
@@ -382,23 +395,39 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     // doAfterChild();
                     CodeTreeBuilder b = metEnd.getBuilder();
+                    b.statement("System.out.print(\")\")");
+                    b.statement("indent--");
 
-                    b.startAssert().startCall(fldTypeStack, "pop").end().string(" == ").variable(op.idConstantField).end();
+                    b.declaration("int", "typePop", CodeTreeBuilder.createBuilder().startCall(fldTypeStack, "pop").end().build());
+
+                    b.startIf().string("typePop != ").variable(op.idConstantField).end();
+                    b.startBlock();
+                    b.startThrow().startNew(context.getType(IllegalStateException.class))//
+                                    .startGroup()//
+                                    .doubleQuote("Mismatched begin/end, expected ")//
+                                    .string(" + typePop").end(3);
+                    b.end();
 
                     vars.numChildren = new CodeVariableElement(context.getType(int.class), "numChildren");
                     b.declaration("int", "numChildren", "childIndexStack.pop()");
 
                     if (!op.isVariableChildren()) {
-                        b.startAssert();
-                        b.string("numChildren == " + op.children + " : ");
-                        b.doubleQuote(op.name + " expected " + op.children + " children, got ");
-                        b.string(" + numChildren");
+                        b.startIf().string("numChildren != " + op.children).end();
+                        b.startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class))//
+                                        .startGroup()//
+                                        .doubleQuote(op.name + " expected " + op.children + " children, got ")//
+                                        .string(" + numChildren")//
+                                        .end(3);
                         b.end();
                     } else {
-                        b.startAssert();
-                        b.string("numChildren > " + op.minimumChildren() + " : ");
-                        b.doubleQuote(op.name + " expected at least " + op.minimumChildren() + " children, got ");
-                        b.string(" + numChildren");
+                        b.startIf().string("numChildren < " + op.minimumChildren()).end();
+                        b.startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class))//
+                                        .startGroup()//
+                                        .doubleQuote(op.name + " expected at least " + op.minimumChildren() + " children, got ")//
+                                        .string(" + numChildren")//
+                                        .end(3);
                         b.end();
                     }
 
@@ -445,6 +474,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 CodeExecutableElement metEmit = GeneratorUtils.overrideImplement(typBuilder, "emit" + op.name);
                 {
                     CodeTreeBuilder b = metEmit.getBuilder();
+
+                    b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
 
                     vars.arguments = metEmit.getParameters().toArray(new CodeVariableElement[0]);
 
@@ -569,6 +600,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             if (m.isTracing()) {
                 b.startStatement().variable(fldHitCount).string("[bci]++").end();
             }
+
+            b.startIf().variable(varSp).string(" < maxLocals").end();
+            b.startBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
+            b.end();
 
             b.startSwitch().string("bc[bci]").end();
             b.startBlock();

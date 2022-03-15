@@ -1,6 +1,7 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -9,6 +10,8 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -20,21 +23,48 @@ public class SingleOperationData extends Template {
     private OperationsData parent;
     private final Set<TypeMirror> throwDeclarations = new HashSet<>();
 
+    static enum ParameterKind {
+        STACK_VALUE,
+        VARIADIC,
+        THE_NODE;
+
+        public TypeMirror getParameterType(ProcessorContext context, TruffleTypes types) {
+            switch (this) {
+                case STACK_VALUE:
+                    return context.getType(Object.class);
+                case VARIADIC:
+                    return new ArrayCodeTypeMirror(context.getType(Object.class));
+                case THE_NODE:
+                    return types.Node;
+                default:
+                    throw new IllegalArgumentException("" + this);
+            }
+        }
+    }
+
     static class MethodProperties {
         public final ExecutableElement element;
-        public final int numParameters;
+        public final List<ParameterKind> parameters;
         public final boolean isVariadic;
         public final boolean returnsValue;
+        public final int numStackValues;
 
-        public MethodProperties(ExecutableElement element, int numParameters, boolean isVariadic, boolean returnsValue) {
+        public MethodProperties(ExecutableElement element, List<ParameterKind> parameters, boolean isVariadic, boolean returnsValue) {
             this.element = element;
-            this.numParameters = numParameters;
+            this.parameters = parameters;
+            int numStackValues = 0;
+            for (ParameterKind param : parameters) {
+                if (param == ParameterKind.STACK_VALUE || param == ParameterKind.VARIADIC) {
+                    numStackValues++;
+                }
+            }
+            this.numStackValues = numStackValues;
             this.isVariadic = isVariadic;
             this.returnsValue = returnsValue;
         }
 
         public void checkMatches(SingleOperationData data, MethodProperties other) {
-            if (other.numParameters != numParameters) {
+            if (other.numStackValues != numStackValues) {
                 data.addError(element, "All methods must have same number of arguments");
             }
 
@@ -49,7 +79,7 @@ public class SingleOperationData extends Template {
 
         @Override
         public String toString() {
-            return "Props[parameters=" + numParameters + ", variadic=" + isVariadic + ", returns=" + returnsValue + "]";
+            return "Props[parameters=" + parameters + ", variadic=" + isVariadic + ", returns=" + returnsValue + ", numStackValues=" + numStackValues + "]";
         }
     }
 

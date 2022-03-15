@@ -46,14 +46,18 @@ public class OperationGeneratorUtils {
         return createEmitLabel(vars, CodeTreeBuilder.singleVariable(label));
     }
 
-    public static CodeTree createClearStackSlot(ExecuteVariables vars, int offset) {
+    public static CodeTree createClearStackSlot(ExecuteVariables vars, String offset) {
         return CodeTreeBuilder.createBuilder() //
                         .startIf().tree(GeneratorUtils.createInCompiledCode()).end() //
                         .startBlock() //
                         .startStatement() //
                         .startCall(vars.frame, "clear") //
-                        .startGroup().variable(vars.sp).string(" + " + (offset - 1))//
+                        .startGroup().variable(vars.sp).string(" - 1 + (" + offset + ")")//
                         .end(4).build();
+    }
+
+    public static CodeTree createClearStackSlot(ExecuteVariables vars, int offset) {
+        return createClearStackSlot(vars, "" + offset);
     }
 
     public static CodeTree createReadStack(ExecuteVariables vars, int offset) {
@@ -74,6 +78,14 @@ public class OperationGeneratorUtils {
         return CodeTreeBuilder.createBuilder() //
                         .startStatement().startCall(vars.frame, "setObject") //
                         .startGroup().variable(vars.sp).string(" + " + (offset - 1)).end()//
+                        .tree(value) //
+                        .end(3).build();
+    }
+
+    public static CodeTree createWriteStackObject(ExecuteVariables vars, String offset, CodeTree value) {
+        return CodeTreeBuilder.createBuilder() //
+                        .startStatement().startCall(vars.frame, "setObject") //
+                        .startGroup().variable(vars.sp).string(" - 1 + (" + offset + ")").end()//
                         .tree(value) //
                         .end(3).build();
     }

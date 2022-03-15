@@ -19,7 +19,7 @@ public abstract class OperationsNode extends RootNode {
 
     protected OperationsNode(int maxStack, int maxLocals) {
         super(null, createFrameDescriptor(maxStack, maxLocals));
-        // System.out.printf(" new operations node %d %d\n", maxStack, maxLocals);
+        System.out.printf(" new operations node %d %d\n", maxStack, maxLocals);
         this.maxLocals = maxLocals;
         this.maxStack = maxStack;
     }

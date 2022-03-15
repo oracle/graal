@@ -53,6 +53,16 @@ public class TestOperationsGenTest {
     }
 
     @Test
+    public void testIfThen() {
+        OperationsNode node = doBuild(TestOperationsGenTest::parseIfTest);
+        runTest(node, 0L, -2L);
+        runTest(node, 0L, -1L);
+        runTest(node, 0L, 0L);
+        runTest(node, 1L, 1L);
+        runTest(node, 2L, 2L);
+    }
+
+    @Test
     public void testSumLoop() {
         OperationsNode node = doBuild(TestOperationsGenTest::parseSumLoop);
         runTest(node, 45L, 10L);
@@ -116,6 +126,35 @@ public class TestOperationsGenTest {
         b.emitLoadArgument((short) 0);
         b.emitLoadArgument((short) 1);
         b.endAddOperation();
+        b.endReturn();
+    }
+
+    private static void parseIfTest(TestOperationsBuilder b) {
+        // function f(x) {
+        // if (x < 0) {
+        // return 0;
+        // }
+        // return x;
+
+        b.beginIfThen();
+
+        b.beginBlock();
+        b.beginLessThanOperation();
+        b.emitLoadArgument(0);
+        b.emitConstObject(0L);
+        b.endLessThanOperation();
+        b.endBlock();
+
+        b.beginBlock();
+        b.beginReturn();
+        b.emitConstObject(0L);
+        b.endReturn();
+        b.endBlock();
+
+        b.endIfThen();
+
+        b.beginReturn();
+        b.emitLoadArgument(0);
         b.endReturn();
     }
 

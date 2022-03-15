@@ -24,6 +24,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public abstract class Instruction {
 
@@ -204,6 +205,13 @@ public abstract class Instruction {
 
             b.startAssign(vars.nextBci).tree(arguments[0].createReadCode(vars, 1)).end();
 
+            b.startIf().variable(vars.nextBci).string(" <= ").variable(vars.bci).end();
+            b.startBlock();
+            b.startStatement().startStaticCall(ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.TruffleSafepoint"), "poll")//
+                            .string("this")//
+                            .end(2);
+            b.end();
+
             return b.build();
         }
 
@@ -320,7 +328,7 @@ public abstract class Instruction {
 
     public static class StoreLocal extends SimpleInstruction {
         public StoreLocal(int id) {
-            super("starg", id, 0, 1, new Argument.Integer(2));
+            super("stloc", id, 0, 1, new Argument.Integer(2));
         }
 
         @Override
@@ -364,17 +372,12 @@ public abstract class Instruction {
         public Custom(String name, int id, SingleOperationData data, Argument... arguments) {
             super(name, id, arguments);
             this.data = data;
-            this.stackPops = data.getMainProperties().numParameters;
+            this.stackPops = data.getMainProperties().numStackValues;
             this.isVarArgs = data.getMainProperties().isVariadic;
             this.stackPushes = data.getMainProperties().returnsValue ? 1 : 0;
 
             if (data.getMainProperties().isVariadic && arguments.length == 0)
                 throw new IllegalArgumentException("Must have at least the VarArgCount argument");
-        }
-
-        @Override
-        public int length() {
-            return super.length() + (isVarArgs ? 1 : 0);
         }
 
         @Override
@@ -386,11 +389,24 @@ public abstract class Instruction {
         public CodeTree createExecuteEpilogue(ExecuteVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            for (int i = 0; i < stackPops - 1; i++) {
-                createClearStackSlot(vars, i);
-            }
+            if (this.isVarArgs) {
+                b.startFor().string("int i = 0; i < varArgCount; i++").end();
+                b.startBlock();
+                b.tree(createClearStackSlot(vars, "-i - 1"));
+                b.end();
 
-            b.startAssign(vars.sp).variable(vars.sp).string(" + " + (stackPushes - stackPops)).end();
+                for (int i = 0; i < stackPops - 1; i++) {
+                    b.tree(createClearStackSlot(vars, "-varArgCount - " + i));
+                }
+
+                b.startAssign(vars.sp).variable(vars.sp).string(" + " + (stackPushes - stackPops + 1) + " - varArgCount").end();
+            } else {
+                for (int i = 0; i < stackPops - 1; i++) {
+                    b.tree(createClearStackSlot(vars, i));
+                }
+
+                b.startAssign(vars.sp).variable(vars.sp).string(" + " + (stackPushes - stackPops)).end();
+            }
 
             b.tree(super.createExecuteEpilogue(vars));
 
@@ -402,6 +418,7 @@ public abstract class Instruction {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             CodeTree[] vals = new CodeTree[stackPops];
+            String destIndex;
             if (isVarArgs) {
                 b.declaration("byte", "varArgCount", arguments[0].createReadCode(vars, 1));
                 b.declaration("Object[]", "varArgs", "new Object[varArgCount]");
@@ -421,18 +438,24 @@ public abstract class Instruction {
                 vals[stackPops - 1] = CodeTreeBuilder.singleString("varArgs");
 
                 for (int i = 1; i < stackPops; i++) {
-                    String stackIndex2 = "- (varArgCount + " + i + ")";
+                    String stackIndex2 = "- (varArgCount + " + i + " - 1)";
                     vals[vals.length - 1 - i] = createReadStack(vars, CodeTreeBuilder.singleString(stackIndex2));
                 }
+
+                destIndex = (2 - stackPops) + " - varArgCount";
 
             } else {
                 for (int i = 0; i < stackPops; i++) {
                     vals[vals.length - 1 - i] = createReadStack(vars, -i);
                 }
+
+                destIndex = "" + (1 - stackPops);
             }
 
             if (stackPushes > 0) {
-                b.tree(createWriteStackObject(vars, 1 - stackPops, createActualExecuteCallCode(vars, vals)));
+                b.declaration("Object", "result", createActualExecuteCallCode(vars, vals));
+// b.statement("System.out.println(\" " + name + " result: \" + result)");
+                b.tree(createWriteStackObject(vars, destIndex, CodeTreeBuilder.singleString("result")));
             } else {
                 b.statement(createActualExecuteCallCode(vars, vals));
             }
@@ -488,8 +511,20 @@ public abstract class Instruction {
 
             b.startCall("this", copy);
 
-            for (CodeTree val : vals) {
-                b.tree(val);
+            int valIdx = 0;
+
+            for (ParameterKind param : data.getMainProperties().parameters) {
+                switch (param) {
+                    case STACK_VALUE:
+                    case VARIADIC:
+                        b.tree(vals[valIdx++]);
+                        break;
+                    case THE_NODE:
+                        b.string("this");
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("" + param);
+                }
             }
 
             b.end();

@@ -73,7 +73,7 @@ public class OperationsContext {
         }
 
         if (props.isVariadic) {
-            arguments = new Argument[]{new Argument.VarArgsCount(props.numParameters - 1)};
+            arguments = new Argument[]{new Argument.VarArgsCount(props.numStackValues - 1)};
         } else {
             arguments = new Argument[0];
         }
@@ -81,7 +81,7 @@ public class OperationsContext {
         Instruction.Custom instr = new Instruction.Custom("custom." + opData.getName(), getNextInstructionId(), opData, arguments);
         add(instr);
 
-        Operation.Custom op = new Operation.Custom(this, opData.getName(), getNextOperationId(), props.numParameters, instr);
+        Operation.Custom op = new Operation.Custom(this, opData.getName(), getNextOperationId(), props.numStackValues, instr);
         add(op);
     }
 }

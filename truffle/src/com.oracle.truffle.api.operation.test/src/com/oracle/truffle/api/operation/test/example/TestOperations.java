@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.Variadic;
@@ -54,7 +55,8 @@ public class TestOperations {
     static class ThrowOperation {
         @Specialization
         public static void perform() {
-            throw new RuntimeException("haha");
+            throw new AbstractTruffleException("haha") {
+            };
         }
     }
 
