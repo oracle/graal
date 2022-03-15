@@ -219,7 +219,7 @@ final class EspressoShutdownHandler implements ContextAccess {
 
             if (nextPhase) {
                 // Send guest ThreadDeaths
-                getContext().getLogger().finer("Teardown: Phase 2: Stop all threads");
+                getContext().getLogger().finer("Teardown: Phase 2: Stop all threads, and kills daemons");
                 teardownPhase2(initiatingThread);
                 waitSpin(initiatingThread);
             }
@@ -254,13 +254,17 @@ final class EspressoShutdownHandler implements ContextAccess {
 
     /**
      * Slightly harder interruption of leftover threads. Equivalent of guest Thread.stop(). Gives
-     * leftover threads a chance to terminate in guest code (running finaly blocks).
+     * leftover threads a chance to terminate in guest code (running finally blocks).
      */
     private void teardownPhase2(Thread initiatingThread) {
         for (StaticObject guest : getManagedThreads()) {
             Thread t = getThreadAccess().getHost(guest);
             if (t.isAlive() && t != initiatingThread) {
-                context.getThreadAccess().stop(guest, null);
+                if (t.isDaemon()) {
+                    context.getThreadAccess().kill(guest);
+                } else {
+                    context.getThreadAccess().stop(guest, null);
+                }
                 context.getThreadAccess().callInterrupt(guest);
             }
         }
