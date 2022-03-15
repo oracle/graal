@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import java.util.Collections;
 import java.util.Map;
@@ -94,13 +91,6 @@ final class InsightSourceFilter implements Predicate<Source> {
 
     static boolean checkSource(final InteropLibrary iop, InsightFilter.Data data, Source src) {
         final SourceEventObject srcObj = new SourceEventObject(src);
-        Object res;
-        try {
-            res = iop.execute(data.sourceFilterFn, srcObj);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException ex) {
-            return false;
-        }
-        final boolean is = Boolean.TRUE.equals(res);
-        return is;
+        return FilterExec.checkFilter(iop, data.sourceFilterFn, srcObj);
     }
 }
