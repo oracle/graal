@@ -221,24 +221,12 @@ final class EspressoShutdownHandler implements ContextAccess {
                 // Send guest ThreadDeaths
                 getContext().getLogger().finer("Teardown: Phase 2: Stop all threads");
                 teardownPhase2(initiatingThread);
-                nextPhase = !waitSpin(initiatingThread);
+                waitSpin(initiatingThread);
             }
+            // Truffle will cancel unresponsive threads
         }
 
-        if (!context.usesTruffleSafepoints) {
-            // Temporary bandaid until truffle safepoints are adopted
-            if (nextPhase) {
-                getContext().getLogger().finer("Teardown: Phase 3: Force kill with host EspressoExitExceptions");
-                teardownPhase3(initiatingThread);
-                nextPhase = !waitSpin(initiatingThread);
-            }
-            if (nextPhase) {
-                getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
-                getContext().getLogger().finer("Teardown: Phase 4: Forcefully command the context to forget any leftover thread");
-                teardownPhase4(initiatingThread);
-            }
-        }
-
+        // Special handling of the reference drainer
         try {
             referenceDrainer.shutdownAndWaitReferenceDrain();
         } catch (InterruptedException e) {
@@ -274,40 +262,6 @@ final class EspressoShutdownHandler implements ContextAccess {
             if (t.isAlive() && t != initiatingThread) {
                 context.getThreadAccess().stop(guest, null);
                 context.getThreadAccess().callInterrupt(guest);
-            }
-        }
-    }
-
-    /**
-     * Threads still alive at this point gets sent an uncatchable host exception. This forces the
-     * thread to never execute guest code again. In particular, this means that no finally blocks
-     * will be executed. Still, monitors entered through the monitorenter bytecode will be unlocked.
-     */
-    private void teardownPhase3(Thread initiatingThread) {
-        for (StaticObject guest : getManagedThreads()) {
-            Thread t = getThreadAccess().getHost(guest);
-            if (t.isAlive() && t != initiatingThread) {
-                /*
-                 * Currently, threads in native can not be killed in Espresso. This translates into
-                 * a polyglot-side java.lang.IllegalStateException: The language did not complete
-                 * all polyglot threads but should have.
-                 */
-                context.getThreadAccess().kill(guest);
-                context.getThreadAccess().callInterrupt(guest);
-            }
-        }
-    }
-
-    /**
-     * All threads still alive by that point are considered rogue, and we have no control over them.
-     */
-    private void teardownPhase4(Thread initiatingThread) {
-        for (StaticObject guest : getManagedThreads()) {
-            Thread t = getThreadAccess().getHost(guest);
-            if (t.isAlive() && t != initiatingThread) {
-                // TODO(garcia): Tell truffle to forget about this thread
-                // Or
-                // TODO(garcia): Gracefully exit and allow stopping threads in native.
             }
         }
     }
