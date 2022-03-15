@@ -523,6 +523,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // Reference
         public static final Symbol<Name> processPendingReferences = StaticSymbols.putName("processPendingReferences");
+        public static final Symbol<Name> tryHandlePending = StaticSymbols.putName("tryHandlePending");
         public static final Symbol<Name> poll = StaticSymbols.putName("poll");
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
 
@@ -815,7 +816,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_management_ThreadInfo = StaticSymbols.putType("Ljava/lang/management/ThreadInfo;");
 
         // Secrets
+        public static final Symbol<Type> sun_misc_SharedSecrets = StaticSymbols.putType("Lsun/misc/SharedSecrets;");
+        public static final Symbol<Type> jdk_internal_misc_SharedSecrets = StaticSymbols.putType("Ljdk/internal/misc/SharedSecrets;");
         public static final Symbol<Type> jdk_internal_access_SharedSecrets = StaticSymbols.putType("Ljdk/internal/access/SharedSecrets;");
+        public static final Symbol<Type> sun_misc_JavaLangAccess = StaticSymbols.putType("Lsun/misc/JavaLangAccess;");
+        public static final Symbol<Type> jdk_internal_misc_JavaLangAccess = StaticSymbols.putType("Ljdk/internal/misc/JavaLangAccess;");
         public static final Symbol<Type> jdk_internal_access_JavaLangAccess = StaticSymbols.putType("Ljdk/internal/access/JavaLangAccess;");
 
         // Interop conversions.
@@ -925,6 +930,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
         public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
+        public static final Symbol<Signature> _boolean_boolean = StaticSymbols.putSignature(Type._boolean, Type._boolean);
         public static final Symbol<Signature> _boolean_Object = StaticSymbols.putSignature(Type._boolean, Type.java_lang_Object);
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
@@ -1008,7 +1014,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
 
         public static final Symbol<Signature> Reference = StaticSymbols.putSignature(Type.java_lang_ref_Reference);
-        public static final Symbol<Signature> _void_JavaLangAccess = StaticSymbols.putSignature(Type._void, Type.jdk_internal_access_JavaLangAccess);
+        public static final Symbol<Signature> _void_sun_misc_JavaLangAccess = StaticSymbols.putSignature(Type._void, Type.sun_misc_JavaLangAccess);
+        public static final Symbol<Signature> _void_jdk_internal_misc_JavaLangAccess = StaticSymbols.putSignature(Type._void, Type.jdk_internal_misc_JavaLangAccess);
+        public static final Symbol<Signature> _void_jdk_internal_access_JavaLangAccess = StaticSymbols.putSignature(Type._void, Type.jdk_internal_access_JavaLangAccess);
 
         public static final Symbol<Signature> _void_CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
 
