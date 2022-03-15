@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
@@ -88,7 +89,14 @@ public final class GlobalVariable extends GlobalValueSymbol {
 
     @Override
     public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
-        LLVMSymbol value = runtime.lookupSymbol(getName());
-        return CommonNodeFactory.createLiteral(value, new PointerType(getType()));
+        LLVMSymbol symbol = runtime.lookupSymbol(getName());
+        if (symbol.isGlobalVariable()) {
+            symbol = symbol.asGlobalVariable();
+        } else if (symbol.isThreadLocalSymbol()) {
+            symbol = symbol.asThreadLocalSymbol();
+        } else {
+            throw new AssertionError(symbol.getClass());
+        }
+        return CommonNodeFactory.createLiteral(symbol, new PointerType(getType()));
     }
 }
