@@ -396,7 +396,6 @@ public final class JniEnv extends NativeEnv {
         if (jniEnvPtr == null || getUncached().isNull(jniEnvPtr)) {
             return; // JniEnv disposed or uninitialized.
         }
-        assert !getUncached().isNull(jniEnvPtr) : "JNIEnv already disposed";
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;

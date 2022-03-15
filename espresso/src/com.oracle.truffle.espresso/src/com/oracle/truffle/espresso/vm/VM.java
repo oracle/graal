@@ -456,7 +456,6 @@ public final class VM extends NativeEnv {
         if (mokapotEnvPtr == null || getUncached().isNull(mokapotEnvPtr)) {
             return; // Mokapot disposed or uninitialized.
         }
-        assert !getUncached().isNull(mokapotEnvPtr);
         try {
             if (management != null) {
                 assert getContext().EnableManagement;
