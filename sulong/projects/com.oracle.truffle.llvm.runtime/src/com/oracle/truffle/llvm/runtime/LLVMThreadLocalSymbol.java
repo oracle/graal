@@ -51,7 +51,7 @@ public class LLVMThreadLocalSymbol extends LLVMSymbol {
 
     @Override
     public boolean isGlobalVariable() {
-        return true;
+        return false;
     }
 
     @Override
