@@ -501,10 +501,6 @@ public class Graph {
         return add(node);
     }
 
-    public <T extends Node> T maybeAddOrUnique(T node) {
-        return addOrUnique(node);
-    }
-
     public <T extends Node> T addOrUniqueWithInputs(T node) {
         if (node.isAlive()) {
             assert node.graph() == this;

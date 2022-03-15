@@ -198,7 +198,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
                 }
             }
         }
-        return input.graph().maybeAddOrUnique(SignExtendNode.create(input, ADDRESS_BITS, NodeView.DEFAULT));
+        return input.graph().addOrUnique(SignExtendNode.create(input, ADDRESS_BITS, NodeView.DEFAULT));
     }
 
     private static boolean applicableToImplicitZeroExtend(ZeroExtendNode zeroExtendNode) {
