@@ -64,7 +64,7 @@ public final class LLVMParserResult {
         this.externalGlobals = externalGlobals;
         this.dataLayout = dataLayout;
         this.targetTriple = targetTriple;
-        this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size();
+        this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size() + threadLocalGlobals.size();
     }
 
     public LLVMParserRuntime getRuntime() {
