@@ -307,26 +307,36 @@ public abstract class PartialEvaluator {
 
         private final int graphSizeLimit;
         private final StructuredGraph graph;
-        private int approximateGraphSize = 0;
+        private int approximateGraphSize;
 
         private GraphSizeListener(OptionValues options, StructuredGraph graph) {
             this.graphSizeLimit = options.get(MaximumGraalGraphSize);
             this.graph = graph;
+            this.approximateGraphSize = NodeCostUtil.computeGraphSize(graph);
         }
 
         @Override
         public void nodeAdded(Node node) {
-            // Some nodes (Notably LoadFieldNode) don't have their full cost known at the time of
-            // adding to the graph. That's why we treat this as an approximate graph size and only
-            // calculate the actual graph size when our approximation is larger than the limit.
             approximateGraphSize += node.estimatedNodeSize().value;
+            checkLimit();
+        }
+
+        private void checkLimit() {
             if (approximateGraphSize > graphSizeLimit) {
-                approximateGraphSize = NodeCostUtil.computeGraphSize(graph);
-                if (approximateGraphSize > graphSizeLimit) {
-                    throw new GraphTooBigBailoutException(
-                                    "Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Graph Size: " + approximateGraphSize + ". Limit: " + graphSizeLimit + ".");
-                }
+                throw new GraphTooBigBailoutException(
+                                "Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Graph Size: " + approximateGraphSize + ". Limit: " + graphSizeLimit + ".");
             }
+        }
+
+        @Override
+        public void nodeBeforeProperties(Node node) {
+            approximateGraphSize -= node.estimatedNodeSize().value;
+        }
+
+        @Override
+        public void nodeProperties(Node node) {
+            approximateGraphSize += node.estimatedNodeSize().value;
+            checkLimit();
         }
 
         @Override

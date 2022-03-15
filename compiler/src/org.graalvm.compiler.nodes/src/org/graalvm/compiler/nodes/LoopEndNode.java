@@ -174,7 +174,7 @@ public final class LoopEndNode extends AbstractEndNode {
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (loopBegin() == null) {
+        if (!(loopBegin instanceof LoopBeginNode) || loopBegin() == null) {
             return CYCLES_UNKNOWN;
         }
         if (canSafepoint()) {

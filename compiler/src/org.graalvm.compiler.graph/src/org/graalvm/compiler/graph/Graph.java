@@ -549,6 +549,18 @@ public class Graph {
         return node;
     }
 
+    public void afterFixingProperties(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.NODE_PROPERTIES, node);
+        }
+    }
+
+    public void beforeFixingProperties(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.NODE_BEFORE_PROPERTIES, node);
+        }
+    }
+
     /**
      * The type of events sent to a {@link NodeEventListener}.
      */
@@ -571,7 +583,17 @@ public class Graph {
         /**
          * A node was removed from the graph.
          */
-        NODE_REMOVED
+        NODE_REMOVED,
+
+        /**
+         * Before a node's properties were fixed (happens during PE).
+         */
+        NODE_BEFORE_PROPERTIES,
+
+        /**
+         * A node's properties were fixed (happens during PE).
+         */
+        NODE_PROPERTIES,
     }
 
     /**
@@ -606,6 +628,12 @@ public class Graph {
                 case NODE_REMOVED:
                     nodeRemoved(node);
                     break;
+                case NODE_BEFORE_PROPERTIES:
+                    nodeBeforeProperties(node);
+                    break;
+                case NODE_PROPERTIES:
+                    nodeProperties(node);
+                    break;
             }
             changed(e, node);
         }
@@ -625,6 +653,24 @@ public class Graph {
          * @param node a node who has had one of its inputs changed
          */
         public void inputChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener that the node properties are about to be fixed, i.e. be set
+         * finally.
+         *
+         * @param node a node whose properties are about to be fixed.
+         */
+        public void nodeBeforeProperties(Node node) {
+
+        }
+
+        /**
+         * Notifies this listener about node properties being fixed, i.e. being set finally.
+         *
+         * @param node a node who has had properties fixed.
+         */
+        public void nodeProperties(Node node) {
         }
 
         /**
