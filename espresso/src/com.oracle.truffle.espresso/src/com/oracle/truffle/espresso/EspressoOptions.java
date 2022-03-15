@@ -149,20 +149,20 @@ public final class EspressoOptions {
     @Option(help = "A '" + PATH_SEPARATOR_INSERT +
                     "' separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
                     category = OptionCategory.EXPERT, //
-                    stability = OptionStability.STABLE, //
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<Path>> BootClasspath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
     @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories, JAR files, and ZIP archives to append to the front of the default bootstrap class path.", //
                     category = OptionCategory.EXPERT, //
-                    stability = OptionStability.STABLE, //
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> BootClasspathAppend = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
     @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of directories, JAR files, and ZIP archives to prepend to the end of the default bootstrap class path.", //
                     category = OptionCategory.EXPERT, //
-                    stability = OptionStability.STABLE, //
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "<path>" + PATH_SEPARATOR_INSERT + "<path>" + PATH_SEPARATOR_INSERT + "..." //
     ) //
     public static final OptionKey<List<Path>> BootClasspathPrepend = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
@@ -432,7 +432,7 @@ public final class EspressoOptions {
 
     @Option(help = "Enables espresso runtime timers.", //
                     category = OptionCategory.INTERNAL, //
-                    stability = OptionStability.EXPERIMENTAL, //
+                    stability = OptionStability.STABLE, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableTimers = new OptionKey<>(false);
 
