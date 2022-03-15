@@ -62,7 +62,6 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
@@ -80,8 +79,6 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
-import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
@@ -90,6 +87,7 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
@@ -180,7 +178,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public Symbol<Name> getName() {
-        return getLinkedMethod().getName();
+        return getMethodVersion().getName();
     }
 
     // can have a different constant pool than it's declaring class
@@ -229,19 +227,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @TruffleBoundary
     public int bciToLineNumber(int atBCI) {
-        if (atBCI < 0) {
-            return atBCI;
-        }
-        return getCodeAttribute().bciToLineNumber(atBCI);
+        return getMethodVersion().bciToLineNumber(atBCI);
     }
 
     @Override
     public EspressoContext getContext() {
         return declaringKlass.getContext();
-    }
-
-    public BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     public byte[] getOriginalCode() {
@@ -496,7 +487,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public int getModifiers() {
-        return getLinkedMethod().getFlags();
+        return getMethodVersion().getModifiers();
     }
 
     public boolean isCallerSensitive() {
@@ -517,12 +508,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public int getMethodModifiers() {
-        return getLinkedMethod().getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+        return getMethodVersion().getModifiers() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
     }
 
     @Override
     public String toString() {
-        return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
+        return getMethodVersion().toString();
     }
 
     public JavaKind getReturnKind() {
@@ -755,28 +746,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         new BytecodeStream(getOriginalCode()).printBytecode(declaringKlass, out);
     }
 
-    public LineNumberTableAttribute getLineNumberTable() {
-        CodeAttribute attribute = getCodeAttribute();
-        if (attribute != null) {
-            return attribute.getLineNumberTableAttribute();
-        }
-        return LineNumberTableAttribute.EMPTY;
-    }
-
     public LocalVariableTable getLocalVariableTable() {
-        CodeAttribute attribute = getCodeAttribute();
-        if (attribute != null) {
-            return attribute.getLocalvariableTable();
-        }
-        return LocalVariableTable.EMPTY_LVT;
-    }
-
-    public LocalVariableTable getLocalVariableTypeTable() {
-        CodeAttribute attribute = getCodeAttribute();
-        if (attribute != null) {
-            return attribute.getLocalvariableTypeTable();
-        }
-        return LocalVariableTable.EMPTY_LVTT;
+        return getMethodVersion().getLocalVariableTable();
     }
 
     /**
@@ -842,11 +813,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // region jdwp-specific
     public long getBCIFromLine(int line) {
-        return getLineNumberTable().getBCI(line);
+        return getMethodVersion().getBCIFromLine(line);
     }
 
     public boolean hasLine(int lineNumber) {
-        return getLineNumberTable().getBCI(lineNumber) != -1;
+        return getMethodVersion().hasLine(lineNumber);
     }
 
     public String getNameAsString() {
@@ -862,10 +833,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getRawSignature().toString();
     }
 
-    public boolean isMethodNative() {
-        return isNative();
-    }
-
     public KlassRef[] getParameters() {
         return resolveParameterKlasses();
     }
@@ -877,21 +844,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return theCallee;
         }
         return invokeWithConversions(callee, args);
-    }
-
-    public boolean isLastLine(long codeIndex) {
-        LineNumberTableAttribute table = getLineNumberTable();
-        int lastLine = table.getLastLine();
-        int lineAt = table.getLineNumber((int) codeIndex);
-        return lastLine == lineAt;
-    }
-
-    public int getFirstLine() {
-        return getLineNumberTable().getFirstLine();
-    }
-
-    public int getLastLine() {
-        return getLineNumberTable().getLastLine();
     }
 
     public String getGenericSignatureAsString() {
@@ -1117,7 +1069,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return instance;
     }
 
-    public final class MethodVersion implements MethodRef {
+    public final class MethodVersion implements MethodRef, ModifiersProvider {
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
@@ -1231,30 +1183,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             isLeaf.invalidate();
         }
 
-        public boolean isStatic() {
-            return getMethod().isStatic();
-        }
-
-        public boolean isPrivate() {
-            return getMethod().isPrivate();
-        }
-
-        public boolean isProtected() {
-            return getMethod().isProtected();
-        }
-
-        public boolean isPublic() {
-            return getMethod().isPublic();
-        }
-
-        public boolean isAbstract() {
-            return getMethod().isAbstract();
-        }
-
-        public boolean isFinalFlagSet() {
-            return getMethod().isFinalFlagSet();
-        }
-
         public CodeAttribute getCodeAttribute() {
             return codeAttribute;
         }
@@ -1337,7 +1265,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         private CallTarget findCallTarget() {
             CallTarget target;
-            if (getMethod().isNative()) {
+            if (isNative()) {
                 // Bind native method.
                 target = lookupLibJavaCallTarget();
                 if (target == null) {
@@ -1363,7 +1291,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
 
                 if (target == null) {
-                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", getMethod().toString());
+                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", toString());
                     Meta meta = getMeta();
                     throw meta.throwException(meta.java_lang_UnsatisfiedLinkError);
                 }
@@ -1408,7 +1336,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public long getBCIFromLine(int line) {
-            return getMethod().getBCIFromLine(line);
+            return getLineNumberTable().getBCI(line);
         }
 
         @Override
@@ -1418,7 +1346,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean hasLine(int lineNumber) {
-            return getMethod().hasLine(lineNumber);
+            return getLineNumberTable().getBCI(lineNumber) != -1;
         }
 
         @Override
@@ -1428,7 +1356,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public String getNameAsString() {
-            return getMethod().getNameAsString();
+            return getName().toString();
         }
 
         @Override
@@ -1443,17 +1371,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public int getModifiers() {
-            return getMethod().getModifiers();
+            return linkedMethod.getFlags();
         }
 
         @Override
         public int bciToLineNumber(int bci) {
-            return getMethod().bciToLineNumber(bci);
+            if (bci < 0) {
+                return bci;
+            }
+            return getCodeAttribute().bciToLineNumber(bci);
         }
 
         @Override
         public boolean isMethodNative() {
-            return getMethod().isMethodNative();
+            return isNative();
         }
 
         @Override
@@ -1467,13 +1398,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public LocalVariableTableRef getLocalVariableTable() {
-            return getMethod().getLocalVariableTable();
+        public LocalVariableTable getLocalVariableTable() {
+            if (codeAttribute != null) {
+                return codeAttribute.getLocalvariableTable();
+            }
+            return LocalVariableTable.EMPTY_LVT;
         }
 
         @Override
-        public LocalVariableTableRef getLocalVariableTypeTable() {
-            return getMethod().getLocalVariableTypeTable();
+        public LocalVariableTable getLocalVariableTypeTable() {
+            if (codeAttribute != null) {
+                return codeAttribute.getLocalvariableTypeTable();
+            }
+            return LocalVariableTable.EMPTY_LVTT;
         }
 
         @Override
@@ -1482,8 +1419,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public LineNumberTableRef getLineNumberTable() {
-            return getMethod().getLineNumberTable();
+        public LineNumberTableAttribute getLineNumberTable() {
+            return getLineNumberTableAttribute();
         }
 
         @Override
@@ -1491,7 +1428,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (getMethod().isRemovedByRedefition()) {
                 Meta meta = getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
+                                meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));
             }
             return getMethod().invokeMethod(callee, args);
         }
@@ -1503,7 +1440,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean isLastLine(long codeIndex) {
-            return getMethod().isLastLine(codeIndex);
+            LineNumberTableAttribute table = getLineNumberTable();
+            int lastLine = table.getLastLine();
+            int lineAt = table.getLineNumber((int) codeIndex);
+            return lastLine == lineAt;
         }
 
         @Override
@@ -1513,12 +1453,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public int getFirstLine() {
-            return getMethod().getFirstLine();
+            return getLineNumberTable().getFirstLine();
         }
 
         @Override
         public int getLastLine() {
-            return getMethod().getLastLine();
+            return getLineNumberTable().getLastLine();
         }
 
         @Override
@@ -1570,7 +1510,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public String toString() {
-            return getMethod().toString();
+            return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
         }
 
         public boolean usesMonitors() {

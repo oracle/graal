@@ -260,7 +260,7 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
-        Method.MethodVersion[][] itable = getKlassVersion().itable;
+        Method.MethodVersion[][] itable = getItable();
         if (itable != null) {
             for (Method.MethodVersion[] table : itable) {
                 for (int i = 0; i < table.length; i++) {
@@ -746,7 +746,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Method.MethodVersion[] getDeclaredMethodVersions() {
-        return getKlassVersion().declaredMethods;
+        return getKlassVersion().getDeclaredMethodVersions();
     }
 
     @Override
@@ -942,16 +942,12 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().vtable;
     }
 
-    Method.MethodVersion[][] getItable() {
-        return getKlassVersion().itable;
+    public Method.MethodVersion[][] getItable() {
+        return getKlassVersion().getItable();
     }
 
-    ObjectKlass.KlassVersion[] getiKlassTable() {
-        return getKlassVersion().iKlassTable;
-    }
-
-    KlassVersion[] getVersionIKlassTable() {
-        return getKlassVersion().iKlassTable;
+    public ObjectKlass.KlassVersion[] getiKlassTable() {
+        return getKlassVersion().getiKlassTable();
     }
 
     Method vtableLookupImpl(int vtableIndex) {
@@ -1748,6 +1744,18 @@ public final class ObjectKlass extends Klass {
 
             ChangePacket packet = new ChangePacket(null, linkedKlass.getParserKlass(), null, detectedChange);
             return new KlassVersion(this, pool, linkedKlass, packet, Collections.emptyList(), ids);
+        }
+
+        public Method.MethodVersion[][] getItable() {
+            return itable;
+        }
+
+        public Method.MethodVersion[] getDeclaredMethodVersions() {
+            return declaredMethods;
+        }
+
+        public KlassVersion[] getiKlassTable() {
+            return iKlassTable;
         }
 
         public Assumption getAssumption() {

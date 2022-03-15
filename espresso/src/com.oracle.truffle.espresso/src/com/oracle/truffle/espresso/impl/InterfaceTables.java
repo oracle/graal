@@ -153,7 +153,7 @@ final class InterfaceTables {
         ArrayList<ObjectKlass.KlassVersion> tmpKlassTable = new ArrayList<>();
         tmpKlassTable.add(thisInterfKlass);
         for (ObjectKlass interf : superInterfaces) {
-            for (ObjectKlass.KlassVersion supInterf : interf.getVersionIKlassTable()) {
+            for (ObjectKlass.KlassVersion supInterf : interf.getiKlassTable()) {
                 if (canInsert(supInterf, tmpKlassTable)) {
                     tmpKlassTable.add(supInterf);
                 }
@@ -266,7 +266,7 @@ final class InterfaceTables {
         }
         // At this point, no more mirandas should be created.
         if (superKlass != null) {
-            for (ObjectKlass.KlassVersion superKlassInterf : superKlass.getVersionIKlassTable()) {
+            for (ObjectKlass.KlassVersion superKlassInterf : superKlass.getiKlassTable()) {
                 fillMirandas(superKlassInterf);
             }
         }
