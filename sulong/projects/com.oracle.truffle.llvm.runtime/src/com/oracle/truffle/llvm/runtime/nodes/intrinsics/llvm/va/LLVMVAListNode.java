@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -53,7 +56,10 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  */
 public abstract class LLVMVAListNode extends LLVMExpressionNode {
 
+    protected final Assumption allocatesVAListPointer;
+
     protected LLVMVAListNode() {
+        allocatesVAListPointer = Truffle.getRuntime().createAssumption("This node allocates a VA list pointer.");
     }
 
     LLVMExpressionNode createAllocaNode() {
@@ -63,7 +69,11 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(capability.getVAListType(), capability.getVAListAlignment());
     }
 
-    @Specialization
+    public Assumption getAssumption() {
+        return allocatesVAListPointer;
+    }
+
+    @Specialization(assumptions = "getAssumption()")
     public LLVMManagedPointer createVAList(VirtualFrame frame,
                     @Cached("createAllocaNode()") LLVMExpressionNode allocaNode) {
         // allocaNode == null indicates that no native stack is supported
@@ -72,4 +82,8 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
         return LLVMManagedPointer.create(vaListStorage);
     }
 
+    @Fallback
+    public LLVMNativePointer allocateNative(VirtualFrame frame, @Cached("createAllocaNode()") LLVMExpressionNode allocaNode) {
+        return LLVMNativePointer.cast(allocaNode.executeGeneric(frame));
+    }
 }
