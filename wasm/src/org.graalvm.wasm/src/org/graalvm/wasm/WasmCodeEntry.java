@@ -158,20 +158,25 @@ public final class WasmCodeEntry {
     }
 
     public static boolean injectTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex, boolean condition) {
-        int t = profileArray[profileIndex];
         int sum = profileArray[counterIndex];
-        double probability = (double) t / (double) sum;
-        if (condition) {
+        int t = profileArray[profileIndex];
+        boolean val = condition;
+        if (val) {
             if (t == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            return CompilerDirectives.injectBranchProbability(probability, true);
+            if (t == sum) {
+                val = true;
+            }
         } else {
             if (t == sum) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            return CompilerDirectives.injectBranchProbability(1.0 - probability, false);
+            if (t == 0) {
+                val = false;
+            }
         }
+        return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
     }
 
     public void errorBranch() {

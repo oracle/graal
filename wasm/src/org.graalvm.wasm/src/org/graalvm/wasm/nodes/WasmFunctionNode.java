@@ -564,6 +564,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
                         extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
                         stackPointer = targetStackPointer + targetReturnLength;
+                        break;
                     } else {
                         // This loop is implemented to create a separate path for every index. This
                         // guarantees that all values inside the if statement are treated as compile
@@ -585,7 +586,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                         }
                     }
-                    break;
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Should not reach here");
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e.
