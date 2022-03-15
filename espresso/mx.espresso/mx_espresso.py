@@ -26,6 +26,7 @@ import os
 import mx
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
+import mx_sdk_vm_impl
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from os.path import join
@@ -36,8 +37,7 @@ _suite = mx.suite('espresso')
 LLVM_JAVA_HOME = mx.get_env('LLVM_JAVA_HOME')
 
 def _espresso_command(launcher, args):
-    import mx_sdk_vm_impl
-    bin_dir = join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
+    bin_dir = join(mx_sdk_vm.graalvm_home(fatalIfMissing=True), 'bin')
     exe = join(bin_dir, mx.exe_suffix(launcher))
     if not os.path.exists(exe):
         exe = join(bin_dir, mx.cmd_suffix(launcher))
@@ -79,6 +79,14 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
     return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
+def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True):
+    if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
+        # no libespresso, we can only run with the espresso launcher
+        _run_espresso_launcher(args, cwd, nonZeroIsFatal)
+    else:
+        _run_java_truffle(args, cwd, nonZeroIsFatal)
+
+
 def _run_espresso_meta(args, nonZeroIsFatal=True):
     """Run Espresso (standalone) on Espresso (launcher)"""
     return _run_espresso_launcher([
@@ -105,7 +113,6 @@ def _espresso_gate_runner(args, tasks):
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
         if t:
-            import mx_sdk_vm_impl
             run_instructions = "$ mx --dynamicimports=/substratevm --native-images=lib:javavm gate --all-suites --task '{}'".format(mokapot_header_gate_name)
             if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
                 mx.abort("""\

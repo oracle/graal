@@ -478,6 +478,27 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> UseHostFinalReference = new OptionKey<>(true);
 
+    public enum JImageMode {
+        NATIVE,
+        JAVA,
+    }
+
+    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode",
+                    new Function<String, JImageMode>() {
+                        @Override
+                        public JImageMode apply(String s) {
+                            try {
+                                return JImageMode.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
+                            }
+                        }
+                    });
+
+    @Option(help = "Selects the jimage reader.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<JImageMode> JImage = new OptionKey<>(JImageMode.JAVA, JIMAGE_MODE_OPTION_TYPE);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-package com.oracle.truffle.espresso.runtime;
+import java.nio.ByteBuffer;
 
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
+/**
+ * JLink Image Decompressor.
+ */
+public interface ResourceDecompressor {
 
-public interface JImageHelper {
-    void close();
+    interface StringsProvider {
+        /**
+         * Provides the raw modified-utf8 string at the given offset.
+         */
+        ByteBuffer getRawString(int offset);
 
-    byte[] getClassBytes(ByteSequence name);
+        String getString(int offset);
+    }
+
+    /**
+     * Decompressor unique name.
+     * 
+     * @return The decompressor name.
+     */
+    String getName();
+
+    /**
+     * Decompress a resource.
+     * 
+     * @param strings The String provider
+     * @param content The resource content
+     * @param originalSize Uncompressed size
+     * @return Uncompressed resource
+     */
+    ByteBuffer decompress(StringsProvider strings, ByteBuffer content, long originalSize);
 }
