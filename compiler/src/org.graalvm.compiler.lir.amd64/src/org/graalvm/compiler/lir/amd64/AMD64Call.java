@@ -33,8 +33,10 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.code.CompilationResult.MarkId;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -45,6 +47,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.InvokeTarget;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -88,24 +91,11 @@ public class AMD64Call {
     }
 
     @Opcode("CALL_DIRECT")
-    public static class DirectCallOp extends MethodCallOp {
+    public abstract static class DirectCallOp extends MethodCallOp {
         public static final LIRInstructionClass<DirectCallOp> TYPE = LIRInstructionClass.create(DirectCallOp.class);
-
-        public DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            this(TYPE, callTarget, result, parameters, temps, state);
-        }
 
         protected DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(c, callTarget, result, parameters, temps, state);
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            directCall(crb, masm, callTarget, null, true, state);
-        }
-
-        public void emitCall(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            directCall(crb, masm, callTarget, null, true, state);
         }
     }
 
@@ -194,26 +184,78 @@ public class AMD64Call {
         }
     }
 
-    public static void directCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
+    /**
+     * @param scratch register to use for call target address when emitting a far call
+     * @param align indicates whether the displacement operand of an immediate call instruction must
+     *            be 4-byte aligned
+     * @return the position of the emitted call instruction
+     */
+    public static int directCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
         int before;
         if (scratch != null && !GeneratePIC.getValue(crb.getOptions())) {
-            assert !align;
+            if (align) {
+                throw new GraalError("register call has no immediate displacement operand to be aligned");
+            }
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
-            // This is an implicit contract between the backend and the jvmci code installer. The
+            // This is an implicit contract between the backend and the JVMCI code installer. The
             // latter expects a mov instruction immediately preceding a call instruction. The jcc
             // erratum padding should be inserted before the mov instruction.
             before = masm.directCall(0L, scratch);
         } else {
-            before = masm.directCall(align, crb.target.arch.getMachineCodeCallDisplacementOffset(), crb.target.wordSize);
+            masm.alignBeforeCall(align, 0);
+            before = masm.position();
+            masm.call();
         }
         int after = masm.position();
-        crb.recordDirectCall(before, after, callTarget, info);
+        Call call = crb.recordDirectCall(before, after, callTarget, info);
+        if (align) {
+            checkCallDisplacementAlignment(crb, before, call);
+        }
+        crb.recordExceptionHandlers(after, info);
+        masm.ensureUniquePC();
+        return before;
+    }
+
+    private static final int INLINE_CACHE_MOV_SIZE = 10;
+
+    /**
+     * Emits a direct call instruction, immediately preceded by a mov instruction. This is used for
+     * emitting HotSpot inline cache call. The runtime will patch the mov instruction to load the
+     * cached receiver type, which will be used in {@code [Entry Point]} code section for receiver
+     * type check.
+     *
+     * @param nonOopBits placeholder bit pattern for inline cache receiver type patching
+     */
+    public static void directInlineCacheCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, MarkId markId, long nonOopBits, LIRFrameState info) {
+        masm.alignBeforeCall(true, INLINE_CACHE_MOV_SIZE);
+        // The mark for an invocation that uses an inline cache must be placed at the
+        // instruction that loads the Klass from the inline cache.
+        crb.recordMark(markId);
+        int movPos = masm.position();
+        masm.movq(AMD64.rax, nonOopBits);
+        int before = masm.position();
+        assert movPos + INLINE_CACHE_MOV_SIZE == before;
+        masm.call();
+        int after = masm.position();
+        Call call = crb.recordDirectCall(before, after, callTarget, info);
+        checkCallDisplacementAlignment(crb, before, call);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }
 
-    public static void directJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target, Register scratch) {
+    private static void checkCallDisplacementAlignment(CompilationResultBuilder crb, int before, Call call) throws GraalError {
+        int opcode = crb.asm.getByte(call.pcOffset);
+        if (!(opcode == 0xE8)) {
+            throw new GraalError("unexpected opcode 0x%x at offset %d: %s", opcode, before, call);
+        }
+        int callDisplacement = call.pcOffset + 1;
+        if (callDisplacement % 4 != 0) {
+            throw new GraalError("displacement for call at offset %d is not 4-byte aligned: %s", call.pcOffset, call);
+        }
+    }
+
+    public static void directJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, ForeignCallLinkage target, Register scratch) {
         int before;
         if (scratch != null && !GeneratePIC.getValue(crb.getOptions())) {
             // offset might not fit a 32-bit immediate, generate an
@@ -225,17 +267,24 @@ public class AMD64Call {
         recordDirectCall(crb, masm, target, before);
     }
 
-    public static void recordDirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target, int before) {
+    public static void recordDirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, ForeignCallLinkage target, int before) {
         crb.recordDirectCall(before, masm.position(), target, null);
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.indirectCall(dst);
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
+        return indirectCall(crb, masm, dst, callTarget, info, false);
+    }
+
+    /**
+     * @return the position of the emitted call instruction
+     */
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall) {
+        int before = masm.indirectCall(dst, mitigateDecodingAsDirectCall);
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
+        return before;
     }
-
 }

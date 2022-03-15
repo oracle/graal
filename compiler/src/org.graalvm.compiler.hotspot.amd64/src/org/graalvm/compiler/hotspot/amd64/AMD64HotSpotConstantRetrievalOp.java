@@ -115,7 +115,8 @@ public final class AMD64HotSpotConstantRetrievalOp extends AMD64LIRInstruction {
             masm.movq(asRegister(descriptionParameters[i]), asRegister(constantDescriptions[i]));
         }
 
-        final int before = masm.directCall(false, crb.target.arch.getMachineCodeCallDisplacementOffset(), crb.target.wordSize);
+        final int before = masm.position();
+        masm.call();
         final int after = masm.position();
         crb.recordDirectCall(before, after, callLinkage, frameState);
     }

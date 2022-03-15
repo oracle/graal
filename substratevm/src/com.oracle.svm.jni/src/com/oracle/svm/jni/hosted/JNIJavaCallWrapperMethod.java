@@ -380,7 +380,8 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
                 }
                 StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
                 int offset = i * elementSize + fieldInfo.getOffsetInfo().getProperty();
-                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forInt(offset), providers.getWordTypes().getWordKind());
+                JavaKind wordKind = providers.getWordTypes().getWordKind();
+                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forIntegerKind(wordKind, offset), wordKind);
                 OffsetAddressNode address = kit.unique(new OffsetAddressNode(array, offsetConstant));
                 LocationIdentity locationIdentity = fieldInfo.getLocationIdentity();
                 if (locationIdentity == null) {

@@ -56,6 +56,10 @@ public class NativeImageOptions {
                     "platform dependent. See --list-cpu-features for feature list.", type = User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @APIOption(name = "list-cpu-features")//
+    @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
+    public static final HostedOptionKey<Boolean> ListCPUFeatures = new HostedOptionKey<>(false);
+
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
 

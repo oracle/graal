@@ -201,11 +201,14 @@ public class AArch64Call {
         return maxOffset != -1 && AArch64MacroAssembler.isBranchImmediateOffset(maxOffset);
     }
 
-    public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info) {
-        directCall(crb, masm, callTarget, scratch, info, null);
+    public static int directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info) {
+        return directCall(crb, masm, callTarget, scratch, info, null);
     }
 
-    public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info, Label label) {
+    /**
+     * @return the position of the emitted call instruction
+     */
+    public static int directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info, Label label) {
         int before = masm.position();
         if (scratch != null) {
             if (GeneratePIC.getValue(crb.getOptions())) {
@@ -230,15 +233,20 @@ public class AArch64Call {
         crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
+        return before;
     }
 
-    public static void indirectCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
+    /**
+     * @return the position of the emitted call instruction
+     */
+    public static int indirectCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.position();
         masm.blr(dst);
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
+        return before;
     }
 
     public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget) {

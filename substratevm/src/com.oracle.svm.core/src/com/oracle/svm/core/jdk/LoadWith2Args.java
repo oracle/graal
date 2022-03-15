@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.core.jdk;
 
-import java.net.URI;
-
-public interface PredefinedClassesRegistry {
-
-    void add(String nameInfo, String hash, URI baseUri);
+/**
+ * A predicate that returns {@code true} iff
+ * {@code boolean java.lang.ClassLoader.NativeLibrary.load(String name, boolean isBuiltin)} exists.
+ * It should only be used in conjunction with {@link JDK11OrEarlier} as {@code NativeLibrary} was
+ * moved to a top level class in later JDKs.
+ */
+// Checkstyle: stop
+public class LoadWith2Args extends MethodPredicate {
+    public LoadWith2Args() {
+        super(ClassLoader.class, "NativeLibrary", "load", String.class, boolean.class);
+    }
 }
