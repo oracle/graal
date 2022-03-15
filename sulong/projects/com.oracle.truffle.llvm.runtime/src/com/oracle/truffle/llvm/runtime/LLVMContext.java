@@ -1018,6 +1018,7 @@ public final class LLVMContext {
         assert !allRunningThreads.contains(thread);
     }
 
+    @TruffleBoundary
     public Thread[] getAllRunningThreads() {
         return allRunningThreads.toArray(Thread[]::new);
     }
