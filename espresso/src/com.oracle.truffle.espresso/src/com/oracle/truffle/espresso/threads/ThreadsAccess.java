@@ -318,6 +318,10 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
         support.resume();
     }
 
+    public void stop(StaticObject guest) {
+        stop(guest, null);
+    }
+
     /**
      * Notifies a thread to throw an asynchronous guest throwable whenever possible.
      */
