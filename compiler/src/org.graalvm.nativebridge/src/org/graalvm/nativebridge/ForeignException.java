@@ -152,7 +152,7 @@ public final class ForeignException extends RuntimeException {
      * @param exception the exception that should be passed over the boundary
      * @param marshaller the marshaller to marshall the exception
      */
-    public static ForeignException forException(Throwable exception, BinaryMarshaller<? super Throwable> marshaller) {
+    public static ForeignException forThrowable(Throwable exception, BinaryMarshaller<? super Throwable> marshaller) {
         try (BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create()) {
             marshaller.write(out, exception);
             return new ForeignException(out.getArray(), UNDEFINED, false);

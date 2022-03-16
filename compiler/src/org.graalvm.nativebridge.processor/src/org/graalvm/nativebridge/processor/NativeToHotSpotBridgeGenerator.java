@@ -549,7 +549,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         CharSequence e = "e";
         builder.lineStart("} catch (").write(typeCache.throwable).space().write(e).lineEnd(") {");
         builder.indent();
-        builder.lineStart("throw ").invokeStatic(typeCache.foreignException, "forException", e, data.getCustomMarshaller(typeCache.throwable, null, types).name).lineEnd(";");
+        builder.lineStart("throw ").invokeStatic(typeCache.foreignException, "forThrowable", e, data.getCustomMarshaller(typeCache.throwable, null, types).name).lineEnd(";");
         builder.dedent();
         builder.line("}");
         builder.dedent();

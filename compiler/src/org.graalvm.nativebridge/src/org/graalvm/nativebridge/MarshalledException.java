@@ -24,23 +24,31 @@
  */
 package org.graalvm.nativebridge;
 
+/**
+ * An exception representing an exception thrown over the isolate boundary.
+ */
 @SuppressWarnings("serial")
 public final class MarshalledException extends RuntimeException {
 
     private final String foreignExceptionClassName;
 
-    public MarshalledException(String foreignExceptionClassName, String foreignExceptionMessage) {
-        this(foreignExceptionClassName, foreignExceptionMessage, null);
-    }
-
+    /**
+     * Creates a {@link MarshalledException} for foreign exception of the
+     * {@code foreignExceptionClassName} type with the {@code foreignExceptionMessage} message.
+     *
+     * @param foreignExceptionClassName the foreign exception class name
+     * @param foreignExceptionMessage the foreign exception message
+     * @param stackTrace the merged stack trace.
+     */
     public MarshalledException(String foreignExceptionClassName, String foreignExceptionMessage, StackTraceElement[] stackTrace) {
         super(foreignExceptionMessage);
         this.foreignExceptionClassName = foreignExceptionClassName;
-        if (stackTrace != null) {
-            setStackTrace(stackTrace);
-        }
+        setStackTrace(stackTrace);
     }
 
+    /**
+     * Returns the foreign exception class name.
+     */
     public String getForeignExceptionClassName() {
         return foreignExceptionClassName;
     }
