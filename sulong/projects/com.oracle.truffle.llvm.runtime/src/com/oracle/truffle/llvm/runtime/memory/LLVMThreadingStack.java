@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.memory;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
@@ -70,7 +71,8 @@ public final class LLVMThreadingStack {
     }
 
     private static LLVMStack getCurrentStack() {
-        return LLVMLanguage.get(null).contextThreadLocal.get(Thread.currentThread()).getLLVMStack();    }
+        return LLVMLanguage.get(null).contextThreadLocal.get(Thread.currentThread()).getLLVMStack();
+    }
 
     @TruffleBoundary
     private LLVMStack createNewStack() {
@@ -101,11 +103,14 @@ public final class LLVMThreadingStack {
     }
 
     private static void free(LLVMMemory memory, Thread thread) {
-        LLVMThreadLocalValue value = LLVMLanguage.get(null).contextThreadLocal.get(thread);
-        assert value != null;
-        LLVMStack s = value.removeLLVMStack();
-        if (s != null) {
-            s.free(memory);
+        ContextThreadLocal<LLVMThreadLocalValue> context = LLVMLanguage.get(null).contextThreadLocal;
+        if (context != null) {
+            LLVMThreadLocalValue value = context.get(thread);
+            assert value != null;
+            LLVMStack s = value.removeLLVMStack();
+            if (s != null) {
+                s.free(memory);
+            }
         }
     }
 }
