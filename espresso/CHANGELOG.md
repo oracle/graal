@@ -9,6 +9,7 @@
 * The truffle `AbstractTruffleException` API is now fully adopted.
 * Better integration with the Truffle safepoint API
 * Add new implementation for reading jimages (`libs/modules`) . It is used by default, `--java.JImage=native` can be used to revert to the old implementation.
+* New command: `<ProcessReferences>`. Allows embedders to manually trigger reference processing in single-threaded mode.
 
 ## Version 22.0.0
 ### User-visible changes

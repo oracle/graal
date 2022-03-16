@@ -190,3 +190,13 @@ This may be incompatible with other Truffle languages which do not support threa
 
 When this option is enabled, finalizers will not run, neither the `ReferenceQueue` notification mechanism.
 Both these features would require starting new threads. Note that the garbage-collection of weakly reachable objects remains unaffected.
+
+Instead, reference processing can be manually triggered through a special command, only available in single-threaded environments.
+
+```java
+// Host Java
+// Will trigger Reference processing and run finalizers
+polyglot.eval("java", "<ProcessReferences>");
+```
+
+Note that this command might trigger arbitrary cleaner and finalizer code. As such, this should ideally be run with as few guest java frames on the stack as possible. 
