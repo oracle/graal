@@ -103,10 +103,12 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * The return value is a {@link RegexResult}. The contents of the {@code exec} can be compiled
  * lazily and so its first invocation might involve a longer delay as the regular expression is
  * compiled on the fly.
- * <li>{@link TruffleObject} {@code groups}: a map from names of capture groups to their indices. If
- * the flavor of regular expressions allows homonymous capture groups (as Ruby does), then the
- * values of this map will be lists of indices. If the regular expression has no capture groups,
- * this will be a Truffle null value.</li>
+ * <li>{@link TruffleObject} {@code groups}: a Truffle object that has a member for every named
+ * capture group. The value of the member depends on the flavor of regular expressions. In flavors
+ * where all capture groups must have a unique name, the value of the member is a single integer,
+ * the index of the group that bears the member's name. In flavors where it is possible to have
+ * multiple groups of the same name (as in Ruby), the value of the member has array elements that
+ * give the indices of the groups with the member's name.</li>
  * <li>{@code boolean isBacktracking}: whether or not matching with this regular expression will use
  * backtracking when matching, which could result in an exponential runtime in the worst case
  * scenario</li>
