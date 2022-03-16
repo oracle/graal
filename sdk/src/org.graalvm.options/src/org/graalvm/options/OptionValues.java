@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public interface OptionValues {
      *             altered after options are set, then the new value should be stored in the
      *             language's context or instrument fields and read from there.
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     @SuppressWarnings("unused")
     default <T> void set(OptionKey<T> optionKey, T value) {
         throw new UnsupportedOperationException();
