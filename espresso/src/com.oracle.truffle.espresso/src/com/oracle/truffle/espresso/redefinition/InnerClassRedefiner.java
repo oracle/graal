@@ -38,7 +38,6 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
 import com.oracle.truffle.espresso.impl.Klass;
