@@ -37,6 +37,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLoopExplosionKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitch;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitchBoundary;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInlineable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSpecializationMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTruffleBoundary;
@@ -56,6 +57,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetLoopExplosionKind;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsBytecodeInterpreterSwitch;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsBytecodeInterpreterSwitchBoundary;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsInlineable;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSpecializationMethod;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSuppressedFailure;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsTruffleBoundary;
@@ -118,8 +120,8 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     private MethodCache getMethodCache(ResolvedJavaMethod method) {
         return methodCache.computeIfAbsent(method,
-                        (m) -> new MethodCache(getLoopExplosionKindImpl(method), getInlineKindImpl(method, true), getInlineKindImpl(method, false), isTruffleBoundaryImpl(method),
-                                        isBytecodeInterpreterSwitchImpl(method), isBytecodeInterpreterSwitchBoundaryImpl(method)));
+                        (m) -> new MethodCache(getLoopExplosionKindImpl(method), getInlineKindImpl(method, true), getInlineKindImpl(method, false), isInlineableImpl(method),
+                                        isTruffleBoundaryImpl(method), isBytecodeInterpreterSwitchImpl(method), isBytecodeInterpreterSwitchBoundaryImpl(method)));
     }
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)
@@ -162,6 +164,17 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         JNIEnv env = env();
         long callTargetHandle = callGetCallTargetForCallNode(env, getHandle(), callNodeHandle);
         return LibGraal.unhand(JavaConstant.class, callTargetHandle);
+    }
+
+    @TruffleFromLibGraal(IsInlineable)
+    @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        MethodCache cache = getMethodCache(method);
+        return cache.isInlineable;
+    }
+
+    private boolean isInlineableImpl(ResolvedJavaMethod method) {
+        return callIsInlineable(env(), getHandle(), LibGraal.translate(method));
     }
 
     @TruffleFromLibGraal(IsTruffleBoundary)
@@ -387,15 +400,17 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         final LoopExplosionKind explosionKind;
         final InlineKind inlineKindPE;
         final InlineKind inlineKindNonPE;
+        final boolean isInlineable;
         final boolean isTruffleBoundary;
         final boolean isBytecodeInterpreterSwitch;
         final boolean isBytecodeInterpreterSwitchBoundary;
 
-        MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE, boolean isTruffleBoundary, boolean isBytecodeInterpreterSwitch,
+        MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE, boolean isInlineable, boolean isTruffleBoundary, boolean isBytecodeInterpreterSwitch,
                         boolean isBytecodeInterpreterSwitchBoundary) {
             this.explosionKind = explosionKind;
             this.inlineKindPE = inlineKindPE;
             this.inlineKindNonPE = inlineKindNonPE;
+            this.isInlineable = isInlineable;
             this.isTruffleBoundary = isTruffleBoundary;
             this.isBytecodeInterpreterSwitch = isBytecodeInterpreterSwitch;
             this.isBytecodeInterpreterSwitchBoundary = isBytecodeInterpreterSwitchBoundary;

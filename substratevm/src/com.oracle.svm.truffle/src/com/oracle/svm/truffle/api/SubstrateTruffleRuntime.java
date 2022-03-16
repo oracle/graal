@@ -53,6 +53,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -367,6 +368,18 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
+            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
+                /* The semantics of Uninterruptible would get lost during partial evaluation. */
+                return false;
+            }
+        }
+        return super.isInlineable(method);
+    }
+
+    @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
         TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
@@ -382,7 +395,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     /**
-     * Compilation task used when truffle runtime is run in single threaded mode.
+     * Compilation task used when Truffle runtime is run in single threaded mode.
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
