@@ -131,11 +131,14 @@ public final class BootClassRegistry extends ClassRegistry {
         return StaticObject.NULL;
     }
 
+    @SuppressWarnings("try")
     private static ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
         if (Types.isPrimitive(type)) {
             return null;
         }
-        ClasspathFile classpathFile = env.getClasspath().readClassFile(type);
-        return classpathFile;
+        try (DebugCloseable scope = BOOT_KLASS_READ.scope(env.getTimers())) {
+            ClasspathFile classpathFile = env.getClasspath().readClassFile(type);
+            return classpathFile;
+        }
     }
 }
