@@ -237,6 +237,7 @@ public abstract class ClassRegistry {
      * a whole class registry and all its contained classes.
      */
     protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<Symbol<Type>, LinkedKlass> linkedKlasses = new ConcurrentHashMap<>();
 
     /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
@@ -284,13 +285,17 @@ public abstract class ClassRegistry {
     @SuppressWarnings("try")
     public LinkedKlass createLinkedKlass(ClassLoadingEnv env, ParserKlass parserKlass, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         Symbol<Type> type = parserKlass.getType();
+        LinkedKlass entry = linkedKlasses.get(type);
+        if (entry != null) {
+            return entry;
+        }
+
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
         EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
         ClassRegistry.TypeStack chain = threadLocalState.getTypeStack();
 
         LinkedKlass superKlass = null;
         LinkedKlass[] superInterfaces = null;
-        LinkedKlass[] linkedInterfaces = null;
 
         chain.push(type);
 
@@ -304,10 +309,6 @@ public abstract class ClassRegistry {
 
             final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
-            linkedInterfaces = superInterfacesTypes.length == 0
-                            ? LinkedKlass.EMPTY_ARRAY
-                            : new LinkedKlass[superInterfacesTypes.length];
-
             superInterfaces = superInterfacesTypes.length == 0
                             ? LinkedKlass.EMPTY_ARRAY
                             : new LinkedKlass[superInterfacesTypes.length];
@@ -318,7 +319,6 @@ public abstract class ClassRegistry {
                 }
                 LinkedKlass interf = loadLinkedKlassRecursively(env, superInterfacesTypes[i], info, false);
                 superInterfaces[i] = interf;
-                linkedInterfaces[i] = interf;
             }
         } finally {
             chain.pop();
@@ -331,7 +331,7 @@ public abstract class ClassRegistry {
         }
 
         try (DebugCloseable define = LINKED_KLASS_DEFINE.scope(env.getTimers())) {
-            return LinkedKlass.create(env, parserKlass, superKlass, linkedInterfaces);
+            return LinkedKlass.create(env, parserKlass, superKlass, superInterfaces);
         }
     }
 
@@ -409,18 +409,28 @@ public abstract class ClassRegistry {
             synchronized (type) {
                 entry = classes.get(type);
                 if (entry == null) {
-                    linkedKlass = loadLinkedKlassImpl(env, type, info);
+                    try (DebugCloseable probe = LINKED_KLASS_PROBE.scope(env.getTimers())) {
+                        linkedKlass = linkedKlasses.get(type);
+                    }
+                    if (linkedKlass == null) {
+                        linkedKlass = loadLinkedKlassImpl(env, type, info);
+                        if (linkedKlass != null) {
+                            linkedKlasses.put(type, linkedKlass);
+                        }
+                    }
                     if (linkedKlass == null) {
                         return null;
                     }
                 } else {
                     linkedKlass = ((ObjectKlass) entry.klass()).getLinkedKlass();
+                    linkedKlasses.remove(type);
                 }
             }
         } else {
             // Grabbing a lock to fetch the class is not considered a hit.
             loadLinkedKlassCountInc();
             linkedKlass = ((ObjectKlass) entry.klass()).getLinkedKlass();
+            linkedKlasses.remove(type);
         }
         return linkedKlass;
     }
