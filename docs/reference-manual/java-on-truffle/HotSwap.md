@@ -7,7 +7,7 @@ permalink: /reference-manual/java-on-truffle/hotswap/
 
 # Enhanced HotSwap Capabilities with Java on Truffle
 
-You can use the built-in enhanced HotSwap capabilities for applications running with Java on Truffle.
+With Java on Truffle you can benefit from enhanced HotSwap capabilites that allow the code to evolve naturally during development without the need for restarting a running application.
 You do not have to configure anything specific besides launching your app in debug mode and attaching a standard IDE debugger to gain the advantages of enhanced HotSwap.
 
 ## Debugging with Java on Truffle
