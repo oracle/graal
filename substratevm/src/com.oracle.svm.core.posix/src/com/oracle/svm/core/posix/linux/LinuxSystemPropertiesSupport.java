@@ -40,7 +40,7 @@ import com.oracle.svm.core.posix.headers.Utsname;
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
-    protected String tmpdirValue() {
+    protected String javaIoTmpdirValue() {
         /*
          * The initial value of `java.io.tmpdir` is hard coded in libjava when building the JDK. So
          * to be completely correct, we would have to use the value from libjava, but since it is
