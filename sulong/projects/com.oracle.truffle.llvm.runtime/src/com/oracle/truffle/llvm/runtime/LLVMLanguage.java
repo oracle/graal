@@ -67,6 +67,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -736,7 +737,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
             // include the main thread
-            context.getThreadingStack().freeStack(getLLVMMemory(), thread);
+            LLVMThreadingStack.freeStack(getLLVMMemory(), thread);
         }
 
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);

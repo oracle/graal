@@ -86,7 +86,7 @@ public final class LLVMThreadingStack {
     }
 
     @TruffleBoundary
-    public void freeStack(LLVMMemory memory, Thread thread) {
+    public static void freeStack(LLVMMemory memory, Thread thread) {
         free(memory, thread);
     }
 
