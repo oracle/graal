@@ -114,7 +114,7 @@ public final class ResourcesFeature implements Feature {
     public final Set<String> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
-        private ConfigurationTypeResolver configurationTypeResolver;
+        private final ConfigurationTypeResolver configurationTypeResolver;
 
         ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
             this.configurationTypeResolver = configurationTypeResolver;
@@ -281,7 +281,7 @@ public final class ResourcesFeature implements Feature {
         if (moduleNameWithPattern.length < 2) {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
-            Optional<? extends Object> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
+            Optional<?> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
             if (optModule.isPresent()) {
                 return new ResourcePattern(moduleNameWithPattern[0], Pattern.compile(moduleNameWithPattern[1]));
             } else {
