@@ -61,11 +61,12 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
     private long exec(long code, LLVMPointer addr, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS: {
-                getLanguage().contextThreadLocal.get().setThreadLocalStorage(addr);
+                getContext().setThreadLocalStorage(addr);
                 return 0;
             }
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
-                store.executeWithTarget(addr, getLanguage().contextThreadLocal.get().getThreadLocalStorage());
+                LLVMPointer tls = getContext().getThreadLocalStorage();
+                store.executeWithTarget(addr, tls);
                 return 0;
             }
             default: {

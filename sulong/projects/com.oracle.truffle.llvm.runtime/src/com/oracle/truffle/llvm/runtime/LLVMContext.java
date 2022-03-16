@@ -139,6 +139,9 @@ public final class LLVMContext {
     // Symbols are added to the tail globalscope
     private LLVMScopeChain tailGlobalScopeChain;
 
+    // we are not able to clean up ThreadLocals properly, so we are using maps instead
+    private final Map<Thread, LLVMPointer> tls = new ConcurrentHashMap<>();
+
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
@@ -612,8 +615,13 @@ public final class LLVMContext {
         return allocateGlobalsBlockFunction;
     }
 
-    void dispose() {
+    void dispose(LLVMMemory memory) {
         printNativeCallStatistics();
+
+        if (isInitialized()) {
+            threadingStack.freeMainStack(memory);
+        }
+
         // free the space which might have been when putting pointer-type globals into native memory
         for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
             if (LLVMManagedPointer.isInstance(pointer)) {
@@ -915,6 +923,25 @@ public final class LLVMContext {
             symbolAssumptions[index] = null;
             symbolDynamicStorage[index] = null;
         }
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getThreadLocalStorage() {
+        LLVMPointer value = tls.get(Thread.currentThread());
+        if (value != null) {
+            return value;
+        }
+        return LLVMNativePointer.createNull();
+    }
+
+    @TruffleBoundary
+    public void setThreadLocalStorage(LLVMPointer value) {
+        tls.put(Thread.currentThread(), value);
+    }
+
+    @TruffleBoundary
+    public void setThreadLocalStorage(LLVMPointer value, Thread thread) {
+        tls.put(thread, value);
     }
 
     @TruffleBoundary

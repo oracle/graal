@@ -29,17 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 /**
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
  */
 public final class LLVMThreadingStack {
-
+    // we are not able to clean up a thread local properly, so we are using a map instead
+    private final Map<Thread, LLVMStack> threadMap;
     private final long stackSize;
     private final Thread mainThread;
     @CompilationFinal private LLVMStack mainThreadStack;
@@ -47,6 +50,7 @@ public final class LLVMThreadingStack {
     public LLVMThreadingStack(Thread mainTread, long stackSize) {
         this.mainThread = mainTread;
         this.stackSize = stackSize;
+        this.threadMap = new ConcurrentHashMap<>();
     }
 
     public LLVMStack getStack() {
@@ -70,8 +74,8 @@ public final class LLVMThreadingStack {
     }
 
     @TruffleBoundary
-    private static LLVMStack getCurrentStack() {
-        return LLVMLanguage.get(null).contextThreadLocal.get(Thread.currentThread()).getLLVMStack();
+    private LLVMStack getCurrentStack() {
+        return threadMap.get(Thread.currentThread());
     }
 
     @TruffleBoundary
@@ -81,19 +85,30 @@ public final class LLVMThreadingStack {
         if (currentThread == mainThread) {
             mainThreadStack = s;
         }
-        LLVMLanguage.get(null).contextThreadLocal.get(currentThread).setLLVMStack(s);
+        Object previous = threadMap.putIfAbsent(currentThread, s);
+        assert previous == null;
         return s;
     }
 
     @TruffleBoundary
-    public static void freeStack(LLVMMemory memory, Thread thread) {
-        free(memory, thread);
+    public void freeStack(LLVMMemory memory, Thread thread) {
+        /*
+         * Do not free the stack of the main thread: Sulong#disposeThread runs before
+         * Sulong#disposeContext, which needs to call destructors that need a SP.
+         */
+        if (mainThread != Thread.currentThread()) {
+            free(memory, thread);
+        }
     }
 
-    private static void free(LLVMMemory memory, Thread thread) {
-        LLVMThreadLocalValue value = LLVMLanguage.get(null).contextThreadLocal.get(thread);
-        assert value != null;
-        LLVMStack s = value.removeLLVMStack();
+    @TruffleBoundary
+    public void freeMainStack(LLVMMemory memory) {
+        mainThreadStack = null;
+        free(memory, mainThread);
+    }
+
+    private void free(LLVMMemory memory, Thread thread) {
+        LLVMStack s = threadMap.remove(thread);
         if (s != null) {
             s.free(memory);
         }
