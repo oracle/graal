@@ -67,8 +67,10 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
@@ -143,13 +145,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private ContextExtensionKey<?>[] contextExtensions;
-
-    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
-
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
     @CompilationFinal private ByteArraySupport cachedByteArraySupport;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
+
+    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
 
@@ -214,6 +215,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMGlobalContainer[][] managedSections;
         final WeakReference<Thread> thread;
         boolean isFinalized;
+        LLVMStack stack;
+        LLVMPointer localStorage;
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
@@ -242,6 +245,33 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public boolean isFinalized() {
             return isFinalized;
+        }
+
+        public LLVMPointer getThreadLocalStorage() {
+            if (localStorage != null) {
+                return localStorage;
+            }
+            return LLVMNativePointer.createNull();
+        }
+
+        public void setThreadLocalStorage(LLVMPointer value) {
+            localStorage = value;
+        }
+
+        public LLVMStack getLLVMStack() {
+            assert stack != null;
+            return stack;
+        }
+
+        public void setLLVMStack(LLVMStack stack) {
+            assert this.stack == null;
+            this.stack = stack;
+        }
+
+        public LLVMStack removeLLVMStack() {
+            LLVMStack tmp = stack;
+            this.stack = null;
+            return tmp;
         }
     }
 

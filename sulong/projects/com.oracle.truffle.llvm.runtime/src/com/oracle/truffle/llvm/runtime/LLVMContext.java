@@ -935,25 +935,6 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMPointer getThreadLocalStorage() {
-        LLVMPointer value = tls.get(Thread.currentThread());
-        if (value != null) {
-            return value;
-        }
-        return LLVMNativePointer.createNull();
-    }
-
-    @TruffleBoundary
-    public void setThreadLocalStorage(LLVMPointer value) {
-        tls.put(Thread.currentThread(), value);
-    }
-
-    @TruffleBoundary
-    public void setThreadLocalStorage(LLVMPointer value, Thread thread) {
-        tls.put(thread, value);
-    }
-
-    @TruffleBoundary
     public LLVMFunctionDescriptor getFunctionDescriptor(LLVMNativePointer handle) {
         return functionPointerRegistry.getDescriptor(handle);
     }
