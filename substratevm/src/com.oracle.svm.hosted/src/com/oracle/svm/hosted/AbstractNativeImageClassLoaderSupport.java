@@ -84,7 +84,9 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
-        imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
+        imagecp = Arrays.stream(classPathClassLoader.getURLs())
+                        .map(Util::urlToPath)
+                        .collect(Collectors.toUnmodifiableList());
         String builderClassPathString = System.getProperty("java.class.path");
         String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
         if (Arrays.asList(builderClassPathEntries).contains(".")) {
@@ -92,9 +94,10 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                             " must not contain \".\". This can happen implicitly if the builder runs exclusively on the --module-path" +
                             " but specifies the " + NativeImageGeneratorRunner.class.getName() + " main class without --module.");
         }
-        buildcp = Collections.unmodifiableList(Arrays.stream(builderClassPathEntries)
-                        .map(Paths::get).map(Path::toAbsolutePath)
-                        .collect(Collectors.toList()));
+        buildcp = Arrays.stream(builderClassPathEntries)
+                        .map(Paths::get)
+                        .map(Path::toAbsolutePath)
+                        .collect(Collectors.toUnmodifiableList());
     }
 
     List<Path> classpath() {
@@ -198,7 +201,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     final Set<Path> excludeDirectories = getExcludeDirectories();
 
-    private Set<Path> getExcludeDirectories() {
+    private static Set<Path> getExcludeDirectories() {
         Path root = Paths.get("/");
         return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
                         .map(root::resolve).collect(Collectors.toUnmodifiableSet());
@@ -217,7 +220,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         protected void init() {
             Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(this::toRealPath));
             uniquePaths.addAll(classpath());
-            uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(path));
+            uniquePaths.parallelStream().forEach(this::loadClassesFromPath);
         }
 
         private Path toRealPath(Path p) {
