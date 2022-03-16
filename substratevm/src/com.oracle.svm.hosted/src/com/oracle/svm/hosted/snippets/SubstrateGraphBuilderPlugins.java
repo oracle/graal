@@ -626,7 +626,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe)) {
+        if (!isValidField(targetField, isSunMiscUnsafe) || reason == ParsingReason.JITCompilation) {
             return false;
         }
 
