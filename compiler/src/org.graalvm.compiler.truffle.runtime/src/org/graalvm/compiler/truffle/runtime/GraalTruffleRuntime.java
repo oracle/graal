@@ -1036,7 +1036,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return FrameSlotKind.values().length;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
         TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
