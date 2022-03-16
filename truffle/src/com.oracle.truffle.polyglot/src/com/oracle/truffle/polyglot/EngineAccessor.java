@@ -76,6 +76,8 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
@@ -1625,6 +1627,16 @@ final class EngineAccessor extends Accessor {
         @Override
         public AutoCloseable createPolyglotThreadScope() {
             return PolyglotImpl.getInstance().getRootImpl().createThreadScope();
+        }
+
+        @Override
+        public Engine getPolyglotEngineAPI(Object polyglotEngineImpl) {
+            return ((PolyglotEngineImpl) polyglotEngineImpl).api;
+        }
+
+        @Override
+        public Context getPolyglotContextAPI(Object polyglotContextImpl) {
+            return ((PolyglotContextImpl) polyglotContextImpl).api;
         }
     }
 
