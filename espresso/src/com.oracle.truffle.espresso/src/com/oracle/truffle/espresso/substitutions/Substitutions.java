@@ -219,7 +219,7 @@ public final class Substitutions implements ContextAccess {
                 if (!substitutorFactory.isValidFor(methodToSubstitute.getJavaVersion())) {
                     return null;
                 }
-                ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(methodToSubstitute.getContext());
+                ClassLoadingEnv.InContext env = methodToSubstitute.getContext().getClassLoadingEnv();
                 StaticObject classLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                 if (forceValid || env.isLoaderBootOrPlatform(classLoader)) {
                     return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, methodToSubstitute));

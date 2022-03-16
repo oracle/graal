@@ -103,8 +103,7 @@ public abstract class ClassInfo {
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
         Symbol<Type> type = context.getTypes().fromName(name);
-        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
-        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), definingLoader, type);
+        ParserKlass parserKlass = ClassfileParser.parse(context.getClassLoadingEnv(), new ClassfileStream(bytes, null), definingLoader, type);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();

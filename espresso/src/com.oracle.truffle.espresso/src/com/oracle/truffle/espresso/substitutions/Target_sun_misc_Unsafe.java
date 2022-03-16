@@ -108,7 +108,7 @@ public final class Target_sun_misc_Unsafe {
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap(language);
         // Inherit host class's protection domain.
         ClassRegistry.ClassDefinitionInfo info = new ClassRegistry.ClassDefinitionInfo(pd, hostKlass, patches);
-        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(meta.getContext());
+        ClassLoadingEnv.InContext env = meta.getContext().getClassLoadingEnv();
 
         ObjectKlass k = null;
         try {
@@ -231,7 +231,7 @@ public final class Target_sun_misc_Unsafe {
                     @Inject Meta meta) {
         byte[] buf = guestBuf.unwrap(language);
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(meta.getContext());
+        ClassLoadingEnv.InContext env = meta.getContext().getClassLoadingEnv();
         Klass klass;
         try {
             klass = env.getRegistries().defineKlass(env, env.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));

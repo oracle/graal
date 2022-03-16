@@ -205,7 +205,7 @@ public final class ClassRedefinition {
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
             StaticObject loader = klass.getDefiningClassLoader();
-            ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(klass.getContext());
+            ClassLoadingEnv.InContext env = klass.getContext().getClassLoadingEnv();
             Types types = env.getTypes();
             parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()));
             if (hotSwapInfo.isPatched()) {
@@ -247,7 +247,7 @@ public final class ClassRedefinition {
     }
 
     public int redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
-        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+        ClassLoadingEnv.InContext env = context.getClassLoadingEnv();
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
@@ -484,7 +484,7 @@ public final class ClassRedefinition {
     }
 
     private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
-        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(oldKlass.getContext());
+        ClassLoadingEnv.InContext env = oldKlass.getContext().getClassLoadingEnv();
         Klass klass;
         klass = oldKlass.getContext().getRegistries().findLoadedClass(env, klassType, oldKlass.getDefiningClassLoader());
         if (klass == null) {
@@ -744,7 +744,7 @@ public final class ClassRedefinition {
             // 4. update the JDWP refType ID for the klass instance
             // 5. replace/record a classloader constraint for the new type and klass combination
 
-            ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+            ClassLoadingEnv.InContext env = context.getClassLoadingEnv();
 
             Symbol<Symbol.Name> newName = packet.info.getName();
             Symbol<Symbol.Type> newType = env.getTypes().fromName(newName);

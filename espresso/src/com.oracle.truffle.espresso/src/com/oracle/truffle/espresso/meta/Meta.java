@@ -1784,7 +1784,7 @@ public final class Meta implements ContextAccess {
     @TruffleBoundary
     public Klass loadKlassOrNull(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         try {
-            return getRegistries().loadKlass(new ClassLoadingEnv.InContext(getContext()), type, classLoader, protectionDomain);
+            return getRegistries().loadKlass(getContext().getClassLoadingEnv(), type, classLoader, protectionDomain);
         } catch (EspressoClassLoadingException e) {
             throw e.asGuestException(this);
         }

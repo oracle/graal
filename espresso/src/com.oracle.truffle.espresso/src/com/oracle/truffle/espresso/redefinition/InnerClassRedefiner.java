@@ -89,8 +89,7 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
-                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(env, redefineInfo.getClassBytes());
+                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(context.getClassLoadingEnv(), redefineInfo.getClassBytes());
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName.toString());
                 if (matcher.matches()) {
                     // don't assume that associated old klass instance represents this redefineInfo

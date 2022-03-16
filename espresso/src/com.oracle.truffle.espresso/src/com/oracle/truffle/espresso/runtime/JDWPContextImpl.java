@@ -318,7 +318,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
             StaticObject classLoader = objectKlass.getDefiningClassLoader();
             for (Symbol<Symbol.Name> nestedType : nestedTypeNames) {
-                ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(context);
+                ClassLoadingEnv.InContext env = context.getClassLoadingEnv();
                 Symbol<Symbol.Type> type = env.getTypes().fromClassGetName(nestedType.toString());
                 KlassRef loadedKlass = env.getRegistries().findLoadedClass(env, type, classLoader);
                 if (loadedKlass != null && loadedKlass != klass) {
