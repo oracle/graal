@@ -129,6 +129,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return threadLocalState.get();
     }
 
+    public EspressoThreadLocalState getThreadLocalStateFor(Thread t) {
+        return threadLocalState.get(t);
+    }
+
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         // TODO(peterssen): Redirect in/out to env.in()/out()

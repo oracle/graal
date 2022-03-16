@@ -293,7 +293,6 @@ public class FallbackFeature implements Feature {
     public void afterAnalysis(AfterAnalysisAccess a) {
         if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.NoFallback ||
                         NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() ||
-                        NativeImageOptions.AllowIncompleteClasspath.getValue() ||
                         SubstrateOptions.SharedLibrary.getValue()) {
             /*
              * Any of the above ensures we unconditionally allow stand-alone image to be generated.

@@ -266,9 +266,6 @@ public final class GraalOptions {
     @Option(help = "Use Graal-generated stubs for complicated LIR operations instead of embedding all the emitted code.", type = OptionType.Expert)
     public static final OptionKey<Boolean> UseGraalStubs = new OptionKey<>(true);
 
-    @Option(help = "Encode and decode snippets and substitutions before parsing to test libgraal code path. This option is ignored in the context of libgraal.")
-    public static final OptionKey<Boolean> UseEncodedGraphs = new OptionKey<>(false);
-
     @Option(help = "If applicable, use bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
     public static final OptionKey<Integer> MinimalBulkZeroingSize = new OptionKey<>(2048);
 

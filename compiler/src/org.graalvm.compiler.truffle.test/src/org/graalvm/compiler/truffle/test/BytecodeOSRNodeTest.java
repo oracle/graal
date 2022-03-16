@@ -964,7 +964,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @TruffleBoundary
         void checkCallerFrame() {
-            Assert.assertEquals(caller, Truffle.getRuntime().getCallerFrame().getCallTarget());
+            Assert.assertEquals(caller, Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget(), 1));
         }
 
         public static class Caller extends RootNode {

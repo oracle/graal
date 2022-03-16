@@ -97,6 +97,10 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         return delegate;
     }
 
+    public static ProxyLanguage getDelegate() {
+        return delegate;
+    }
+
     public void setOnCreate(Consumer<LanguageContext> onCreate) {
         this.onCreate = onCreate;
     }

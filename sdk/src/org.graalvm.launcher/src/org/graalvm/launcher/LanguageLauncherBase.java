@@ -122,18 +122,16 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (descriptor.isOptionMap()) {
             key.append(".<key>");
         }
-        if (!Boolean.FALSE.equals(descriptor.getKey().getDefaultValue())) {
+        String usageSyntax = descriptor.getUsageSyntax();
+        if (usageSyntax != null) {
             key.append("=");
-            key.append(descriptor.getUsageSyntax());
+            key.append(usageSyntax);
         }
         String help = descriptor.getHelp();
         if (descriptor.isDeprecated()) {
             help = help + " [Deprecated]";
         }
-        if (descriptor.getStability() == OptionStability.EXPERIMENTAL) {
-            help = help + " [Experimental]";
-        }
-        return new PrintableOption(name, key.toString(), help);
+        return new PrintableOption(name, key.toString(), help, descriptor.getStability() == OptionStability.EXPERIMENTAL);
     }
 
     private static void addOptions(OptionDescriptors descriptors, Set<String> target) {
@@ -360,9 +358,9 @@ public abstract class LanguageLauncherBase extends Launcher {
         final Map<OptionCategory, List<PrintableOption>> options = getCategories(engine.getOptions());
         if (options != null) {
             println(optionsTitle("Engine", null));
-            printCategory(options, OptionCategory.USER, "   User options:");
-            printCategory(options, OptionCategory.EXPERT, "   Expert options:");
-            printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
+            printCategory(options, OptionCategory.USER, "User options:");
+            printCategory(options, OptionCategory.EXPERT, "Expert options:");
+            printCategory(options, OptionCategory.INTERNAL, "Internal options:");
             return true;
         }
         return false;
@@ -389,9 +387,9 @@ public abstract class LanguageLauncherBase extends Launcher {
                 }
                 println("");
                 println("  " + instrument.getName() + website(instrument) + ":");
-                printCategory(options, OptionCategory.USER, "   User options:");
-                printCategory(options, OptionCategory.EXPERT, "   Expert options:");
-                printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
+                printCategory(options, OptionCategory.USER, "User options:");
+                printCategory(options, OptionCategory.EXPERT, "Expert options:");
+                printCategory(options, OptionCategory.INTERNAL, "Internal options:");
                 println("");
                 println("   Use --help:" + instrument.getId() + ":internal to also show internal options.");
             }
@@ -421,11 +419,13 @@ public abstract class LanguageLauncherBase extends Launcher {
                 }
                 println("");
                 println(title(language));
-                printCategory(options, OptionCategory.USER, "   User options:");
-                printCategory(options, OptionCategory.EXPERT, "   Expert options:");
-                printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
+                printCategory(options, OptionCategory.USER, "User options:");
+                printCategory(options, OptionCategory.EXPERT, "Expert options:");
+                printCategory(options, OptionCategory.INTERNAL, "Internal options:");
                 println("");
-                println("   Use --help:" + language.getId() + ":internal to also show internal options.");
+                if (options.get(OptionCategory.INTERNAL).isEmpty()) {
+                    println("   Use --help:" + language.getId() + ":internal to also show internal options.");
+                }
             }
             return true;
         }
@@ -450,7 +450,7 @@ public abstract class LanguageLauncherBase extends Launcher {
         final List<PrintableOption> printableOptions = options.get(category);
         if (printableOptions != null && !printableOptions.isEmpty()) {
             println();
-            printOptions(printableOptions, title, 4);
+            printOptions(printableOptions, title, 3);
         }
     }
 

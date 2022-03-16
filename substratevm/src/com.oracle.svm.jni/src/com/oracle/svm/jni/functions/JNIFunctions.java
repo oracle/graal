@@ -37,7 +37,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -114,8 +113,8 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
-import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
@@ -148,8 +147,6 @@ public final class JNIFunctions {
     /*
      * jint GetVersion(JNIEnv *env);
      */
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.NotPublished)
@@ -449,7 +446,7 @@ public final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         Object instance;
         try {
-            instance = UNSAFE.allocateInstance(clazz);
+            instance = Unsafe.getUnsafe().allocateInstance(clazz);
         } catch (InstantiationException e) {
             instance = null;
         }
@@ -1150,7 +1147,7 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true) != CEntryPointErrors.NO_ERROR) {
+                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true) != CEntryPointErrors.NO_ERROR) {
                     return JNIErrors.JNI_ERR();
                 }
                 return CEntryPointErrors.NO_ERROR;
@@ -1160,7 +1157,7 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false) != CEntryPointErrors.NO_ERROR) {
+                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false) != CEntryPointErrors.NO_ERROR) {
                     return JNIErrors.JNI_ERR();
                 }
                 return CEntryPointErrors.NO_ERROR;
@@ -1219,6 +1216,15 @@ public final class JNIFunctions {
             static int handle(Throwable t) {
                 Support.handleException(t);
                 return JNIErrors.JNI_ERR();
+            }
+        }
+
+        static class JNIExceptionHandlerDetachAndReturnJniErr implements CEntryPoint.ExceptionHandler {
+            @Uninterruptible(reason = "exception handler")
+            static int handle(Throwable t) {
+                int error = (t instanceof OutOfMemoryError) ? JNIErrors.JNI_ENOMEM() : JNIErrors.JNI_ERR();
+                CEntryPointActions.leaveDetachThread();
+                return error;
             }
         }
 
@@ -1352,7 +1358,7 @@ public final class JNIFunctions {
     static class JNIJavaVMUnimplementedPrologue implements CEntryPointOptions.Prologue {
         @Uninterruptible(reason = "prologue")
         static void enter(JNIJavaVM vm) {
-            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
+            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
             if (error != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(error, UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE.get());
             }

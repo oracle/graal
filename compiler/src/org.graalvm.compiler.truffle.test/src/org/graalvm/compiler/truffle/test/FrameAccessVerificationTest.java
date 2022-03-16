@@ -31,6 +31,10 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
@@ -41,6 +45,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -54,6 +59,8 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
     @CompilerDirectives.TruffleBoundary
     static void boundary() {
     }
+
+    public volatile Object sink;
 
     private static final class Result {
         final Object result;
@@ -841,8 +848,6 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
         doTest(root, graphChecker, result(1f, true, true), result(null, false, false), result(FrameSlotTypeException.class, false, true), result(null, true, false));
     }
 
-    public static Object sink;
-
     @Test
     public void getValueSimple() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
@@ -1090,7 +1095,206 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
         doTest(root, graphChecker, result(new Object[]{0, true, 2L, 3F, 4D, (byte) 5, "six"}, true));
     }
 
+    @Test
+    public void materializedWrite() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Int, null, null);
+        FrameDescriptor fd = builder.build();
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedWrite";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot1, (int) frame.getArguments()[0]);
+                boundary();
+                return frame.getInt(slot1);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1, 1));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void materializedWriteLegacy() {
+        FrameDescriptor fd = new FrameDescriptor();
+        com.oracle.truffle.api.frame.FrameSlot slot1 = fd.addFrameSlot("slot1", FrameSlotKind.Int);
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedWriteLegacy";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot1, (int) frame.getArguments()[0]);
+                boundary();
+                return frame.getInt(slot1);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1, 1));
+    }
+
+    @Test
+    public void materializedMerge() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Int, null, null);
+        FrameDescriptor fd = builder.build();
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedMerge";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (((int) frame.getArguments()[0]) == 1) {
+                    frame.setLong(slot1, (int) frame.getArguments()[0]);
+                } else {
+                    frame.setInt(slot1, (int) frame.getArguments()[0]);
+                }
+                boundary();
+                return 1;
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1, 1), result(1, 2));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void materializedMergeLegacy() {
+        FrameDescriptor fd = new FrameDescriptor();
+        com.oracle.truffle.api.frame.FrameSlot slot1 = fd.addFrameSlot("slot1", FrameSlotKind.Int);
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedMergeLegacy";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (((int) frame.getArguments()[0]) == 1) {
+                    frame.setLong(slot1, (int) frame.getArguments()[0]);
+                } else {
+                    frame.setInt(slot1, (int) frame.getArguments()[0]);
+                }
+                boundary();
+                return 1;
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1, 1), result(1, 2));
+    }
+
+    @Test
+    public void materializedLoop() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Int, null, null);
+        int slot2 = builder.addSlot(FrameSlotKind.Illegal, null, null);
+        FrameDescriptor fd = builder.build();
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedLoop";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot1, 0);
+                frame.setFloat(slot2, 0);
+                int count = (int) frame.getArguments()[0];
+                while (frame.getInt(slot1) < count) {
+                    frame.setFloat(slot2, frame.getFloat(slot2) + count);
+                    frame.setInt(slot1, frame.getInt(slot1) + 1);
+                    boundary();
+                }
+                return frame.getFloat(slot2);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertNoConverts(graph);
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1f, 1), result(25f, 5));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void materializedLoopLegacy() {
+        FrameDescriptor fd = new FrameDescriptor();
+        com.oracle.truffle.api.frame.FrameSlot slot1 = fd.addFrameSlot("slot1", FrameSlotKind.Float);
+        com.oracle.truffle.api.frame.FrameSlot slot2 = fd.addFrameSlot("slot2", FrameSlotKind.Float);
+        // materialize the frame
+        Truffle.getRuntime().createVirtualFrame(new Object[0], fd).materialize();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "materializedLoopLegacy";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot1, 0);
+                frame.setFloat(slot2, 0);
+                int count = (int) frame.getArguments()[0];
+                while (frame.getInt(slot1) < count) {
+                    frame.setFloat(slot2, frame.getFloat(slot2) + count);
+                    frame.setInt(slot1, frame.getInt(slot1) + 1);
+                    boundary();
+                }
+                return frame.getFloat(slot2);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertNoConverts(graph);
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1f, 1), result(25f, 5));
+    }
+
     private static void assertDeoptCount(StructuredGraph graph, int expected) {
+        if (expected == 0) {
+            graph.getNodes(DeoptimizeNode.TYPE) //
+                            .filter(n -> !(n.predecessor() instanceof ExceptionObjectNode)) //
+                            .filter(n -> !((DeoptimizeNode) n).getSpeculation().equals(SpeculationLog.NO_SPECULATION)).forEach(n -> System.out.println(n));
+            graph.getNodes(FixedGuardNode.TYPE) //
+                            .filter(n -> !((FixedGuardNode) n).getSpeculation().equals(SpeculationLog.NO_SPECULATION)).forEach(n -> System.out.println(n));
+        }
         int deoptCount = graph.getNodes(DeoptimizeNode.TYPE) //
                         .filter(n -> !(n.predecessor() instanceof ExceptionObjectNode)) //
                         .filter(n -> !((DeoptimizeNode) n).getSpeculation().equals(SpeculationLog.NO_SPECULATION)).count();
@@ -1101,6 +1305,13 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
 
     private static void assertReturn(StructuredGraph graph) {
         Assert.assertTrue("return node needs to exist", graph.getNodes(ReturnNode.TYPE).isNotEmpty());
+    }
+
+    private static void assertNoConverts(StructuredGraph graph) {
+        Assert.assertEquals(0, graph.getNodes().filter(ReinterpretNode.class).count());
+        Assert.assertEquals(0, graph.getNodes().filter(NarrowNode.class).count());
+        Assert.assertEquals(0, graph.getNodes().filter(ZeroExtendNode.class).count());
+        Assert.assertEquals(0, graph.getNodes().filter(SignExtendNode.class).count());
     }
 
     private static void assertAllocations(StructuredGraph graph) {

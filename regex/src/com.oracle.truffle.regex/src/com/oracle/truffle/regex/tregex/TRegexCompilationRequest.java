@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import java.util.Map;
 import java.util.StringJoiner;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexExecNode;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexSource;
@@ -72,11 +73,13 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexLiteralLookAroundExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.RegexASTPostProcessor;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTLaTexExportVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
@@ -95,6 +98,8 @@ public final class TRegexCompilationRequest {
     private final RegexLanguage language;
     private final RegexSource source;
     private RegexAST ast = null;
+    private AbstractRegexObject flags = null;
+    private Map<String, Integer> namedCaptureGroups = null;
     private PureNFAMap pureNFA = null;
     private NFA nfa = null;
     private NFA traceFinderNFA = null;
@@ -128,6 +133,14 @@ public final class TRegexCompilationRequest {
         return ast;
     }
 
+    public AbstractRegexObject getFlags() {
+        return flags;
+    }
+
+    public Map<String, Integer> getNamedCaptureGroups() {
+        return namedCaptureGroups;
+    }
+
     @TruffleBoundary
     public RegexExecNode compile() {
         try {
@@ -145,11 +158,10 @@ public final class TRegexCompilationRequest {
     @TruffleBoundary
     private RegexExecNode compileInternal() {
         Loggers.LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
-        RegexParser regexParser = createParser();
         phaseStart("Parser");
         try {
-            ast = regexParser.parse();
-            regexParser.prepareForDFA();
+            parse();
+            prepareASTForDFA();
         } finally {
             phaseEnd("Parser");
         }
@@ -303,19 +315,26 @@ public final class TRegexCompilationRequest {
     }
 
     private void createAST() {
-        RegexParser regexParser = createParser();
         phaseStart("Parser");
         try {
-            ast = regexParser.parse();
-            regexParser.prepareForDFA();
+            parse();
+            prepareASTForDFA();
         } finally {
             phaseEnd("Parser");
         }
         debugAST();
     }
 
-    private RegexParser createParser() {
-        return new RegexParser(language, source, RegexFlags.parseFlags(source), compilationBuffer);
+    private void parse() {
+        RegexFlavor flavor = source.getOptions().getFlavor();
+        RegexParser parser = flavor.createParser(language, source, compilationBuffer);
+        ast = parser.parse();
+        flags = parser.getFlags();
+        namedCaptureGroups = parser.getNamedCaptureGroups();
+    }
+
+    private void prepareASTForDFA() {
+        new RegexASTPostProcessor(ast, compilationBuffer).prepareForDFA();
     }
 
     private void createNFA() {

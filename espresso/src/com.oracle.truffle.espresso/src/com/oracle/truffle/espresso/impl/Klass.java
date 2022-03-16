@@ -29,10 +29,9 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import org.graalvm.collections.EconomicSet;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -773,11 +772,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (!(this instanceof ObjectKlass)) {
             return true; // primitives or arrays are considered initialized.
         }
-        int state = ((ObjectKlass) this).getState();
-        return state == ObjectKlass.INITIALIZED ||
-                        state == ObjectKlass.ERRONEOUS ||
-                        // initializing thread
-                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(this);
+        return ((ObjectKlass) this).isInitializingOrInitializedImpl();
     }
 
     /**
@@ -1125,7 +1120,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      *
      * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
      * specified class or interface C.
-     * 
+     *
      * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
      *
      * 4) Otherwise, field lookup fails.
@@ -1538,7 +1533,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // visible to TypeCheckNode
     public Assumption getRedefineAssumption() {
-        return AlwaysValidAssumption.INSTANCE;
+        return Assumption.ALWAYS_VALID;
     }
 
     // endregion jdwp-specific

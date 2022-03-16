@@ -242,6 +242,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -786,7 +787,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         if (instrument != null && !skipEntryInstrumentation) {
             instrument.notifyEntry(frame, this);
         }
-        livenessAnalysis.onStart(frame);
+        // startBCI is not 0 when we executeBodyFromBCI during OSR; in that case we don't execute
+        // the method from the beginning hence onStart is not applicable
+        if (startBCI == 0) {
+            livenessAnalysis.onStart(frame);
+        }
 
         loop: while (true) {
             final int curOpcode = bs.opcode(curBCI);
@@ -1462,6 +1467,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
                     ExceptionHandler handler = null;
                     for (ExceptionHandler toCheck : handlers) {
+                        CompilerAsserts.partialEvaluationConstant(toCheck);
                         if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
                             Klass catchType = null;
                             if (!toCheck.isCatchAll()) {
@@ -1469,6 +1475,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 // pass instanceof
                                 catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                             }
+                            CompilerAsserts.partialEvaluationConstant(catchType);
                             if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getGuestException(), catchType)) {
                                 // the first found exception handler is our exception handler
                                 handler = toCheck;
@@ -1752,7 +1759,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = (instrument == null) ? 0 : instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
         if (targetBCI <= curBCI) {
-            checkDeprecation();
+            TruffleSafepoint.poll(this);
             if (CompilerDirectives.hasNextTier() && ++loopCount.value >= REPORT_LOOP_STRIDE) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount.value = 0;
@@ -1781,12 +1788,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
         return nextStatementIndex;
-    }
-
-    private void checkDeprecation() {
-        if (getContext().shouldCheckDeprecationStatus()) {
-            getContext().getThreadAccess().checkDeprecation();
-        }
     }
 
     @ExplodeLoop

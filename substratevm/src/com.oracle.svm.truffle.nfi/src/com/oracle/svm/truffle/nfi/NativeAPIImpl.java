@@ -172,7 +172,7 @@ final class NativeAPIImpl {
     static class AttachCurrentThreadPrologue implements CEntryPointOptions.Prologue {
         @Uninterruptible(reason = "prologue")
         static int enter(NativeTruffleContext context) {
-            return CEntryPointActions.enterAttachThread(context.isolate(), true);
+            return CEntryPointActions.enterAttachThread(context.isolate(), false, true);
         }
     }
 

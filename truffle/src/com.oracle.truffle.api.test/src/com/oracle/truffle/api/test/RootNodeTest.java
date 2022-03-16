@@ -173,18 +173,6 @@ public class RootNodeTest {
     }
 
     @Test
-    public void testCapturingFramesLegacyException() {
-        TestRootNode4 rootNode = new TestRootNode4(true);
-        Object marker = new Object();
-        try {
-            rootNode.getCallTarget().call(marker);
-            Assert.fail();
-        } catch (LegacyTestException e) {
-            asserCapturedFrames(rootNode, marker, e, e.frame);
-        }
-    }
-
-    @Test
     public void testTranslateStackTraceElementNotEntered() {
         RootNode rootNode = new TestRootNode3(true);
         try {
@@ -349,39 +337,6 @@ public class RootNodeTest {
         @Override
         public Object execute(VirtualFrame frame) {
             throw new TestException(frame);
-        }
-    }
-
-    @SuppressWarnings({"serial", "deprecation"})
-    static final class LegacyTestException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
-        MaterializedFrame frame;
-
-        LegacyTestException(VirtualFrame frame) {
-            this.frame = frame.materialize();
-        }
-
-        @Override
-        public Node getLocation() {
-            return null;
-        }
-    }
-
-    static final class TestRootNode4 extends RootNode {
-        private boolean shouldCaptureFrames;
-
-        TestRootNode4(boolean shouldCaptureFrames) {
-            super(null);
-            this.shouldCaptureFrames = shouldCaptureFrames;
-        }
-
-        @Override
-        public boolean isCaptureFramesForTrace() {
-            return this.shouldCaptureFrames;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            throw new LegacyTestException(frame);
         }
     }
 

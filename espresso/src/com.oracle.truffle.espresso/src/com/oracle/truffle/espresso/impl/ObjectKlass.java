@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,6 +54,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -110,7 +112,11 @@ public final class ObjectKlass extends Klass {
 
     private String genericSignature;
 
-    @CompilationFinal private volatile int initState = LOADED;
+    @CompilationFinal //
+    private volatile EspressoLock initLock;
+
+    @CompilationFinal //
+    private volatile int initState = LOADED;
 
     @CompilationFinal volatile KlassVersion klassVersion;
 
@@ -283,6 +289,20 @@ public final class ObjectKlass extends Klass {
 
     // region InitStatus
 
+    private EspressoLock getInitLock() {
+        EspressoLock iLock = initLock;
+        if (iLock == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                iLock = initLock;
+                if (iLock == null) {
+                    iLock = this.initLock = EspressoLock.create(getContext().getBlockingSupport());
+                }
+            }
+        }
+        return iLock;
+    }
+
     public int getState() {
         return initState;
     }
@@ -299,8 +319,11 @@ public final class ObjectKlass extends Klass {
         return initState >= LINKED;
     }
 
-    private boolean isInitializingOrInitialized() {
-        return initState >= INITIALIZING;
+    boolean isInitializingOrInitializedImpl() {
+        return (initState == INITIALIZED) ||
+                        /* Initializing thread */
+                        (initState == INITIALIZING && getInitLock().isHeldByCurrentThread()) ||
+                        (initState == ERRONEOUS);
     }
 
     boolean isInitializedImpl() {
@@ -325,10 +348,11 @@ public final class ObjectKlass extends Klass {
     @ExplodeLoop
     private void actualInit() {
         checkErroneousInitialization();
-        synchronized (this) {
+        getInitLock().lock();
+        try {
             // Double-check under lock
             checkErroneousInitialization();
-            if (isInitializingOrInitialized()) {
+            if (isInitializingOrInitializedImpl()) {
                 return;
             }
             initState = INITIALIZING;
@@ -376,6 +400,8 @@ public final class ObjectKlass extends Klass {
             checkErroneousInitialization();
             initState = INITIALIZED;
             assert isInitialized();
+        } finally {
+            getInitLock().unlock();
         }
     }
 
@@ -385,7 +411,8 @@ public final class ObjectKlass extends Klass {
      * structure.
      */
     private void prepare() {
-        synchronized (this) {
+        getInitLock().lock();
+        try {
             if (!isPrepared()) {
                 checkLoadingConstraints();
                 for (Field f : getInitialStaticFields()) {
@@ -396,11 +423,13 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                        prepareThread = getContext().getCurrentThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }
             }
+        } finally {
+            getInitLock().unlock();
         }
     }
 
@@ -503,7 +532,8 @@ public final class ObjectKlass extends Klass {
         if (!isLinked()) {
             checkErroneousVerification();
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
+            getInitLock().lock();
+            try {
                 if (!isLinkingOrLinked()) {
                     initState = LINKING;
                     if (getSuperKlass() != null) {
@@ -516,6 +546,8 @@ public final class ObjectKlass extends Klass {
                     verify();
                     initState = LINKED;
                 }
+            } finally {
+                getInitLock().unlock();
             }
             checkErroneousVerification();
         }
@@ -584,7 +616,8 @@ public final class ObjectKlass extends Klass {
     private void verify() {
         if (!isVerified()) {
             checkErroneousVerification();
-            synchronized (this) {
+            getInitLock().lock();
+            try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setVerificationStatus(VERIFYING);
@@ -596,6 +629,8 @@ public final class ObjectKlass extends Klass {
                     }
                     setVerificationStatus(VERIFIED);
                 }
+            } finally {
+                getInitLock().unlock();
             }
             checkErroneousVerification();
         }
@@ -1639,6 +1674,28 @@ public final class ObjectKlass extends Klass {
             }
 
             Method.MethodVersion[] methods = newDeclaredMethods.toArray(new Method.MethodVersion[0]);
+            // first replace existing method versions with new versions
+            // to ensure new declared methods are up-to-date
+            Map<Method, ParserMethod> changedMethodBodies = change.getChangedMethodBodies();
+            Map<Method, Method.SharedRedefinitionContent> copyCheckMap = new HashMap<>();
+            for (int i = 0; i < methods.length; i++) {
+                Method declMethod = methods[i].getMethod();
+                if (changedMethodBodies.containsKey(declMethod)) {
+                    ParserMethod newMethod = changedMethodBodies.get(declMethod);
+                    Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
+                    JDWP.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
+                    methods[i] = redefineContent.getMethodVersion();
+
+                    int flags = newMethod.getFlags();
+                    if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
+                        copyCheckMap.put(declMethod, redefineContent);
+                    }
+                }
+                if (change.getUnchangedMethods().contains(declMethod)) {
+                    methods[i] = declMethod.swapMethodVersion(this, ids);
+                }
+            }
+            // create new tables
             if (isInterface()) {
                 InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, superInterfaces, methods);
                 vtable = icr.methodtable;
@@ -1653,6 +1710,16 @@ public final class ObjectKlass extends Klass {
                 itable = InterfaceTables.fixTables(this, vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
             }
 
+            // check and replace copied methods too
+            for (Map.Entry<Method, Method.SharedRedefinitionContent> entry : copyCheckMap.entrySet()) {
+                Method key = entry.getKey();
+                Method.SharedRedefinitionContent value = entry.getValue();
+
+                checkCopyMethods(this, key, itable, value, ids);
+                checkCopyMethods(this, key, vtable, value, ids);
+                checkCopyMethods(this, key, mirandaMethods, value, ids);
+            }
+
             // only update subtype lists if class hierarchy changed
             if (packet.classChange == ClassRedefinition.ClassChange.CLASS_HIERARCHY_CHANGED) {
                 if (superKlass != null) {
@@ -1661,27 +1728,6 @@ public final class ObjectKlass extends Klass {
                 for (ObjectKlass superInterface : superInterfaces) {
                     superInterface.addSubType(getKlass());
                 }
-            }
-
-            // changed methods
-            Map<Method, ParserMethod> changedMethodBodies = change.getChangedMethodBodies();
-            for (Map.Entry<Method, ParserMethod> entry : changedMethodBodies.entrySet()) {
-                Method method = entry.getKey();
-                ParserMethod newMethod = entry.getValue();
-                Method.SharedRedefinitionContent redefineContent = method.redefine(this, newMethod, packet.parserKlass, ids);
-                JDWP.LOGGER.fine(() -> "Redefining method " + method.getDeclaringKlass().getName() + "." + method.getName());
-
-                // look in tables for copied methods that also needs to be invalidated
-                int flags = newMethod.getFlags();
-                if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
-                    checkCopyMethods(this, method, itable, redefineContent, ids);
-                    checkCopyMethods(this, method, vtable, redefineContent, ids);
-                    checkCopyMethods(this, method, mirandaMethods, redefineContent, ids);
-                }
-            }
-
-            for (Method unchangedMethod : change.getUnchangedMethods()) {
-                unchangedMethod.swapMethodVersion(this, ids);
             }
 
             this.declaredMethods = methods;

@@ -45,13 +45,13 @@ import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.strings.InternalByteArray;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 

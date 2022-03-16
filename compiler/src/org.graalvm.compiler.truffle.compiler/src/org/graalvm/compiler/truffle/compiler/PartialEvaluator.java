@@ -97,6 +97,7 @@ import org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
+import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
@@ -126,6 +127,7 @@ public abstract class PartialEvaluator {
     private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in the graph-decoding of partial evaluation.");
     private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis").doc("Time spent in the escape-analysis in Truffle tier.");
     private static final TimerKey TruffleFrameVerifyFrameTimer = DebugContext.timer("PartialEvaluation-VerifyFrame").doc("Time spent in frame access verification in Truffle tier.");
+    private static final TimerKey TruffleTransformPhiTimer = DebugContext.timer("PartialEvaluation-TransformPhi").doc("Time spent in phi processing in Truffle tier.");
     private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination").doc("Time spent in conditional elimination in Truffle tier.");
     private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer").doc("Time spent in the canonicalizer in the Truffle tier.");
     private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard").doc("Time spent in converting deoptimize to guard in Truffle tier.");
@@ -345,13 +347,8 @@ public abstract class PartialEvaluator {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options)) {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-                boolean inlined = inliningGraphPE(request);
+                inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                // If no inlining has happened, we can skip the final Truffle tier round
-                // since these phases have already been run during PE of the root.
-                if (inlined) {
-                    truffleTier(request);
-                }
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
                 if (request.task.isCancelled()) {
@@ -571,6 +568,9 @@ public abstract class PartialEvaluator {
         try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
             partialEscape(request);
         }
+        try (DebugCloseable a = TruffleTransformPhiTimer.start(request.debug)) {
+            new PhiTransformPhase(canonicalizer).apply(request.graph, request.highTierContext);
+        }
     }
 
     /**
@@ -642,15 +642,21 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"unused", "try"})
-    private boolean inliningGraphPE(Request request) {
+    private void inliningGraphPE(Request request) {
         boolean inlined;
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
             AgnosticInliningPhase inliningPhase = new AgnosticInliningPhase(this, request);
             inliningPhase.apply(request.graph, providers);
-            inlined = inliningPhase.hasInlined();
+            if (!inliningPhase.rootIsLeaf()) {
+                // If we've seen a truffle call in the graph, even if we have not inlined any call
+                // target, we need to run the truffle tier phases again after the PE inlining phase
+                // has finalized the graph.
+                // On the other hand, if there are no calls (root is a leaf) we can skip the truffle
+                // tier because there are no finalization points.
+                truffleTier(request);
+            }
         }
         request.graph.maybeCompress();
-        return inlined;
     }
 
     protected void applyInstrumentationPhases(Request request) {

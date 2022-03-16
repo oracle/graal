@@ -1,0 +1,29 @@
+[
+  {
+    "name":"java.lang.Throwable"
+  },
+  {
+    "name":"java.lang.Exception"
+  },
+  {
+    "name":"java.lang.RuntimeException"
+  },
+  {
+    "name":"org.graalvm.polyglot.PolyglotException"
+  },
+  {
+    "name":"java.lang.StackTraceElement"
+  },
+  {
+    "name":"java.lang.String"
+  },
+  {
+    "name":"java.io.IOException"
+  },
+  {
+    "name":"java.io.ObjectStreamException"
+  },
+  {
+    "name":"java.io.NotSerializableException"
+  }
+]

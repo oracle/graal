@@ -67,6 +67,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
@@ -286,7 +287,7 @@ public abstract class TruffleLanguage<C> {
          * @return identifier of your language
          * @since 0.8 or earlier
          */
-        String name();
+        String name() default "";
 
         /**
          * Unique name of your language implementation.
@@ -612,7 +613,8 @@ public abstract class TruffleLanguage<C> {
      * Performs language context finalization actions that are necessary before language contexts
      * are {@link #disposeContext(Object) disposed}. However, in case the underlying polyglot
      * context is being cancelled or hard-exited, {@link #disposeContext(Object)} is called even if
-     * {@link #finalizeContext(Object)} throws a {@link TruffleException} or a {@link ThreadDeath}
+     * {@link #finalizeContext(Object)} throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a {@link ThreadDeath}
      * cancel or exit exception.
      * <p>
      * For the hard exit a language is supposed to run its finalization actions that require running
@@ -672,10 +674,11 @@ public abstract class TruffleLanguage<C> {
      * {@link #finalizeContext(Object) finalized}. However, in case the underlying polyglot context
      * is being cancelled, {@link #exitContext(Object, ExitMode, int) exit notifications} are not
      * executed. Also, for {@link ExitMode#HARD hard exit}, {@link #finalizeContext(Object)} is
-     * called even if {@link #exitContext(Object, ExitMode, int)} throws a {@link TruffleException}
-     * or a {@link ThreadDeath} cancel or exit exception. All initialized language contexts must
-     * remain usable after exit notifications. In case a {@link TruffleException} or the
-     * {@link ThreadDeath} exit exception is thrown during a {@link ExitMode#HARD hard exit
+     * called even if {@link #exitContext(Object, ExitMode, int)} throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a {@link ThreadDeath}
+     * cancel or exit exception. All initialized language contexts must remain usable after exit
+     * notifications. In case a {@link com.oracle.truffle.api.exception.AbstractTruffleException} or
+     * the {@link ThreadDeath} exit exception is thrown during an {@link ExitMode#HARD hard exit
      * notification}, it is just logged and otherwise ignored and the notification process continues
      * with the next language in order. In case the {@link ThreadDeath} cancel exception is thrown,
      * it means the context is being cancelled in which case the exit notification process
@@ -777,7 +780,8 @@ public abstract class TruffleLanguage<C> {
      * should be run in {@link #finalizeContext(Object)} instead. Finalization will be performed
      * prior to context {@link #disposeContext(Object) disposal}. However, in case the underlying
      * polyglot context is being cancelled, {@link #disposeContext(Object)} is called even if
-     * {@link #finalizeContext(Object)} throws {@link TruffleException} or {@link ThreadDeath}
+     * {@link #finalizeContext(Object)} throws
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or {@link ThreadDeath}
      * exception..
      * <p>
      * The disposal order can be influenced by specifying {@link Registration#dependentLanguages()
@@ -3290,7 +3294,7 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
+         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the underlying polyglot context is already closed, the method

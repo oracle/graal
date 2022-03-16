@@ -66,7 +66,7 @@ They are useful to users and language and tool implementers.
 - `--engine.Inlining=true|false` : Enable automatic inlining of guest language call targets (default: true).
 - `--engine.InliningExpansionBudget=[1, inf)` : The base expansion budget for language-agnostic inlining (default: 12000).
 - `--engine.InliningInliningBudget=[1, inf)` : The base inlining budget for language-agnostic inlining (default: 12000)
-- `--engine.InliningRecursionDepth=[1, inf)` : Maximum depth for recursive inlining (default: 2).
+- `--engine.InliningRecursionDepth=[0, inf)` : Maximum depth for recursive inlining (default: 2).
 - `--engine.InvalidationReprofileCount=` : Delay compilation after an invalidation to allow for reprofiling. Deprecated: no longer has any effect.
 - `--engine.LastTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root in last tier under normal compilation load (default: 10000).
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).

@@ -326,9 +326,10 @@ public abstract class InstanceOf extends Node {
             this.superType = superType;
         }
 
-        @Specialization(guards = "cachedMaybeSubtype == maybeSubtype", limit = "LIMIT")
+        @Specialization(guards = "cachedMaybeSubtype == maybeSubtype", limit = "LIMIT", assumptions = {"redefineAssumption"})
         boolean doCached(@SuppressWarnings("unused") Klass maybeSubtype,
                         @SuppressWarnings("unused") @Cached("maybeSubtype") Klass cachedMaybeSubtype,
+                        @SuppressWarnings("unused") @Cached("maybeSubtype.getRedefineAssumption()") Assumption redefineAssumption,
                         @Cached("superType.isAssignableFrom(maybeSubtype)") boolean result) {
             return result;
         }

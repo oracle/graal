@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -1706,18 +1707,16 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     boolean hasExceptionCause() {
-        return isException() && ((Throwable) obj).getCause() instanceof com.oracle.truffle.api.TruffleException;
+        return isException() && ((Throwable) obj).getCause() instanceof AbstractTruffleException;
     }
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     Object getExceptionCause() throws UnsupportedMessageException {
         if (isException()) {
             Throwable cause = ((Throwable) obj).getCause();
-            if (cause instanceof com.oracle.truffle.api.TruffleException) {
+            if (cause instanceof AbstractTruffleException) {
                 return cause;
             }
         }

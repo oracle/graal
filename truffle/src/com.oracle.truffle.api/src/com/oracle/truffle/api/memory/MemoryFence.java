@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.memory;
 
-import com.oracle.truffle.api.impl.Accessor;
+import java.lang.invoke.VarHandle;
 
 /**
  * Provides memory fence methods for fine-grained control of memory ordering. Their semantics follow
@@ -49,7 +49,9 @@ import com.oracle.truffle.api.impl.Accessor;
  * class from Java 9 and later.
  *
  * @since 21.2
+ * @deprecated Please use {@link VarHandle} directly.
  */
+@Deprecated(since = "22.1.0")
 public final class MemoryFence {
 
     private MemoryFence() {
@@ -62,7 +64,7 @@ public final class MemoryFence {
      * @since 21.2
      */
     public static void full() {
-        MemoryFenceAccessor.jdkServicesAccessor().fullFence();
+        VarHandle.fullFence();
     }
 
     /**
@@ -72,7 +74,7 @@ public final class MemoryFence {
      * @since 21.2
      */
     public static void acquire() {
-        MemoryFenceAccessor.jdkServicesAccessor().acquireFence();
+        VarHandle.acquireFence();
     }
 
     /**
@@ -82,7 +84,7 @@ public final class MemoryFence {
      * @since 21.2
      */
     public static void release() {
-        MemoryFenceAccessor.jdkServicesAccessor().releaseFence();
+        VarHandle.releaseFence();
     }
 
     /**
@@ -91,7 +93,7 @@ public final class MemoryFence {
      * @since 21.2
      */
     public static void loadLoad() {
-        MemoryFenceAccessor.jdkServicesAccessor().loadLoadFence();
+        VarHandle.loadLoadFence();
     }
 
     /**
@@ -100,18 +102,6 @@ public final class MemoryFence {
      * @since 21.2
      */
     public static void storeStore() {
-        MemoryFenceAccessor.jdkServicesAccessor().storeStoreFence();
-    }
-}
-
-final class MemoryFenceAccessor extends Accessor {
-
-    private static final MemoryFenceAccessor ACCESSOR = new MemoryFenceAccessor();
-
-    private MemoryFenceAccessor() {
-    }
-
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
+        VarHandle.storeStoreFence();
     }
 }

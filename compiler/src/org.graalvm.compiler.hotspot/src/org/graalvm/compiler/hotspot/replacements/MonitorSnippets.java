@@ -469,6 +469,13 @@ public class MonitorSnippets implements Snippets {
                 traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
                 counters.inflatedFailedCas.inc();
             }
+        } else if (owner.equal(registerAsWord(threadRegister))) {
+            int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
+            Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
+            monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);
+            traceObject(trace, "+lock{inflated:recursive}", object, true);
+            counters.inflatedRecursive.inc();
+            return true;
         } else {
             traceObject(trace, "+lock{stub:inflated:owned}", object, true);
             counters.inflatedOwned.inc();
@@ -611,6 +618,12 @@ public class MonitorSnippets implements Snippets {
                         }
                     }
                 }
+            } else {
+                // Recursive inflated unlock
+                monitor.writeWord(recursionsOffset, recursions.subtract(1), OBJECT_MONITOR_RECURSION_LOCATION);
+                counters.unlockInflatedRecursive.inc();
+                traceObject(trace, "-lock{stub:recursive}", object, false);
+                return true;
             }
             counters.unlockStubInflated.inc();
             traceObject(trace, "-lock{stub:inflated}", object, false);
@@ -713,6 +726,7 @@ public class MonitorSnippets implements Snippets {
         public final SnippetCounter lockStubFailedCas;
         public final SnippetCounter inflatedCas;
         public final SnippetCounter inflatedFailedCas;
+        public final SnippetCounter inflatedRecursive;
         public final SnippetCounter inflatedOwned;
         public final SnippetCounter unbiasable;
         public final SnippetCounter revokeBias;
@@ -729,6 +743,7 @@ public class MonitorSnippets implements Snippets {
         public final SnippetCounter unlockStubInflated;
         public final SnippetCounter unlockInflatedSimple;
         public final SnippetCounter unlockInflatedTransfer;
+        public final SnippetCounter unlockInflatedRecursive;
 
         public Counters(SnippetCounter.Group.Factory factory) {
             SnippetCounter.Group enter = factory.createSnippetCounterGroup("MonitorEnters");
@@ -743,6 +758,7 @@ public class MonitorSnippets implements Snippets {
             lockStubFailedCas = new SnippetCounter(enter, "lock{stub:failed-cas/stack}", "stub-locked, failed cas and stack locking");
             inflatedCas = new SnippetCounter(enter, "lock{inflated:cas}", "heavyweight-locked, cas-locked");
             inflatedFailedCas = new SnippetCounter(enter, "lock{inflated:failed-cas}", "heavyweight-locked, failed cas");
+            inflatedRecursive = new SnippetCounter(enter, "lock{inflated:recursive}", "heavyweight-locked, recursive");
             inflatedOwned = new SnippetCounter(enter, "lock{inflated:owned}", "heavyweight-locked, already owned");
             unbiasable = new SnippetCounter(enter, "unbiasable", "object with unbiasable type");
             revokeBias = new SnippetCounter(enter, "revokeBias", "object had bias revoked");
@@ -754,6 +770,7 @@ public class MonitorSnippets implements Snippets {
             unlockStubInflated = new SnippetCounter(exit, "unlock{stub:inflated}", "stub-unlocked an object with inflated monitor");
             unlockInflatedSimple = new SnippetCounter(exit, "unlock{inflated}", "unlocked an object monitor");
             unlockInflatedTransfer = new SnippetCounter(exit, "unlock{inflated:transfer}", "unlocked an object monitor in the presence of ObjectMonitor::_succ");
+            unlockInflatedRecursive = new SnippetCounter(exit, "unlock{inflated:recursive}", "unlocked an object monitor, recursive");
         }
     }
 

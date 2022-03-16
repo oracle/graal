@@ -179,7 +179,7 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
-        "com.oracle.truffle.espresso.libespresso": {
+        "com.oracle.truffle.espresso.libjavavm": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -348,10 +348,10 @@ suite = {
             "maven": False,
         },
 
-        "LIB_ESPRESSO": {
+        "LIB_JAVAVM": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.espresso.libespresso",
+                "com.oracle.truffle.espresso.libjavavm",
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",

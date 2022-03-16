@@ -25,84 +25,82 @@ local vm_common = import '../ci_common/common.jsonnet';
       ] else [],
   },
 
-  vm_polybench_linux_commands: {
-    base_cmd:: ['mx', '--env', 'polybench-${VM_ENV}'],
-    interpreter_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', $.vm_bench_polybench_linux_interpreter.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    compiler_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:*[compiler/dispatch.js]', '--results-file', $.vm_bench_polybench_linux_compiler.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    warmup_bench_cmd:: self.base_cmd + ['benchmark', '--fork-count-file', 'ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', $.vm_bench_polybench_linux_warmup.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-  },
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
+    base_cmd:: ['mx', '--env', env],
+    interpreter_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    compiler_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    warmup_bench_cmd:: self.base_cmd + ['benchmark', '--fork-count-file', 'ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
 
-  vm_bench_polybench_linux_common: vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
     downloads+: {
       WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
     },
     setup+: [
-      $.vm_polybench_linux_commands.base_cmd + ['build'],
-      $.vm_polybench_linux_commands.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
+      self.base_cmd + ['build'],
+      self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
     ],
     notify_emails: [ 'aleksandar.prokopec@oracle.com' ],
   },
 
-  vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
+  vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
-      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['--polybench-vm-config=jvm-interpreter'],
-      $.vm_bench_common.upload,
-      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['--polybench-vm-config=native-interpreter'],
-      $.vm_bench_common.upload,
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-interpreter'],
+      self.upload,
+      self.interpreter_bench_cmd + ['--polybench-vm-config=native-interpreter'],
+      self.upload,
     ],
     timelimit: '2:00:00',
   },
 
-  vm_bench_polybench_linux_compiler: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
-    compiler_bench_cmd:: $.vm_polybench_linux_commands.compiler_bench_cmd + ['-w', '0', '-i', '10'],
+  vm_bench_polybench_linux_compiler: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+    compiler_bench_cmd:: super.compiler_bench_cmd + ['-w', '0', '-i', '10'],
     run+: [
-      $.vm_bench_polybench_linux_compiler.compiler_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=compilation-time'],
-      $.vm_bench_common.upload,
-      $.vm_bench_polybench_linux_compiler.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=compilation-time'],
-      $.vm_bench_common.upload,
-      $.vm_bench_polybench_linux_compiler.compiler_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=partial-evaluation-time'],
-      $.vm_bench_common.upload,
-      $.vm_bench_polybench_linux_compiler.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=partial-evaluation-time'],
-      $.vm_bench_common.upload,
+      self.compiler_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=compilation-time'],
+      self.upload,
+      self.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=compilation-time'],
+      self.upload,
+      self.compiler_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=partial-evaluation-time'],
+      self.upload,
+      self.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=partial-evaluation-time'],
+      self.upload,
     ],
   },
 
-  vm_bench_polybench_linux_context_init: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
-    bench_cmd:: $.vm_polybench_linux_commands.base_cmd + ['benchmark', '--fork-count-file', 'ci_common/benchmark-forks.json', 'polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]', '--results-file', self.result_file, '--', '-w', '0', '-i', '0', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+  vm_bench_polybench_linux_context_init: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+    bench_cmd:: super.base_cmd + ['benchmark', '--fork-count-file', 'ci_common/benchmark-forks.json', 'polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]', '--results-file', self.result_file, '--', '-w', '0', '-i', '0', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
     run+: [
       self.bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=none'],
-      $.vm_bench_common.upload,
+      self.upload,
       self.bench_cmd + ['--polybench-vm-config=native-standard', '--metric=none'],
-      $.vm_bench_common.upload,
+      self.upload,
     ],
   },
 
-  vm_bench_polybench_linux_warmup: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
+  vm_bench_polybench_linux_warmup: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
-      $.vm_polybench_linux_commands.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
-      $.vm_bench_common.upload,
+      self.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
+      self.upload,
     ],
   },
 
-  vm_bench_polybench_linux_allocated_bytes: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
+  vm_bench_polybench_linux_allocated_bytes: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
       # We run the interprer benchmarks in both interprer and standard mode to compare allocation with and without compilation.
-      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-interpreter', '--metric=allocated-bytes'],
-      $.vm_bench_common.upload,
-      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-standard', '--metric=allocated-bytes'],
-      $.vm_bench_common.upload,
-      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=native-interpreter', '--metric=allocated-bytes'],
-      $.vm_bench_common.upload,
-      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=native-standard', '--metric=allocated-bytes'],
-      $.vm_bench_common.upload,
+      self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-interpreter', '--metric=allocated-bytes'],
+      self.upload,
+      self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-standard', '--metric=allocated-bytes'],
+      self.upload,
+      self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=native-interpreter', '--metric=allocated-bytes'],
+      self.upload,
+      self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=native-standard', '--metric=allocated-bytes'],
+      self.upload,
     ],
     timelimit: '4:00:00',
   },
 
-  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
-    interpreter_bench_cmd:: $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '1', '-i', '1'],
-    compiler_bench_cmd:: $.vm_polybench_linux_commands.compiler_bench_cmd + ['-w', '0', '-i', '1'],
-    warmup_bench_cmd:: $.vm_polybench_linux_commands.warmup_bench_cmd + ['-w', '1', '-i', '1'],
+  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+    interpreter_bench_cmd:: super.interpreter_bench_cmd + ['-w', '1', '-i', '1'],
+    compiler_bench_cmd:: super.compiler_bench_cmd + ['-w', '0', '-i', '1'],
+    warmup_bench_cmd:: super.warmup_bench_cmd + ['-w', '1', '-i', '1'],
     run+: [
       self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-interpreter'],
       self.interpreter_bench_cmd + ['--polybench-vm-config=native-interpreter'],
@@ -110,22 +108,22 @@ local vm_common = import '../ci_common/common.jsonnet';
       self.compiler_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=partial-evaluation-time'],
       self.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
     ],
-    timelimit: '1:00:00',
+    timelimit: '1:30:00',
     notify_emails: [],
   },
 
   vm_bench_polybench_nfi: {
     base_cmd:: ['mx', '--env', 'polybench-nfi-${VM_ENV}'],
-    bench_cmd:: self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', $.vm_bench_common.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    bench_cmd:: self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
     setup+: [
       self.base_cmd + ['build'],
       self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
     ],
     run+: [
       self.bench_cmd + ['--polybench-vm-config=jvm-standard'],
-      $.vm_bench_common.upload,
+      self.upload,
       self.bench_cmd + ['--polybench-vm-config=native-standard'],
-      $.vm_bench_common.upload,
+      self.upload,
     ],
     notify_groups:: ['sulong'],
     timelimit: '55:00',

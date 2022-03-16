@@ -68,6 +68,10 @@ public class InliningTest {
 
         public static final String ID = "truffle-inlining-test-language";
 
+        public InliningTestLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final RootCallTarget mustNotInline = new RootNode(this) {

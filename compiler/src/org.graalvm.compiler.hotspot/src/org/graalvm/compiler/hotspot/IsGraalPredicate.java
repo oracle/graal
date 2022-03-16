@@ -26,8 +26,7 @@ package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.None;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 
 import org.graalvm.compiler.debug.GraalError;
 
@@ -61,17 +60,15 @@ class IsGraalPredicate extends IsGraalPredicateBase {
         graalModule = HotSpotGraalCompilerFactory.class.getModule();
     }
 
-    // NOTE: The use of MethodHandles to access JVMCI API is to support
+    // NOTE: The use of Methods to access JVMCI API is to support
     // compiling on JDKs with varying versions of JVMCI.
 
-    static final MethodHandle runtimeExcludeFromJVMCICompilation;
+    static final Method runtimeExcludeFromJVMCICompilation;
 
     static {
-        MethodHandle excludeFromJVMCICompilation = null;
+        Method excludeFromJVMCICompilation = null;
         try {
-            excludeFromJVMCICompilation = MethodHandles.lookup().unreflect(HotSpotJVMCIRuntime.class.getDeclaredMethod("excludeFromJVMCICompilation", Module[].class));
-        } catch (IllegalAccessException e) {
-            throw new InternalError(e);
+            excludeFromJVMCICompilation = HotSpotJVMCIRuntime.class.getDeclaredMethod("excludeFromJVMCICompilation", Module[].class);
         } catch (Exception e) {
             // excludeFromJVMCICompilation not available
         }
@@ -84,7 +81,7 @@ class IsGraalPredicate extends IsGraalPredicateBase {
         if (runtimeExcludeFromJVMCICompilation != null) {
             try {
                 Module[] modules = {jvmciModule, graalModule, compilerConfigurationModule};
-                runtimeExcludeFromJVMCICompilation.invoke(runtime, modules);
+                runtimeExcludeFromJVMCICompilation.invoke(runtime, (Object) modules);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
             }

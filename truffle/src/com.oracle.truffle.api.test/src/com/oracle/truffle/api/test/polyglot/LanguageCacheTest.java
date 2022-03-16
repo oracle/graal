@@ -89,10 +89,11 @@ public class LanguageCacheTest {
 
     @Test
     public void testDuplicateLanguageIds() throws Throwable {
+        TruffleTestAssumptions.assumeNotAOT();
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         Path location = Paths.get(codeSource.getLocation().toURI());
-        Function<String, List<URL>> loader = new Function<String, List<URL>>() {
+        Function<String, List<URL>> loader = new Function<>() {
             @Override
             public List<URL> apply(String binaryName) {
                 try {
@@ -124,6 +125,7 @@ public class LanguageCacheTest {
 
     @Test
     public void testNestedArchives() throws Throwable {
+        TruffleTestAssumptions.assumeNotAOT();
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         URL location = codeSource.getLocation();

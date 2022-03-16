@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -80,13 +79,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     private final RegexLanguage language;
     private final RegexSource source;
-    private final RegexFlags flags;
+    private RegexFlags flags;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
-    private int realGroupCount;
-    private Map<String, Integer> namedCaptureGroups;
+    private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
     private RegexASTNode[] nodes;
     /**
      * AST as parsed from the expression.
@@ -126,20 +124,16 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return flags;
     }
 
+    public void setFlags(RegexFlags flags) {
+        this.flags = flags;
+    }
+
     public RegexOptions getOptions() {
         return source.getOptions();
     }
 
     public Encoding getEncoding() {
         return source.getEncoding();
-    }
-
-    public void setNamedCaptureGroups(Map<String, Integer> namedCaptureGroups) {
-        this.namedCaptureGroups = namedCaptureGroups;
-    }
-
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return namedCaptureGroups;
     }
 
     public Group getRoot() {
@@ -175,14 +169,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
-    }
-
-    public int getRealGroupCount() {
-        return realGroupCount;
-    }
-
-    public void setRealGroupCount(int realGroupCount) {
-        this.realGroupCount = realGroupCount;
     }
 
     public Counter getQuantifierCount() {
@@ -291,7 +277,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public BackReference createBackReference(int groupNumber) {
+        referencedGroups.set(groupNumber);
         return register(new BackReference(groupNumber));
+    }
+
+    public boolean isGroupReferenced(int groupNumber) {
+        return referencedGroups.get(groupNumber);
     }
 
     public CharacterClass createCharacterClass(CodePointSet matcherBuilder) {
@@ -339,6 +330,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return register(new Sequence());
     }
 
+    public SubexpressionCall createSubexpressionCall(int groupNumber) {
+        return register(new SubexpressionCall(groupNumber));
+    }
+
     public BackReference register(BackReference backReference) {
         nodeCount.inc();
         return backReference;
@@ -372,6 +367,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     public Sequence register(Sequence sequence) {
         nodeCount.inc();
         return sequence;
+    }
+
+    public SubexpressionCall register(SubexpressionCall subexpressionCall) {
+        nodeCount.inc();
+        return subexpressionCall;
     }
 
     public boolean isNFAInitialState(RegexASTNode node) {

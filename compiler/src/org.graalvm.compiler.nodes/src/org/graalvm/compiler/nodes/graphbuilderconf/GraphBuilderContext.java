@@ -29,7 +29,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.StrictDeoptInsertion
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 
 import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -57,7 +56,6 @@ import org.graalvm.compiler.nodes.PluginReplacementNode;
 import org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
@@ -164,33 +162,6 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
 
     void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType);
-
-    /**
-     * Intrinsifies an invocation of a given method by inlining the bytecodes of a given
-     * substitution method.
-     *
-     * @param bytecodeProvider used to get the bytecodes to parse for the substitution method
-     * @param targetMethod the method being intrinsified
-     * @param substitute the intrinsic implementation
-     * @param receiver the receiver, or null for static methods
-     * @param argsIncludingReceiver the arguments with which to inline the invocation
-     *
-     * @return whether the intrinsification was successful
-     */
-    boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver);
-
-    /**
-     * Intrinsifies an invocation of a given method by inlining the graph of a given substitution
-     * method.
-     *
-     * @param targetMethod the method being intrinsified
-     * @param substituteGraph the intrinsic implementation
-     * @param receiver the receiver, or null for static methods
-     * @param argsIncludingReceiver the arguments with which to inline the invocation
-     *
-     * @return whether the intrinsification was successful
-     */
-    boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver);
 
     /**
      * Creates a snap shot of the current frame state with the BCI of the instruction after the one

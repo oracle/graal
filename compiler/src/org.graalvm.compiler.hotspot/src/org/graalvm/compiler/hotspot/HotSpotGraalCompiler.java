@@ -53,6 +53,7 @@ import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
@@ -182,7 +183,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         return graalRuntime.isShutdown();
     }
 
-    public StructuredGraph createGraph(ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo, CompilationIdentifier compilationId, OptionValues options, DebugContext debug) {
+    public StructuredGraph createGraph(ResolvedJavaMethod method, int entryBCI, ProfileProvider profileProvider, CompilationIdentifier compilationId, OptionValues options, DebugContext debug) {
         AllowAssumptions allowAssumptions = AllowAssumptions.ifTrue(OptAssumptions.getValue(options));
         SpeculationLog speculationLog = method.getSpeculationLog();
         if (speculationLog != null) {
@@ -202,13 +203,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                                    cancellable(this).
                                    entryBCI(entryBCI).
                                    speculationLog(speculationLog).
-                                   useProfilingInfo(useProfilingInfo).
+                                   profileProvider(profileProvider).
                                    compilationId(compilationId).build();
         // @formatter:on
     }
 
-    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo,
-                    boolean shouldRetainLocalVariables, OptionValues options) {
+    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, OptionValues options) {
+        int entryBCI = graph.getEntryBCI();
+        ResolvedJavaMethod method = graph.method();
         assert options == graph.getOptions();
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
@@ -216,7 +218,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
         Suites suites = getSuites(providers, options);
         LIRSuites lirSuites = getLIRSuites(providers, options);
-        ProfilingInfo profilingInfo = useProfilingInfo ? method.getProfilingInfo(!isOSR, isOSR) : DefaultProfilingInfo.get(TriState.FALSE);
+        ProfilingInfo profilingInfo = graph.getProfileProvider() != null ? graph.getProfileProvider().getProfilingInfo(method, !isOSR, isOSR) : DefaultProfilingInfo.get(TriState.FALSE);
         OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo, options);
 
         /*
@@ -232,23 +234,19 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables, isOSR);
         GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
 
-        if (!isOSR && useProfilingInfo) {
-            ProfilingInfo profile = profilingInfo;
-            profile.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
+        if (!isOSR) {
+            profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
 
         return result;
     }
 
     public CompilationResult compile(StructuredGraph graph,
-                    ResolvedJavaMethod method,
-                    int entryBCI,
-                    boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
                     CompilationIdentifier compilationId,
                     DebugContext debug) {
         CompilationResult result = new CompilationResult(compilationId);
-        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, debug.getOptions());
+        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, debug.getOptions());
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {

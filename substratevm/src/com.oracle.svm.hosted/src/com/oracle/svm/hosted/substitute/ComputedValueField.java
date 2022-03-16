@@ -43,7 +43,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -54,6 +53,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
@@ -63,6 +64,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -70,7 +72,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * Wraps a field whose value is recomputed when added to an image.
@@ -80,7 +81,6 @@ import sun.misc.Unsafe;
  */
 public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
@@ -316,13 +316,14 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     private JavaConstant computeValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         JavaConstant result;
+        Object originalValue;
         switch (kind) {
+            case NewInstanceWhenNotNull:
+                originalValue = fetchOriginalValue(metaAccess, receiver, originalSnippetReflection);
+                result = originalValue == null ? originalSnippetReflection.forObject(null) : createNewInstance(originalSnippetReflection);
+                break;
             case NewInstance:
-                try {
-                    result = originalSnippetReflection.forObject(ReflectionUtil.newInstance(targetClass));
-                } catch (ReflectionUtilError ex) {
-                    throw VMError.shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex.getCause());
-                }
+                result = createNewInstance(originalSnippetReflection);
                 break;
             case AtomicFieldUpdaterOffset:
                 result = computeAtomicFieldUpdaterOffset(metaAccess, receiver);
@@ -336,13 +337,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 if (customValueProvider instanceof CustomFieldValueComputer) {
                     newValue = ((CustomFieldValueComputer) customValueProvider).compute(metaAccess, original, annotated, receiverValue);
                 } else if (customValueProvider instanceof CustomFieldValueTransformer) {
-                    JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
-                    Object originalValue;
-                    if (originalValueConstant.getJavaKind().isPrimitive()) {
-                        originalValue = originalValueConstant.asBoxedPrimitive();
-                    } else {
-                        originalValue = originalSnippetReflection.asObject(Object.class, originalValueConstant);
-                    }
+                    originalValue = fetchOriginalValue(metaAccess, receiver, originalSnippetReflection);
                     newValue = ((CustomFieldValueTransformer) customValueProvider).transform(metaAccess, original, annotated, receiverValue, originalValue);
                 } else {
                     throw UserError.abort("The custom field value computer class %s does not implement %s or %s", targetClass.getName(),
@@ -358,6 +353,27 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                                 " not yet supported");
         }
         return result;
+    }
+
+    private JavaConstant createNewInstance(SnippetReflectionProvider originalSnippetReflection) {
+        JavaConstant result;
+        try {
+            result = originalSnippetReflection.forObject(ReflectionUtil.newInstance(targetClass));
+        } catch (ReflectionUtilError ex) {
+            throw VMError.shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex.getCause());
+        }
+        return result;
+    }
+
+    private Object fetchOriginalValue(MetaAccessProvider metaAccess, JavaConstant receiver, SnippetReflectionProvider originalSnippetReflection) {
+        JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+        Object originalValue;
+        if (originalValueConstant.getJavaKind().isPrimitive()) {
+            originalValue = originalValueConstant.asBoxedPrimitive();
+        } else {
+            originalValue = originalSnippetReflection.asObject(Object.class, originalValueConstant);
+        }
+        return originalValue;
     }
 
     private void putCached(JavaConstant receiver, JavaConstant result) {
@@ -406,7 +422,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         // search the declared fields for a field with a matching offset
         for (Field f : tclass.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = UNSAFE.objectFieldOffset(f);
+                long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = (HostedField) metaAccess.lookupJavaField(f);
                     guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));
@@ -484,5 +500,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+    }
+
+    @Override
+    public boolean isUnknown() {
+        return annotated != null && (annotated.isAnnotationPresent(UnknownObjectField.class) || annotated.isAnnotationPresent(UnknownPrimitiveField.class));
     }
 }

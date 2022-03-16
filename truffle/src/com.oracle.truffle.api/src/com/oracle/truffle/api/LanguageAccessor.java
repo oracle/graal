@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,10 +78,10 @@ final class LanguageAccessor extends Accessor {
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
-    static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
+    static final ExceptionSupport EXCEPTIONS = ACCESSOR.exceptionSupport();
 
     private LanguageAccessor() {
     }
@@ -102,16 +102,8 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.interopSupport();
     }
 
-    static ExceptionSupport exceptionAccess() {
-        return ACCESSOR.exceptionSupport();
-    }
-
     static IOSupport ioAccess() {
         return ACCESSOR.ioSupport();
-    }
-
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
     }
 
     static final class LanguageImpl extends LanguageSupport {

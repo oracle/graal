@@ -176,9 +176,9 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
         RegisterValue regArrayB = REG_ARRAY_B.asValue(arrayB.getValueKind());
         RegisterValue regOffsetB = REG_OFFSET_B.asValue(offsetB.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
-        tool.emitMove(regArrayA, arrayA);
+        tool.emitConvertNullToZero(regArrayA, arrayA);
         tool.emitMove(regOffsetA, offsetA);
-        tool.emitMove(regArrayB, arrayB);
+        tool.emitConvertNullToZero(regArrayB, arrayB);
         tool.emitMove(regOffsetB, offsetB);
         tool.emitMove(regLength, length);
         return new AMD64ArrayRegionCompareToOp(tool, strideA, strideB, result, regArrayA, regOffsetA, regArrayB, regOffsetB, regLength, maxVectorSize, extendMode);

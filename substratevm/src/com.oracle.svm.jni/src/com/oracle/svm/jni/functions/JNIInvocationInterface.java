@@ -60,6 +60,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.jni.JNIJavaVMList;
@@ -256,19 +257,25 @@ final class JNIInvocationInterface {
     /*
      * jint AttachCurrentThread(JavaVM *vm, void **p_env, void *thr_args);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, exceptionHandler = JNIFunctions.Support.JNIExceptionHandlerDetachAndReturnJniErr.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @Uninterruptible(reason = "Permits omitting an epilogue so we can detach in the exception handler.", calleeMustBe = false)
     static int AttachCurrentThread(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args) {
-        return Support.attachCurrentThread(vm, penv, args, false);
+        Support.attachCurrentThread(vm, penv, args, false);
+        CEntryPointActions.leave();
+        return JNIErrors.JNI_OK();
     }
 
     /*
      * jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **p_env, void *thr_args);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, exceptionHandler = JNIFunctions.Support.JNIExceptionHandlerDetachAndReturnJniErr.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @Uninterruptible(reason = "Permits omitting an epilogue so we can detach in the exception handler.", calleeMustBe = false)
     static int AttachCurrentThreadAsDaemon(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args) {
-        return Support.attachCurrentThread(vm, penv, args, true);
+        Support.attachCurrentThread(vm, penv, args, true);
+        CEntryPointActions.leave();
+        return JNIErrors.JNI_OK();
     }
 
     /*
@@ -338,28 +345,27 @@ final class JNIInvocationInterface {
             }
         }
 
-        static int attachCurrentThread(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args, boolean asDaemon) {
-            if (vm.equal(JNIFunctionTables.singleton().getGlobalJavaVM())) {
-                penv.write(JNIThreadLocalEnvironment.getAddress());
-                ThreadGroup group = null;
-                String name = null;
-                if (args.isNonNull() && args.getVersion() != JNIVersion.JNI_VERSION_1_1()) {
-                    group = JNIObjectHandles.getObject(args.getGroup());
-                    name = Utf8.utf8ToString(args.getName());
-                }
-
-                /*
-                 * Ignore if a Thread object has already been assigned: "If the thread has already
-                 * been attached via either AttachCurrentThread or AttachCurrentThreadAsDaemon, this
-                 * routine simply sets the value pointed to by penv to the JNIEnv of the current
-                 * thread. In this case neither AttachCurrentThread nor this routine have any effect
-                 * on the daemon status of the thread."
-                 */
-                PlatformThreads.ensureCurrentAssigned(name, group, asDaemon);
-
-                return JNIErrors.JNI_OK();
+        static void attachCurrentThread(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args, boolean asDaemon) {
+            if (penv.isNull() || vm.notEqual(JNIFunctionTables.singleton().getGlobalJavaVM())) {
+                throw ImplicitExceptions.CACHED_ILLEGAL_ARGUMENT_EXCEPTION;
             }
-            return JNIErrors.JNI_ERR();
+
+            penv.write(JNIThreadLocalEnvironment.getAddress());
+            ThreadGroup group = null;
+            String name = null;
+            if (args.isNonNull() && args.getVersion() != JNIVersion.JNI_VERSION_1_1()) {
+                group = JNIObjectHandles.getObject(args.getGroup());
+                name = Utf8.utf8ToString(args.getName());
+            }
+
+            /*
+             * Ignore if a Thread object has already been assigned: "If the thread has already been
+             * attached via either AttachCurrentThread or AttachCurrentThreadAsDaemon, this routine
+             * simply sets the value pointed to by penv to the JNIEnv of the current thread. In this
+             * case neither AttachCurrentThread nor this routine have any effect on the daemon
+             * status of the thread."
+             */
+            PlatformThreads.ensureCurrentAssigned(name, group, asDaemon);
         }
 
         static void releaseCurrentThreadOwnedMonitors() {
@@ -369,10 +375,6 @@ final class JNIInvocationInterface {
                 }
                 assert !Thread.holdsLock(obj);
             });
-        }
-
-        public static JNIJavaVM getGlobalJavaVM() {
-            return JNIFunctionTables.singleton().getGlobalJavaVM();
         }
     }
 }

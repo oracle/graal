@@ -26,7 +26,6 @@ package org.graalvm.compiler.replacements.test;
 
 import java.util.HashMap;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -44,7 +43,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tests the VM independent {@link MethodSubstitution}s.
+ * Tests the VM independent method substitutions.
  */
 public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 

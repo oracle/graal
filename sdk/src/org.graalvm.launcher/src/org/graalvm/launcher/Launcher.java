@@ -87,6 +87,8 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.shadowed.org.jline.terminal.Terminal;
+import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
@@ -561,8 +563,8 @@ public abstract class Launcher {
     }
 
     /**
-     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin} or
-     * {@code jre/bin} directory.
+     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin}
+     * directory.
      *
      * @param binaryName binary name, without path.
      * @return OS-dependent binary filename.
@@ -574,14 +576,9 @@ public abstract class Launcher {
             throw abort("Cannot exec to GraalVM binary: could not find GraalVM home");
         }
         for (String executableName : executableNames) {
-            Path[] execPaths = new Path[]{
-                            graalVMHome.resolve("bin").resolve(executableName),
-                            graalVMHome.resolve("jre").resolve("bin").resolve(executableName)
-            };
-            for (Path execPath : execPaths) {
-                if (Files.exists(execPath)) {
-                    return execPath;
-                }
+            Path execPath = graalVMHome.resolve("bin").resolve(executableName);
+            if (Files.exists(execPath)) {
+                return execPath;
             }
         }
         throw abort("Cannot exec to GraalVM binary: could not find a '" + binaryName + "' executable");
@@ -847,7 +844,7 @@ public abstract class Launcher {
         try {
             descriptor.getKey().getType().convert(value);
         } catch (IllegalArgumentException e) {
-            throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
+            throw abort(String.format("Invalid argument %s specified. %s", arg, e.getMessage()));
         }
         if (descriptor.isDeprecated()) {
             String messageFormat = "Option '%s' is deprecated and might be removed from future versions.";
@@ -934,13 +931,16 @@ public abstract class Launcher {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s, String indent) {
-        final int width = 120;
+    @SuppressWarnings("hiding")
+    private String wrap(String s, String indent) {
+        final int terminalWidth = Math.max(getTerminalWidth(), indent.length() + 10);
+        final int width = terminalWidth - indent.length();
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
-        while (cursor + width < sb.length()) {
+        while (sb.length() > cursor + width) {
             int i = sb.lastIndexOf(" ", cursor + width);
-            if (i == -1 || i < cursor) {
+            if (i == -1 || i <= cursor) { // Can't find any space between cursor and cursor+width
+                // take the next space (will exceed the width)
                 i = sb.indexOf(" ", cursor + width);
             }
             if (i != -1) {
@@ -951,6 +951,29 @@ public abstract class Launcher {
             }
         }
         return sb.toString();
+    }
+
+    private static final int FALLBACK_TERMINAL_WIDTH = 120;
+    private int terminalWidth = -1;
+
+    int getTerminalWidth() {
+        if (terminalWidth == -1) {
+            if (System.console() != null) {
+                try (Terminal terminal = createSystemTerminal()) {
+                    terminalWidth = terminal.getWidth();
+                } catch (IOException exception) {
+                    terminalWidth = FALLBACK_TERMINAL_WIDTH;
+                }
+            } else {
+                terminalWidth = FALLBACK_TERMINAL_WIDTH;
+            }
+        }
+        return terminalWidth;
+    }
+
+    static Terminal createSystemTerminal() throws IOException {
+        // Create a system Terminal. JNA is not shipped in the SDK JLINE3 jar.
+        return TerminalBuilder.builder().jansi(Launcher.OS.getCurrent() == Launcher.OS.Windows).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
@@ -979,11 +1002,13 @@ public abstract class Launcher {
         final String name;
         final String option;
         final String description;
+        final boolean experimental;
 
-        protected PrintableOption(String name, String option, String description) {
+        protected PrintableOption(String name, String option, String description, boolean experimental) {
             this.name = name;
             this.option = option;
             this.description = description;
+            this.experimental = experimental;
         }
 
         @Override
@@ -993,10 +1018,32 @@ public abstract class Launcher {
     }
 
     void printOptions(List<PrintableOption> options, String title, int indentation) {
-        Collections.sort(options);
-        out.println(title);
+        final List<PrintableOption> stableOptions = new ArrayList<>();
+        final List<PrintableOption> experimentalOptions = new ArrayList<>();
         for (PrintableOption option : options) {
-            printOption(option, indentation);
+            if (option.experimental) {
+                experimentalOptions.add(option);
+            } else {
+                stableOptions.add(option);
+            }
+        }
+
+        out.println(spaces(indentation) + title);
+
+        if (!stableOptions.isEmpty()) {
+            out.println(spaces(indentation + 1) + "[Stable]");
+            Collections.sort(stableOptions);
+            for (PrintableOption option : stableOptions) {
+                printOption(option, indentation + 2);
+            }
+        }
+
+        if (!experimentalOptions.isEmpty()) {
+            out.println(spaces(indentation + 1) + "[Experimental]");
+            Collections.sort(experimentalOptions);
+            for (PrintableOption option : experimentalOptions) {
+                printOption(option, indentation + 2);
+            }
         }
     }
 

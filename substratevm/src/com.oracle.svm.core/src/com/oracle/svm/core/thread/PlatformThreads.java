@@ -40,7 +40,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -58,7 +57,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -79,7 +77,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implements operations on platform threads, which are typical {@link Thread Java threads} which
@@ -92,8 +90,6 @@ public abstract class PlatformThreads {
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
     }
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -216,17 +212,6 @@ public abstract class PlatformThreads {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
-        Thread javaThread = currentThread.get(thread);
-        return wasStartedByCurrentIsolate(javaThread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean wasStartedByCurrentIsolate(Thread thread) {
-        return toTarget(thread).wasStartedByCurrentIsolate;
-    }
-
     /* End of accessor functions. */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -260,9 +245,11 @@ public abstract class PlatformThreads {
     static void cleanupBeforeDetach(IsolateThread thread) {
         VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
 
-        Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
-        javaThread.exit();
-        ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), currentThread.get(thread));
+        Thread javaThread = currentThread.get(thread);
+        if (javaThread != null) {
+            toTarget(javaThread).exit();
+            ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), javaThread);
+        }
     }
 
     static void join(Thread thread, long millis) throws InterruptedException {
@@ -469,10 +456,12 @@ public abstract class PlatformThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
 
         Thread thread = currentThread.get(vmThread);
-        toTarget(thread).threadData.detach();
-        toTarget(thread).isolateThread = WordFactory.nullPointer();
-        if (!thread.isDaemon()) {
-            nonDaemonThreads.decrementAndGet();
+        if (thread != null) {
+            toTarget(thread).threadData.detach();
+            toTarget(thread).isolateThread = WordFactory.nullPointer();
+            if (!thread.isDaemon()) {
+                nonDaemonThreads.decrementAndGet();
+            }
         }
     }
 
@@ -816,7 +805,7 @@ public abstract class PlatformThreads {
          * *before* the interrupted check because if not, the interrupt code will not assign one and
          * the wakeup will be lost.
          */
-        UNSAFE.fullFence();
+        Unsafe.getUnsafe().fullFence();
 
         if (JavaThreads.isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()

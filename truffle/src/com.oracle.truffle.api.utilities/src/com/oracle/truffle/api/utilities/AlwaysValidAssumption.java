@@ -48,7 +48,9 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  * invalidated.
  *
  * @since 0.8 or earlier
+ * @deprecated without replacement
  */
+@Deprecated(since = "22.1")
 public final class AlwaysValidAssumption implements Assumption {
     /** @since 0.8 or earlier */
     public static final AlwaysValidAssumption INSTANCE = new AlwaysValidAssumption();

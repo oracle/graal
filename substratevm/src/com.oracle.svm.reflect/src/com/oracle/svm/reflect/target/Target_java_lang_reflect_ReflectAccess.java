@@ -24,15 +24,22 @@
  */
 package com.oracle.svm.reflect.target;
 
+import static com.oracle.svm.reflect.target.Util_java_lang_reflect_ReflectAccess.copyAccessibleObject;
+import static com.oracle.svm.reflect.target.Util_java_lang_reflect_ReflectAccess.copyExecutable;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * These substitutions are needed to set the genericInfo field on Method, Field, Constructor. The
- * genericInfo is eagerly loaded at image build time. The Method, Field, Constructor elements, when
- * accessed via reflection a copy is returned. The original implementation of copy() doesn't
- * propagate the genericInfo.
+ * These substitutions are needed to set the injected fields on Method, Field, Constructor. The
+ * metadata for those fields is generated at image build time. The Method, Field, Constructor
+ * elements, when accessed via reflection a copy is returned. The original implementation of copy()
+ * doesn't propagate the injected fields.
+ * 
+ * We substitute these methods instead of the copy constructors on the reflection objects to avoid
+ * having to copy the contents of those methods. This is ok since the ReflectAccess methods are the
+ * only users of those copy constructors.
  */
 
 @TargetClass(className = "java.lang.reflect.ReflectAccess")
@@ -42,8 +49,7 @@ public final class Target_java_lang_reflect_ReflectAccess {
     @SuppressWarnings("static-method")
     public Target_java_lang_reflect_Method copyMethod(Target_java_lang_reflect_Method method) {
         Target_java_lang_reflect_Method copy = method.copy();
-        copy.genericInfo = method.genericInfo;
-        Util_java_lang_reflect_ReflectAccess.copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
+        copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
                         SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class));
         return copy;
     }
@@ -52,7 +58,10 @@ public final class Target_java_lang_reflect_ReflectAccess {
     @SuppressWarnings("static-method")
     public Target_java_lang_reflect_Field copyField(Target_java_lang_reflect_Field field) {
         Target_java_lang_reflect_Field copy = field.copy();
-        copy.genericInfo = field.genericInfo;
+        copy.offset = field.offset;
+        copy.deletedReason = field.deletedReason;
+        copyAccessibleObject(SubstrateUtil.cast(copy, Target_java_lang_reflect_AccessibleObject.class),
+                        SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class));
         return copy;
     }
 
@@ -60,8 +69,7 @@ public final class Target_java_lang_reflect_ReflectAccess {
     @SuppressWarnings("static-method")
     public Target_java_lang_reflect_Constructor copyConstructor(Target_java_lang_reflect_Constructor constructor) {
         Target_java_lang_reflect_Constructor copy = constructor.copy();
-        copy.genericInfo = constructor.genericInfo;
-        Util_java_lang_reflect_ReflectAccess.copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
+        copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
                         SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class));
         return copy;
     }
@@ -69,16 +77,12 @@ public final class Target_java_lang_reflect_ReflectAccess {
 
 class Util_java_lang_reflect_ReflectAccess {
     static void copyExecutable(Target_java_lang_reflect_Executable copy, Target_java_lang_reflect_Executable executable) {
-        if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            /* Isolated to avoid pulling the full signature parsing capabilities from the JDK. */
-            copy.parameters = executable.parameters;
-        }
-        copy.declaredAnnotations = executable.declaredAnnotations;
-        copy.parameterAnnotations = executable.parameterAnnotations;
-        copy.typeAnnotations = executable.typeAnnotations;
-        copy.annotatedReceiverType = executable.annotatedReceiverType;
-        copy.annotatedReturnType = executable.annotatedReturnType;
-        copy.annotatedParameterTypes = executable.annotatedParameterTypes;
-        copy.annotatedExceptionTypes = executable.annotatedExceptionTypes;
+        copy.rawParameters = executable.rawParameters;
+        copyAccessibleObject(SubstrateUtil.cast(copy, Target_java_lang_reflect_AccessibleObject.class),
+                        SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class));
+    }
+
+    static void copyAccessibleObject(Target_java_lang_reflect_AccessibleObject copy, Target_java_lang_reflect_AccessibleObject accessibleObject) {
+        copy.typeAnnotations = accessibleObject.typeAnnotations;
     }
 }

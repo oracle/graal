@@ -33,24 +33,29 @@ public enum ConfigurationFile {
     SERIALIZATION_DENY("serialization-deny", false),
     PREDEFINED_CLASSES_NAME("predefined-classes", true);
 
-    private static final String DEFAULT_FILE_NAME_SUFFIX = "-config.json";
-    private final String fileName;
+    public static final String DEFAULT_FILE_NAME_SUFFIX = "-config.json";
+    private final String name;
     private final boolean canAgentGenerate;
 
+    public static final String LOCK_FILE_NAME = ".lock";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
 
-    ConfigurationFile(String fileName, boolean canAgentGenerate) {
-        this.fileName = fileName;
+    ConfigurationFile(String name, boolean canAgentGenerate) {
+        this.name = name;
         this.canAgentGenerate = canAgentGenerate;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public String getFileName() {
-        return fileName + DEFAULT_FILE_NAME_SUFFIX;
+        return name + DEFAULT_FILE_NAME_SUFFIX;
     }
 
     public String getFileName(String suffix) {
-        return fileName + suffix;
+        return name + suffix;
     }
 
     public boolean canBeGeneratedByAgent() {

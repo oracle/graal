@@ -132,7 +132,7 @@ public final class OptimisticOptimizations {
     }
 
     private static boolean checkDeoptimizations(OptionValues options, ProfilingInfo profilingInfo, DeoptimizationReason reason) {
-        return profilingInfo.getDeoptimizationCount(reason) < GraalOptions.DeoptsToDisableOptimisticOptimization.getValue(options);
+        return profilingInfo == null || profilingInfo.getDeoptimizationCount(reason) < GraalOptions.DeoptsToDisableOptimisticOptimization.getValue(options);
     }
 
     @Override

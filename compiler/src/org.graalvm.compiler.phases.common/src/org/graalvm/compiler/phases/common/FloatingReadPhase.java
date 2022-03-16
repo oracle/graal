@@ -84,8 +84,8 @@ import org.graalvm.word.LocationIdentity;
 
 public class FloatingReadPhase extends Phase {
 
-    private boolean createFloatingReads;
-    private boolean createMemoryMapNodes;
+    private final boolean createFloatingReads;
+    private final boolean createMemoryMapNodes;
 
     public static class MemoryMapImpl implements MemoryMap {
 

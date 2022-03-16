@@ -154,7 +154,7 @@ public class JNIFunctionTablesFeature implements Feature {
                     JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethod.Factory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool,
                                     wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                    access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
+                    access.getBigBang().addRootMethod(analysisMethod, true).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);
                 }
             }
@@ -167,7 +167,7 @@ public class JNIFunctionTablesFeature implements Feature {
             for (Operation op : Operation.values()) {
                 JNIPrimitiveArrayOperationMethod method = new JNIPrimitiveArrayOperationMethod(kind, op, generatedMethodClass, constantPool, wrappedMetaAccess);
                 AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
+                access.getBigBang().addRootMethod(analysisMethod, true).registerAsEntryPoint(method.createEntryPointData());
                 generated.add(method);
             }
         }

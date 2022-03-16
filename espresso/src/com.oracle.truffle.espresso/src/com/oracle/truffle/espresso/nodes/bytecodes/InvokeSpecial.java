@@ -78,7 +78,7 @@ public abstract class InvokeSpecial extends Node {
         return method.getMethodVersion();
     }
 
-    @ImportStatic(InvokeSpecial.class)
+    @ImportStatic({InvokeSpecial.class, Utils.class})
     @NodeInfo(shortName = "INVOKESPECIAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
@@ -101,7 +101,7 @@ public abstract class InvokeSpecial extends Node {
                         // TODO(peterssen): Use the method's declaring class instead of the first
                         // receiver's class?
                         @Cached("methodLookup(method, receiver)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
             return directCallNode.call(args);
         }

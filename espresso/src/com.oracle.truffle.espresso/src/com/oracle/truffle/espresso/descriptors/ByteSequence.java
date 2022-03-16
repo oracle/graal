@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,7 +36,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * provides uniform, read-only access to different kinds of <code>byte</code> sequences. Implements
  * a slice "view" over a byte array.
  */
-// TODO(peterssen): Should not be public.
 public abstract class ByteSequence {
 
     protected final int hashCode;
@@ -88,6 +88,19 @@ public abstract class ByteSequence {
         return ByteSequence.wrap(bytes, 0, bytes.length);
     }
 
+    public static ByteSequence from(ByteBuffer buffer) {
+        int length = buffer.remaining();
+        if (buffer.hasArray()) {
+            int offset = buffer.position() + buffer.arrayOffset();
+            byte[] array = buffer.array();
+            return wrap(array, offset, length);
+        } else {
+            byte[] data = new byte[length];
+            buffer.get(data);
+            return wrap(data);
+        }
+    }
+
     /**
      * Returns the length of this byte sequence. The length is the number of <code>byte</code>s in
      * the sequence.
@@ -112,6 +125,10 @@ public abstract class ByteSequence {
      */
     public byte byteAt(int index) {
         return value[index + offset()];
+    }
+
+    public int unsignedByteAt(int index) {
+        return byteAt(index) & 0xff;
     }
 
     final byte[] getUnderlyingBytes() {
@@ -219,5 +236,16 @@ public abstract class ByteSequence {
             p = 10 * p;
         }
         return 10;
+    }
+
+    public void writeTo(ByteBuffer bb) {
+        bb.put(getUnderlyingBytes(), offset(), length());
+    }
+
+    public ByteSequence concat(ByteSequence next) {
+        byte[] data = new byte[this.length() + next.length()];
+        writeTo(data, 0);
+        next.writeTo(data, this.length());
+        return wrap(data);
     }
 }

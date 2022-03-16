@@ -24,14 +24,14 @@
  */
 package com.oracle.graal.pointsto;
 
+import java.lang.reflect.Executable;
+
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.typestate.TypeState;
-
-import java.lang.reflect.Executable;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -56,19 +56,14 @@ public interface ReachabilityAnalysis {
     AnalysisType addRootField(Class<?> clazz, String fieldName);
 
     /**
-     * Marks given method as reachable.
+     * Marks given method as root.
      */
-    AnalysisMethod addRootMethod(AnalysisMethod aMethod);
+    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial);
 
     /**
      * Marks given method as reachable.
      */
-    AnalysisMethod addRootMethod(Executable method);
-
-    /**
-     * Marks given method as reachable.
-     */
-    AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes);
+    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial);
 
     /**
      * Waits until the analysis is done.

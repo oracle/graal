@@ -51,7 +51,7 @@ public final class AgentIsolate {
 
         @Uninterruptible(reason = "prologue")
         static void enter() {
-            int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read(), true);
+            int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read(), false, true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

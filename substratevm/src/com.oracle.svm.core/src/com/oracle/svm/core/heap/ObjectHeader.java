@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -70,11 +71,13 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract Pointer readPotentialDynamicHubFromPointer(Pointer ptr);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract void initializeHeaderOfNewObject(Pointer objectPointer, Word objectHeader);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean pointsToObjectHeader(Pointer ptr) {
         Pointer potentialDynamicHub = readPotentialDynamicHubFromPointer(ptr);
         if (Heap.getHeap().isInImageHeap(potentialDynamicHub)) {
@@ -84,4 +87,8 @@ public abstract class ObjectHeader {
         return false;
     }
 
+    @Fold
+    protected static int getCompressionShift() {
+        return ReferenceAccess.singleton().getCompressEncoding().getShift();
+    }
 }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.util.Arrays;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,6 +38,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
@@ -51,9 +54,14 @@ final class Target_java_lang_ThreadGroup {
     @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
     private int nthreads;
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
+
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
+    @InjectAccessors(ThreadGroupThreadsAccessor.class) //
     private Thread[] threads;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
+    Thread[] injectedThreads;
 
     /*
      * JavaThreadsFeature.reachableThreadGroups is updated in an object replacer, during analysis,
@@ -230,6 +238,22 @@ class ThreadGroupGroupsRecomputation implements RecomputeFieldValue.CustomFieldV
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
         return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).groups;
+    }
+}
+
+final class ThreadGroupThreadsAccessor {
+    static Thread[] get(Target_java_lang_ThreadGroup that) {
+        return that.injectedThreads;
+    }
+
+    static void set(Target_java_lang_ThreadGroup that, Thread[] value) {
+        if (that.injectedThreads != null && Heap.getHeap().isInImageHeap(that.injectedThreads)) {
+            Arrays.fill(that.injectedThreads, null);
+        }
+        that.injectedThreads = value;
+    }
+
+    private ThreadGroupThreadsAccessor() {
     }
 }
 

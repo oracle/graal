@@ -185,7 +185,7 @@ final class PolyglotHostAccess extends AbstractHostAccess {
         APIAccess api = polyglot.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) api.getReceiver(e));
         if (exceptionImpl.context == context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
-            // for values of the same context the TruffleException is allowed to be unboxed
+            // for values of the same context the AbstractTruffleException is allowed to be unboxed
             // for host exceptions no guest values are bound therefore it can also be
             // unboxed
             Throwable original = ((PolyglotExceptionImpl) api.getReceiver(e)).exception;

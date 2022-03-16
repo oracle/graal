@@ -78,7 +78,7 @@ public abstract class ConfigurationParser {
     public abstract void parseAndRegister(Reader reader) throws IOException;
 
     @SuppressWarnings("unchecked")
-    protected static List<Object> asList(Object data, String errorMessage) {
+    public static List<Object> asList(Object data, String errorMessage) {
         if (data instanceof List) {
             return (List<Object>) data;
         }
@@ -86,7 +86,7 @@ public abstract class ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Map<String, Object> asMap(Object data, String errorMessage) {
+    public static Map<String, Object> asMap(Object data, String errorMessage) {
         if (data instanceof Map) {
             return (Map<String, Object>) data;
         }
@@ -127,7 +127,7 @@ public abstract class ConfigurationParser {
         checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
-    protected static String asString(Object value) {
+    public static String asString(Object value) {
         if (value instanceof String) {
             return (String) value;
         }

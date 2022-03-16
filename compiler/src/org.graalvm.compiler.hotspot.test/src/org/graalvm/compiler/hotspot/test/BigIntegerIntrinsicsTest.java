@@ -34,10 +34,9 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-
+import org.junit.Assume;
 import org.junit.Test;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -61,11 +60,8 @@ public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
 
     @Test
     public void testMultiplyToLen() throws ClassNotFoundException {
-
         // Intrinsic must be available.
-        org.junit.Assume.assumeTrue(config.useMultiplyToLenIntrinsic());
-        // Test case is (currently) AMD64 only.
-        org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
+        Assume.assumeTrue(config.useMultiplyToLenIntrinsic());
 
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
@@ -94,12 +90,8 @@ public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
 
     @Test
     public void testMulAdd() throws ClassNotFoundException {
-
         // Intrinsic must be available.
-        org.junit.Assume.assumeTrue(config.useMulAddIntrinsic() ||
-                        config.useSquareToLenIntrinsic());
-        // Test case is (currently) AMD64 only.
-        org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
+        Assume.assumeTrue(config.useMulAddIntrinsic() || config.useSquareToLenIntrinsic());
 
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
@@ -127,12 +119,8 @@ public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
 
     @Test
     public void testMontgomery() throws ClassNotFoundException {
-
         // Intrinsic must be available.
-        org.junit.Assume.assumeTrue(config.useMontgomeryMultiplyIntrinsic() ||
-                        config.useMontgomerySquareIntrinsic());
-        // Test case is (currently) AMD64 only.
-        org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
+        Assume.assumeTrue(config.useMontgomeryMultiplyIntrinsic() || config.useMontgomerySquareIntrinsic());
 
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
@@ -166,6 +154,76 @@ public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
 
     public static BigInteger testMontgomeryAux(BigInteger a, BigInteger exp, BigInteger b) {
         return a.modPow(exp, b);
+    }
+
+    @Test
+    public void testLeftShiftWorker() throws ClassNotFoundException {
+        // Intrinsic must be available.
+        Assume.assumeTrue(config.bigIntegerLeftShiftWorker != 0L);
+
+        Class<?> javaclass = Class.forName("java.math.BigInteger");
+
+        TestIntrinsic tin = new TestIntrinsic("bigIntegerLeftShiftWorker", javaclass,
+                        "shiftLeft", int.class);
+
+        for (int i = 0; i < N; i++) {
+
+            BigInteger big1 = randomBig(i);
+            int n = rnd.nextInt();
+
+            // Invoke BigInteger.shiftLeft(int)
+            BigInteger res1 = (BigInteger) tin.invokeJava(big1, n);
+
+            // Invoke bigIntegerLeftShiftWorker(BigInteger, int)
+            BigInteger res2 = (BigInteger) tin.invokeTest(big1, n);
+
+            assertDeepEquals(res1, res2);
+
+            // Invoke bigIntegerLeftShiftWorker(BigInteger, int)
+            // through code handle.
+            BigInteger res3 = (BigInteger) tin.invokeCode(big1, n);
+
+            assertDeepEquals(res1, res3);
+        }
+    }
+
+    public static BigInteger bigIntegerLeftShiftWorker(BigInteger src, int n) {
+        return src.shiftLeft(n);
+    }
+
+    @Test
+    public void testRightShiftWorker() throws ClassNotFoundException {
+        // Intrinsic must be available.
+        Assume.assumeTrue(config.bigIntegerLeftShiftWorker != 0L);
+
+        Class<?> javaclass = Class.forName("java.math.BigInteger");
+
+        TestIntrinsic tin = new TestIntrinsic("bigIntegerRightShiftWorker", javaclass,
+                        "shiftRight", int.class);
+
+        for (int i = 0; i < N; i++) {
+
+            BigInteger big1 = randomBig(i);
+            int n = rnd.nextInt();
+
+            // Invoke BigInteger.shiftRight(int)
+            BigInteger res1 = (BigInteger) tin.invokeJava(big1, n);
+
+            // Invoke bigIntegerRightShiftWorker(BigInteger, int)
+            BigInteger res2 = (BigInteger) tin.invokeTest(big1, n);
+
+            assertDeepEquals(res1, res2);
+
+            // Invoke bigIntegerRightShiftWorker(BigInteger, int)
+            // through code handle.
+            BigInteger res3 = (BigInteger) tin.invokeCode(big1, n);
+
+            assertDeepEquals(res1, res3);
+        }
+    }
+
+    public static BigInteger bigIntegerRightShiftWorker(BigInteger src, int n) {
+        return src.shiftRight(n);
     }
 
     private class TestIntrinsic {

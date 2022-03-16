@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.ameta;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -50,6 +49,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -189,31 +189,31 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (reflectionField != null) {
             assert kind == JavaKind.fromJavaClass(reflectionField.getType());
 
-            Object reflectionFieldBase = GraalUnsafeAccess.getUnsafe().staticFieldBase(reflectionField);
-            long reflectionFieldOffset = GraalUnsafeAccess.getUnsafe().staticFieldOffset(reflectionField);
+            Object reflectionFieldBase = Unsafe.getUnsafe().staticFieldBase(reflectionField);
+            long reflectionFieldOffset = Unsafe.getUnsafe().staticFieldOffset(reflectionField);
 
             AnalysisError.guarantee(reflectionFieldBase == base && reflectionFieldOffset == offset);
         }
 
         switch (kind) {
             case Boolean:
-                return JavaConstant.forBoolean(GraalUnsafeAccess.getUnsafe().getBoolean(base, offset));
+                return JavaConstant.forBoolean(Unsafe.getUnsafe().getBoolean(base, offset));
             case Byte:
-                return JavaConstant.forByte(GraalUnsafeAccess.getUnsafe().getByte(base, offset));
+                return JavaConstant.forByte(Unsafe.getUnsafe().getByte(base, offset));
             case Char:
-                return JavaConstant.forChar(GraalUnsafeAccess.getUnsafe().getChar(base, offset));
+                return JavaConstant.forChar(Unsafe.getUnsafe().getChar(base, offset));
             case Short:
-                return JavaConstant.forShort(GraalUnsafeAccess.getUnsafe().getShort(base, offset));
+                return JavaConstant.forShort(Unsafe.getUnsafe().getShort(base, offset));
             case Int:
-                return JavaConstant.forInt(GraalUnsafeAccess.getUnsafe().getInt(base, offset));
+                return JavaConstant.forInt(Unsafe.getUnsafe().getInt(base, offset));
             case Long:
-                return JavaConstant.forLong(GraalUnsafeAccess.getUnsafe().getLong(base, offset));
+                return JavaConstant.forLong(Unsafe.getUnsafe().getLong(base, offset));
             case Float:
-                return JavaConstant.forFloat(GraalUnsafeAccess.getUnsafe().getFloat(base, offset));
+                return JavaConstant.forFloat(Unsafe.getUnsafe().getFloat(base, offset));
             case Double:
-                return JavaConstant.forDouble(GraalUnsafeAccess.getUnsafe().getDouble(base, offset));
+                return JavaConstant.forDouble(Unsafe.getUnsafe().getDouble(base, offset));
             case Object:
-                Object value = GraalUnsafeAccess.getUnsafe().getObject(base, offset);
+                Object value = Unsafe.getUnsafe().getObject(base, offset);
                 assert value == null || value instanceof String : "String is currently the only specified object type for the ConstantValue class file attribute";
                 return SubstrateObjectConstant.forObject(value);
             default:

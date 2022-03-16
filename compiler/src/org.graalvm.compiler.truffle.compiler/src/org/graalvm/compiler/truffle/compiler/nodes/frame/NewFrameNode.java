@@ -213,7 +213,6 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                 JavaConstant slotKind = constantReflection.readFieldValue(types.fieldFrameSlotKind, slot);
                 JavaConstant slotIndex = constantReflection.readFieldValue(types.fieldFrameSlotIndex, slot);
                 if (slotKind.isNonNull() && slotIndex.isNonNull()) {
-                    byte kind = (byte) constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind).asInt();
                     int index = slotIndex.asInt();
                     if (index >= frameSlotKindsCandidate.length) {
                         /*
@@ -226,7 +225,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                         Arrays.fill(newArray, frameSlotKindsCandidate.length, newArray.length, NO_TYPE_MARKER);
                         frameSlotKindsCandidate = newArray;
                     }
-                    frameSlotKindsCandidate[index] = asStackTag(kind);
+                    frameSlotKindsCandidate[index] = FrameSlotKindLongTag;
                 }
             }
         }
@@ -343,6 +342,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         assert frameType.equals(types.classFrameClass);
         NodeSourcePosition sourcePosition = getNodeSourcePosition();
 
+        ConstantNode defaultLong = ConstantNode.defaultForKind(JavaKind.Long, graph());
         if (virtualFrameArrays.get(OBJECT_ARRAY) instanceof VirtualArrayNode) {
             ValueNode[] objectArrayEntryState = new ValueNode[frameSize];
             ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize];
@@ -350,10 +350,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
             Arrays.fill(objectArrayEntryState, frameDefaultValue);
             Arrays.fill(tagArrayEntryState, smallIntConstants.get(0));
-            for (int i = 0; i < frameSize; i++) {
-                byte tag = frameSlotKinds[i];
-                primitiveArrayEntryState[i] = ConstantNode.defaultForKind(asJavaKind(tag), graph());
-            }
+            Arrays.fill(primitiveArrayEntryState, defaultLong);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(OBJECT_ARRAY), objectArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(PRIMITIVE_ARRAY), primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(TAGS_ARRAY), tagArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
@@ -365,10 +362,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
             Arrays.fill(indexedObjectArrayEntryState, frameDefaultValue);
             Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(0));
-            for (int i = 0; i < indexedFrameSize; i++) {
-                byte tag = indexedFrameSlotKinds[i];
-                indexedPrimitiveArrayEntryState[i] = ConstantNode.defaultForKind(asJavaKind(tag), graph());
-            }
+            Arrays.fill(indexedPrimitiveArrayEntryState, defaultLong);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(INDEXED_OBJECT_ARRAY), indexedObjectArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY), indexedPrimitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition,
                             false);

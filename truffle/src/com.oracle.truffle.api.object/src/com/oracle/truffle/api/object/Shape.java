@@ -51,7 +51,6 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * A Shape is an immutable descriptor of the current object "shape" of a DynamicObject, i.e., object
@@ -978,7 +977,7 @@ public abstract class Shape {
      * @since 20.2.0
      */
     public Assumption getPropertyAssumption(Object key) {
-        return NeverValidAssumption.INSTANCE;
+        return Assumption.NEVER_VALID;
     }
 
     /**

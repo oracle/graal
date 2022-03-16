@@ -95,8 +95,9 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     private static int hostStaticFieldValue = 42;
 
     @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
+    public static void skipForStrongEncapsulationAndAOT() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
+        TruffleTestAssumptions.assumeNotAOT();
     }
 
     public HostClassLoadingTest() {

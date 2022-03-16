@@ -50,7 +50,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
@@ -357,6 +356,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyVariableCasts());
         verifiers.add(new VerifyIterableNodeType());
         verifiers.add(new VerifyArchUsageInPlugins());
+        verifiers.add(new VerifyStatelessPhases());
+        verifiers.add(new VerifyProfileMethodUsage());
 
         loadVerifiers(verifiers);
 
@@ -424,7 +425,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 try (DebugContext debug = new Builder(options).build()) {
-                                    boolean isSubstitution = method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null;
+                                    boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(isSubstitution).build();
                                     try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {
                                         checkMethod(method);

@@ -43,7 +43,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -52,6 +51,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
@@ -61,11 +61,10 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
@@ -83,7 +82,7 @@ public class ClassInitializationFeature implements GraalFeature {
         ClassInitializationOptions.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
             for (String info : entry.getLeft().split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
-                String origin = entry.getRight();
+                OptionOrigin origin = entry.getRight();
                 if (noMatches) {
                     throw UserError.abort("Element in class initialization configuration must end in %s, %s, or %s. Found: %s (from %s)",
                                     RUN_TIME.suffix(), RERUN.suffix(), BUILD_TIME.suffix(), info, origin);
@@ -142,7 +141,7 @@ public class ClassInitializationFeature implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
         }
     }
 
@@ -159,25 +158,13 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess a) {
-        FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
-
+    public void duringAnalysis(DuringAnalysisAccess access) {
         /*
          * Check early and often during static analysis if any class that must not have been
          * initialized during image building got initialized. We want to fail as early as possible,
          * even though we cannot pinpoint the exact time and reason why initialization happened.
          */
         classInitializationSupport.checkDelayedInitialization();
-
-        for (AnalysisType type : access.getUniverse().getTypes()) {
-            if (type.isReachable()) {
-                DynamicHub hub = access.getHostVM().dynamicHub(type);
-                if (hub.getClassInitializationInfo() == null) {
-                    buildClassInitializationInfo(access, type, hub);
-                    access.requireAnalysisIteration();
-                }
-            }
-        }
     }
 
     /**
@@ -186,8 +173,7 @@ public class ClassInitializationFeature implements GraalFeature {
     @Override
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        String imageName = ((FeatureImpl.AfterAnalysisAccessImpl) access).getBigBang().getHostVM().getImageName();
-        try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
+        try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = SubstrateOptions.reportsPath();
@@ -318,54 +304,5 @@ public class ClassInitializationFeature implements GraalFeature {
          * image building got initialized.
          */
         classInitializationSupport.checkDelayedInitialization();
-    }
-
-    private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
-        ClassInitializationInfo info;
-        if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
-            info = buildRuntimeInitializationInfo(access, type);
-        } else {
-            assert type.isInitialized();
-            info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
-        }
-        hub.setClassInitializationInfo(info);
-        universe.getHeapScanner().rescanField(hub, dynamicHubClassInitializationInfoField);
-    }
-
-    private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {
-        assert !type.isInitialized();
-        try {
-            /*
-             * Check if there are any linking errors. This method throws an error even if linking
-             * already failed in a previous attempt.
-             */
-            type.link();
-
-        } catch (VerifyError e) {
-            /* Synthesize a VerifyError to be thrown at run time. */
-            AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
-            access.registerAsCompiled(throwVerifyError);
-            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
-        } catch (Throwable t) {
-            /*
-             * All other linking errors will be reported as NoClassDefFoundError when initialization
-             * is attempted at run time.
-             */
-            return ClassInitializationInfo.FAILED_INFO_SINGLETON;
-        }
-
-        /*
-         * Now we now that there are no linking errors, we can register the class initialization
-         * information.
-         */
-        assert type.isLinked();
-        CFunctionPointer classInitializerFunction = null;
-        AnalysisMethod classInitializer = type.getClassInitializer();
-        if (classInitializer != null) {
-            assert classInitializer.getCode() != null;
-            access.registerAsCompiled(classInitializer);
-            classInitializerFunction = new MethodPointer(classInitializer);
-        }
-        return new ClassInitializationInfo(classInitializerFunction);
     }
 }

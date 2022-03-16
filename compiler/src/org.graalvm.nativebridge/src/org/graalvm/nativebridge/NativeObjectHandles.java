@@ -27,15 +27,27 @@ package org.graalvm.nativebridge;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.word.WordFactory;
 
+/**
+ * A support class for mapping objects in the native image isolate to long handles.
+ */
 public final class NativeObjectHandles {
 
     private NativeObjectHandles() {
     }
 
+    /**
+     * Creates a handle for the {@code object}. Unless the handle is {@link #remove(long) removed}
+     * the {@code object} stays strongly reachable.
+     */
     public static long create(Object object) {
         return ObjectHandles.getGlobal().create(object).rawValue();
     }
 
+    /**
+     * Resolves a handle into an object.
+     *
+     * @throws InvalidHandleException if the handle is either already removed or invalid.
+     */
     public static <T> T resolve(long handle, Class<T> type) {
         try {
             return type.cast(ObjectHandles.getGlobal().get(WordFactory.pointer(handle)));
@@ -44,6 +56,9 @@ public final class NativeObjectHandles {
         }
     }
 
+    /**
+     * Removes a handle. Allows an object identified by the {@code handle} to be garbage collected.
+     */
     public static void remove(long handle) {
         try {
             ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
@@ -52,6 +67,11 @@ public final class NativeObjectHandles {
         }
     }
 
+    /**
+     * An exception thrown when an invalid handle is resolved.
+     *
+     * @see #resolve(long, Class)
+     */
     public static final class InvalidHandleException extends IllegalArgumentException {
 
         private static final long serialVersionUID = 1L;

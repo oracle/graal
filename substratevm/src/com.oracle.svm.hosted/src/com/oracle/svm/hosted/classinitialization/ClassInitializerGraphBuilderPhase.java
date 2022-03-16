@@ -54,7 +54,7 @@ public class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
     static class ClassInitializerBytecodeParser extends SharedBytecodeParser {
         ClassInitializerBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, true);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, false);
         }
     }
 }

@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -1338,7 +1339,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
-        public Value emitNegate(Value input) {
+        public Value emitNegate(Value input, boolean setFlags) {
             LLVMValueRef neg = builder.buildNeg(getVal(input));
             return new LLVMVariable(neg);
         }
@@ -1569,8 +1570,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         @Override
         public Value emitMathAbs(Value input) {
-            LLVMValueRef abs = builder.buildAbs(getVal(input));
-            return new LLVMVariable(abs);
+            LLVMValueRef value = getVal(input);
+            LLVMTypeRef type = LLVM.LLVMTypeOf(value);
+
+            switch (LLVM.LLVMGetTypeKind(type)) {
+                case LLVM.LLVMIntegerTypeKind:
+                    return new LLVMVariable(builder.buildAbs(value));
+                case LLVM.LLVMFloatTypeKind:
+                case LLVM.LLVMDoubleTypeKind:
+                    return new LLVMVariable(builder.buildFabs(value));
+                default:
+                    throw shouldNotReachHere("Unsupported abs type " + type);
+            }
         }
 
         @Override

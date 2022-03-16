@@ -25,13 +25,11 @@ package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 final class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
-    static final ClassHierarchyAssumption AlwaysValid = new ClassHierarchyAssumptionImpl(AlwaysValidAssumption.INSTANCE);
-    static final ClassHierarchyAssumption NeverValid = new ClassHierarchyAssumptionImpl(NeverValidAssumption.INSTANCE);
+    static final ClassHierarchyAssumption AlwaysValid = new ClassHierarchyAssumptionImpl(Assumption.ALWAYS_VALID);
+    static final ClassHierarchyAssumption NeverValid = new ClassHierarchyAssumptionImpl(Assumption.NEVER_VALID);
 
     private final Assumption underlying;
 

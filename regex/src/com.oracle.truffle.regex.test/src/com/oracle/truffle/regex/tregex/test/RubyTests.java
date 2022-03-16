@@ -48,7 +48,7 @@ public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby,IgnoreAtomicGroups=true";
+        return "Flavor=Ruby,Encoding=UTF-16";
     }
 
     void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
@@ -342,7 +342,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void ignoreAtomicGroups() {
-        test("(?>foo)", "", "foo", 0, true, 0, 3);
+        test("(?>foo)", "", "IgnoreAtomicGroups=true", "foo", 0, true, 0, 3);
     }
 
     @Test
@@ -377,5 +377,48 @@ public class RubyTests extends RegexTestBase {
                         "              | (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\{(?<name>\\w+)\\})\n" +
                         "            )", "x").getMember("groupCount").asInt());
         // Checkstyle: resume line length
+    }
+
+    @Test
+    public void beginningAnchor() {
+        test("\\Ga", "", "a", 0, true, 0, 1);
+        test("\\Ga", "", "ba", 0, false);
+        test("\\Ga", "", "ba", 1, true, 1, 2);
+
+        test("\\Ga|\\Gb", "", "a", 0, true, 0, 1);
+        test("\\Ga|\\Gb", "", "b", 0, true, 0, 1);
+        test("\\Ga|\\Gb", "", "cab", 0, false);
+        test("\\Ga|\\Gb", "", "cab", 1, true, 1, 2);
+        test("\\Ga|\\Gb", "", "cab", 2, true, 2, 3);
+    }
+
+    @Test
+    public void nonRecursiveSubexpressionCalls() {
+        // numeric subexpression calls
+        test("(a)\\g<1>", "", "aa", 0, true, 0, 2, 1, 2);
+        // named subexpression calls
+        test("(?<foo>foo.)bar\\g<foo>", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
+        test("(?<three_digits>[0-9]{3})-\\g<three_digits>", "", "123-456", 0, true, 0, 7, 4, 7);
+        // chained calls
+        test("(?<digit>\\d)-(?<two_digits>\\g<digit>\\g<digit>)-(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)", "", "1-23-45678", 0, true, 0, 10, 9, 10, 8, 10, 5, 10);
+        // with forward references
+        test("\\g<1>(a)", "", "aa", 0, true, 0, 2, 1, 2);
+        test("\\g<foo>bar(?<foo>foo.)", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
+        test("\\g<three_digits>-(?<three_digits>[0-9]{3})", "", "123-456", 0, true, 0, 7, 4, 7);
+        test("(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)-(?<two_digits>\\g<digit>\\g<digit>)-(?<digit>\\d)", "", "12345-67-8", 0, true, 0, 10, 0, 5, 6, 8, 9, 10);
+        // quantifier of called group is not copied
+        test("(a)+b\\g<1>b", "", "aaabab", 0, true, 0, 6, 4, 5);
+        test("(a)+b\\g<1>b", "", "aaabaaab", 0, false);
+        // quantifier of subexpression call is preserved
+        test("(a)\\g<1>+", "", "aaaa", 0, true, 0, 4, 3, 4);
+        // quantifier of subexpression call replaced quantifier of called group
+        test("(a)?b\\g<1>+", "", "abaaa", 0, true, 0, 5, 4, 5);
+        test("(a)?b\\g<1>+", "", "ab", 0, false);
+    }
+
+    @Test
+    public void recursiveSubexpressionCalls() {
+        testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
+        testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
     }
 }

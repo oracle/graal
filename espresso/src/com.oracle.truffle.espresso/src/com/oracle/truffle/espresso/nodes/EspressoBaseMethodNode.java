@@ -26,6 +26,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 @GenerateWrapper
 public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode {
@@ -35,7 +36,14 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
 
     public abstract Method.MethodVersion getMethodVersion();
 
-    public abstract boolean shouldSplit();
+    public boolean canSplit() {
+        return false;
+    }
+
+    // Overridden in children which support splitting
+    public EspressoBaseMethodNode split() {
+        throw EspressoError.shouldNotReachHere();
+    }
 
     @Override
     public final Object execute(VirtualFrame frame) {

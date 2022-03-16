@@ -129,11 +129,11 @@ public final class PosixPlatformThreads extends PlatformThreads {
         toTarget(thread).pthreadIdentifier = pthread;
     }
 
-    private static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
+    static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
         return toTarget(thread).pthreadIdentifier;
     }
 
-    private static boolean hasThreadIdentifier(Thread thread) {
+    static boolean hasThreadIdentifier(Thread thread) {
         return toTarget(thread).hasPthreadIdentifier;
     }
 
@@ -186,7 +186,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
         @SuppressWarnings("unused")
         @Uninterruptible(reason = "prologue")
         static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

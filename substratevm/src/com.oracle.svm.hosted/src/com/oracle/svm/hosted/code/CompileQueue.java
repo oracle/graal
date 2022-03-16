@@ -62,6 +62,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -132,8 +133,8 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
@@ -147,6 +148,7 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
@@ -221,6 +223,7 @@ public class CompileQueue {
     private volatile boolean inliningProgress;
 
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
+    private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
 
     public abstract static class CompileReason {
         /**
@@ -295,7 +298,14 @@ public class CompileQueue {
         }
     }
 
-    public class CompileTask implements DebugContextRunnable {
+    private interface Task extends DebugContextRunnable {
+        @Override
+        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return new DebugContext.Builder(options, factories).description(getDescription()).build();
+        }
+    }
+
+    public class CompileTask implements Task {
 
         public final HostedMethod method;
         protected final CompileReason reason;
@@ -326,7 +336,7 @@ public class CompileQueue {
         }
     }
 
-    protected class TrivialInlineTask implements DebugContextRunnable {
+    protected class TrivialInlineTask implements Task {
 
         private final HostedMethod method;
         private final Description description;
@@ -347,7 +357,7 @@ public class CompileQueue {
         }
     }
 
-    public class ParseTask implements DebugContextRunnable {
+    public class ParseTask implements Task {
 
         protected final CompileReason reason;
         private final HostedMethod method;
@@ -397,8 +407,7 @@ public class CompileQueue {
     public void finish(DebugContext debug) {
         ProgressReporter reporter = ProgressReporter.singleton();
         try {
-            String imageName = universe.getBigBang().getHostVM().getImageName();
-            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -416,17 +425,13 @@ public class CompileQueue {
                 method.wrapped.setAnalyzedGraph(null);
             }
 
-            if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
-                    inlineTrivialMethods(debug);
-                }
-            } else {
-                reporter.printInliningSkipped();
+            try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
+                inlineTrivialMethods(debug);
             }
 
             assert suitesNotCreated();
             createSuites();
-            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
@@ -468,6 +473,10 @@ public class CompileQueue {
             phaseSuite.appendPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_PARSE_CANONICALIZATION));
         }
         return phaseSuite;
+    }
+
+    public Map<HostedMethod, CompileTask> getCompilations() {
+        return compilations;
     }
 
     public Collection<CompileTask> getCompilationTasks() {
@@ -557,15 +566,33 @@ public class CompileQueue {
      * parsed methods.
      */
     private void parseAheadOfTimeCompiledMethods() {
-        universe.getMethods().stream()
-                        .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+
+        for (HostedMethod method : universe.getMethods()) {
+            if (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method) ||
+                            method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+                ensureParsed(method, null, new EntryPointReason());
+            }
+            if (method.wrapped.isVirtualRootMethod()) {
+                for (HostedMethod impl : method.getImplementations()) {
+                    VMError.guarantee(impl.wrapped.isImplementationInvoked());
+                    ensureParsed(impl, null, new EntryPointReason());
+                }
+            }
+        }
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().values().stream()
-                        .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
-                        .filter(method -> method.wrapped.isRootMethod())
-                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+        for (SubstrateForeignCallLinkage linkage : foreignCallsProvider.getForeignCalls().values()) {
+            HostedMethod method = (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess());
+            if (method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+                ensureParsed(method, null, new EntryPointReason());
+            }
+            if (method.wrapped.isVirtualRootMethod()) {
+                for (HostedMethod impl : method.getImplementations()) {
+                    VMError.guarantee(impl.wrapped.isImplementationInvoked());
+                    ensureParsed(impl, null, new EntryPointReason());
+                }
+            }
+        }
     }
 
     private void parseDeoptimizationTargetMethods() {
@@ -596,7 +623,6 @@ public class CompileQueue {
     protected void checkTrivial(HostedMethod method) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
             method.compilationInfo.setTrivialMethod(true);
-            inliningProgress = true;
         }
     }
 
@@ -681,7 +707,7 @@ public class CompileQueue {
         }
     }
 
-    private static boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
+    private boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
         if (invoke.getInvokeKind().isDirect()) {
             HostedMethod singleCallee = (HostedMethod) invoke.callTarget().targetMethod();
             if (makeInlineDecision(invoke, singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
@@ -697,14 +723,14 @@ public class CompileQueue {
         return false;
     }
 
-    private static boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
+    private boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
         if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
             return false;
         }
         if (callee.shouldBeInlined() || callerAnnotatedWith(invoke, AlwaysInlineAllCallees.class)) {
             return true;
         }
-        if (callee.compilationInfo.isTrivialMethod()) {
+        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
             return true;
         }
         AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
@@ -755,13 +781,22 @@ public class CompileQueue {
     }
 
     public void scheduleEntryPoints() {
-        universe.getMethods().stream()
-                        .filter(method -> !ignoreEntryPoint(method) && (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)))
-                        .forEach(method -> ensureCompiled(method, new EntryPointReason()));
-        universe.getMethods().stream()
-                        .map(method -> method.compilationInfo.getDeoptTargetMethod())
-                        .filter(deoptTargetMethod -> deoptTargetMethod != null)
-                        .forEach(deoptTargetMethod -> ensureCompiled(deoptTargetMethod, new EntryPointReason()));
+        for (HostedMethod method : universe.getMethods()) {
+            if (!ignoreEntryPoint(method) && (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)) ||
+                            method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+                ensureCompiled(method, new EntryPointReason());
+            }
+            if (method.wrapped.isVirtualRootMethod()) {
+                for (HostedMethod impl : method.getImplementations()) {
+                    VMError.guarantee(impl.wrapped.isImplementationInvoked());
+                    ensureCompiled(impl, new EntryPointReason());
+                }
+            }
+            HostedMethod deoptTargetMethod = method.compilationInfo.getDeoptTargetMethod();
+            if (deoptTargetMethod != null) {
+                ensureCompiled(deoptTargetMethod, new EntryPointReason());
+            }
+        }
     }
 
     @SuppressWarnings("unused")
@@ -957,7 +992,7 @@ public class CompileQueue {
      * i.e., the field order, is only decided after static analysis. Therefore, we need to fix up
      * all the nodes that implicitly use the field index.
      */
-    private void transplantEscapeAnalysisState(StructuredGraph graph) {
+    protected void transplantEscapeAnalysisState(StructuredGraph graph) {
         for (CommitAllocationNode node : graph.getNodes().filter(CommitAllocationNode.class)) {
             List<ValueNode> values = node.getValues();
             List<ValueNode> aValues = new ArrayList<>(values);
@@ -1141,7 +1176,7 @@ public class CompileQueue {
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
 
-        if (SubstrateOptions.optimizationLevel() <= 0 && !method.isDeoptTarget()) {
+        if (SubstrateOptions.optimizationLevel() == OptimizationLevel.O0 && !method.isDeoptTarget()) {
             /*
              * Disabling liveness analysis preserves the values of local variables beyond the
              * bytecode-liveness. This greatly helps debugging. When local variable numbers are
@@ -1401,7 +1436,10 @@ public class CompileQueue {
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
         ListIterator<BasePhase<? super LowTierContext>> it = lowTier.findPhase(FixReadsPhase.class);
         if (it != null) {
-            ((FixReadsPhase) it.previous()).setReplaceInputsWithConstants(false);
+            FixReadsPhase fixReads = (FixReadsPhase) it.previous();
+            it.remove();
+            boolean replaceInputsWithConstants = false;
+            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase(), fixReads.getCanonicalizerPhase()));
         }
     }
 
@@ -1568,7 +1606,7 @@ public class CompileQueue {
         }
     }
 
-    public Map<HostedMethod, CompilationResult> getCompilations() {
+    public Map<HostedMethod, CompilationResult> getCompilationResults() {
         Map<HostedMethod, CompilationResult> result = new TreeMap<>();
         for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);

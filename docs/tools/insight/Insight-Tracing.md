@@ -1,6 +1,6 @@
 ---
 layout: docs-experimental
-toc_group: tools
+toc_group: insight
 link_title: Tracing with Insight
 permalink: /tools/graalvm-insight/tracing/
 ---

@@ -30,12 +30,12 @@ import java.util.Objects;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.SingleRunSubphase;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
+public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders> {
 
     private static final ArrayList<InliningPolicyProvider> POLICY_PROVIDERS;
 
@@ -51,7 +51,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     private final PartialEvaluator partialEvaluator;
     private final PartialEvaluator.Request request;
-    private int inlined;
+    private boolean rootIsLeaf;
 
     public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
         this.partialEvaluator = partialEvaluator;
@@ -80,6 +80,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
         final InliningPolicy policy = getInliningPolicyProvider(request.isFirstTier()).get(request.options, coreProviders);
         final CallTree tree = new CallTree(partialEvaluator, request, policy);
+        rootIsLeaf = tree.getRoot().getChildren().isEmpty();
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining()) {
             policy.run(tree);
@@ -89,7 +90,6 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         }
         tree.finalizeGraph();
         tree.trace();
-        inlined = tree.getInlinedCount();
     }
 
     private boolean optionsAllowInlining() {
@@ -102,7 +102,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
-    public boolean hasInlined() {
-        return inlined > 1;
+    public boolean rootIsLeaf() {
+        return rootIsLeaf;
     }
 }

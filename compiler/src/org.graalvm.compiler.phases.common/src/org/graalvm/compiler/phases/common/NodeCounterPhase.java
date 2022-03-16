@@ -35,7 +35,7 @@ import org.graalvm.compiler.phases.BasePhase;
 
 public class NodeCounterPhase extends BasePhase<CoreProviders> {
 
-    private Stage stage;
+    private final Stage stage;
 
     public NodeCounterPhase(Stage stage) {
         this.stage = stage;

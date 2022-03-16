@@ -58,7 +58,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TruffleNull;
 
@@ -173,13 +172,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     private Object createRegexObject(RegexSource source) {
         if (source.getOptions().isValidate()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
-            if (flavor == ECMAScriptFlavor.INSTANCE) {
-                RegexValidator validator = new RegexValidator(source);
-                validator.validate();
-            } else {
-                RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
-                flavorProcessor.validate();
-            }
+            RegexValidator validator = flavor.createValidator(source);
+            validator.validate();
             return TruffleNull.INSTANCE;
         }
         try {

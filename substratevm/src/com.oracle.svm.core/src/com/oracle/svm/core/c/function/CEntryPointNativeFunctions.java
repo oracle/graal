@@ -100,7 +100,7 @@ public final class CEntryPointNativeFunctions {
                     "the thread's isolate thread structure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static int attachThread(Isolate isolate, IsolateThreadPointer thread) {
-        int result = CEntryPointActions.enterAttachThread(isolate, true);
+        int result = CEntryPointActions.enterAttachThread(isolate, false, true);
         if (result != 0) {
             return result;
         }
@@ -204,7 +204,7 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
     private static void detachAllThreadsAndTearDownIsolate0() {
-        VMThreads.singleton().detachAllThreadsExceptCurrentWithoutCleanupForTearDown();
+        VMThreads.detachAllThreadsExceptCurrentWithoutCleanupForTearDown();
     }
 
     private CEntryPointNativeFunctions() {

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -71,8 +70,7 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     Symbol(byte[] value) {
-        // hashCode must match ByteSequence.hashCodeOfRange.
-        this(value, Arrays.hashCode(value));
+        this(value, ByteSequence.hashOfRange(value, 0, value.length));
     }
 
     @SuppressWarnings("unchecked")
@@ -776,6 +774,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_vm_annotation_Hidden = StaticSymbols.putType("Ljdk/internal/vm/annotation/Hidden;");
         public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType("Lsun/reflect/CallerSensitive;");
         public static final Symbol<Type> jdk_internal_reflect_CallerSensitive = StaticSymbols.putType("Ljdk/internal/reflect/CallerSensitive;");
+        public static final Symbol<Type> java_lang_invoke_ForceInline = StaticSymbols.putType("Ljava/lang/invoke/ForceInline;");
+        public static final Symbol<Type> jdk_internal_vm_annotation_ForceInline = StaticSymbols.putType("Ljdk/internal/vm/annotation/ForceInline;");
 
         // Modules
         public static final Symbol<Type> java_lang_Module = StaticSymbols.putType("Ljava/lang/Module;");

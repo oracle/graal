@@ -174,7 +174,7 @@ public final class ResourcesFeature implements Feature {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
         ImageSingletons.add(ResourcesRegistry.class,
-                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue())));
+                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader)));
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -233,15 +233,15 @@ public final class ResourcesFeature implements Feature {
         }
 
         @Override
-        public void addResource(String moduleName, String resourceName, InputStream resourceStream) {
+        public void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
             collectModuleName(moduleName);
-            registerResource(debugContext, moduleName, resourceName, resourceStream);
+            registerResource(debugContext, moduleName, resourceName, resourceStream, fromJar);
         }
 
         @Override
-        public void addDirectoryResource(String moduleName, String dir, String content) {
+        public void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar) {
             collectModuleName(moduleName);
-            registerDirectoryResource(debugContext, moduleName, dir, content);
+            registerDirectoryResource(debugContext, moduleName, dir, content, fromJar);
         }
 
         private void collectModuleName(String moduleName) {
@@ -319,20 +319,20 @@ public final class ResourcesFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream) {
+    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(moduleName, resourceName, resourceStream);
+            Resources.registerResource(moduleName, resourceName, resourceStream, fromJar);
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content) {
+    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
-            Resources.registerDirectoryResource(moduleName, dir, content);
+            Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
         }
     }
 }

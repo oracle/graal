@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @ExportLibrary(InteropLibrary.class)
 final class PolyglotBindings implements TruffleObject {
@@ -173,6 +174,20 @@ final class PolyglotBindings implements TruffleObject {
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < names.length;
         }
+    }
+
+    @ExportMessage
+    TriState isIdenticalOrUndefined(Object other) {
+        if (this == other) {
+            return TriState.TRUE;
+        }
+        return TriState.UNDEFINED;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    int identityHashCode() {
+        return System.identityHashCode(this);
     }
 
 }

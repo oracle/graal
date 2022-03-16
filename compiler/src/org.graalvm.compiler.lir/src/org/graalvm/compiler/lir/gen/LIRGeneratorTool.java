@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -265,6 +265,21 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     @SuppressWarnings("unused")
     default Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
+    }
+
+    enum CharsetName {
+        ASCII,
+        ISO_8859_1
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitHasNegatives(Value array, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
     }
 
     void emitBlackhole(Value operand);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,10 +47,13 @@ public final class GlobalVariable extends GlobalValueSymbol {
 
     private final int align;
 
-    private GlobalVariable(boolean isReadOnly, PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
+    private final String sectionName;
+
+    private GlobalVariable(boolean isReadOnly, PointerType type, int align, String sectionName, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
         super(type, linkage, visibility, symbolTable, value, index);
         this.isReadOnly = isReadOnly;
         this.align = align;
+        this.sectionName = sectionName;
     }
 
     @Override
@@ -66,8 +69,12 @@ public final class GlobalVariable extends GlobalValueSymbol {
         return isReadOnly;
     }
 
-    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, long linkage, long visibility, SymbolTable symbolTable, int value, int index) {
-        return new GlobalVariable(isReadOnly, type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value, index);
+    public String getSectionName() {
+        return sectionName;
+    }
+
+    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, String sectionName, long linkage, long visibility, SymbolTable symbolTable, int value, int index) {
+        return new GlobalVariable(isReadOnly, type, align, sectionName, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value, index);
     }
 
     @Override

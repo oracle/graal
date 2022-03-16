@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -46,6 +42,10 @@ import javax.lang.model.type.ReferenceType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
+
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 /**
  * Handles the generation of boilerplate code for native interface implementations.
@@ -458,6 +458,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType("Object") //
                         .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+        if (!h.skipSafepoint) {
+            invoke.addBodyLine(EspressoProcessor.SAFEPOINT_POLL);
+        }
         if (h.needsHandlify || !h.isStatic) {
             invoke.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
         }
@@ -485,6 +488,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                             .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                             .withReturnType("Object") //
                             .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+            if (!h.skipSafepoint) {
+                invokeDirect.addBodyLine(EspressoProcessor.SAFEPOINT_POLL);
+            }
             if (!h.isStatic) {
                 invokeDirect.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
             }
@@ -500,6 +506,13 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             }
             classBuilder.withMethod(invokeDirect);
         }
+
+        MethodBuilder generatedBy = new MethodBuilder("generatedBy") //
+                        .withOverrideAnnotation() //
+                        .withReturnType("String") //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .addBodyLine("return \"", helper.getImplAnnotation().getSimpleName(), "\";");
+        classBuilder.withMethod(generatedBy);
 
         return classBuilder;
     }

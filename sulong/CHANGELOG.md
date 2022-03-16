@@ -3,6 +3,7 @@
 New Features:
 
 * Support exporting native byte buffers. See the new APIs in `graalvm/llvm/polyglot-buffer.h`.
+* Support for Time, Date, TimeZone and Instant polyglot interop. See new APIs in `graalvm/llvm/polyglot-time.h`.
 
 Changes:
 
