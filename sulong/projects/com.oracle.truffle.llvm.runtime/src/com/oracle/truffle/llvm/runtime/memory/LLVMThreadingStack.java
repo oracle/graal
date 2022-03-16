@@ -69,10 +69,8 @@ public final class LLVMThreadingStack {
         return s;
     }
 
-    @TruffleBoundary
-    private LLVMStack getCurrentStack() {
-        return LLVMLanguage.get(null).contextThreadLocal.get(Thread.currentThread()).getLLVMStack();
-    }
+    private static LLVMStack getCurrentStack() {
+        return LLVMLanguage.get(null).contextThreadLocal.get(Thread.currentThread()).getLLVMStack();    }
 
     @TruffleBoundary
     private LLVMStack createNewStack() {
@@ -102,7 +100,7 @@ public final class LLVMThreadingStack {
         free(memory, mainThread);
     }
 
-    private void free(LLVMMemory memory, Thread thread) {
+    private static void free(LLVMMemory memory, Thread thread) {
         LLVMThreadLocalValue value = LLVMLanguage.get(null).contextThreadLocal.get(thread);
         assert value != null;
         LLVMStack s = value.removeLLVMStack();

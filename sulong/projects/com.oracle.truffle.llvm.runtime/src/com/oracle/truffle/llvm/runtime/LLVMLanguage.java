@@ -259,7 +259,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
 
         public LLVMStack getLLVMStack() {
-            assert stack != null;
             return stack;
         }
 
