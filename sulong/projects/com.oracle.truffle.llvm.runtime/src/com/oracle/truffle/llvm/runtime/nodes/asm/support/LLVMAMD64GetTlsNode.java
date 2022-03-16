@@ -37,10 +37,7 @@ public abstract class LLVMAMD64GetTlsNode extends LLVMExpressionNode {
 
     @Specialization
     public Object doGetTLS() {
-        LLVMThreadLocalValue value = getLanguage().contextThreadLocal.get(Thread.currentThread());
-        if (value == null) {
-            return getContext().getThreadLocalStorage();
-        }
+        LLVMThreadLocalValue value = getLanguage().contextThreadLocal.get();
         return value.getThreadLocalStorage();
     }
 }

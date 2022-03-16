@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.memory;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 /**
@@ -86,23 +87,13 @@ public final class LLVMThreadingStack {
 
     @TruffleBoundary
     public void freeStack(LLVMMemory memory, Thread thread) {
-        /*
-         * Do not free the stack of the main thread: Sulong#disposeThread runs before
-         * Sulong#disposeContext, which needs to call destructors that need a SP.
-         */
-        if (mainThread != Thread.currentThread()) {
-            free(memory, thread);
-        }
-    }
-
-    @TruffleBoundary
-    public void freeMainStack(LLVMMemory memory) {
-        mainThreadStack = null;
-        free(memory, mainThread);
+        free(memory, thread);
     }
 
     private static void free(LLVMMemory memory, Thread thread) {
-        LLVMStack s = LLVMLanguage.get(null).contextThreadLocal.get(thread).removeLLVMStack();
+        LLVMThreadLocalValue value = LLVMLanguage.get(null).contextThreadLocal.get(thread);
+        assert value != null;
+        LLVMStack s = value.removeLLVMStack();
         if (s != null) {
             s.free(memory);
         }

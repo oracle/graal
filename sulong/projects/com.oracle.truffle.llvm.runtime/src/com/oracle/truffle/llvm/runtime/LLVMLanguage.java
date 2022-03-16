@@ -486,9 +486,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeContext(LLVMContext context) {
-        // TODO (PLi): The globals loaded by the context needs to be freed manually.
-        LLVMMemory memory = getLLVMMemory();
-        context.dispose(memory);
+        context.dispose();
     }
 
     static class FreeGlobalsNode extends RootNode {
@@ -737,6 +735,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected void disposeThread(LLVMContext context, Thread thread) {
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
+            // include the main thread
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
 
