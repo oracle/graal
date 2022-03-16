@@ -96,9 +96,11 @@
           "cmake": "==3.15.2"
         }
       },
+      "COMMENT.darwin": [
+        "GR-37497: should have cmake==3.15.2 as dependency"
+      ],
       "darwin": {
         "packages": {
-          "cmake": "==3.15.2"
         }
       },
       "windows": {
@@ -165,7 +167,8 @@
           "ruby": ">=2.1.0"
         }
       },
-      "darwin": {},
+      "darwin_amd64": {},
+      "darwin_aarch64": {},
       "windows": {}
     }
   }

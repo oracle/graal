@@ -101,6 +101,10 @@ local jdks = common_json.jdks;
       {name: 'daily-deploy-vm-installable-java11-darwin-amd64'},
       {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
       {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
+      {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},
+      {name: 'daily-deploy-vm-installable-java11-darwin-aarch64'},
+      {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
+      {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'},
       {name: 'daily-deploy-vm-base-java11-windows-amd64'},
       {name: 'daily-deploy-vm-installable-java11-windows-amd64'},
       {name: 'daily-deploy-vm-base-java17-windows-amd64'},
@@ -181,19 +185,33 @@ local jdks = common_json.jdks;
      ],
      name: 'post-merge-deploy-vm-maven-linux-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin + self.maven_11_17_only_native + {
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-darwin-amd64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin + self.maven_11_17_only_native + {
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin_aarch64 + self.maven_11_17_only_native + {
+     run: [
+       $.maven_11_17_only_native.build,
+       $.maven_11_17_only_native.deploy + ['--dry-run', 'lafo-maven'],
+     ],
+     name: 'gate-vm-maven-dry-run-darwin-aarch64',
+    },
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
      name: 'daily-deploy-vm-maven-darwin-amd64',
+    },
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_11_17_only_native + {
+     run: [
+       $.maven_11_17_only_native.build,
+       $.maven_11_17_only_native.deploy + ['lafo-maven'],
+     ],
+     name: 'daily-deploy-vm-maven-darwin-aarch64',
     },
     vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_11_17_only_native + {
      run: [
@@ -227,6 +245,12 @@ local jdks = common_json.jdks;
     vm_common.deploy_vm_installable_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
     vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-amd64', patterns: ['daily-deploy-vm-base-java17-darwin-amd64']}]},
     vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-amd64', patterns: ['daily-deploy-vm-installable-java17-darwin-amd64']}]},
+
+    # Darwin/AArch64
+    vm_common.deploy_vm_base_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-aarch64', patterns: ['daily-deploy-vm-base-java11-darwin-aarch64']}]},
+    vm_common.deploy_vm_installable_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java11-darwin-aarch64']}]},
+    vm_common.deploy_vm_base_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-aarch64', patterns: ['daily-deploy-vm-base-java17-darwin-aarch64']}]},
+    vm_common.deploy_vm_installable_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java17-darwin-aarch64']}]},
 
     # Windows/AMD64
     vm_common.deploy_vm_base_java11_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-windows-amd64', patterns: ['daily-deploy-vm-base-java11-windows-amd64']}]},
