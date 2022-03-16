@@ -492,17 +492,13 @@ public class Graph {
     }
 
     public <T extends Node> T addOrUnique(T node) {
+        if (node.isAlive()) {
+            return node;
+        }
         if (node.getNodeClass().valueNumberable()) {
             return uniqueHelper(node);
         }
         return add(node);
-    }
-
-    public <T extends Node> T maybeAddOrUnique(T node) {
-        if (node.isAlive()) {
-            return node;
-        }
-        return addOrUnique(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {

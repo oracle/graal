@@ -141,7 +141,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
         assert node.asJavaConstant() != null : "must be a java constant";
         assert nodeType.isAssignableFrom(node.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess())) : "must be a truffle node";
-        node = graph.maybeAddOrUnique(node);
+        node = graph.addOrUnique(node);
         graph.addBeforeFixed(returnNode, graph.add(new TruffleSafepointNode(node)));
     }
 

@@ -207,7 +207,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 newValue = graph.unique(new NarrowNode(value, narrow.getInputBits(), narrow.getResultBits()));
             } else {
                 assert transformation instanceof ReinterpretNode;
-                newValue = graph.maybeAddOrUnique(ReinterpretNode.create(transformation.stamp(NodeView.DEFAULT), value, NodeView.DEFAULT));
+                newValue = graph.addOrUnique(ReinterpretNode.create(transformation.stamp(NodeView.DEFAULT), value, NodeView.DEFAULT));
             }
             // make sure the new value will be processed by the canonicalizer
             ec.changed(NodeEvent.INPUT_CHANGED, newValue);
