@@ -35,7 +35,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -858,5 +860,17 @@ public class CompilationResult {
         }
         dataSection.close();
         closed = true;
+    }
+
+    private final EconomicMap<Call, CodeMark> callToMark = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+
+    public void recordCallContext(CodeMark mark, Call call) {
+        if (call != null) {
+            callToMark.put(call, mark);
+        }
+    }
+
+    public CodeMark getAssociatedMark(Call call) {
+        return callToMark.get(call);
     }
 }
