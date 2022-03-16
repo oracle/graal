@@ -531,6 +531,9 @@ public final class LLVMContext {
                 if (value != null) {
                     language.getFreeThreadLocalGlobalBlock().call(value);
                 }
+                if (isInitialized()) {
+                    getThreadingStack().freeStack(language.getLLVMMemory(), thread);
+                }
             }
         }
     }

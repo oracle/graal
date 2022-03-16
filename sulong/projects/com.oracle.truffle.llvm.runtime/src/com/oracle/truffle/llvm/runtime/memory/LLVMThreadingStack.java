@@ -96,9 +96,9 @@ public final class LLVMThreadingStack {
          * Do not free the stack of the main thread: Sulong#disposeThread runs before
          * Sulong#disposeContext, which needs to call destructors that need a SP.
          */
-        if (mainThread != Thread.currentThread()) {
-            free(memory, thread);
-        }
+        //if (mainThread != Thread.currentThread()) {
+        free(memory, thread);
+        //}
     }
 
     @TruffleBoundary
