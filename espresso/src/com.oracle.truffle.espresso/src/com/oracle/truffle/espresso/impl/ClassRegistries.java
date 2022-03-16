@@ -306,8 +306,8 @@ public final class ClassRegistries {
     /**
      * Collects IDs of all class loaders that have not been collected by the GC.
      */
-    int[] aliveLoaders() {
-        int[] loaders = new int[weakClassLoaderSet.size() + 1];
+    long[] aliveLoaders() {
+        long[] loaders = new long[weakClassLoaderSet.size() + 1];
         loaders[0] = context.getBootClassLoaderID(); // Boot loader is always alive
         int i = 1;
         synchronized (weakClassLoaderSet) {

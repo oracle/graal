@@ -87,17 +87,17 @@ public final class Types {
         return "L" + className.replace('.', '/') + ";";
     }
 
-    public static ByteSequence hiddenClassName(Symbol<Type> type, int id) {
+    public static ByteSequence hiddenClassName(Symbol<Type> type, long id) {
         assert type.byteAt(0) == 'L';
         assert type.byteAt(type.length() - 1) == ';';
-        int idSize = ByteSequence.positiveIntegerStringSize(id);
+        int idSize = ByteSequence.positiveLongStringSize(id);
         int length = type.length() - 2 + 1 + idSize;
         byte[] newBytes = new byte[length];
         ByteSequence name = type.substring(1, type.length() - 1);
         name.writeTo(newBytes, 0);
         int sepIndex = name.length();
         newBytes[sepIndex] = '+';
-        ByteSequence.writePositiveIntegerString(id, newBytes, sepIndex + 1, idSize);
+        ByteSequence.writePositiveLongString(id, newBytes, sepIndex + 1, idSize);
         ByteSequence result = wrap(newBytes, 0, length);
         assert Validation.validModifiedUTF8(result) : String.format("Not valid anymore: %s + %d -> %s", type.toHexString(), id, result.toHexString());
         return result;

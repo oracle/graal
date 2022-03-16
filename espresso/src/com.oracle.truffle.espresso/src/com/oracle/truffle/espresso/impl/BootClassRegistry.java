@@ -50,7 +50,7 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadLinkedKlassCacheHits = DebugCounter.create("BCL loadLinkedKlassCacheHits");
     private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
-    public BootClassRegistry(int loaderID) {
+    public BootClassRegistry(long loaderID) {
         super(loaderID);
     }
 

@@ -446,7 +446,7 @@ public final class ClassfileParser {
 
         if (classDefinitionInfo.isHidden()) {
             assert requestedClassType != null;
-            int futureKlassID = env.getLanguage().getNewKlassId();
+            long futureKlassID = env.getLanguage().getNewKlassId();
             classDefinitionInfo.initKlassID(futureKlassID);
             thisKlassName = env.getNames().getOrCreate(Types.hiddenClassName(requestedClassType, futureKlassID));
             thisKlassType = env.getTypes().fromName(thisKlassName);
