@@ -196,6 +196,14 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         }
     }
 
+    final Set<Path> excludeDirectories = getExcludeDirectories();
+
+    private Set<Path> getExcludeDirectories() {
+        Path root = Paths.get("/");
+        return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
+                        .map(root::resolve).collect(Collectors.toUnmodifiableSet());
+    }
+
     protected class ClassInit {
 
         protected final ForkJoinPool executor;
@@ -218,14 +226,6 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             } catch (IOException e) {
                 throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p, e);
             }
-        }
-
-        private final Set<Path> excludeDirectories = getExcludeDirectories();
-
-        private Set<Path> getExcludeDirectories() {
-            Path root = Paths.get("/");
-            return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                            .map(root::resolve).collect(Collectors.toSet());
         }
 
         private void loadClassesFromPath(Path path) {

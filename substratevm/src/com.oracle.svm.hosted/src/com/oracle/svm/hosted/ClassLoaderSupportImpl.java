@@ -44,6 +44,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
@@ -72,7 +73,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         classLoaderSupport.classpath().stream().distinct().forEach(classpathFile -> {
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector);
+                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport.excludeDirectories);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector);
                 }
@@ -82,7 +83,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         });
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector, Set<Path> excludeDirectories) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -105,7 +106,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
                 }
                 try (Stream<Path> files = Files.list(entry)) {
-                    files.forEach(queue::push);
+                    files.filter(Predicate.not(excludeDirectories::contains)).forEach(queue::push);
                 }
             } else {
                 if (collector.isIncluded(null, relativeFilePath)) {
