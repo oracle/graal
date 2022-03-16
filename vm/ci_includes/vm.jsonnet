@@ -88,9 +88,7 @@ local jdks = common_json.jdks;
       git: '>=1.8.3',
     },
     run+: [
-      [
         ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
-      ]
     ],
     requireArtifacts: [
       {name: 'post-merge-deploy-vm-java11-linux-amd64'},
@@ -110,6 +108,15 @@ local jdks = common_json.jdks;
     ],
     targets+: ['daily'],
   },
+
+  deploy_vm_publish_releaser_artifact(build): build + {
+    publishArtifacts: [
+      {
+        name: build.name,
+        patterns: [build.name]
+      }
+    ]
+  }, 
 
   local builds = [
     self.vm_java_11 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
@@ -215,30 +222,30 @@ local jdks = common_json.jdks;
     #
 
     # Linux/AMD64
-    vm_common.deploy_vm_java11_linux_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-java11-linux-amd64', patterns: ['post-merge-deploy-vm-java11-linux-amd64']}]},
-    vm_common.deploy_vm_java17_linux_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-java17-linux-amd64', patterns: ['post-merge-deploy-vm-java17-linux-amd64']}]},
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java11_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_amd64),
 
     # Linux/AARCH64
-    vm_common.deploy_vm_java11_linux_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-java11-linux-aarch64', patterns: ['daily-deploy-vm-java11-linux-aarch64']}]},
-    vm_common.deploy_vm_java17_linux_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-java17-linux-aarch64', patterns: ['daily-deploy-vm-java17-linux-aarch64']}]},
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java11_linux_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_aarch64),
 
     # Darwin/AMD64
-    vm_common.deploy_vm_base_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-amd64', patterns: ['daily-deploy-vm-base-java11-darwin-amd64']}]},
-    vm_common.deploy_vm_installable_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
-    vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-amd64', patterns: ['daily-deploy-vm-base-java17-darwin-amd64']}]},
-    vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-amd64', patterns: ['daily-deploy-vm-installable-java17-darwin-amd64']}]},
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java11_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_amd64),
 
     # Windows/AMD64
-    vm_common.deploy_vm_base_java11_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-windows-amd64', patterns: ['daily-deploy-vm-base-java11-windows-amd64']}]},
-    vm_common.deploy_vm_installable_java11_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-windows-amd64', patterns: ['daily-deploy-vm-installable-java11-windows-amd64']}]},
-    vm_common.deploy_vm_base_java17_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-windows-amd64', patterns: ['daily-deploy-vm-base-java17-windows-amd64']}]},
-    vm_common.deploy_vm_installable_java17_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-windows-amd64', patterns: ['daily-deploy-vm-installable-java17-windows-amd64']}]},
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java11_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_windows_amd64),
 
     #
     # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
     #
-    vm_common.deploy_vm_ruby_java11_linux_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-ruby-java11-linux-amd64', patterns: ['daily-deploy-vm-ruby-java11-linux-amd64']}]},
-    vm_common.deploy_vm_ruby_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-ruby-java11-darwin-amd64', patterns: ['daily-deploy-vm-ruby-java11-darwin-amd64']}]},
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java11_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java11_darwin_amd64),
 
     # Trigger the releaser service
     self.notify_releaser_build,
