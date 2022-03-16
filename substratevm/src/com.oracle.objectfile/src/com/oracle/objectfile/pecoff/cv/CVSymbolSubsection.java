@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.util.ArrayList;
 
 /*
@@ -63,7 +61,7 @@ final class CVSymbolSubsection extends CVSymbolRecord {
     }
 
     @Override
-    public void logContents(DebugContext debugContext) {
+    public void logContents() {
         CVSectionImpl section = cvDebugInfo.getCVSymbolSection();
         for (CVSymbolSubrecord subcmd : subcmds) {
             section.log("     [0x%08x]  %s", subcmd.getPos(), subcmd.toString());

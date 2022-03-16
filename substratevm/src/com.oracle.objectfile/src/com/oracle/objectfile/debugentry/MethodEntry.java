@@ -36,8 +36,10 @@ public class MethodEntry extends MemberEntry {
     static final int DEOPT = 1 << 0;
     static final int IN_RANGE = 1 << 1;
     static final int INLINED = 1 << 2;
+    static final int IS_OVERRIDE = 1 << 3;
+    static final int IS_CONSTRUCTOR = 1 << 4;
     int flags;
-    final int vtableOffset;
+    int vtableOffset = -1;
     final String symbolName;
 
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
@@ -50,10 +52,16 @@ public class MethodEntry extends MemberEntry {
         this.paramNames = paramNames;
         this.symbolName = debugMethodInfo.symbolNameForMethod();
         this.flags = 0;
-        this.vtableOffset = debugMethodInfo.vtableOffset();
         if (debugMethodInfo.isDeoptTarget()) {
             setIsDeopt();
         }
+        if (debugMethodInfo.isConstructor()) {
+            setIsConstructor();
+        }
+        if (debugMethodInfo.isOverride()) {
+            setIsOverride();
+        }
+        vtableOffset = debugMethodInfo.vtableOffset();
         updateRangeInfo(debugInfoBase, debugMethodInfo);
     }
 
@@ -119,6 +127,22 @@ public class MethodEntry extends MemberEntry {
         return (flags & INLINED) != 0;
     }
 
+    private void setIsOverride() {
+        flags |= IS_OVERRIDE;
+    }
+
+    public boolean isOverride() {
+        return (flags & IS_OVERRIDE) != 0;
+    }
+
+    private void setIsConstructor() {
+        flags |= IS_CONSTRUCTOR;
+    }
+
+    public boolean isConstructor() {
+        return (flags & IS_CONSTRUCTOR) != 0;
+    }
+
     /**
      * Sets {@code isInRange} and ensures that the {@code fileEntry} is up to date. If the
      * MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry will point
@@ -155,25 +179,8 @@ public class MethodEntry extends MemberEntry {
         }
     }
 
-    /**
-     * Returns true if this is a newly introduced virtual method. Walks the class heirarchy looking
-     * methods that look like itself. This is an odd requirement, but used in the Windows CodeView
-     * output.
-     *
-     * @return true if this is a virtual method and is defined for the first time (from base class)
-     *         in the call heirarchy.
-     */
-    public boolean isFirstSighting() {
-        ClassEntry parentClass = ownerType().getSuperClass();
-        while (parentClass != null) {
-            for (MethodEntry method : parentClass.methods) {
-                if (this.equals(method)) {
-                    return false;
-                }
-            }
-            parentClass = parentClass.getSuperClass();
-        }
-        return true;
+    public boolean isVirtual() {
+        return vtableOffset >= 0;
     }
 
     public int getVtableOffset() {

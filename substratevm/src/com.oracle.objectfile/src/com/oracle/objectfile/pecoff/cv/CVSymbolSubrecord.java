@@ -74,7 +74,7 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVObjectNameRecord extends CVSymbolSubrecord {
 
-        String objName; /* find the full path to object file we will produce. */
+        private final String objName; /* find the full path to object file we will produce. */
 
         CVObjectNameRecord(CVDebugInfo cvDebugInfo, String objName) {
             super(cvDebugInfo, CVDebugConstants.S_OBJNAME);
@@ -295,7 +295,7 @@ abstract class CVSymbolSubrecord {
             pos = CVUtil.putInt(debugStart, buffer, pos);
             pos = CVUtil.putInt(debugEnd, buffer, pos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);
-            pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, pos, symbolName, (long) 0);
+            pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, pos, symbolName);
             pos = CVUtil.putByte(flags, buffer, pos);
             pos = CVUtil.putUTF8StringBytes(displayName, buffer, pos);
             return pos;
@@ -303,8 +303,8 @@ abstract class CVSymbolSubrecord {
 
         @Override
         public String toString() {
-            return String.format("S_GPROC32   name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x seg:offset=0x%x:0x%x type=0x%x flags=0x%x)", displayName, symbolName, pparent, debugStart, debugEnd,
-                            proclen, segment, offset, typeIndex, flags);
+            return String.format("S_GPROC32   name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x seg:offset=0x%x:0x%x type=0x%x flags=0x%x)", displayName, symbolName, pparent, debugStart,
+                            debugEnd, proclen, segment, offset, typeIndex, flags);
         }
     }
 
