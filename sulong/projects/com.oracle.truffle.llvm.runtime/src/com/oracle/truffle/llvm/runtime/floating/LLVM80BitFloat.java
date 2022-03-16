@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,11 +34,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
@@ -48,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 import java.util.Arrays;
 
@@ -576,9 +581,13 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
         private final String name;
+        private final String functionName;
+        @CompilerDirectives.CompilationFinal protected ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
 
         public LLVM80BitFloatNativeCallNode(String name) {
             this.name = name;
+            this.functionName = "__sulong_fp80_" + name;
+            this.nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
         }
 
         protected WellKnownNativeFunctionNode createFunction() {
@@ -587,15 +596,13 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
             if (nativeContextExtension == null) {
                 return null;
             } else {
-                return nativeContextExtension.getWellKnownNativeFunction("__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
+                return nativeContextExtension.getWellKnownNativeFunction(functionName, "(UINT64,UINT64,UINT64):VOID");
             }
         }
 
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
 
         @Specialization(guards = "function != null")
-        @GenerateAOT.Exclude // TODO: it could be AOT-included as long as we could somehow pre-load
-                             // the function
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") WellKnownNativeFunctionNode function) {
             LLVMLanguage language = LLVMLanguage.get(this);
@@ -617,9 +624,33 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
             }
         }
 
-        @Specialization
+        @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
+        protected LLVM80BitFloat doCallAOT(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary) {
+            NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(LLVMContext.get(this));
+            LLVMLanguage language = LLVMLanguage.get(this);
+            LLVMMemory memory = language.getLLVMMemory();
+            LLVMNativePointer mem = memory.allocateMemory(this, 3 * 16);
+            LLVMNativePointer ptrX = mem;
+            LLVMNativePointer ptrY = ptrX.increment(16);
+            LLVMNativePointer ptrZ = ptrY.increment(16);
+            memory.put80BitFloat(this, ptrX, x);
+            memory.put80BitFloat(this, ptrY, y);
+            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = nativeContextExtension.getWellKnownNativeFunctionAndSignature(functionName, "(UINT64,UINT64,UINT64):VOID");
+            try {
+                signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
+                LLVM80BitFloat z = memory.get80BitFloat(this, ptrZ);
+                return z;
+            } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            } finally {
+                memory.free(this, mem);
+            }
+        }
+
         @TruffleBoundary
-        protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y) {
+        @Specialization(guards = "nativeCtxExtKey == null")
+        protected LLVM80BitFloat doCallNoNative(LLVM80BitFloat x, LLVM80BitFloat y) {
             // imprecise workaround for cases in which NFI isn't available
             double xDouble = x.getDoubleValue();
             double yDouble = y.getDoubleValue();
