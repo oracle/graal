@@ -143,6 +143,9 @@ public final class LLVMContext {
     private final DynamicLinkChain dynamicLinkChainForScopes;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
+    // TODO: only temporary
+    private final Map<Thread, LLVMPointer> tls = new ConcurrentHashMap<>();
+
     // The symbol table for storing the symbols of each bitcode library.
     // These two fields contain the same value, but have different CompilationFinal annotations:
     @CompilationFinal(dimensions = 2) private LLVMPointer[][] symbolFinalStorage;
@@ -920,6 +923,25 @@ public final class LLVMContext {
             symbolAssumptions[index] = null;
             symbolDynamicStorage[index] = null;
         }
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getThreadLocalStorage() {
+        LLVMPointer value = tls.get(Thread.currentThread());
+        if (value != null) {
+            return value;
+        }
+        return LLVMNativePointer.createNull();
+    }
+
+    @TruffleBoundary
+    public void setThreadLocalStorage(LLVMPointer value) {
+        tls.put(Thread.currentThread(), value);
+    }
+
+    @TruffleBoundary
+    public void setThreadLocalStorage(LLVMPointer value, Thread thread) {
+        tls.put(thread, value);
     }
 
     @TruffleBoundary

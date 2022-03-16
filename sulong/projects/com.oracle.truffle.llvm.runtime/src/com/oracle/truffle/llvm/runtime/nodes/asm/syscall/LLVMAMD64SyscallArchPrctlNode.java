@@ -63,13 +63,20 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS: {
                 LLVMThreadLocalValue value = getLanguage().contextThreadLocal.get(Thread.currentThread());
-                assert value != null;
+                if (value == null) {
+                    getContext().setThreadLocalStorage(addr);
+                    return 0;
+                }
                 value.setThreadLocalStorage(addr);
                 return 0;
             }
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
                 LLVMThreadLocalValue value = getLanguage().contextThreadLocal.get(Thread.currentThread());
-                assert value != null;
+                if (value == null) {
+                    LLVMPointer tls = getContext().getThreadLocalStorage();
+                    store.executeWithTarget(addr, tls);
+                    return 0;
+                }
                 store.executeWithTarget(addr, value.getThreadLocalStorage());
                 return 0;
             }
