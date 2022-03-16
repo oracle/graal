@@ -75,10 +75,11 @@ public class ReportUtils {
      * @param extension the extension of the report
      * @param reporter a consumer that writes to a PrintWriter
      */
-    public static void report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+    public static String report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
         String fileName = timeStampedFileName(name, extension);
         Path reportDir = Paths.get(path);
         reportImpl(description, reportDir, fileName, reporter);
+        return fileName;
     }
 
     public static String timeStampedFileName(String name, String extension) {

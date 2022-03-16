@@ -31,7 +31,12 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.invokeComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -55,6 +61,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -69,16 +76,24 @@ public final class CallTreePrinter {
         CallTreePrinter printer = new CallTreePrinter(bb);
         printer.buildCallTree();
 
-        ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
-                        printer::printMethods);
+        AnalysisReportsOptions.CallTreeType optionValue = AnalysisReportsOptions.PrintAnalysisCallTreeType.getValue(bb.getOptions());
+        switch (optionValue) {
+            case TXT:
+                ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
+                                printer::printMethods);
+                break;
+            case CSV:
+                printCsvFiles(printer.methodToNode, reportsPath, reportName);
+                break;
+            default:
+                throw AnalysisError.shouldNotReachHere("Unsupported CallTreeType " + optionValue + " used with PrintAnalysisCallTreeType option");
+        }
         ReportUtils.report("list of used methods", reportsPath, "used_methods_" + reportName, "txt",
                         printer::printUsedMethods);
         ReportUtils.report("list of used classes", reportsPath, "used_classes_" + reportName, "txt",
                         writer -> printer.printClasses(writer, false));
         ReportUtils.report("list of used packages", reportsPath, "used_packages_" + reportName, "txt",
                         writer -> printer.printClasses(writer, true));
-
-        printCsvFiles(printer.methodToNode, reportsPath, reportName);
     }
 
     interface Node {
@@ -333,26 +348,34 @@ public final class CallTreePrinter {
             walkNodes(node, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId);
         }
 
-        ReportUtils.report("call tree for vm entry point", reportsPath, "csv_call_tree_vm_" + reportName, "csv",
-                        CallTreePrinter::printVMEntryPoint);
+        String msgPrefix = "call tree csv file for ";
+        toCsvFile(msgPrefix + "vm entry point", reportsPath, "call_tree_vm", reportName, CallTreePrinter::printVMEntryPoint);
+        toCsvFile(msgPrefix + "methods", reportsPath, "call_tree_methods", reportName, writer -> printMethodNodes(methodToNode.values(), writer));
+        toCsvFile(msgPrefix + "virtual methods", reportsPath, "call_tree_virtual_methods", reportName, writer -> printVirtualNodes(virtualNodes, writer));
+        toCsvFile(msgPrefix + "entry points", reportsPath, "call_tree_entry_points", reportName, writer -> printEntryPointIds(entryPointIds, writer));
+        toCsvFile(msgPrefix + "direct edges", reportsPath, "call_tree_direct_edges", reportName, writer -> printBciEdges(directEdges, writer));
+        toCsvFile(msgPrefix + "overriden by edges", reportsPath, "call_tree_override_by_edges", reportName, writer -> printNonBciEdges(overridenByEdges, writer));
+        toCsvFile(msgPrefix + "virtual edges", reportsPath, "call_tree_virtual_edges", reportName, writer -> printBciEdges(virtualEdges, writer));
+    }
 
-        ReportUtils.report("call tree for methods", reportsPath, "csv_call_tree_methods_" + reportName, "csv",
-                        writer -> printMethodNodes(methodToNode.values(), writer));
+    private static void toCsvFile(String description, String reportsPath, String prefix, String reportName, Consumer<PrintWriter> reporter) {
+        final String name = prefix + "_" + reportName;
+        final String csvFile = ReportUtils.report(description, reportsPath, name, "csv", reporter);
+        final Path csvLink = Paths.get(reportsPath).resolve(prefix + ".csv");
 
-        ReportUtils.report("call tree for virtual methods", reportsPath, "csv_call_tree_virtual_methods_" + reportName, "csv",
-                        writer -> printVirtualNodes(virtualNodes, writer));
+        if (Files.exists(csvLink, LinkOption.NOFOLLOW_LINKS)) {
+            try {
+                Files.delete(csvLink);
+            } catch (IOException e) {
+                // Ignore
+            }
+        }
 
-        ReportUtils.report("call tree for entry points", reportsPath, "csv_call_tree_entry_points_" + reportName, "csv",
-                        writer -> printEntryPointIds(entryPointIds, writer));
-
-        ReportUtils.report("call tree for direct edges", reportsPath, "csv_call_tree_direct_edges_" + reportName, "csv",
-                        writer -> printBciEdges(directEdges, writer));
-
-        ReportUtils.report("call tree for overriden by edges", reportsPath, "csv_call_tree_override_by_edges_" + reportName, "csv",
-                        writer -> printNonBciEdges(overridenByEdges, writer));
-
-        ReportUtils.report("call tree for virtual edges", reportsPath, "csv_call_tree_virtual_edges_" + reportName, "csv",
-                        writer -> printBciEdges(virtualEdges, writer));
+        try {
+            Files.createSymbolicLink(csvLink, Paths.get(csvFile));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void printVMEntryPoint(PrintWriter writer) {
