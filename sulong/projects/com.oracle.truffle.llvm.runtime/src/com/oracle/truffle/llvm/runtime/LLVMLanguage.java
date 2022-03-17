@@ -506,11 +506,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         public Object execute(VirtualFrame frame) {
             assert frame.getArguments().length > 0;
             assert frame.getArguments()[0] instanceof LLVMThreadLocalValue;
-            executeWithValue((LLVMThreadLocalValue) frame.getArguments()[0]);
-            return null;
-        }
-
-        public void executeWithValue(LLVMThreadLocalValue threadLocalValue) {
+            LLVMThreadLocalValue threadLocalValue = ((LLVMThreadLocalValue) frame.getArguments()[0]);
             if (threadLocalValue != null) {
                 synchronized (threadLocalValue) {
                     if (!threadLocalValue.isFinalized()) {
@@ -523,6 +519,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     }
                 }
             }
+            return null;
         }
     }
 
@@ -566,7 +563,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private CallTarget freeGlobalBlocks;
-    private FreeThreadLocalGlobalsNode freeThreadLocalGlobalBlock;
+    private CallTarget freeThreadLocalGlobalBlock;
 
     protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
@@ -574,11 +571,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             freeGlobalBlocks = new FreeGlobalsNode(this, nodeFactory).getCallTarget();
         }
         if (freeThreadLocalGlobalBlock == null) {
-            freeThreadLocalGlobalBlock = new FreeThreadLocalGlobalsNode(this, nodeFactory);
+            freeThreadLocalGlobalBlock = new FreeThreadLocalGlobalsNode(this, nodeFactory).getCallTarget();
         }
     }
 
-    public FreeThreadLocalGlobalsNode getFreeThreadLocalGlobalBlock() {
+    public CallTarget getFreeThreadLocalGlobalBlock() {
         return freeThreadLocalGlobalBlock;
     }
 
@@ -716,7 +713,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
         if (!threadLocalValue.isFinalized()) {
             if (freeThreadLocalGlobalBlock != null) {
-                freeThreadLocalGlobalBlock.executeWithValue(threadLocalValue);
+                freeThreadLocalGlobalBlock.call(threadLocalValue);
             }
         }
     }

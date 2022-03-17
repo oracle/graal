@@ -530,7 +530,7 @@ public final class LLVMContext {
             for (Thread thread : allRunningThreads) {
                 LLVMThreadLocalValue value = language.contextThreadLocal.get(this.getEnv().getContext(), thread);
                 if (value != null) {
-                    language.getFreeThreadLocalGlobalBlock().executeWithValue(value);
+                    language.getFreeThreadLocalGlobalBlock().call(value);
                 }
             }
         }
