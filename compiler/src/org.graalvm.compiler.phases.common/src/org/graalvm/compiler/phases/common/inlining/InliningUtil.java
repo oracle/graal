@@ -1034,7 +1034,7 @@ public class InliningUtil extends ValueMergeUtil {
         assert frameState != null;
         ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        profilingInfo.getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 
