@@ -47,25 +47,29 @@ import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Represents java.lang.StringLatin1.inflate methods.
+ *
+ * <ul>
+ * <li>void inflate(byte[] src, int srcOff, char[] dst, int dstOff, int len)
+ * <li>void inflate(byte[] src, int srcOff, byte[] dst, int dstOff, int len)
+ * </ul>
+ */
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN, cyclesRationale = "depends on length")
 public final class StringLatin1InflateNode extends FixedWithNextNode
                 implements LIRLowerable, MultiMemoryKill, MemoryAccess {
 
     public static final NodeClass<StringLatin1InflateNode> TYPE = NodeClass.create(StringLatin1InflateNode.class);
 
+    /** pointer to src[srcOff]. */
     @Input private ValueNode src;
+    /** pointer to dst[dstOff]. */
     @Input private ValueNode dst;
     @Input private ValueNode len;
 
     private final JavaKind writeKind;
 
     @OptionalInput(Memory) private MemoryKill lla; // Last access location registered.
-
-    // java.lang.StringLatin1.inflate([BI[CII)V
-    //
-    // void inflate(byte[] src, int src_indx, char[] dst, int dst_indx, int len)
-    //
-    // Represented as a graph node by:
 
     public StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind writeKind) {
         super(TYPE, StampFactory.forVoid());
