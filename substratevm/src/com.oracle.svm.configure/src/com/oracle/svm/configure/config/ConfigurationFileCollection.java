@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -39,11 +38,6 @@ import java.util.function.Predicate;
 
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.configure.ProxyConfigurationParser;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
 public class ConfigurationFileCollection {
     public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
@@ -128,26 +122,26 @@ public class ConfigurationFileCollection {
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(types.getCondition(), new ArrayList<>(types.getElement())), true), exceptionHandler);
+        loadConfig(proxyConfigPaths, proxyConfiguration.createParser(), exceptionHandler);
         return proxyConfiguration;
     }
 
     public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
                     Function<IOException, Exception> exceptionHandler) throws Exception {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
-        loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add, true), exceptionHandler);
+        loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(), exceptionHandler);
         return predefinedClassesConfiguration;
     }
 
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration), true), exceptionHandler);
+        loadConfig(resourceConfigPaths, resourceConfiguration.createParser(), exceptionHandler);
         return resourceConfiguration;
     }
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(serializationConfiguration, true), exceptionHandler);
+        loadConfig(serializationConfigPaths, serializationConfiguration.createParser(), exceptionHandler);
         return serializationConfiguration;
     }
 
@@ -160,7 +154,7 @@ public class ConfigurationFileCollection {
 
     private static TypeConfiguration loadTypeConfig(Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
         TypeConfiguration configuration = new TypeConfiguration();
-        loadConfig(uris, new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(configuration)), exceptionHandler);
+        loadConfig(uris, configuration.createParser(), exceptionHandler);
         return configuration;
     }
 

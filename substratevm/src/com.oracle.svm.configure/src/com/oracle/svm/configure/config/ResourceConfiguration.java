@@ -35,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -238,6 +240,11 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         writer.quote("bundles").append(':');
         JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w));
         writer.unindent().newline().append('}');
+    }
+
+    @Override
+    public ConfigurationParser createParser() {
+        return new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(this), true);
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {

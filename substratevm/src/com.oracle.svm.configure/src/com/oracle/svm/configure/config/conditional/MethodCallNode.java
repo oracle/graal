@@ -22,11 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.configwithorigins;
-
-import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.configure.ConfigurationFile;
+package com.oracle.svm.configure.config.conditional;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -35,6 +31,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
+import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.core.configure.ConfigurationFile;
+
 public final class MethodCallNode {
 
     public final MethodInfo methodInfo;
@@ -42,14 +41,18 @@ public final class MethodCallNode {
     public final Map<MethodInfo, MethodCallNode> calledMethods;
     public volatile ConfigurationSet configuration;
 
-    MethodCallNode(MethodInfo methodInfo, MethodCallNode parent) {
+    private MethodCallNode(MethodInfo methodInfo, MethodCallNode parent) {
         this.methodInfo = methodInfo;
         this.parent = parent;
         this.calledMethods = new ConcurrentHashMap<>();
         this.configuration = null;
     }
 
-    static MethodCallNode createRoot() {
+    public MethodCallNode getOrCreateChild(MethodInfo info) {
+        return calledMethods.computeIfAbsent(info, key -> new MethodCallNode(key, this));
+    }
+
+    public static MethodCallNode createRoot() {
         return new MethodCallNode(null, null);
     }
 
@@ -73,11 +76,27 @@ public final class MethodCallNode {
         return nodesWithNonEmptyConfig;
     }
 
+    public void mergeSubTree(MethodCallNode other, boolean mergeConfig) {
+        if (mergeConfig) {
+            configuration = getConfiguration().copyAndMerge(other.getConfiguration());
+        }
+        for (MethodCallNode child : other.calledMethods.values()) {
+            calledMethods.compute(child.methodInfo, (key, value) -> {
+                if (value == null) {
+                    return child;
+                } else {
+                    value.mergeSubTree(child, true);
+                    return value;
+                }
+            });
+        }
+    }
+
     public boolean hasConfig(ConfigurationFile configFile) {
         return configuration != null && !configuration.getConfiguration(configFile).isEmpty();
     }
 
-    void traceEntry(TraceProcessor processor, Map<String, Object> entry) {
+    public ConfigurationSet getConfiguration() {
         if (configuration == null) {
             synchronized (this) {
                 if (configuration == null) {
@@ -85,7 +104,7 @@ public final class MethodCallNode {
                 }
             }
         }
-        processor.processEntry(entry, configuration);
+        return configuration;
     }
 
     public void visitPostOrder(Consumer<MethodCallNode> methodCallNodeConsumer) {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.configwithorigins;
+package com.oracle.svm.configure.config.conditional;
 
 import java.util.Objects;
 
@@ -32,12 +32,12 @@ public class MethodInfo {
 
     private final String name;
     private final String signature;
-    private final ClassInfo declaringClass;
+    private final String declaringClassName;
 
-    MethodInfo(String name, String signature, ClassInfo declaringClass) {
+    public MethodInfo(String name, String signature, String declaringClassName) {
         this.name = name;
         this.signature = signature;
-        this.declaringClass = declaringClass;
+        this.declaringClassName = declaringClassName;
     }
 
     public String getJavaMethodNameAndSignature() {
@@ -58,7 +58,15 @@ public class MethodInfo {
     }
 
     public String getJavaDeclaringClassName() {
-        return declaringClass.className;
+        return declaringClassName;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getSignature() {
+        return signature;
     }
 
     @Override
@@ -70,12 +78,12 @@ public class MethodInfo {
             return false;
         }
         MethodInfo that = (MethodInfo) o;
-        return name.equals(that.name) && signature.equals(that.signature) && declaringClass.equals(that.declaringClass);
+        return name.equals(that.name) && signature.equals(that.signature) && declaringClassName.equals(that.declaringClassName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, signature, declaringClass);
+        return Objects.hash(name, signature, declaringClassName);
     }
 
     @Override

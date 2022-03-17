@@ -25,13 +25,12 @@
 package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
-import java.io.Reader;
+import java.net.URI;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public class FilterConfigurationParser extends ConfigurationParser {
@@ -93,8 +92,7 @@ public class FilterConfigurationParser extends ConfigurationParser {
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        Object json = new JSONParser(reader).parse();
+    public void parseAndRegister(Object json, URI origin) {
         filter.parseFromJson(asMap(json, "First level of document must be an object"));
     }
 
