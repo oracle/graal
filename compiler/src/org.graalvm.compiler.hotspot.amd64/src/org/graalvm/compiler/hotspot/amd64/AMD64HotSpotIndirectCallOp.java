@@ -48,8 +48,8 @@ import jdk.vm.ci.meta.Value;
  * be in RBX.
  */
 @Opcode("CALL_INDIRECT")
-final class AMD64IndirectCallOp extends IndirectCallOp {
-    public static final LIRInstructionClass<AMD64IndirectCallOp> TYPE = LIRInstructionClass.create(AMD64IndirectCallOp.class);
+final class AMD64HotSpotIndirectCallOp extends IndirectCallOp {
+    public static final LIRInstructionClass<AMD64HotSpotIndirectCallOp> TYPE = LIRInstructionClass.create(AMD64HotSpotIndirectCallOp.class);
 
     /**
      * Vtable stubs expect the metaspace Method in RBX.
@@ -58,7 +58,7 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
 
     @Use({REG}) protected Value metaspaceMethod;
 
-    AMD64IndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
+    AMD64HotSpotIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
         super(TYPE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
     }
@@ -66,12 +66,10 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
-            crb.recordMark(HotSpotMarkId.INLINE_INVOKE);
-            Register callReg = asRegister(targetAddress);
-            assert !callReg.equals(METHOD);
-            AMD64Call.indirectCall(crb, masm, callReg, callTarget, state);
-        }
+        Register callReg = asRegister(targetAddress);
+        assert !callReg.equals(METHOD);
+        int beforeCall = AMD64Call.indirectCall(crb, masm, callReg, callTarget, state, true);
+        crb.recordMark(beforeCall, HotSpotMarkId.INLINE_INVOKE);
     }
 
     @Override
