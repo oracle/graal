@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -31,6 +33,8 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -65,6 +69,7 @@ import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
@@ -114,15 +119,32 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
         return 2.0f;
     }
 
+    /**
+     * Maximum iterations for speculative guard movement. Certain guard patterns may require
+     * speculative guard movement to first move guard a to make guard b also loop
+     * invariant/participate in an induction variable.
+     */
+    private static final int MAX_ITERATIONS = 3;
+
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
         try {
             if (!graph.getGuardsStage().allowsFloatingGuards()) {
                 return;
             }
-            LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-            loops.detectCountedLoops();
-            performSpeculativeGuardMovement(context, graph, loops);
+            EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
+            for (int i = 0; i < MAX_ITERATIONS; i++) {
+                try (NodeEventScope news = graph.trackNodeEvents(change)) {
+                    LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
+                    loops.detectCountedLoops();
+                    performSpeculativeGuardMovement(context, graph, loops);
+                }
+                if (change.getNodes().isEmpty()) {
+                    break;
+                }
+                change.getNodes().clear();
+            }
         } finally {
             graph.setAfterStage(StageFlag.GUARD_MOVEMENT);
         }
