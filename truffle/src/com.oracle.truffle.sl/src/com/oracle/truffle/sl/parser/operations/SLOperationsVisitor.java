@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.operation.OperationLabel;
@@ -98,10 +99,21 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     }
 
     @Override
+    public Void visit(ParseTree tree) {
+        b.beginSourceSection(tree.getSourceInterval().a);
+        super.visit(tree);
+        b.endSourceSection(tree.getSourceInterval().length());
+
+        return null;
+    }
+
+    @Override
     public Void visitFunction(FunctionContext ctx) {
         assert scope == null;
-
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
+
+        b.beginSource(source);
+        b.setNodeName(name.toJavaStringUncached());
 
         scope = new LexicalScope(null);
 
@@ -114,7 +126,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             b.endStoreLocal();
         }
 
-        visitBlock(ctx.body);
+        visit(ctx.body);
 
         b.beginReturn();
         b.emitConstObject(SLNull.SINGLETON);
@@ -124,8 +136,10 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         assert scope == null;
 
-        OperationsNode node = b.build();
+        b.endSource();
 
+        OperationsNode node = b.build();
+        System.out.println(node.dump());
         functions.put(name, node.getCallTarget());
 
         return null;
@@ -182,8 +196,12 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         b.emitLabel(continueLabel);
         b.beginWhile();
-        visitExpression(ctx.condition);
-        visitBlock(ctx.body);
+
+        b.beginSLConvertToBoolean();
+        visit(ctx.condition);
+        b.endSLConvertToBoolean();
+
+        visit(ctx.body);
         b.endWhile();
         b.emitLabel(breakLabel);
 
@@ -197,14 +215,23 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     public Void visitIf_statement(If_statementContext ctx) {
         if (ctx.alt == null) {
             b.beginIfThen();
-            visitExpression(ctx.condition);
-            visitBlock(ctx.then);
+
+            b.beginSLConvertToBoolean();
+            visit(ctx.condition);
+            b.endSLConvertToBoolean();
+
+            visit(ctx.then);
             b.endIfThen();
         } else {
             b.beginIfThenElse();
-            visitExpression(ctx.condition);
-            visitBlock(ctx.then);
-            visitBlock(ctx.alt);
+
+            b.beginSLConvertToBoolean();
+            visit(ctx.condition);
+            b.endSLConvertToBoolean();
+
+            visit(ctx.then);
+
+            visit(ctx.alt);
             b.endIfThenElse();
         }
 
@@ -218,7 +245,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         if (ctx.expression() == null) {
             b.emitConstObject(SLNull.SINGLETON);
         } else {
-            visitExpression(ctx.expression());
+            visit(ctx.expression());
         }
 
         b.endReturn();
@@ -246,7 +273,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void logicalOrMiddle(int localIdx) {
         b.endStoreLocal();
         b.beginConditional();
+        b.beginSLConvertToBoolean();
         b.emitLoadLocal(localIdx);
+        b.endSLConvertToBoolean();
         b.emitLoadLocal(localIdx);
     }
 
@@ -303,7 +332,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void logicalAndMiddle(int localIdx) {
         b.endStoreLocal();
         b.beginConditional();
+        b.beginSLConvertToBoolean();
         b.emitLoadLocal(localIdx);
+        b.endSLConvertToBoolean();
     }
 
     private void logicalAndEnd(int localIdx) {
@@ -513,7 +544,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             buildMemberExpressionRead(ident, members, idx - 1);
 
             for (ExpressionContext arg : lastCtx.expression()) {
-                visitExpression(arg);
+                visit(arg);
             }
 
             b.endSLInvokeOperation();
@@ -521,7 +552,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             MemberAssignContext lastCtx = (MemberAssignContext) last;
 
             buildMemberExpressionWriteBefore(ident, members, idx - 1);
-            visitExpression(lastCtx.expression());
+            visit(lastCtx.expression());
             buildMemberExpressionWriteAfter(ident, members, idx - 1);
         } else if (last instanceof MemberFieldContext) {
             MemberFieldContext lastCtx = (MemberFieldContext) last;
@@ -535,7 +566,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
             b.beginSLReadPropertyOperation();
             buildMemberExpressionRead(ident, members, idx - 1);
-            visitExpression(lastCtx.expression());
+            visit(lastCtx.expression());
             b.endSLReadPropertyOperation();
         }
     }
@@ -575,7 +606,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
             b.beginSLWritePropertyOperation();
             buildMemberExpressionRead(ident, members, idx - 1);
-            visitExpression(lastCtx.expression());
+            visit(lastCtx.expression());
         }
     }
 

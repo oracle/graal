@@ -2,6 +2,8 @@ package com.oracle.truffle.api.operation.test.example;
 
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -11,6 +13,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -108,11 +112,11 @@ public class TestOperationsParserTest {
 
     @Test
     public void testSourceInfo() {
-        String src = "(return (add 1 2))";
+        String src = "  (return (add 1 2))";
         new Tester(src).then(node -> {
             SourceSection ss = node.getSourceSection();
             Assert.assertNotNull(ss);
-            Assert.assertEquals(0, ss.getCharIndex());
+            Assert.assertEquals(2, ss.getCharIndex());
             Assert.assertEquals(src.length(), ss.getCharEndIndex());
         });
     }
@@ -137,10 +141,13 @@ public class TestOperationsParserTest {
 
         Context context = Context.create("test");
         try {
-            context.eval("test", src);
+            context.eval(org.graalvm.polyglot.Source.newBuilder("test", src, "test").build());
             fail();
         } catch (PolyglotException ex) {
-            Assert.assertEquals(4, ex.getStackTrace()[0].getLineNumber());
+            List<TruffleStackTraceElement> els = TruffleStackTrace.getStackTrace(ex.asHostException());
+            System.out.println(els);
+        } catch (IOException e) {
+            Assert.fail();
         }
     }
 }

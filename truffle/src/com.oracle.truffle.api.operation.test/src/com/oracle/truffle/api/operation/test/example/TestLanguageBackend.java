@@ -14,6 +14,7 @@ class TestLanguageBackend {
     }
 
     public void buildRoot(Source source, TestLanguageAst ast) {
+        b.setNodeName("TestFunction");
         b.beginSource(source);
         build(ast);
         b.endSource();

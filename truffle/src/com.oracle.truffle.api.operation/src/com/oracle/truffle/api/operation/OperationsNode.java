@@ -1,7 +1,7 @@
 package com.oracle.truffle.api.operation;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -28,17 +28,29 @@ public abstract class OperationsNode extends RootNode {
 
     protected final int maxStack;
     protected final int maxLocals;
+    protected final String nodeName;
 
     protected final Object parseContext;
     protected int[][] sourceInfo;
     protected Source[] sources;
     protected final int buildOrder;
+    protected final boolean isInternal;
 
-    protected OperationsNode(TruffleLanguage<?> language, Object parseContext, int[][] sourceInfo, Source[] sources, int buildOrder, int maxStack, int maxLocals) {
+    protected OperationsNode(
+                    TruffleLanguage<?> language,
+                    Object parseContext,
+                    String nodeName,
+                    boolean isInternal,
+                    int[][] sourceInfo,
+                    Source[] sources,
+                    int buildOrder,
+                    int maxStack,
+                    int maxLocals) {
         super(language, createFrameDescriptor(maxStack, maxLocals));
-        // System.out.printf(" new operations node %d %d\n", maxStack, maxLocals);
         this.buildOrder = buildOrder;
         this.parseContext = parseContext;
+        this.nodeName = nodeName;
+        this.isInternal = isInternal;
         this.sourceInfo = sourceInfo;
         this.sources = sources;
         this.maxLocals = maxLocals;
@@ -47,9 +59,17 @@ public abstract class OperationsNode extends RootNode {
 
     public abstract Object continueAt(VirtualFrame frame, OperationLabel index);
 
-// public abstract OperationsNode copyUninitialized();
-
     public abstract String dump();
+
+    @Override
+    public String getName() {
+        return nodeName;
+    }
+
+    @Override
+    public boolean isInternal() {
+        return isInternal;
+    }
 
     public NodeTrace getNodeTrace() {
         throw new UnsupportedOperationException("Operations not built with tracing");
@@ -93,5 +113,16 @@ public abstract class OperationsNode extends RootNode {
         } else {
             return sources[sourceInfo[3][i - 1]].createSection(sourceInfo[1][i - 1], sourceInfo[2][i - 1]);
         }
+    }
+
+    @Override
+    public boolean isCaptureFramesForTrace() {
+        return true;
+    }
+
+    @Override
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        int bci = element.getFrame().getInt(BCI_SLOT);
+        return new OperationsStackTraceElement(element.getTarget().getRootNode(), getSourceSectionAtBci(bci));
     }
 }

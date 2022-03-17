@@ -237,19 +237,19 @@ public class TruffleTypes {
     public static final String NodeTrace_Name = "com.oracle.truffle.api.operation.tracing.NodeTrace";
     public static final String InstructionTrace_Name = "com.oracle.truffle.api.operation.tracing.InstructionTrace";
 
-    public final DeclaredType BuilderExceptionHandler = c.getDeclaredType(BuilderExceptionHandler_Name);
-    public final DeclaredType BuilderOperationLabel = c.getDeclaredType(BuilderOperationLabel_Name);
-    public final DeclaredType BuilderSourceInfo = c.getDeclaredType(BuilderSourceInfo_Name);
-    public final DeclaredType GenerateOperations = c.getDeclaredType(GenerateOperations_Name);
-    public final DeclaredType Operation = c.getDeclaredType(Operation_Name);
-    public final DeclaredType OperationLabel = c.getDeclaredType(OperationLabel_Name);
-    public final DeclaredType OperationsBuilder = c.getDeclaredType(OperationsBuilder_Name);
-    public final DeclaredType OperationsConstantPool = c.getDeclaredType(OperationsConstantPool_Name);
-    public final DeclaredType OperationsNode = c.getDeclaredType(OperationsNode_Name);
-    public final DeclaredType Special = c.getDeclaredType(Special_Name);
-    public final DeclaredType Variadic = c.getDeclaredType(Variadic_Name);
-    public final DeclaredType NodeTrace = c.getDeclaredType(NodeTrace_Name);
-    public final DeclaredType InstructionTrace = c.getDeclaredType(InstructionTrace_Name);
+    public final DeclaredType BuilderExceptionHandler = c.getDeclaredTypeOptional(BuilderExceptionHandler_Name);
+    public final DeclaredType BuilderOperationLabel = c.getDeclaredTypeOptional(BuilderOperationLabel_Name);
+    public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
+    public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
+    public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
+    public final DeclaredType OperationLabel = c.getDeclaredTypeOptional(OperationLabel_Name);
+    public final DeclaredType OperationsBuilder = c.getDeclaredTypeOptional(OperationsBuilder_Name);
+    public final DeclaredType OperationsConstantPool = c.getDeclaredTypeOptional(OperationsConstantPool_Name);
+    public final DeclaredType OperationsNode = c.getDeclaredTypeOptional(OperationsNode_Name);
+    public final DeclaredType Special = c.getDeclaredTypeOptional(Special_Name);
+    public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
+    public final DeclaredType NodeTrace = c.getDeclaredTypeOptional(NodeTrace_Name);
+    public final DeclaredType InstructionTrace = c.getDeclaredTypeOptional(InstructionTrace_Name);
 
     // Library API
     public static final String EagerExportProvider_Name = "com.oracle.truffle.api.library.EagerExportProvider";

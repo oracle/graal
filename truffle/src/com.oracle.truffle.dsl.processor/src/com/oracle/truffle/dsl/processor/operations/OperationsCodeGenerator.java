@@ -311,6 +311,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startStatement().startCall(fldTypeStack.getName(), "add").string("0").end(2);
             b.startStatement().startCall(fldExceptionHandlers.getName(), "clear").end(2);
             b.startStatement().startCall(fldConstPool.getName(), "reset").end(2);
+            b.startAssign("nodeName").string("null").end();
+            b.startAssign("isInternal").string("false").end();
 
             b.startIf().variable(fldKeepSourceInfo).end();
             b.startBlock();
@@ -350,6 +352,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startNew(builderBytecodeNodeType.asType());
             b.variable(fldLanguage);
             b.variable(fldParseContext);
+            b.string("nodeName");
+            b.string("isInternal");
             b.string("sourceInfo");
             b.string("sources");
             b.variable(fldNodeNumber);

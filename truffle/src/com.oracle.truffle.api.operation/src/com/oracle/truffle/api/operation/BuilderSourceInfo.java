@@ -17,18 +17,17 @@ public class BuilderSourceInfo {
     private ArrayList<Source> sourceList = new ArrayList<>();
 
     private static class SourceData {
-        final int bci;
         final int start;
         int length;
         final int sourceIndex;
 
-        public SourceData(int bci, int start, int sourceIndex) {
-            this.bci = bci;
+        public SourceData(int start, int sourceIndex) {
             this.start = start;
             this.sourceIndex = sourceIndex;
         }
     }
 
+    private ArrayList<Integer> bciList = new ArrayList<>();
     private ArrayList<SourceData> sourceDataList = new ArrayList<>();
     private Stack<SourceData> sourceDataStack = new Stack<>();
 
@@ -39,6 +38,7 @@ public class BuilderSourceInfo {
         sourceStack.clear();
         sourceDataList.clear();
         sourceDataStack.clear();
+        bciList.clear();
     }
 
     public void beginSource(int bci, Source src) {
@@ -68,8 +68,9 @@ public class BuilderSourceInfo {
 
     public void beginSourceSection(int bci, int start) {
 
-        SourceData data = new SourceData(bci, start, currentSource);
+        SourceData data = new SourceData(start, currentSource);
 
+        bciList.add(bci);
         sourceDataList.add(data);
         sourceDataStack.add(data);
     }
@@ -80,21 +81,14 @@ public class BuilderSourceInfo {
 
         SourceData prev;
         if (sourceDataStack.isEmpty()) {
-            prev = new SourceData(bci, -1, currentSource);
+            prev = new SourceData(-1, currentSource);
             prev.length = -1;
         } else {
             prev = sourceDataStack.peek();
         }
 
+        bciList.add(bci);
         sourceDataList.add(prev);
-    }
-
-    private static int[] copyList(ArrayList<Integer> list) {
-        int[] result = new int[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            result[i] = list.get(i);
-        }
-        return result;
     }
 
     public Source[] buildSource() {
@@ -109,16 +103,21 @@ public class BuilderSourceInfo {
             throw new IllegalStateException("not all source sections ended");
         }
 
-        int[] bciArray = new int[sourceDataList.size()];
-        int[] startArray = new int[sourceDataList.size()];
-        int[] lengthArray = new int[sourceDataList.size()];
-        int[] sourceIndexArray = new int[sourceDataList.size()];
+        int size = bciList.size();
+
+        int[] bciArray = new int[size];
+        int[] startArray = new int[size];
+        int[] lengthArray = new int[size];
+        int[] sourceIndexArray = new int[size];
 
         int index = 0;
         int lastBci = -1;
         boolean isFirst = true;
 
-        for (SourceData data : sourceDataList) {
+        for (int i = 0; i < size; i++) {
+            SourceData data = sourceDataList.get(i);
+            int curBci = bciList.get(i);
+
             if (data.start == NOT_AVAILABLE && isFirst) {
                 // skip over all leading -1s
                 continue;
@@ -126,18 +125,18 @@ public class BuilderSourceInfo {
 
             isFirst = false;
 
-            if (data.bci == lastBci && index > 1) {
+            if (curBci == lastBci && index > 1) {
                 // overwrite if same bci
                 index--;
             }
 
-            bciArray[index] = data.bci;
+            bciArray[index] = curBci;
             startArray[index] = data.start;
             lengthArray[index] = data.length;
             sourceIndexArray[index] = data.sourceIndex;
 
             index++;
-            lastBci = data.bci;
+            lastBci = curBci;
         }
 
         return new int[][]{

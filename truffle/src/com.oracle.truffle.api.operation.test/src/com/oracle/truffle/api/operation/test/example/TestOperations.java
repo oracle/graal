@@ -5,14 +5,25 @@ import java.util.List;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
-import com.oracle.truffle.api.operation.OperationsBuilder;
+import com.oracle.truffle.api.operation.Special;
+import com.oracle.truffle.api.operation.Special.SpecialKind;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.source.Source;
 
 @GenerateOperations
 public class TestOperations {
+
+    private static class TestException extends AbstractTruffleException {
+
+        private static final long serialVersionUID = -9143719084054578413L;
+
+        public TestException(String string, Node node) {
+            super(string, node);
+        }
+    }
 
     public static void parse(TestLanguage language, Source source, TestOperationsBuilder builder) {
         TestLanguageAst ast = new TestLanguageParser(source).parse();
@@ -52,45 +63,10 @@ public class TestOperations {
     }
 
     @Operation
-    static class AddToListOperation {
-        @Specialization
-        public static void bla(List a1, Object a2) {
-            a1.add(a2);
-        }
-    }
-
-    @Operation
     static class ThrowOperation {
         @Specialization
-        public static void perform() {
-            throw new AbstractTruffleException("haha") {
-            };
-        }
-    }
-
-    @Operation
-    static class IsThruthyOperation {
-        @Specialization
-        public static boolean testString(String s) {
-            return s != null && s.length() > 0;
-        }
-
-        @Specialization
-        public static boolean testLong(long l) {
-            return l > 0;
-        }
-    }
-
-    @Operation
-    static class IsFalseyOperation {
-        @Specialization
-        public static boolean testString(String s) {
-            return s == null || s.length() == 0;
-        }
-
-        @Specialization
-        public static boolean testLong(long l) {
-            return l <= 0;
+        public static void perform(@Special(SpecialKind.NODE) Node node) {
+            throw new TestException("fail", node);
         }
     }
 }
