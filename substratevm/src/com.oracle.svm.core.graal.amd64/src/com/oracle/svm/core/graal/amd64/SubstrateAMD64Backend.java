@@ -351,14 +351,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    private static void vzeroupper(LIRGeneratorTool gen, Value[] arguments) {
+    private void vzeroupper(LIRGeneratorTool gen, Value[] arguments, LIRFrameState callState) {
         if (!SubstrateUtil.HOSTED) {
             boolean mayContainFP = /* hsLinkage.mayContainFP(); */ true;
             boolean isInImage = /* !hsLinkage.isCompiledStub(); */ true;
             AMD64 arch = (AMD64) gen.target().arch;
             var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildTimeCPUFeatures();
             var runtimeCPUFeatures = arch.getFeatures();
-            if (!hostedCPUFeatures.contains(AVX) && runtimeCPUFeatures.contains(AVX) && mayContainFP && isInImage) {
+            if (!hostedCPUFeatures.contains(AVX) && runtimeCPUFeatures.contains(AVX) && mayContainFP && isInImage && !isRuntimeToRuntimeCall(callState)) {
                 /*
                  * If the target may contain FP ops, and it is not compiled by us, we may have an
                  * AVX-SSE transition.
@@ -443,8 +443,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-            // TODO(je) vzeroupper
-            vzeroupper(this, arguments);
+            vzeroupper(this, arguments, info);
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
@@ -725,8 +724,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            // TODO(je) vzeroupper
-            vzeroupper(getLIRGeneratorTool(), parameters);
+            vzeroupper(getLIRGeneratorTool(), parameters, callState);
             append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
@@ -744,7 +742,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             // TODO(je) vzeroupper
-            vzeroupper(getLIRGeneratorTool(), parameters);
+            vzeroupper(getLIRGeneratorTool(), parameters, callState);
             append(new SubstrateAMD64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
