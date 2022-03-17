@@ -73,7 +73,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         classLoaderSupport.classpath().stream().distinct().forEach(classpathFile -> {
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport.excludeDirectories);
+                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector);
                 }
@@ -83,7 +83,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         });
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, Set<Path> excludeDirectories) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector, AbstractNativeImageClassLoaderSupport support) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -105,8 +105,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 if (collector.isIncluded(null, relativeFilePath)) {
                     matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
                 }
-                try (Stream<Path> files = Files.list(entry)) {
-                    files.filter(Predicate.not(excludeDirectories::contains)).forEach(queue::push);
+                try (Stream<Path> pathStream = Files.list(entry)) {
+                    Stream<Path> filtered = pathStream;
+                    if (support.excludeDirectoriesRoot.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    }
+                    filtered.forEach(queue::push);
                 }
             } else {
                 if (collector.isIncluded(null, relativeFilePath)) {

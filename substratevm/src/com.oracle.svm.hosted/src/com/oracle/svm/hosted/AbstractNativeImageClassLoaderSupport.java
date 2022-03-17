@@ -199,12 +199,12 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         }
     }
 
+    final Path excludeDirectoriesRoot = Paths.get("/");
     final Set<Path> excludeDirectories = getExcludeDirectories();
 
-    private static Set<Path> getExcludeDirectories() {
-        Path root = Paths.get("/");
+    private Set<Path> getExcludeDirectories() {
         return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                        .map(root::resolve).collect(Collectors.toUnmodifiableSet());
+                        .map(excludeDirectoriesRoot::resolve).collect(Collectors.toUnmodifiableSet());
     }
 
     protected class ClassInit {
