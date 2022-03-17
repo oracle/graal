@@ -532,9 +532,6 @@ public final class LLVMContext {
                 if (value != null) {
                     language.getFreeThreadLocalGlobalBlock().executeWithValue(value);
                 }
-                if (isInitialized()) {
-                    getThreadingStack().freeStack(language.getLLVMMemory(), thread);
-                }
             }
         }
     }
@@ -586,6 +583,10 @@ public final class LLVMContext {
 
     void dispose() {
         printNativeCallStatistics();
+
+        if (isInitialized()) {
+            getThreadingStack().freeMainStack(language.getLLVMMemory());
+        }
 
         // free the space which might have been when putting pointer-type globals into native memory
         for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
