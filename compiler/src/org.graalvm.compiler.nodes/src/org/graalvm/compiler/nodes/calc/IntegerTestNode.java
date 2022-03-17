@@ -76,6 +76,12 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
                 return LogicConstantNode.contradiction();
             }
+            // this node is effectively and & operation x & y == 0 so part of the canonicalizations
+            // for AndNode apply
+            ValueNode newLHS = AndNode.eliminateRedundantBinaryArithmeticOp(forX, yStamp);
+            if (newLHS != null) {
+                return new IntegerTestNode(newLHS, forY);
+            }
         }
         return null;
     }
