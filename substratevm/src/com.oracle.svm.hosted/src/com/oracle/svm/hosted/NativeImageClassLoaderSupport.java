@@ -334,9 +334,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     void processClassLoaderOptions() {
-        OptionValues optionValues = getParsedHostedOptions();
-
-        processOption(optionValues, NativeImageClassLoaderOptions.AddExports).forEach(val -> {
+        processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);
             } else {
@@ -345,7 +343,7 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
-        processOption(optionValues, NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
+        processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addOpensToAllUnnamed(val.module, val.packageName);
             } else {
@@ -354,7 +352,7 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
-        processOption(optionValues, NativeImageClassLoaderOptions.AddReads).forEach(val -> {
+        processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 implAddReadsAllUnnamed(val.module);
             } else {
@@ -410,7 +408,7 @@ public class NativeImageClassLoaderSupport {
         return allLayers;
     }
 
-    private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionValues parsedHostedOptions, OptionKey<LocatableMultiOptionValue.Strings> specificOption) {
+    private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionKey<LocatableMultiOptionValue.Strings> specificOption) {
         Stream<Pair<String, OptionOrigin>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
         Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
             try {
