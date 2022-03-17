@@ -27,6 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -41,6 +42,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -190,6 +194,26 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
         initCheck.execute(klass);
         return StaticObject.createForeignException(klass.getMeta(), value, interop);
+    }
+
+    static boolean instanceOfThrowable(Klass klass) {
+        Meta meta = klass.getMeta();
+        return meta.java_lang_Throwable.isAssignableFrom(klass);
+    }
+
+    /**
+     * Partial workaround for GR-28998.
+     *
+     * <p>
+     * Can receive any {@link AbstractTruffleException} carrier here, but Espresso only knows how to
+     * unwrap its own carrier {@link EspressoException}. The carrier exception is unwrapped iff the
+     * target class either the same or a subclass of {@link Throwable}, otherwise the carrier
+     * identity is preserved.
+     */
+    @Specialization(guards = {"instanceOfThrowable(klass)", "!isForeignException(klass)"})
+    Object doEspressoExceptionCarrier(EspressoException value, ObjectKlass klass,
+                    @Cached ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
+        return toEspressoNode.execute(value.getGuestException(), klass);
     }
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!isForeignException(klass)", "!klass.isAbstract()"})

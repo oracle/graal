@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
@@ -218,6 +219,38 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to String");
             }
+        }
+
+        static boolean isEspressoExceptionCarrier(Object object) {
+            return object instanceof EspressoException;
+        }
+
+        static boolean instanceOfThrowable(EspressoContext context, Klass klass) {
+            return context.getMeta().java_lang_Throwable.isAssignableFrom(klass);
+        }
+
+        /**
+         * Partial workaround for GR-28998.
+         *
+         * <p>
+         * Can receive any {@link AbstractTruffleException} carrier here, but Espresso only knows
+         * how to unwrap its own carrier {@link EspressoException}. The carrier exception is
+         * unwrapped iff the target class either the same or a subclass of {@link Throwable},
+         * otherwise the carrier identity is preserved.
+         */
+        @Specialization(guards = {
+                        "instanceOfThrowable(context, targetKlass)",
+                        "!isForeignException(context, targetKlass)",
+                        "value.isForeignObject()",
+                        "isEspressoExceptionCarrier(value.rawForeignObject())"
+        })
+        StaticObject doEspressoExceptionCarrier(EspressoContext context,
+                        @SuppressWarnings("unused") Klass targetKlass,
+                        @JavaType(Object.class) StaticObject value,
+                        @Cached CastImpl cast) {
+            EspressoException carrier = (EspressoException) value.rawForeignObject();
+            StaticObject guestException = carrier.getGuestException();
+            return cast.execute(context, targetKlass, guestException);
         }
 
         @Specialization(guards = {
