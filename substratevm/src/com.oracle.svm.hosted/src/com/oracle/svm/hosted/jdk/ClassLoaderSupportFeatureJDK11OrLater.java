@@ -50,14 +50,15 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderSupportImpl;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.util.ModuleSupport;
 
 final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
 
-    private final NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport;
+    private final NativeImageClassLoaderSupport classLoaderSupport;
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImplJDK11OrLater(NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport) {
+    ClassLoaderSupportImplJDK11OrLater(NativeImageClassLoaderSupport classLoaderSupport) {
         super(classLoaderSupport);
         this.classLoaderSupport = classLoaderSupport;
         packageToModules = new HashMap<>();
@@ -67,7 +68,7 @@ final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
         /* Collect resources from modules */
-        NativeImageClassLoaderSupportJDK11OrLater.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
+        NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
                         .flatMap(moduleLayer -> moduleLayer.configuration().modules().stream())
                         .forEach(resolvedModule -> collectResourceFromModule(resourceCollector, resolvedModule));
 
@@ -136,8 +137,8 @@ final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
         return bundleName.substring(0, classSep);
     }
 
-    private void buildPackageToModulesMap(NativeImageClassLoaderSupportJDK11OrLater cls) {
-        for (ModuleLayer layer : NativeImageClassLoaderSupportJDK11OrLater.allLayers(cls.moduleLayerForImageBuild)) {
+    private void buildPackageToModulesMap(NativeImageClassLoaderSupport cls) {
+        for (ModuleLayer layer : NativeImageClassLoaderSupport.allLayers(cls.moduleLayerForImageBuild)) {
             for (Module module : layer.modules()) {
                 for (String packageName : module.getDescriptor().packages()) {
                     addToPackageNameModules(module, packageName);
@@ -169,6 +170,6 @@ public class ClassLoaderSupportFeatureJDK11OrLater implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImplJDK11OrLater((NativeImageClassLoaderSupportJDK11OrLater) access.getImageClassLoader().classLoaderSupport));
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImplJDK11OrLater(access.getImageClassLoader().classLoaderSupport));
     }
 }

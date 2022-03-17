@@ -59,7 +59,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -190,9 +189,9 @@ public final class ModuleLayerFeature implements Feature {
     private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
-         * {@link NativeImageClassLoaderSupportJDK11OrLater}.
+         * {@link NativeImageClassLoaderSupport}.
          */
-        NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport = (NativeImageClassLoaderSupportJDK11OrLater) cl.classLoaderSupport;
+        NativeImageClassLoaderSupport classLoaderSupport = cl.classLoaderSupport;
         ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);

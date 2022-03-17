@@ -55,10 +55,10 @@ import com.oracle.svm.core.util.UserError;
 
 public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
-    private final AbstractNativeImageClassLoaderSupport classLoaderSupport;
+    private final NativeImageClassLoaderSupport classLoaderSupport;
     private final ClassLoader imageClassLoader;
 
-    protected ClassLoaderSupportImpl(AbstractNativeImageClassLoaderSupport classLoaderSupport) {
+    protected ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         this.imageClassLoader = classLoaderSupport.getClassLoader();
     }
