@@ -894,7 +894,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             case '(':
                 parens();
                 break;
-            case '^':
+            case '^': // TODO
                 // (?:^|(?<=[\n])(?=.))
                 pushGroup(); // (?:
                 addCaret(); // ^
