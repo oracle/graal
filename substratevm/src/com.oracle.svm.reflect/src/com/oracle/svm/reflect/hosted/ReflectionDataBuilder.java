@@ -530,7 +530,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static void registerTypesForAnnotation(DuringAnalysisAccessImpl access, Annotation annotation) {
-        registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
+        if (annotation != null) {
+            registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
+        }
     }
 
     @SuppressWarnings("unchecked")
