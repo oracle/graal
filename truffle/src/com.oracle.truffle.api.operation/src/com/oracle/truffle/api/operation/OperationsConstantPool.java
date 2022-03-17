@@ -19,6 +19,12 @@ public class OperationsConstantPool {
         return idx;
     }
 
+    public synchronized void reset() {
+        this.frozen = false;
+        this.values = new ArrayList<>();
+        this.frozenValues = null;
+    }
+
     public synchronized void freeze() {
         frozen = true;
     }

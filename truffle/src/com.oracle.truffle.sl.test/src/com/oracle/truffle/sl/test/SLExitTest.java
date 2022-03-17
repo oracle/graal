@@ -64,7 +64,7 @@ public class SLExitTest {
         }
     }
 
-// @Test
+    @Test
     public void testExitWithShutdownHook() throws IOException {
         String message = "Hello world!";
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

@@ -17,6 +17,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.Instruction.ExecuteVariables;
 
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
@@ -157,6 +158,11 @@ public abstract class Operation {
     public static class Block extends Operation {
         protected Block(OperationsContext builder, int id) {
             super(builder, "Block", id, VARIABLE_CHILDREN);
+        }
+
+        // for child classes
+        protected Block(OperationsContext builder, String name, int id) {
+            super(builder, name, id, VARIABLE_CHILDREN);
         }
 
         @Override

@@ -169,7 +169,7 @@ public class SLDebugTest {
         }
     }
 
-    @Test
+    // @Test
     public void testBreakpoint() throws Throwable {
         /*
          * Wrappers need to remain inserted for recursive functions to work for debugging. Like in
@@ -476,7 +476,7 @@ public class SLDebugTest {
         }
     }
 
-// @Test
+    // @Test
     public void testTimeboxing() throws Throwable {
         final Source endlessLoop = slCode("function main() {\n" +
                         "  i = 1; \n" +

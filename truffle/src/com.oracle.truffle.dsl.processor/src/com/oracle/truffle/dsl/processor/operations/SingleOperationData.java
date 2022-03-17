@@ -26,15 +26,17 @@ public class SingleOperationData extends Template {
     static enum ParameterKind {
         STACK_VALUE,
         VARIADIC,
-        THE_NODE;
+        SPECIAL_NODE,
+        SPECIAL_ARGUMENTS;
 
         public TypeMirror getParameterType(ProcessorContext context, TruffleTypes types) {
             switch (this) {
                 case STACK_VALUE:
                     return context.getType(Object.class);
                 case VARIADIC:
+                case SPECIAL_ARGUMENTS:
                     return new ArrayCodeTypeMirror(context.getType(Object.class));
-                case THE_NODE:
+                case SPECIAL_NODE:
                     return types.Node;
                 default:
                     throw new IllegalArgumentException("" + this);

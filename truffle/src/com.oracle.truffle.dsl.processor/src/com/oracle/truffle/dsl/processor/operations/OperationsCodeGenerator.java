@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.Stack;
+import java.util.function.Supplier;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -33,11 +34,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private ProcessorContext context;
     private OperationsData m;
 
+    private final Set<Modifier> MOD_PUBLIC = Set.of(Modifier.PUBLIC);
     private final Set<Modifier> MOD_PUBLIC_ABSTRACT = Set.of(Modifier.PUBLIC, Modifier.ABSTRACT);
     private final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
-    private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
-    private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
     private final Set<Modifier> MOD_PRIVATE = Set.of(Modifier.PRIVATE);
+    private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
+    private final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
+    private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+
+    private static final boolean FLAG_NODE_AST_PRINTING = false;
 
     /**
      * Creates the builder class itself. This class only contains abstract methods, the builder
@@ -86,19 +91,80 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilder.add(typBuilderImpl);
 
         {
-            CodeExecutableElement metCreateBuilder = new CodeExecutableElement(MOD_PUBLIC_STATIC, typBuilder.asType(), "createBuilder");
-            CodeTreeBuilder b = metCreateBuilder.getBuilder();
-            b.startReturn().startNew(typBuilderImpl.asType()).end(2);
-            typBuilder.add(metCreateBuilder);
+            CodeVariableElement parLanguage = new CodeVariableElement(m.getLanguageType(), "language");
+            CodeVariableElement parParseContext = new CodeVariableElement(m.getParseContextType(), "context");
+            CodeExecutableElement metParse = new CodeExecutableElement(MOD_PUBLIC_STATIC, arrayOf(types.OperationsNode), "parse");
+            metParse.addParameter(parLanguage);
+            metParse.addParameter(parParseContext);
+            typBuilder.add(metParse);
+
+            CodeTreeBuilder b = metParse.getBuilder();
+            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parParseContext, false));
+            b.startStatement().startStaticCall(m.getParseMethod());
+            b.variable(parLanguage);
+            b.variable(parParseContext);
+            b.string("builder");
+            b.end(2);
+            b.startReturn().startCall("builder", "collect").end(2);
+        }
+
+        {
+            CodeVariableElement parLanguage = new CodeVariableElement(m.getLanguageType(), "language");
+            CodeVariableElement parParseContext = new CodeVariableElement(m.getParseContextType(), "context");
+            CodeExecutableElement metParse = new CodeExecutableElement(MOD_PUBLIC_STATIC, arrayOf(types.OperationsNode), "parseWithSourceInfo");
+            metParse.addParameter(parLanguage);
+            metParse.addParameter(parParseContext);
+            typBuilder.add(metParse);
+
+            CodeTreeBuilder b = metParse.getBuilder();
+            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parParseContext, true));
+            b.startStatement().startStaticCall(m.getParseMethod());
+            b.variable(parLanguage);
+            b.variable(parParseContext);
+            b.string("builder");
+            b.end(2);
+            b.startReturn().startCall("builder", "collect").end(2);
         }
 
         return typBuilder;
+    }
+
+    private static CodeTree createCreateBuilder(CodeTypeElement typBuilderImpl, CodeVariableElement language, CodeVariableElement parseContext, boolean withSourceInfo) {
+        return CodeTreeBuilder.createBuilder().startNew(typBuilderImpl.asType()).variable(language).variable(parseContext).string("" + withSourceInfo).end().build();
     }
 
     private CodeTypeElement createBuilderImpl(CodeTypeElement typBuilder) {
         String simpleName = m.getTemplateType().getSimpleName() + "BuilderImpl";
         CodeTypeElement typBuilderImpl = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, typBuilder.asType());
         typBuilderImpl.setEnclosingElement(typBuilder);
+
+        CodeVariableElement fldLanguage = new CodeVariableElement(MOD_PRIVATE_FINAL, m.getLanguageType(), "language");
+        typBuilderImpl.add(fldLanguage);
+
+        CodeVariableElement fldParseContext = new CodeVariableElement(MOD_PRIVATE_FINAL, m.getParseContextType(), "parseContext");
+        typBuilderImpl.add(fldParseContext);
+
+        CodeVariableElement fldKeepSourceInfo = new CodeVariableElement(MOD_PRIVATE_FINAL, context.getType(boolean.class), "keepSourceInfo");
+        typBuilderImpl.add(fldKeepSourceInfo);
+
+        CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), typBuilderImpl);
+        typBuilderImpl.add(ctor);
+
+        CodeVariableElement fldSourceInfoList = new CodeVariableElement(MOD_PRIVATE_FINAL, types.BuilderSourceInfo, "sourceInfoBuilder");
+        typBuilderImpl.add(fldSourceInfoList);
+
+        {
+            CodeTreeBuilder b = ctor.getBuilder();
+
+            b.startIf().variable(fldKeepSourceInfo).end();
+            b.startBlock();
+            b.startAssign(fldSourceInfoList).startNew(types.BuilderSourceInfo).end(2);
+            b.end().startElseBlock();
+            b.startAssign(fldSourceInfoList).string("null").end();
+            b.end();
+
+            b.statement("reset()");
+        }
 
         DeclaredType byteArraySupportType = context.getDeclaredType("com.oracle.truffle.api.memory.ByteArraySupport");
         CodeVariableElement leBytes = new CodeVariableElement(
@@ -126,7 +192,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement builderLabelImplType = createBuilderLabelImpl(simpleName + "Label");
         typBuilderImpl.add(builderLabelImplType);
 
-        CodeTypeElement builderBytecodeNodeType = createBuilderBytecodeNode(simpleName + "BytecodeNode");
+        CodeTypeElement builderBytecodeNodeType = createBuilderBytecodeNode(typBuilderImpl, simpleName + "BytecodeNode");
         typBuilderImpl.add(builderBytecodeNodeType);
 
         CodeVariableElement fldChildIndexStack = createStackField("childIndex", context.getType(Integer.class));
@@ -148,8 +214,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("new byte[65535]");
         }
 
-        CodeVariableElement fldIndent = new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "indent");
-        typBuilderImpl.add(fldIndent);
+        CodeVariableElement fldIndent = null;
+        if (FLAG_NODE_AST_PRINTING) {
+            fldIndent = new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "indent");
+            typBuilderImpl.add(fldIndent);
+        }
 
         CodeVariableElement fldExceptionHandlers = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), types.BuilderExceptionHandler), "exceptionHandlers");
         typBuilderImpl.add(fldExceptionHandlers);
@@ -173,11 +242,41 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement fldBci = new CodeVariableElement(context.getType(int.class), "bci");
         typBuilderImpl.add(fldBci);
 
+        CodeVariableElement fldBuiltNodes = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), types.OperationsNode), "builtNodes");
+        typBuilderImpl.add(fldBuiltNodes);
+        {
+            CodeTreeBuilder b = fldBuiltNodes.createInitBuilder();
+            b.string("new ArrayList<>()");
+        }
+
+        CodeVariableElement fldNodeNumber = new CodeVariableElement(context.getType(int.class), "nodeNumber");
+        typBuilderImpl.add(fldNodeNumber);
+        {
+            CodeTreeBuilder b = fldNodeNumber.createInitBuilder();
+            b.string("0");
+        }
+
         CodeVariableElement fldConstPool = new CodeVariableElement(types.OperationsConstantPool, "constPool");
         typBuilderImpl.add(fldConstPool);
         {
             CodeTreeBuilder b = fldConstPool.createInitBuilder();
             b.startNew(types.OperationsConstantPool).end();
+        }
+
+        {
+            CodeVariableElement parLanguage = new CodeVariableElement(m.getLanguageType(), "language");
+            CodeVariableElement parContext = new CodeVariableElement(m.getParseContextType(), "context");
+            CodeVariableElement parBuildOrder = new CodeVariableElement(context.getType(int.class), "buildOrder");
+            CodeExecutableElement metParse = new CodeExecutableElement(MOD_PRIVATE_STATIC, types.OperationsNode, "reparse");
+            metParse.addParameter(parLanguage);
+            metParse.addParameter(parContext);
+            metParse.addParameter(parBuildOrder);
+            typBuilderImpl.add(metParse);
+
+            CodeTreeBuilder b = metParse.getBuilder();
+            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parContext, true));
+            b.startStatement().startStaticCall(m.getParseMethod()).variable(parLanguage).variable(parContext).string("builder").end(2);
+            b.startReturn().startCall("builder", "collect").end().string("[").variable(parBuildOrder).string("]").end();
         }
 
         BuilderVariables vars = new BuilderVariables();
@@ -202,17 +301,27 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startAssign(fldCurStack).string("0").end();
             b.startAssign(fldMaxStack).string("0").end();
             b.startAssign(fldMaxLocal).string("-1").end();
-            b.startAssign(fldIndent).string("0").end();
+            if (FLAG_NODE_AST_PRINTING) {
+                b.startAssign(fldIndent).string("0").end();
+            }
             b.startStatement().startCall(fldChildIndexStack.getName(), "clear").end(2);
             b.startStatement().startCall(fldChildIndexStack.getName(), "add").string("0").end(2);
             b.startStatement().startCall(fldArgumentStack.getName(), "clear").end(2);
             b.startStatement().startCall(fldTypeStack.getName(), "clear").end(2);
             b.startStatement().startCall(fldTypeStack.getName(), "add").string("0").end(2);
             b.startStatement().startCall(fldExceptionHandlers.getName(), "clear").end(2);
+            b.startStatement().startCall(fldConstPool.getName(), "reset").end(2);
+
+            b.startIf().variable(fldKeepSourceInfo).end();
+            b.startBlock();
+            {
+                b.startStatement().startCall(fldSourceInfoList, "reset").end(2);
+            }
+            b.end();
         }
 
         {
-            CodeExecutableElement mBuild = new CodeExecutableElement(Set.of(Modifier.PUBLIC), types.OperationsNode, "build");
+            CodeExecutableElement mBuild = new CodeExecutableElement(MOD_PUBLIC, types.OperationsNode, "build");
             typBuilderImpl.add(mBuild);
 
             CodeTreeBuilder b = mBuild.getBuilder();
@@ -226,36 +335,138 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.declaration("Object[]", "cpCopy", "constPool.getValues()");
             b.declaration("BuilderExceptionHandler[]", "handlers", fldExceptionHandlers.getName() + ".toArray(new BuilderExceptionHandler[0])");
 
-            b.startReturn();
+            b.declaration("int[][]", "sourceInfo", "null");
+            b.declaration("Source[]", "sources", "null");
+
+            b.startIf().variable(fldKeepSourceInfo).end();
+            b.startBlock();
+
+            b.startAssign("sourceInfo").startCall(fldSourceInfoList, "build").end(2);
+            b.startAssign("sources").startCall(fldSourceInfoList, "buildSource").end(2);
+
+            b.end();
+
+            b.startAssign("OperationsNode result");
             b.startNew(builderBytecodeNodeType.asType());
+            b.variable(fldLanguage);
+            b.variable(fldParseContext);
+            b.string("sourceInfo");
+            b.string("sources");
+            b.variable(fldNodeNumber);
             b.variable(fldMaxStack);
             b.startGroup().variable(fldMaxLocal).string(" + 1").end();
             b.string("bcCopy");
             b.string("cpCopy");
             b.string("handlers");
+
             b.end(2);
 
+            b.startStatement();
+            b.startCall(fldBuiltNodes, "add");
+            b.string("result");
+            b.end(2);
+
+            b.startStatement().variable(fldNodeNumber).string("++").end();
+
+            b.statement("reset()");
+
+            b.startReturn().string("result").end();
         }
 
         {
-            CodeExecutableElement ctor = new CodeExecutableElement(null, simpleName);
+            CodeExecutableElement mCollect = GeneratorUtils.overrideImplement(types.OperationsBuilder, "collect");
+            typBuilderImpl.add(mCollect);
 
-            CodeTreeBuilder builder = ctor.getBuilder();
-            builder.startStatement().string("reset()").end();
+            CodeTreeBuilder b = mCollect.getBuilder();
 
-            typBuilderImpl.add(ctor);
+            b.startReturn();
+            b.startCall(fldBuiltNodes, "toArray");
+            b.string("new OperationsNode[builtNodes.size()]");
+            b.end(2);
         }
 
         {
             CodeExecutableElement mCreateLabel = GeneratorUtils.overrideImplement(typBuilder, "createLabel");
+            typBuilderImpl.add(mCreateLabel);
 
             CodeTreeBuilder b = mCreateLabel.getBuilder();
             b.startReturn();
             b.startNew(builderLabelImplType.asType());
             b.end(2);
-
-            typBuilderImpl.add(mCreateLabel);
         }
+
+        {
+            CodeVariableElement pSupplier = new CodeVariableElement(generic(context.getTypeElement(Supplier.class), types.Source), "supplier");
+            CodeExecutableElement mBeginSource = new CodeExecutableElement(MOD_PUBLIC, context.getType(void.class), "beginSource");
+            mBeginSource.addParameter(pSupplier);
+            typBuilderImpl.add(mBeginSource);
+
+            CodeTreeBuilder b = mBeginSource.getBuilder();
+            b.startIf().string("!").variable(fldKeepSourceInfo).end();
+            b.startBlock().returnStatement().end();
+
+            b.startStatement().startCall("beginSource").startCall(pSupplier, "get").end(3);
+        }
+
+        {
+            CodeVariableElement pSource = new CodeVariableElement(types.Source, "source");
+            CodeExecutableElement mBeginSource = new CodeExecutableElement(MOD_PUBLIC, context.getType(void.class), "beginSource");
+            mBeginSource.addParameter(pSource);
+            typBuilderImpl.add(mBeginSource);
+
+            CodeTreeBuilder b = mBeginSource.getBuilder();
+            b.startIf().string("!").variable(fldKeepSourceInfo).end();
+            b.startBlock().returnStatement().end();
+
+            b.startStatement().startCall(fldSourceInfoList, "beginSource");
+            b.variable(fldBci);
+            b.variable(pSource);
+            b.end(2);
+
+        }
+
+        {
+            CodeExecutableElement mEndSource = new CodeExecutableElement(MOD_PUBLIC, context.getType(void.class), "endSource");
+            typBuilderImpl.add(mEndSource);
+
+            CodeTreeBuilder b = mEndSource.getBuilder();
+            b.startIf().string("!").variable(fldKeepSourceInfo).end();
+            b.startBlock().returnStatement().end();
+
+            b.startStatement().startCall(fldSourceInfoList, "endSource");
+            b.variable(fldBci);
+            b.end(2);
+        }
+
+        {
+            CodeExecutableElement mBeginSourceSection = GeneratorUtils.overrideImplement(types.OperationsBuilder, "beginSourceSection");
+            typBuilderImpl.add(mBeginSourceSection);
+
+            CodeTreeBuilder b = mBeginSourceSection.getBuilder();
+            b.startIf().string("!").variable(fldKeepSourceInfo).end();
+            b.startBlock().returnStatement().end();
+
+            b.startStatement().startCall(fldSourceInfoList, "beginSourceSection");
+            b.variable(fldBci);
+            b.string("start");
+            b.end(2);
+        }
+
+        {
+            CodeExecutableElement mEndSourceSection = GeneratorUtils.overrideImplement(types.OperationsBuilder, "endSourceSection");
+            typBuilderImpl.add(mEndSourceSection);
+
+            CodeTreeBuilder b = mEndSourceSection.getBuilder();
+            b.startIf().string("!").variable(fldKeepSourceInfo).end();
+            b.startBlock().returnStatement().end();
+
+            b.startStatement().startCall(fldSourceInfoList, "endSourceSection");
+            b.variable(fldBci);
+            b.string("length");
+            b.end(2);
+
+        }
+
         {
             CodeExecutableElement mBeforeChild = new CodeExecutableElement(context.getType(void.class), "doBeforeChild");
             CodeTreeBuilder b = mBeforeChild.getBuilder();
@@ -361,8 +572,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     CodeTreeBuilder b = metBegin.getBuilder();
 
-                    b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + "\")");
-                    b.statement("indent++");
+                    if (FLAG_NODE_AST_PRINTING) {
+                        b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + "\")");
+                        b.statement("indent++");
+                    }
 
                     b.statement("doBeforeChild()");
 
@@ -395,8 +608,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     // doAfterChild();
                     CodeTreeBuilder b = metEnd.getBuilder();
-                    b.statement("System.out.print(\")\")");
-                    b.statement("indent--");
+
+                    if (FLAG_NODE_AST_PRINTING) {
+                        b.statement("System.out.print(\")\")");
+                        b.statement("indent--");
+                    }
 
                     b.declaration("int", "typePop", CodeTreeBuilder.createBuilder().startCall(fldTypeStack, "pop").end().build());
 
@@ -475,7 +691,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 {
                     CodeTreeBuilder b = metEmit.getBuilder();
 
-                    b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
+                    if (FLAG_NODE_AST_PRINTING) {
+                        b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
+                    }
 
                     vars.arguments = metEmit.getParameters().toArray(new CodeVariableElement[0]);
 
@@ -503,16 +721,19 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
      * Create the BytecodeNode type. This type contains the bytecode interpreter, and is the
      * executable Truffle node.
      */
-    private CodeTypeElement createBuilderBytecodeNode(String simpleName) {
+    private CodeTypeElement createBuilderBytecodeNode(CodeTypeElement typBuilderImpl, String simpleName) {
         CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, simpleName, types.OperationsNode);
 
         CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(byte.class)), "bc");
+        GeneratorUtils.addCompilationFinalAnnotation(fldBc, 1);
         builderBytecodeNodeType.add(fldBc);
 
         CodeVariableElement fldConsts = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(Object.class)), "consts");
+        GeneratorUtils.addCompilationFinalAnnotation(fldConsts, 1);
         builderBytecodeNodeType.add(fldConsts);
 
         CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
+        GeneratorUtils.addCompilationFinalAnnotation(fldHandlers, 1);
         builderBytecodeNodeType.add(fldHandlers);
 
         CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
@@ -576,8 +797,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
             CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
+            CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(byte.class), "curOpcode");
 
-            b.declaration("int", varSp.getName(), "maxLocals");
+            b.declaration("int", varSp.getName(), "maxLocals + VALUES_OFFSET");
             b.declaration("int", varBci.getName(), "0");
 
             CodeVariableElement varReturnValue = new CodeVariableElement(context.getType(Object.class), "returnValue");
@@ -595,18 +817,24 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             vars.sp = varSp;
             vars.returnValue = varReturnValue;
 
+            b.declaration("byte", varCurOpcode.getName(), CodeTreeBuilder.singleString("bc[bci]"));
+
             b.startTryBlock();
+
+            b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
+            b.tree(GeneratorUtils.createPartialEvaluationConstant(varSp));
+            b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
             if (m.isTracing()) {
                 b.startStatement().variable(fldHitCount).string("[bci]++").end();
             }
 
-            b.startIf().variable(varSp).string(" < maxLocals").end();
+            b.startIf().variable(varSp).string(" < maxLocals + VALUES_OFFSET").end();
             b.startBlock();
             b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
             b.end();
 
-            b.startSwitch().string("bc[bci]").end();
+            b.startSwitch().string("curOpcode").end();
             b.startBlock();
 
             for (Instruction op : m.getInstructions()) {
@@ -632,7 +860,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startIf().string("handler.startBci > bci || handler.endBci <= bci").end();
             b.statement("continue");
 
-            b.startAssign(varSp).string("handler.startStack").end();
+            b.startAssign(varSp).string("handler.startStack + VALUES_OFFSET").end();
             // TODO check exception type (?)
 
             b.tree(OperationGeneratorUtils.createWriteLocal(vars,
@@ -719,6 +947,19 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.end();
 
+            b.startIf().string("sourceInfo != null").end();
+            b.startBlock();
+            {
+                b.statement("sb.append(\"Source info:\\n\")");
+                b.startFor().string("int i = 0; i < sourceInfo[0].length; i++").end();
+                b.startBlock();
+
+                b.statement("sb.append(String.format(\"  bci=%04x, offset=%d, length=%d\\n\", sourceInfo[0][i], sourceInfo[1][i], sourceInfo[2][i]))");
+
+                b.end();
+            }
+            b.end();
+
             b.startReturn().string("sb.toString()").end();
 
             vars.bci = null;
@@ -780,7 +1021,55 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             vars.bci = null;
         }
 
+        {
+            CodeExecutableElement mGetSourceSection = GeneratorUtils.overrideImplement(types.Node, "getSourceSection");
+            builderBytecodeNodeType.add(mGetSourceSection);
+
+            CodeTreeBuilder b = mGetSourceSection.createBuilder();
+
+            b.tree(createReparseCheck(typBuilderImpl));
+
+            b.startReturn();
+            b.startCall("this", "getSourceSectionImpl");
+            b.end(2);
+        }
+
+        {
+            CodeVariableElement pBci = new CodeVariableElement(context.getType(int.class), "bci");
+            CodeExecutableElement mGetSourceSectionAtBci = GeneratorUtils.overrideImplement(types.OperationsNode, "getSourceSectionAtBci");
+            builderBytecodeNodeType.add(mGetSourceSectionAtBci);
+
+            CodeTreeBuilder b = mGetSourceSectionAtBci.createBuilder();
+
+            b.tree(createReparseCheck(typBuilderImpl));
+
+            b.startReturn();
+            b.startCall("this", "getSourceSectionAtBciImpl");
+            b.variable(pBci);
+            b.end(2);
+        }
+
         return builderBytecodeNodeType;
+    }
+
+    private CodeTree createReparseCheck(CodeTypeElement typBuilderImpl) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startIf().string("sourceInfo == null").end();
+        b.startBlock();
+        {
+            b.startStatement();
+            b.string("OperationsNode reparsed = ");
+            b.startStaticCall(typBuilderImpl.asType(), "reparse");
+            b.startCall("getLanguage").typeLiteral(m.getLanguageType()).end();
+            b.startGroup().cast(m.getParseContextType()).string("parseContext").end();
+            b.string("buildOrder");
+            b.end(2);
+
+            b.statement("copyReparsedInfo(reparsed)");
+        }
+        b.end();
+
+        return b.build();
     }
 
     /**

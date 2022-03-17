@@ -7,10 +7,18 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
+import com.oracle.truffle.api.operation.OperationsBuilder;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.source.Source;
 
 @GenerateOperations
 public class TestOperations {
+
+    public static void parse(TestLanguage language, Source source, TestOperationsBuilder builder) {
+        TestLanguageAst ast = new TestLanguageParser(source).parse();
+        System.out.println(ast);
+        new TestLanguageBackend(builder).buildRoot(source, ast);
+    }
 
     @Operation
     static class AddOperation {

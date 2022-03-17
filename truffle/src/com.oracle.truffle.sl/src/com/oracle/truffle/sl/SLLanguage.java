@@ -65,6 +65,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
@@ -103,11 +104,11 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
+import com.oracle.truffle.sl.operations.SLOperations;
+import com.oracle.truffle.sl.operations.SLOperationsBuilder;
 import com.oracle.truffle.sl.parser.SLNodeFactory;
 import com.oracle.truffle.sl.parser.SimpleLanguageLexer;
 import com.oracle.truffle.sl.parser.SimpleLanguageParser;
-import com.oracle.truffle.sl.parser.operations.SLNodeVisitor;
-import com.oracle.truffle.sl.parser.operations.SLOperationsVisitor;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -304,15 +305,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
+
         Source source = request.getSource();
-        Map<TruffleString, RootCallTarget> functions;
         /*
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
          * the functions with the SLContext happens lazily in SLEvalRootNode.
          */
-        if (request.getArgumentNames().isEmpty()) {
-            functions = SLOperationsVisitor.parseSL(this, source);
-        } else {
+        if (!request.getArgumentNames().isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("function main(");
             String sep = "";
@@ -325,28 +324,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             sb.append(source.getCharacters());
             sb.append(";}");
             String language = source.getLanguage() == null ? ID : source.getLanguage();
-            Source decoratedSource = Source.newBuilder(language, sb.toString(), source.getName()).build();
-            functions = SLOperationsVisitor.parseSL(this, decoratedSource);
+            source = Source.newBuilder(language, sb.toString(), source.getName()).build();
         }
 
-        RootCallTarget main = functions.get(SLStrings.MAIN);
-        RootNode evalMain;
-        if (main != null) {
-            /*
-             * We have a main function, so "evaluating" the parsed source means invoking that main
-             * function. However, we need to lazily register functions into the SLContext first, so
-             * we cannot use the original SLRootNode for the main function. Instead, we create a new
-             * SLEvalRootNode that does everything we need.
-             */
-            evalMain = new SLEvalRootNode(this, main, functions);
-        } else {
-            /*
-             * Even without a main function, "evaluating" the parsed source needs to register the
-             * functions into the SLContext.
-             */
-            evalMain = new SLEvalRootNode(this, null, functions);
-        }
-        return evalMain.getCallTarget();
+        OperationsNode[] operations = SLOperationsBuilder.parse(this, source);
+        return operations[operations.length - 1].getCallTarget();
     }
 
     /**

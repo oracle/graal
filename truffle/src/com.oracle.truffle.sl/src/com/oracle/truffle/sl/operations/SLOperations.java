@@ -1,7 +1,10 @@
 package com.oracle.truffle.sl.operations;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.ArityException;
@@ -12,10 +15,15 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
-import com.oracle.truffle.api.operation.TheNode;
+import com.oracle.truffle.api.operation.OperationsNode;
+import com.oracle.truffle.api.operation.Special;
+import com.oracle.truffle.api.operation.Special.SpecialKind;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLTypes;
+import com.oracle.truffle.sl.nodes.controlflow.SLDebuggerNode;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNode;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
@@ -27,11 +35,62 @@ import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
+import com.oracle.truffle.sl.parser.operations.SLOperationsVisitor;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations
 public class SLOperations {
+
+    public static void parse(SLLanguage language, Source source, SLOperationsBuilder builder) {
+        Map<TruffleString, RootCallTarget> targets = SLOperationsVisitor.parseSL(language, source, builder);
+
+        // create the RootNode
+
+        builder.beginReturn();
+        builder.beginSLEvalRootOperation();
+        targets.forEach((name, call) -> {
+            builder.emitConstObject(name);
+            builder.emitConstObject(call);
+        });
+        builder.endSLEvalRootOperation();
+        builder.endReturn();
+
+        builder.build();
+    }
+
+    @Operation
+    public static class SLEvalRootOperation {
+        @Specialization
+        public static Object perform(
+                        @Variadic Object[] children,
+                        @Special(SpecialKind.NODE) Node node,
+                        @Special(SpecialKind.ARGUMENTS) Object[] arguments) {
+            // This should get lazily executed
+
+            Map<TruffleString, RootCallTarget> functions = new HashMap<>();
+            CallTarget main = null;
+
+            for (int i = 0; i < children.length; i += 2) {
+                TruffleString name = (TruffleString) children[i];
+                RootCallTarget target = (RootCallTarget) children[i + 1];
+                if (name.equals(SLStrings.MAIN)) {
+                    main = target;
+                }
+                functions.put(name, target);
+            }
+
+            SLContext.get(node).getFunctionRegistry().register(functions);
+
+            if (main != null) {
+                return main.call(arguments);
+            } else {
+                return SLNull.SINGLETON;
+            }
+        }
+    }
 
     @Operation(proxyNode = SLAddNode.class)
     @TypeSystemReference(SLTypes.class)
@@ -52,7 +111,7 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLFunctionLiteralOperation {
         @Specialization
-        public static Object execute(TruffleString functionName, @TheNode Node node) {
+        public static Object execute(TruffleString functionName, @Special(SpecialKind.NODE) Node node) {
             Object res = SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
             return res;
         }

@@ -101,7 +101,6 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {
-            System.out.println(" write " + receiver + "[" + name + "] = " + value);
             objectLibrary.writeMember(receiver, asMember.execute(name), value);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             // write was not successful. In SL we only have basic support for errors.

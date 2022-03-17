@@ -40,15 +40,16 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 public class SLOperationsVisitor extends SLBaseVisitor {
 
-    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
-        return parseSLImpl(source, new SLOperationsVisitor(language, source));
+    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source, SLOperationsBuilder builder) {
+        return parseSLImpl(source, new SLOperationsVisitor(language, source, builder));
     }
 
-    private SLOperationsVisitor(SLLanguage language, Source source) {
+    private SLOperationsVisitor(SLLanguage language, Source source, SLOperationsBuilder builder) {
         super(language, source);
+        this.b = builder;
     }
 
-    private SLOperationsBuilder b;
+    private final SLOperationsBuilder b;
     private LexicalScope scope;
 
     private OperationLabel breakLabel;
@@ -86,7 +87,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         }
 
         public int create(TruffleString name) {
-// System.out.println("create " + name);
             int value = create();
             names.put(name, value);
             return value;
@@ -101,9 +101,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     public Void visitFunction(FunctionContext ctx) {
         assert scope == null;
 
-        System.out.println();
-
-        b = SLOperationsBuilder.createBuilder();
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
 
         scope = new LexicalScope(null);
@@ -129,10 +126,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         OperationsNode node = b.build();
 
-        System.out.println(node.dump());
-
         functions.put(name, node.getCallTarget());
-        b = null;
 
         return null;
     }

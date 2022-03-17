@@ -95,6 +95,7 @@ public class TruffleTypes {
     public static final String Option_Name = "com.oracle.truffle.api.Option";
     public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
+    public static final String Source_Name = "com.oracle.truffle.api.source.Source";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
     public static final String TruffleLanguage_ContextReference_Name = "com.oracle.truffle.api.TruffleLanguage.ContextReference";
     public static final String TruffleLanguage_LanguageReference_Name = "com.oracle.truffle.api.TruffleLanguage.LanguageReference";
@@ -127,6 +128,7 @@ public class TruffleTypes {
     public final DeclaredType NodeUtil = c.getDeclaredType(NodeUtil_Name);
     public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
+    public final DeclaredType Source = c.getDeclaredType(Source_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);
     public final DeclaredType TruffleLanguage_ContextReference = c.getDeclaredType(TruffleLanguage_ContextReference_Name);
@@ -223,26 +225,28 @@ public class TruffleTypes {
     // Operations DSL API
     public static final String BuilderExceptionHandler_Name = "com.oracle.truffle.api.operation.BuilderExceptionHandler";
     public static final String BuilderOperationLabel_Name = "com.oracle.truffle.api.operation.BuilderOperationLabel";
+    public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
     public static final String OperationsBuilder_Name = "com.oracle.truffle.api.operation.OperationsBuilder";
     public static final String OperationsConstantPool_Name = "com.oracle.truffle.api.operation.OperationsConstantPool";
     public static final String OperationsNode_Name = "com.oracle.truffle.api.operation.OperationsNode";
-    public static final String TheNode_Name = "com.oracle.truffle.api.operation.TheNode";
+    public static final String Special_Name = "com.oracle.truffle.api.operation.Special";
     public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
     public static final String NodeTrace_Name = "com.oracle.truffle.api.operation.tracing.NodeTrace";
     public static final String InstructionTrace_Name = "com.oracle.truffle.api.operation.tracing.InstructionTrace";
 
     public final DeclaredType BuilderExceptionHandler = c.getDeclaredType(BuilderExceptionHandler_Name);
     public final DeclaredType BuilderOperationLabel = c.getDeclaredType(BuilderOperationLabel_Name);
+    public final DeclaredType BuilderSourceInfo = c.getDeclaredType(BuilderSourceInfo_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredType(GenerateOperations_Name);
     public final DeclaredType Operation = c.getDeclaredType(Operation_Name);
     public final DeclaredType OperationLabel = c.getDeclaredType(OperationLabel_Name);
     public final DeclaredType OperationsBuilder = c.getDeclaredType(OperationsBuilder_Name);
     public final DeclaredType OperationsConstantPool = c.getDeclaredType(OperationsConstantPool_Name);
     public final DeclaredType OperationsNode = c.getDeclaredType(OperationsNode_Name);
-    public final DeclaredType TheNode = c.getDeclaredType(TheNode_Name);
+    public final DeclaredType Special = c.getDeclaredType(Special_Name);
     public final DeclaredType Variadic = c.getDeclaredType(Variadic_Name);
     public final DeclaredType NodeTrace = c.getDeclaredType(NodeTrace_Name);
     public final DeclaredType InstructionTrace = c.getDeclaredType(InstructionTrace_Name);

@@ -101,6 +101,13 @@ public class GeneratorUtils {
         return builder.build();
     }
 
+    public static CodeTree createPartialEvaluationConstant(VariableElement variable) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "partialEvaluationConstant").variable(variable).end().end();
+        return builder.build();
+    }
+
     public static CodeTree createShouldNotReachHere() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
@@ -171,6 +178,18 @@ public class GeneratorUtils {
             return;
         }
         method.addAnnotationMirror(new CodeAnnotationMirror(override));
+    }
+
+    public static void addCompilationFinalAnnotation(CodeVariableElement field) {
+        addCompilationFinalAnnotation(field, -1);
+    }
+
+    public static void addCompilationFinalAnnotation(CodeVariableElement field, int dimensions) {
+        CodeAnnotationMirror annCompilationFinal = new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().CompilerDirectives_CompilationFinal);
+        if (dimensions != -1) {
+            annCompilationFinal.setElementValue("dimensions", new CodeAnnotationValue(dimensions));
+        }
+        field.addAnnotationMirror(annCompilationFinal);
     }
 
     public static void mergeSupressWarnings(CodeElement<?> element, String... addWarnings) {
@@ -364,6 +383,10 @@ public class GeneratorUtils {
             return null;
         }
         return CodeExecutableElement.clone(method);
+    }
+
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
+        return overrideImplement((TypeElement) type.asElement(), methodName);
     }
 
     public static CodeExecutableElement overrideImplement(TypeElement typeElement, String methodName) {

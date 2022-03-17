@@ -519,8 +519,11 @@ public abstract class Instruction {
                     case VARIADIC:
                         b.tree(vals[valIdx++]);
                         break;
-                    case THE_NODE:
+                    case SPECIAL_NODE:
                         b.string("this");
+                        break;
+                    case SPECIAL_ARGUMENTS:
+                        b.startCall(vars.frame, "getArguments").end();
                         break;
                     default:
                         throw new UnsupportedOperationException("" + param);

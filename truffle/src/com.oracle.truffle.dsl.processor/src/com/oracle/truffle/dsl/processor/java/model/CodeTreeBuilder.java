@@ -991,8 +991,12 @@ public class CodeTreeBuilder {
         return startStatement().field(receiver, field).string(" = ");
     }
 
+    public CodeTreeBuilder startAssign(String variableName) {
+        return startStatement().string(variableName).string(" = ");
+    }
+
     public CodeTreeBuilder startAssign(VariableElement variable) {
-        return startStatement().string(variable.getSimpleName().toString()).string(" = ");
+        return startAssign(variable.getSimpleName().toString());
     }
 
     public CodeTreeBuilder variable(VariableElement variable) {

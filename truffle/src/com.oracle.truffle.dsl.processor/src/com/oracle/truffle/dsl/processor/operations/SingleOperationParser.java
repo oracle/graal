@@ -175,8 +175,19 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 }
                 isVariadic = true;
                 parameters.add(ParameterKind.VARIADIC);
-            } else if (isTheNodeParameter(param)) {
-                parameters.add(ParameterKind.THE_NODE);
+            } else if (isSpecialParameter(param)) {
+                AnnotationMirror ann = ElementUtils.findAnnotationMirror(param, types.Special);
+                String kind = ElementUtils.getAnnotationValue(ann, "value").getValue().toString();
+                switch (kind) {
+                    case "NODE":
+                        parameters.add(ParameterKind.SPECIAL_NODE);
+                        break;
+                    case "ARGUMENTS":
+                        parameters.add(ParameterKind.SPECIAL_ARGUMENTS);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unexpected value: " + kind);
+                }
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
                     data.addError(method, "Value arguments after @Variadic not allowed");
@@ -204,8 +215,8 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return false;
     }
 
-    private boolean isTheNodeParameter(VariableElement param) {
-        return ElementUtils.findAnnotationMirror(param, types.TheNode) != null;
+    private boolean isSpecialParameter(VariableElement param) {
+        return ElementUtils.findAnnotationMirror(param, types.Special) != null;
     }
 
     private boolean isVariadicParameter(VariableElement param) {
