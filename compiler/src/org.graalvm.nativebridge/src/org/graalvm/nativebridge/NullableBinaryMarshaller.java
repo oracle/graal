@@ -25,33 +25,38 @@
 package org.graalvm.nativebridge;
 
 import java.io.IOException;
-import java.util.Objects;
 
-/**
- * A marshaller used by the native bridge processor to read or write method parameters and results
- * of a custom type. Marshallers are used to support types that are not directly implemented by the
- * native bridge processor.
- *
- * @see JNIConfig.Builder
- */
-public interface BinaryMarshaller<T> {
+final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
 
-    /**
-     * Reads the object value from the {@code input} and returns the recreated object.
-     */
-    T read(BinaryInput input) throws IOException;
+    private static final byte NULL = 0;
+    private static final byte NON_NULL = 1;
 
-    /**
-     * Writes the {@code object}'s value into the {@code output}.
-     */
-    void write(BinaryOutput output, T object) throws IOException;
+    private final BinaryMarshaller<T> delegate;
 
-    /**
-     * Decorates {@code forMarshaller} by a {@link BinaryMarshaller} handling {@code null} values.
-     * The returned {@link BinaryMarshaller} calls the {@code forMarshaller} only non-null values.
-     */
-    static <T> BinaryMarshaller<T> nullable(BinaryMarshaller<T> forMarshaller) {
-        Objects.requireNonNull(forMarshaller, "ForMarshaller must be non null.");
-        return new NullableBinaryMarshaller<>(forMarshaller);
+    NullableBinaryMarshaller(BinaryMarshaller<T> delegate) {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public T read(BinaryInput input) throws IOException {
+        byte nullStatus = input.readByte();
+        switch (nullStatus) {
+            case NULL:
+                return null;
+            case NON_NULL:
+                return delegate.read(input);
+            default:
+                throw new IOException("Unexpected input " + nullStatus);
+        }
+    }
+
+    @Override
+    public void write(BinaryOutput output, T object) throws IOException {
+        if (object != null) {
+            output.writeByte(NON_NULL);
+            delegate.write(output, object);
+        } else {
+            output.writeByte(NULL);
+        }
     }
 }

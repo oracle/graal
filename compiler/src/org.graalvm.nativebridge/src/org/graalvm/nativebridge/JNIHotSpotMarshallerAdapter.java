@@ -38,9 +38,6 @@ final class JNIHotSpotMarshallerAdapter<T> implements JNIHotSpotMarshaller<T> {
 
     @Override
     public Object marshall(T object) {
-        if (object == null) {
-            return null;
-        }
         try (ByteArrayBinaryOutput out = BinaryOutput.create()) {
             binaryMarshaller.write(out, object);
             return Arrays.copyOf(out.getArray(), out.getPosition());
@@ -51,9 +48,6 @@ final class JNIHotSpotMarshallerAdapter<T> implements JNIHotSpotMarshaller<T> {
 
     @Override
     public T unmarshall(Object rawObject) {
-        if (rawObject == null) {
-            return null;
-        }
         try (BinaryInput in = BinaryInput.create((byte[]) rawObject)) {
             return binaryMarshaller.read(in);
         } catch (IOException e) {

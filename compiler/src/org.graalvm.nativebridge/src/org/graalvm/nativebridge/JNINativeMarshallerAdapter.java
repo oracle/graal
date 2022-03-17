@@ -48,9 +48,6 @@ final class JNINativeMarshallerAdapter<T> implements JNINativeMarshaller<T> {
 
     @Override
     public JObject marshall(JNIEnv env, T object) {
-        if (object == null) {
-            return WordFactory.nullPointer();
-        }
         int bufSize = BUFFER_SIZE;
         CCharPointer buffer = StackValue.get(bufSize);
         try (CCharPointerBinaryOutput out = BinaryOutput.create(buffer, bufSize, false)) {
@@ -66,9 +63,6 @@ final class JNINativeMarshallerAdapter<T> implements JNINativeMarshaller<T> {
 
     @Override
     public T unmarshall(JNIEnv env, JObject jObject) {
-        if (jObject.isNull()) {
-            return null;
-        }
         int bufSize = BUFFER_SIZE;
         CCharPointer staticBuffer = StackValue.get(bufSize);
         int len = JNIUtil.GetArrayLength(env, (JByteArray) jObject);
