@@ -192,10 +192,6 @@ public class NativeImageGeneratorRunner {
          */
         nativeImageSystemClassLoader.setNativeImageClassLoader(nativeImageClassLoader);
 
-        if (!ModuleSupport.modulePathBuild) {
-            ModuleSupport.openModuleByClass(JavaVersionUtil.class, null);
-        }
-
         /*
          * Iterating all classes can already trigger class initialization: We need annotation
          * information, which triggers class initialization of annotation classes and enum classes
