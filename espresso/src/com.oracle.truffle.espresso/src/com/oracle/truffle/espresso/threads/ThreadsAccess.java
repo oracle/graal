@@ -371,7 +371,6 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
             }
         }
         setTerminateStatusAndNotify(thread);
-        context.unregisterThread(thread);
     }
 
     /**

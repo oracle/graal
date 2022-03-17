@@ -156,17 +156,21 @@ public final class EspressoThreadRegistry implements ContextAccess {
     }
 
     /**
-     * Once a thread terminates, remove it from the active set, and notify any thread waiting for VM
-     * teardown that it should check again for all non-daemon thread completion.
+     * Once a thread is truffle-disposed through {@code TruffleLanguage#disposeThread}, remove it
+     * from the active set, and notify any thread waiting for VM teardown that it should check again
+     * for all non-daemon thread completion.
      */
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
+        if (!activeThreads.remove(thread)) {
+            // Already unregistered
+            return;
+        }
         logger.fine(() -> {
             String guestName = getThreadAccess().getThreadName(thread);
             long guestId = getThreadAccess().getThreadId(thread);
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
-        activeThreads.remove(thread);
         Thread hostThread = getThreadAccess().getHost(thread);
         int id = Math.toIntExact(hostThread.getId());
         synchronized (activeThreadLock) {
@@ -238,7 +242,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             // quick check if no registered threads yet
             return null;
         }
-        int index = id - (int) threads[0];
+        int index = getThreadIndex(id, threads);
         if (index <= 0 || index >= guestThreads.length) {
             // no guest thread created for this host thread
             return null;

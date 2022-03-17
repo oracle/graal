@@ -111,8 +111,8 @@ final class EspressoShutdownHandler implements ContextAccess {
     /**
      * Starts the teardown process of the VM if it was not already started.
      *
-     * Notify any thread waiting for teardown (through {@link #destroyVM(boolean)}) to immediately
-     * return and let us do the job.
+     * Notify any thread waiting for teardown (through {@link #destroyVM()}) to immediately return
+     * and let us do the job.
      */
     @TruffleBoundary
     void doExit(int code) {
@@ -135,11 +135,10 @@ final class EspressoShutdownHandler implements ContextAccess {
      * </ol>
      * 
      * Note that this espresso context will be unable to run guest code once this method returns.
-     * 
-     * @param killThreads
+     *
      */
     @TruffleBoundary
-    void destroyVM(boolean killThreads) {
+    void destroyVM() {
         waitForClose();
         try {
             getMeta().java_lang_Shutdown_shutdown.invokeDirect(null);
@@ -219,7 +218,7 @@ final class EspressoShutdownHandler implements ContextAccess {
                 // gracefully exit in guest code, before abruptly cancelling them.
                 if (nextPhase) {
                     // Send guest interruptions
-                    getContext().getLogger().finer("Teardown: Phase 1: Interrupt threads, and stops daemons");
+                    getContext().getLogger().finer("Teardown: Phase 1: Interrupt threads.");
                     teardownPhase1(initiatingThread);
                     nextPhase = !waitSpin(initiatingThread, false);
                 }
@@ -277,6 +276,10 @@ final class EspressoShutdownHandler implements ContextAccess {
         teardownLoop(context.getThreadAccess()::kill, initiatingThread);
     }
 
+    /**
+     * Teardown phase happens for all thread registered from espresso to truffle, for which
+     * {@code TruffleLanguage#dispose()} has no yet been called.
+     */
     private void teardownLoop(Consumer<StaticObject> action, Thread initiatingThread) {
         for (StaticObject guest : getManagedThreads()) {
             Thread t = getThreadAccess().getHost(guest);
@@ -287,7 +290,7 @@ final class EspressoShutdownHandler implements ContextAccess {
     }
 
     /**
-     * Waits for some time for all executing threads to gracefully finish.
+     * Waits for some time for all non-disposed threads to terminate.
      *
      * @return true if all threads are completed, false otherwise.
      */

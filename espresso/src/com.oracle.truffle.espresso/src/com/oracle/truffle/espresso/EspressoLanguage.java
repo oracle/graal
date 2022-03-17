@@ -177,7 +177,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
         if (exitMode == ExitMode.NATURAL) {
             // Wait for ongoing threads to finish.
-            context.destroyVM(false);
+            context.destroyVM();
         } else {
             try {
                 // Here we give a chance for our threads to exit gracefully in guest code before

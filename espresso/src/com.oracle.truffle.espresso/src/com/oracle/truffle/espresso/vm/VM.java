@@ -1478,7 +1478,7 @@ public final class VM extends NativeEnv {
     public static int DestroyJavaVM(@Inject EspressoContext context) {
         assert context.getCurrentThread() != null;
         try {
-            context.destroyVM(true);
+            context.destroyVM();
         } catch (AbstractTruffleException exit) {
             // expected
         }
@@ -1583,6 +1583,8 @@ public final class VM extends NativeEnv {
         } catch (Throwable t) {
             context.getLogger().severe("Host exception thrown while trying to terminate thread");
             t.printStackTrace();
+        } finally {
+            context.unregisterThread(currentThread);
         }
 
         return JNI_OK;
