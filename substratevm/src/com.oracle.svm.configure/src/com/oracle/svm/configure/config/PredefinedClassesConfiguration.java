@@ -34,6 +34,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.configure.ConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -160,6 +161,11 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
         writer.unindent().newline().append(']');
         writer.unindent().newline().append('}');
         writer.unindent().newline().append(']').newline();
+    }
+
+    @Override
+    public ConfigurationParser createParser() {
+        return new PredefinedClassesConfigurationParser(this::add, true);
     }
 
     @Override

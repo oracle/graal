@@ -37,7 +37,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     private final TypeConfiguration configuration;
 
-    ParserConfigurationAdapter(TypeConfiguration configuration) {
+    public ParserConfigurationAdapter(TypeConfiguration configuration) {
         this.configuration = configuration;
     }
 

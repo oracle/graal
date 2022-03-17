@@ -27,14 +27,12 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
@@ -47,18 +45,6 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry, boolean strictConfiguration) {
         super(strictConfiguration);
         this.registry = registry;
-    }
-
-    @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(reader, null);
-    }
-
-    @Override
-    public void parseAndRegister(URI uri) throws IOException {
-        try (Reader reader = openReader(uri)) {
-            parseAndRegister(reader, resolveBaseUri(uri));
-        }
     }
 
     private static URI resolveBaseUri(URI original) throws IOException {
@@ -106,12 +92,11 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
         return baseUri.resolve(fileName);
     }
 
-    private void parseAndRegister(Reader reader, URI baseUri) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
-
-        for (Object origin : asList(json, "first level of document must be an array of predefined class origin objects")) {
-            parseOrigin(baseUri, asMap(origin, "second level of document must be a predefined class origin object"));
+    @Override
+    public void parseAndRegister(Object json, URI origin) throws IOException {
+        URI baseUri = origin == null ? null : resolveBaseUri(origin);
+        for (Object classDataOrigin : asList(json, "first level of document must be an array of predefined class origin objects")) {
+            parseOrigin(baseUri, asMap(classDataOrigin, "second level of document must be a predefined class origin object"));
         }
     }
 
