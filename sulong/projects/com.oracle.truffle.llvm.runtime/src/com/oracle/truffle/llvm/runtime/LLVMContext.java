@@ -526,14 +526,14 @@ public final class LLVMContext {
             // free the space allocated for non-pointer globals
             language.getFreeGlobalBlocks().call();
         }
-        if (language.getFreeThreadLocalGlobalBlock() != null) {
-            for (Thread thread : allRunningThreads) {
-                LLVMThreadLocalValue value = language.contextThreadLocal.get(this.getEnv().getContext(), thread);
-                if (value != null) {
-                    language.getFreeThreadLocalGlobalBlock().call(value);
-                }
+
+        for (Thread thread : allRunningThreads) {
+            LLVMThreadLocalValue value = language.contextThreadLocal.get(this.getEnv().getContext(), thread);
+            if (value != null) {
+                language.freeThreadLocalGlobal(value);
             }
         }
+
     }
 
     /**

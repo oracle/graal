@@ -189,6 +189,8 @@ public interface NodeFactory {
 
     LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly);
 
+    LLVMMemoryOpNode getFreeGlobalsBlockUncached(boolean readOnly);
+
     LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
 
     RepeatingNode createLoopDispatchNode(int exceptionValueSlot, List<? extends LLVMStatementNode> list, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping,
