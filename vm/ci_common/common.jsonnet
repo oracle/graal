@@ -539,7 +539,6 @@ local devkits = common_json.devkits;
 
   deploy_graalvm_installables_darwin_amd64: {
     run: [
-      ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       $.mx_vm_installables + $.maven_deploy_sdk_components,
