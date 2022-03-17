@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.ForkJoinPool;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -52,11 +53,20 @@ public class ContinuationsFeature implements Feature {
             if (LoomSupport.isEnabled()) {
                 impl = new LoomVirtualThreads();
             } else {
+                /*
+                 * GR-37518: ForkJoinPool on 11 syncs on a String which doesn't have its own monitor
+                 * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
+                 * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
+                 */
+                UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 17, "Continuations (%s) are currently supported only on JDK 17 and later.",
+                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
+
                 impl = new SubstrateVirtualThreads();
             }
             ImageSingletons.add(VirtualThreads.class, impl);
         } else {
-            UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + " cannot be enabled without option " +
+            UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), "%s cannot be enabled without option %s.",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"),
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
@@ -80,9 +90,9 @@ public class ContinuationsFeature implements Feature {
 
     static void abortIfUnsupported() {
         if (!Continuation.isSupported()) {
-            throw UserError.abort("Continuation support is used, but not enabled. Use options " +
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+") +
-                            " or " + SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + ".");
+            throw UserError.abort("Continuation support is used, but not enabled. Use options %s or %s.",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"),
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"));
         }
     }
 }
