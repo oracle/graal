@@ -45,12 +45,10 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -101,7 +99,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
     }
 
     List<Path> classpath() {
-        return Stream.concat(imagecp.stream(), buildcp.stream()).collect(Collectors.toList());
+        return Stream.concat(imagecp.stream(), buildcp.stream()).distinct().collect(Collectors.toList());
     }
 
     List<Path> applicationClassPath() {
@@ -218,17 +216,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         }
 
         protected void init() {
-            Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(this::toRealPath));
-            uniquePaths.addAll(classpath());
-            uniquePaths.parallelStream().forEach(this::loadClassesFromPath);
-        }
-
-        private Path toRealPath(Path p) {
-            try {
-                return p.toRealPath();
-            } catch (IOException e) {
-                throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p, e);
-            }
+            classpath().parallelStream().forEach(this::loadClassesFromPath);
         }
 
         private void loadClassesFromPath(Path path) {
@@ -245,7 +233,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(container, jarFileSystem.getPath("/"), Collections.emptySet());
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet());
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -255,19 +243,25 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, excludeDirectories);
+                loadClassesFromPath(container, path, excludeDirectoriesRoot, excludeDirectories);
             }
         }
 
         protected static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(URI container, Path root, Set<Path> excludes) {
+        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes) {
+            boolean useFilter = root.equals(excludeRoot);
+            if (useFilter) {
+                String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
+                System.err.println("Warning: Using directory " + excludeRoot + " on classpath is discouraged." +
+                                " Reading classes/resources from directories " + excludesStr + " will be suppressed.");
+            }
             FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    if (excludes.contains(dir)) {
+                    if (useFilter && excludes.contains(dir)) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
                     return super.preVisitDirectory(dir, attrs);

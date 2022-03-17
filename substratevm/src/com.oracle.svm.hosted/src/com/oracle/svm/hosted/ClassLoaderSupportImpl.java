@@ -70,7 +70,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
-        classLoaderSupport.classpath().stream().distinct().forEach(classpathFile -> {
+        for (Path classpathFile : classLoaderSupport.classpath()) {
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
@@ -80,7 +80,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             } catch (IOException ex) {
                 throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
             }
-        });
+        }
     }
 
     private static void scanDirectory(Path root, ResourceCollector collector, AbstractNativeImageClassLoaderSupport support) throws IOException {
