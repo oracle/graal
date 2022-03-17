@@ -99,8 +99,8 @@ Watch  video version of the enhanced HotSwap capabilities with Java on Truffle d
 
 ### Supported Changes
 
-The enhanced HotSwap of Java on Truffle is almost feature complete with GraalVM 22.1.0.
-As of GraalVM 22.0.0 the following changes are supported:
+The enhanced HotSwap of Java on Truffle is almost feature complete.
+The following changes are supported:
 
 * Add and remove methods
 * Add and remove constructors
@@ -126,7 +126,7 @@ As of GraalVM 22.1.0, the following limitations remain:
 
 ## HotSwap Plugin API
 
-As we've just seen above, with Java on Truffle you can benefit from enhanced HotSwap [capabilites](Demos.md#enhanced-hotswap-capabilities-with-java-on-truffle) that allow the code to evolve naturally during development without the need for restarting a running application.
+As we've just seen above, with Java on Truffle you can benefit from enhanced HotSwap capabilities that allow the code to evolve naturally during development without the need for restarting a running application.
 While code reloading (HotSwap) is a powerful tool, it is not sufficient to reflect all kinds of changes, e.g., changes to annotations, framework-specific changes such as implemented services or beans.
 For these things the code often needs to be executed to reload configurations or contexts before the changes are fully reflected in the running instance.
 This is where the Truffle on Java HotSwap Plugin API comes in handy.
@@ -146,12 +146,12 @@ The following instructions are based on a macOS X setup and only minor variation
 To get started:
 
 1. Clone the repository:
-  ```shell
+  ```groovy
   git clone git@github.com:javeleon/micronaut-core.git
   ```
 
 2. Build and publish to local Maven repository:
-  ```shell
+  ```groovy
   cd micronaut-core
   ./gradlew publishMavenPublicationToMavenLocal
   ```
@@ -263,7 +263,7 @@ run.jvmArgs+="-truffle"
 ```
 
 2. Also add maven local repository where we previously published the enhanced Micronaut framework. For example:
-```shell
+```groovy
 repositories {
   mavenLocal()
   ...
