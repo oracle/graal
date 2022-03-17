@@ -466,7 +466,7 @@ local devkits = common_json.devkits;
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
 
@@ -488,7 +488,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy'],
     timelimit: '1:30:00',
   },
 
@@ -503,7 +503,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy'],
     timelimit: '1:45:00',
   },
 
@@ -517,7 +517,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy'],
     timelimit: '3:00:00',
   },
 
@@ -533,7 +533,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy'],
     timelimit: '1:30:00',
   },
 
@@ -547,7 +547,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy'],
     timelimit: '1:30:00',
   },
 
@@ -562,7 +562,7 @@ local devkits = common_json.devkits;
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['benoit.daloze@oracle.com', 'gilles.m.duboscq@oracle.com'],
+    notify_groups:: ['deploy', 'ruby'],
     timelimit: '1:45:00',
   },
 

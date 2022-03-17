@@ -72,12 +72,12 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
-  postMerge:       {targets+: ['post-merge'],          notify_emails: ["gilles.m.duboscq@oracle.com"]},
-  bench:           {targets+: ['bench', 'post-merge'], notify_emails: ["gilles.m.duboscq@oracle.com"]},
-  dailyBench:      {targets+: ['bench', 'daily'],      notify_emails: ["gilles.m.duboscq@oracle.com"]},
-  daily:           {targets+: ['daily'],               notify_emails: ["gilles.m.duboscq@oracle.com"]},
-  weekly:          {targets+: ['weekly'],              notify_emails: ["gilles.m.duboscq@oracle.com"]},
-  weeklyBench:     {targets+: ['bench', 'weekly'],     notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  postMerge:       {targets+: ['post-merge'],          notify_groups:: ['espresso']},
+  bench:           {targets+: ['bench', 'post-merge'], notify_groups:: ['espresso']},
+  dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
+  daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
+  weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
+  weeklyBench:     {targets+: ['bench', 'weekly'],     notify_groups:: ['espresso']},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 

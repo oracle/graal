@@ -140,8 +140,10 @@ local repo_config = import '../../repo-configuration.libsonnet';
       ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js,js-benchmarks", "sversions"],
       ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js,js-benchmarks", "build", "--force-javac"]
     ],
+    local xms = if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
+    local xmx = if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
     run: [
-      ["mx", "--env", libgraal_env, "--dynamicimports", "js-benchmarks,/graal-js", "benchmark", "octane:typescript", "--results-file", self.result_file, "--", "-Xmx${XMX}", "-Xms${XMS}", "--experimental-options", "--engine.CompilationFailureAction=ExitVM", "-Dgraal.DumpOnError=true", "-Dgraal.PrintGraph=File", "--js-vm=graal-js", "--js-vm-config=default", "--jvm=server", "--jvm-config=" + repo_config.compiler.default_jvm_config + "-libgraal-no-truffle-bg-comp", "-XX:+CITime"],
+      ["mx", "--env", libgraal_env, "--dynamicimports", "js-benchmarks,/graal-js", "benchmark", "octane:typescript", "--results-file", self.result_file, "--"] + xms + xmx + ["--experimental-options", "--engine.CompilationFailureAction=ExitVM", "-Dgraal.DumpOnError=true", "-Dgraal.PrintGraph=File", "--js-vm=graal-js", "--js-vm-config=default", "--jvm=server", "--jvm-config=" + repo_config.compiler.default_jvm_config + "-libgraal-no-truffle-bg-comp", "-XX:+CITime"],
       self.upload
     ],
     logs+: [
