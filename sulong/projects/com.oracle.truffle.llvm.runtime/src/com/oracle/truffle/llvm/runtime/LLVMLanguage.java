@@ -456,8 +456,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeContext(LLVMContext context) {
-        LLVMMemory memory = getLLVMMemory();
-        context.dispose(memory);
+        context.dispose();
     }
 
     static class FreeGlobalsNode extends RootNode {
@@ -505,7 +504,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            LLVMThreadLocalValue threadLocalValue = (LLVMThreadLocalValue) frame.getArguments()[0];
+            assert frame.getArguments().length > 0;
+            assert frame.getArguments()[0] instanceof LLVMThreadLocalValue;
+            executeWithValue((LLVMThreadLocalValue) frame.getArguments()[0]);
+            return null;
+        }
+
+        public void executeWithValue(LLVMThreadLocalValue threadLocalValue) {
             if (threadLocalValue != null) {
                 synchronized (threadLocalValue) {
                     if (!threadLocalValue.isFinalized()) {
@@ -518,7 +523,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     }
                 }
             }
-            return null;
         }
     }
 
@@ -562,7 +566,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private CallTarget freeGlobalBlocks;
-    private CallTarget freeThreadLocalGlobalBlock;
+    private FreeThreadLocalGlobalsNode freeThreadLocalGlobalBlock;
 
     protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
@@ -570,11 +574,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             freeGlobalBlocks = new FreeGlobalsNode(this, nodeFactory).getCallTarget();
         }
         if (freeThreadLocalGlobalBlock == null) {
-            freeThreadLocalGlobalBlock = new FreeThreadLocalGlobalsNode(this, nodeFactory).getCallTarget();
+            freeThreadLocalGlobalBlock = new FreeThreadLocalGlobalsNode(this, nodeFactory);
         }
     }
 
-    public CallTarget getFreeThreadLocalGlobalBlock() {
+    public FreeThreadLocalGlobalsNode getFreeThreadLocalGlobalBlock() {
         return freeThreadLocalGlobalBlock;
     }
 
@@ -712,7 +716,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
         if (!threadLocalValue.isFinalized()) {
             if (freeThreadLocalGlobalBlock != null) {
-                freeThreadLocalGlobalBlock.call(threadLocalValue);
+                freeThreadLocalGlobalBlock.executeWithValue(threadLocalValue);
             }
         }
     }

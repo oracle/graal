@@ -50,6 +50,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -527,9 +528,9 @@ public final class LLVMContext {
         }
         if (language.getFreeThreadLocalGlobalBlock() != null) {
             for (Thread thread : allRunningThreads) {
-                LLVMLanguage.LLVMThreadLocalValue value = language.contextThreadLocal.get(this.getEnv().getContext(), thread);
+                LLVMThreadLocalValue value = language.contextThreadLocal.get(this.getEnv().getContext(), thread);
                 if (value != null) {
-                    language.getFreeThreadLocalGlobalBlock().call(value);
+                    language.getFreeThreadLocalGlobalBlock().executeWithValue(value);
                 }
                 if (isInitialized()) {
                     getThreadingStack().freeStack(language.getLLVMMemory(), thread);
@@ -583,6 +584,20 @@ public final class LLVMContext {
         }
     }
 
+    void dispose() {
+        printNativeCallStatistics();
+
+        // free the space which might have been when putting pointer-type globals into native memory
+        for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                Object object = LLVMManagedPointer.cast(pointer).getObject();
+                if (object instanceof LLVMGlobalContainer) {
+                    ((LLVMGlobalContainer) object).dispose();
+                }
+            }
+        }
+    }
+
     public Object getFreeReadOnlyGlobalsBlockFunction() {
         if (freeGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -616,24 +631,6 @@ public final class LLVMContext {
             allocateGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
         }
         return allocateGlobalsBlockFunction;
-    }
-
-    void dispose(LLVMMemory memory) {
-        printNativeCallStatistics();
-
-        if (isInitialized()) {
-            threadingStack.freeMainStack(memory);
-        }
-
-        // free the space which might have been when putting pointer-type globals into native memory
-        for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
-            if (LLVMManagedPointer.isInstance(pointer)) {
-                Object object = LLVMManagedPointer.cast(pointer).getObject();
-                if (object instanceof LLVMGlobalContainer) {
-                    ((LLVMGlobalContainer) object).dispose();
-                }
-            }
-        }
     }
 
     /**
