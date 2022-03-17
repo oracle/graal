@@ -206,13 +206,6 @@
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="RegexpSinglelineJava">
-      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow use of System.out."/>
-      <property name="severity" value="error"/>
-      <property name="format" value="\bSystem\.out\b"/>
-      <property name="message" value="Do not use System.out in non-hosted code. (Use &quot;// Checkstyle: stop ... // Checkstyle: resume&quot; in hosted code.)"/>
-      <property name="ignoreComments" value="true"/>
-    </module>
-    <module name="RegexpSinglelineJava">
       <metadata name="net.sf.eclipsecs.core.comment" value="Disallow use of System.err."/>
       <property name="severity" value="error"/>
       <property name="format" value="\bSystem\.err\b"/>
