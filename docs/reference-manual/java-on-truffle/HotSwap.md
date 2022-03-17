@@ -145,8 +145,8 @@ The Micronaut HotSwap plugin example implementation is hosted as a [fork](https:
 The following instructions are based on a macOS X setup and only minor variations are needed for Windows.
 To get started:
 
-1. shell the repository:
-  ```groovy
+1. clone the repository:
+  ```shell
   git clone git@github.com:javeleon/micronaut-core.git
   ```
 
