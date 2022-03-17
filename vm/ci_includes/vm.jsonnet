@@ -1,6 +1,7 @@
 local composable = (import '../../common-utils.libsonnet').composable;
 local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
+local vm = import 'vm.jsonnet';
 local vm_bench = import 'vm-bench.jsonnet';
 local vm_native = import 'vm-native.jsonnet';
 local graal_common = import '../../common.jsonnet';
@@ -242,15 +243,24 @@ local jdks = common_json.jdks;
 
     # Darwin/AMD64
     vm_common.deploy_vm_base_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-amd64', patterns: ['daily-deploy-vm-base-java11-darwin-amd64']}]},
-    vm_common.deploy_vm_installable_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
+    vm_common.deploy_vm_installable_java11_darwinomm_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
     vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-amd64', patterns: ['daily-deploy-vm-base-java17-darwin-amd64']}]},
     vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-amd64', patterns: ['daily-deploy-vm-installable-java17-darwin-amd64']}]},
 
-    # Darwin/AArch64
-    vm_common.deploy_vm_base_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-aarch64', patterns: ['daily-deploy-vm-base-java11-darwin-aarch64']}]},
-    vm_common.deploy_vm_installable_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java11-darwin-aarch64']}]},
-    vm_common.deploy_vm_base_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-aarch64', patterns: ['daily-deploy-vm-base-java17-darwin-aarch64']}]},
-    vm_common.deploy_vm_installable_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java17-darwin-aarch64']}]},
+    # TODO: move to ci_common/common.jsonnet once we need EE stuff.
+    # Darwin/AARCH64
+    /* deploy_vm_base_java11_darwin_aarch64: */ vm.vm_java_11 + vm_common.full_vm_build_darwin_aarch64 + vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + vm_common.deploy_graalvm_base_darwin_aarch64 + {name: 'daily-deploy-vm-base-java11-darwin-aarch64'}
+    /* vm_common.deploy_vm_base_java11_darwin_aarch64 */ + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-aarch64', patterns: ['daily-deploy-vm-base-java11-darwin-aarch64']}]},
+
+    /* deploy_vm_installable_java11_darwin_aarch64: */ vm.vm_java_11 + vm_common.full_vm_build_darwin_aarch64 + vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + vm_common.deploy_graalvm_installables_darwin_aarch64 + {name: 'daily-deploy-vm-installable-java11-darwin-aarch64'}
+    /* vm_common.deploy_vm_installable_java11_darwin_aarch64 */ + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java11-darwin-aarch64']}]},
+
+    /* deploy_vm_base_java17_darwin_aarch64: */ vm.vm_java_17 + vm_common.full_vm_build_darwin_aarch64 + vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + vm_common.deploy_graalvm_base_darwin_aarch64 + {name: 'daily-deploy-vm-base-java17-darwin-aarch64'}
+    /* vm_common.deploy_vm_base_java17_darwin_aarch64 */ + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-aarch64', patterns: ['daily-deploy-vm-base-java17-darwin-aarch64']}]},
+
+    /* deploy_vm_installable_java17_darwin_aarch64: */ vm.vm_java_17 + vm_common.full_vm_build_darwin_aarch64 + vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + vm_common.deploy_graalvm_installables_darwin_aarch64 + {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'}
+    /* vm_common.deploy_vm_installable_java17_darwin_aarch64 */ + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java17-darwin-aarch64']}]},
+
 
     # Windows/AMD64
     vm_common.deploy_vm_base_java11_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-windows-amd64', patterns: ['daily-deploy-vm-base-java11-windows-amd64']}]},
