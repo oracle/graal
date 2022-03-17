@@ -237,8 +237,17 @@ public final class BytecodeOSRMetadata {
         for (int i = 0; i < state.frameSlots.length; i++) {
             com.oracle.truffle.api.frame.FrameSlot slot = state.frameSlots[i];
             byte expectedTag = state.frameTags[i];
+            byte actualTag = sourceTags[i];
 
             while (true) {
+                boolean incompatibleTags = expectedTag != actualTag;
+                if (incompatibleTags) {
+                    // The tag for this slot may have changed; if so, deoptimize and update it.
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    state.frameTags[i] = actualTag;
+                    expectedTag = actualTag;
+                    continue;
+                }
                 try {
                     switch (expectedTag) {
                         case FrameWithoutBoxing.BOOLEAN_TAG:
@@ -266,13 +275,9 @@ public final class BytecodeOSRMetadata {
                             // illegal slots don't need to be transferred
                     }
                 } catch (FrameSlotTypeException e) {
-                    // The tag for this slot may have changed; if so, deoptimize and update it.
+                    // Should be impossible
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    byte actualTag = sourceTags[i];
-                    assert expectedTag != actualTag;
-                    state.frameTags[i] = actualTag;
-                    expectedTag = actualTag;
-                    continue;
+                    throw new AssertionError("Cannot transfer source frame.");
                 }
                 break;
             }
@@ -280,8 +285,17 @@ public final class BytecodeOSRMetadata {
 
         for (int slot = 0; slot < state.indexedFrameTags.length; slot++) {
             byte expectedTag = state.indexedFrameTags[slot];
+            byte actualTag = source.getTag(slot);
 
             while (true) {
+                boolean incompatibleTags = expectedTag != actualTag;
+                if (incompatibleTags) {
+                    // The tag for this slot may have changed; if so, deoptimize and update it.
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    state.indexedFrameTags[slot] = actualTag;
+                    expectedTag = actualTag;
+                    continue;
+                }
                 try {
                     switch (expectedTag) {
                         case FrameWithoutBoxing.BOOLEAN_TAG:
@@ -309,13 +323,9 @@ public final class BytecodeOSRMetadata {
                             // illegal slots don't need to be transferred
                     }
                 } catch (FrameSlotTypeException e) {
-                    // The tag for this slot may have changed; if so, deoptimize and update it.
+                    // Should be impossible
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    byte actualTag = source.getTag(slot);
-                    assert expectedTag != actualTag;
-                    state.indexedFrameTags[slot] = actualTag;
-                    expectedTag = actualTag;
-                    continue;
+                    throw new AssertionError("Cannot transfer source frame.");
                 }
                 break;
             }
