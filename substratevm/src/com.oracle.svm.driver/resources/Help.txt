@@ -1,7 +1,7 @@
 
-GraalVM native-image building tool
+GraalVM Native Image (https://www.graalvm.org/native-image/)
 
-This tool can be used to generate an image that contains ahead-of-time compiled Java code.
+This tool can ahead-of-time compile Java code to native executables.
 
 Usage: native-image [options] class [imagename] [options]
            (to build an image for a class)

@@ -35,6 +35,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -243,10 +244,12 @@ public abstract class NativeEnv implements ContextAccess {
         @SuppressWarnings("FieldMayBeFinal") //
         @Child private CallableFromNative node;
         private final NativeEnvComputer getNativeEnvFromContext;
+        private final String name;
 
-        NativeRootNode(EspressoLanguage language, CallableFromNative node) {
+        NativeRootNode(EspressoLanguage language, CallableFromNative node, String name) {
             super(language);
             this.node = node;
+            this.name = name;
             String generatedBy = node.generatedBy();
             switch (generatedBy) {
                 case "VmImpl":
@@ -272,12 +275,19 @@ public abstract class NativeEnv implements ContextAccess {
             Object nativeEnv = getNativeEnvFromContext.apply(context);
             return node.invoke(nativeEnv, frame.getArguments());
         }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
+
+    protected abstract String getName();
 
     private Callback intrinsicWrapper(CallableFromNative.Factory factory) {
         int extraArg = (factory.prependEnv()) ? 1 : 0;
         return new Callback(factory.parameterCount() + extraArg, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private volatile CallTarget target = null;
+            @CompilationFinal private volatile CallTarget target;
 
             @Override
             public Object call(Object... args) {
@@ -290,7 +300,8 @@ public abstract class NativeEnv implements ContextAccess {
                             actualTarget = target;
                             if (actualTarget == null) {
                                 CallableFromNative subst = factory.create();
-                                NativeRootNode rootNode = new NativeRootNode(EspressoLanguage.get(null), subst);
+                                String name = getName() + '.' + factory.methodName();
+                                NativeRootNode rootNode = new NativeRootNode(EspressoLanguage.get(null), subst, name);
                                 target = actualTarget = rootNode.getCallTarget();
                             }
                         }

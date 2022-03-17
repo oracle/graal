@@ -24,18 +24,22 @@
  */
 package com.oracle.svm.reflect.target;
 
+import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(Parameter.class)
 public final class Target_java_lang_reflect_Parameter {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private Type parameterTypeCache;
+
     @Alias //
     @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    public native void constructor(String name,
-                    int modifiers,
-                    Target_java_lang_reflect_Executable executable,
-                    int index);
+    public native void constructor(String name, int modifiers, Executable executable, int index);
 }

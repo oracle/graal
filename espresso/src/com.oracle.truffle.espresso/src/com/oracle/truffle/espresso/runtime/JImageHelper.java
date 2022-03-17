@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +23,10 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 
-/**
- * 
- */
-public class JImageHelper {
+public interface JImageHelper {
+    void close();
 
-    // pointer to native JImageFile
-    private final TruffleObject jimage;
-    private final JImageLibrary library;
-
-    JImageHelper(JImageLibrary library, TruffleObject jimage) {
-        this.library = library;
-        this.jimage = jimage;
-    }
-
-    public void close() {
-        library.close(jimage);
-    }
-
-    public byte[] getClassBytes(String name) {
-        return library.getClassBytes(jimage, name);
-    }
+    byte[] getClassBytes(ByteSequence name);
 }

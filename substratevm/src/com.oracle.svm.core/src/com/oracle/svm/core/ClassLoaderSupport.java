@@ -52,9 +52,9 @@ public abstract class ClassLoaderSupport {
 
         boolean isIncluded(String moduleName, String resourceName);
 
-        void addResource(String moduleName, String resourceName, InputStream resourceStream);
+        void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar);
 
-        void addDirectoryResource(String moduleName, String dir, String content);
+        void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar);
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);

@@ -262,7 +262,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         String filename = "META-INF/services/" + providerBinName;
         List<String> providerClassNames = new ArrayList<>(providerRegistrations.size());
         for (String providerFqn : providerRegistrations.keySet()) {
-            TypeElement te = ElementUtils.getTypeElement(env, providerFqn);
+            TypeElement te = ElementUtils.getTypeElement(providerFqn);
             if (te == null) {
                 providerClassNames.add(providerFqn);
             } else {

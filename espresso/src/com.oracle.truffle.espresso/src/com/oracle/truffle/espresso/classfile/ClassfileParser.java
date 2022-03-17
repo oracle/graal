@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
@@ -825,6 +826,9 @@ public final class ClassfileParser {
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
                                         Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
+                        } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
+                                        Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
+                            methodFlags |= ACC_FORCE_INLINE;
                         }
                     }
                     methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);

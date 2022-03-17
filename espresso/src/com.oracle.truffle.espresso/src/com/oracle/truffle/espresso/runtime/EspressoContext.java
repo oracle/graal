@@ -25,10 +25,12 @@ package com.oracle.truffle.espresso.runtime;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,6 +60,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -98,6 +101,7 @@ import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
@@ -203,6 +207,7 @@ public final class EspressoContext {
     public final boolean EnableAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
+    public final EspressoOptions.JImageMode jimageMode;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -315,6 +320,12 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
+
+        EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
+        if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
+            throw new IllegalArgumentException("JImage=native can only be set if native access is allowed");
+        }
+        this.jimageMode = requestedJImageMode;
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
@@ -693,13 +704,34 @@ public final class EspressoContext {
         return vm;
     }
 
-    public JImageLibrary jimageLibrary() {
+    private JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             EspressoError.guarantee(getJavaVersion().modulesEnabled(), "Jimage available for java >= 9");
             this.jimageLibrary = new JImageLibrary(this);
         }
         return jimageLibrary;
+    }
+
+    public JImageHelper createJImageHelper(String jimagePath) {
+        if (jimageMode == EspressoOptions.JImageMode.NATIVE) {
+            JImageLibrary library = jimageLibrary();
+            TruffleObject image = library.open(jimagePath);
+            if (InteropLibrary.getUncached().isNull(image)) {
+                return null;
+            }
+            return new NativeJImageHelper(library, image);
+        } else {
+            assert jimageMode == EspressoOptions.JImageMode.JAVA;
+            try {
+                return new JavaJImageHelper(BasicImageReader.open(Paths.get(jimagePath)), this);
+            } catch (BasicImageReader.NotAnImageFile e) {
+                return null;
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "failed to open jimage", e);
+                return null;
+            }
+        }
     }
 
     public JavaVersion getJavaVersion() {
@@ -963,6 +995,10 @@ public final class EspressoContext {
 
     public void waitForReferencePendingList() {
         referenceDrainer.waitForReferencePendingList();
+    }
+
+    public void triggerDrain() {
+        referenceDrainer.triggerDrain();
     }
 
     // endregion ReferenceDrain

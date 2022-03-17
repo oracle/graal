@@ -46,6 +46,14 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
+    public ConfigurationCondition getCondition() {
+        return condition;
+    }
+
+    public String getQualifiedJavaName() {
+        return qualifiedJavaName;
+    }
+
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();

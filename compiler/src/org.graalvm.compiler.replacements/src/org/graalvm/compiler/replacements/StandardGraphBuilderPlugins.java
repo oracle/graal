@@ -1900,8 +1900,7 @@ public class StandardGraphBuilderPlugins {
                 LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
                 // fromIndex = max(fromIndex, 0)
                 ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
-                ZeroExtendNode toInt = b.add(new ZeroExtendNode(ch, JavaKind.Int.getBitCount()));
-                helper.emitFinalReturn(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Byte, false, false, nonNullValue, ConstantNode.forLong(0), length, fromIndex, toInt));
+                helper.emitFinalReturn(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Byte, false, false, nonNullValue, ConstantNode.forLong(0), length, fromIndex, ch));
             }
             return true;
         }

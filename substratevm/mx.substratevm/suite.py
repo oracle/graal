@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "5.319.0",
+    "mxversion": "5.316.15",
     "name": "substratevm",
     "version" : "22.1.0",
     "release" : False,
@@ -194,7 +194,9 @@ suite = {
                     "sun.invoke.util",
                     "sun.net",
                     "sun.reflect.annotation",
+                    "sun.reflect.generics.factory",
                     "sun.reflect.generics.reflectiveObjects",
+                    "sun.reflect.generics.repository",
                     "sun.reflect.generics.tree",
                     "sun.security.jca",
                     "sun.security.ssl",
@@ -428,6 +430,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
+                    "jdk.internal.vm.annotation",
                     "jdk.internal.org.objectweb.asm",
                     "sun.reflect.annotation",
                     "sun.security.jca",

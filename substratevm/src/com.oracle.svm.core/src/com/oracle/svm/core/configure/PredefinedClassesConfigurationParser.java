@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
@@ -85,12 +84,6 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
                 int last = entry.lastIndexOf('/');
                 String subdir = entry.substring(0, last + 1) + directory;
                 return new URI(uri.getScheme(), path + "!/" + subdir, uri.getFragment());
-            }
-            if (uri.isOpaque() && JavaNetSubstitutions.RESOURCE_PROTOCOL.equals(uri.getScheme())) {
-                // GR-36666: resource URLs are absolute and should have a leading '/'
-                String ssp = uri.getSchemeSpecificPart();
-                uri = new URI(uri.getScheme(), '/' + ssp, uri.getFragment());
-                assert !uri.isOpaque();
             }
             if (uri.isOpaque()) {
                 throw new URISyntaxException(uri.toString(), "expecting URI with absolute path");

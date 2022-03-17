@@ -43,7 +43,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
+import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.sigaction;
@@ -65,8 +65,8 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
-        if (MemoryProtectionKeyProvider.isAvailable()) {
-            MemoryProtectionKeyProvider.singleton().handleSegfault(sigInfo);
+        if (MemoryProtectionProvider.isAvailable()) {
+            MemoryProtectionProvider.singleton().handleSegfault(sigInfo);
         }
 
         if (tryEnterIsolate(uContext)) {
@@ -77,8 +77,8 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
     @Override
     protected void printSignalInfo(Log log, PointerBase signalInfo) {
-        if (MemoryProtectionKeyProvider.isAvailable()) {
-            MemoryProtectionKeyProvider.singleton().printSignalInfo(signalInfo);
+        if (MemoryProtectionProvider.isAvailable()) {
+            MemoryProtectionProvider.singleton().printSignalInfo(signalInfo);
         } else {
             siginfo_t sigInfo = (siginfo_t) signalInfo;
             log.string("siginfo: si_signo: ").signed(sigInfo.si_signo()).string(", si_code: ").signed(sigInfo.si_code());

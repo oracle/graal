@@ -738,7 +738,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         // Always check context first, as it might be invalidated.
         context.checkClosed();
         if (context.disposing) {
-            throw PolyglotEngineException.illegalState("The Context is already closed.");
+            throw PolyglotEngineException.closedException("The Context is already closed.");
         }
         if (!context.config.isAccessPermitted(accessingLanguage, language)) {
             throw PolyglotEngineException.illegalArgument(String.format("Access to language '%s' is not permitted. ", language.getId()));
@@ -894,17 +894,19 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
-            Env currentEnv = env;
-            if (currentEnv != null && !(e instanceof ThreadDeath)) {
-                try {
-                    e.printStackTrace(new PrintStream(currentEnv.err()));
-                } catch (Throwable exc) {
-                    // Still show the original error if printing on Env.err() fails for some
-                    // reason
+            if (!(e instanceof ThreadDeath)) {
+                Env currentEnv = env;
+                if (currentEnv != null) {
+                    try {
+                        e.printStackTrace(new PrintStream(currentEnv.err()));
+                    } catch (Throwable exc) {
+                        // Still show the original error if printing on Env.err() fails for some
+                        // reason
+                        e.printStackTrace();
+                    }
+                } else {
                     e.printStackTrace();
                 }
-            } else {
-                e.printStackTrace();
             }
         }
     }

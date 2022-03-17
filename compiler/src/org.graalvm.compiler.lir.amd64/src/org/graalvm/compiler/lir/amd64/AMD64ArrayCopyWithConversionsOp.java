@@ -165,9 +165,9 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64LIRInstruction {
         RegisterValue regArrayDst = REG_ARRAY_DST.asValue(arrayDst.getValueKind());
         RegisterValue regOffsetDst = REG_OFFSET_DST.asValue(offsetDst.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
-        tool.emitMove(regArraySrc, arraySrc);
+        tool.emitConvertNullToZero(regArraySrc, arraySrc);
         tool.emitMove(regOffsetSrc, offsetSrc);
-        tool.emitMove(regArrayDst, arrayDst);
+        tool.emitConvertNullToZero(regArrayDst, arrayDst);
         tool.emitMove(regOffsetDst, offsetDst);
         tool.emitMove(regLength, length);
         return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, maxVectorSize, extendMode);

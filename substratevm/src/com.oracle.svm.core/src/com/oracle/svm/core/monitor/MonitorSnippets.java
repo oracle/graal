@@ -142,7 +142,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
                  * can be replaced with an assertion once the issue is fixed.
                  */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
+                node.setObject(node.graph().addOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
             }
         }
 

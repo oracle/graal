@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
@@ -40,6 +43,7 @@ import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -58,6 +62,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Class<?> economicMapImpl;
     private final Field economicMapImplEntriesField;
     private final Field economicMapImplHashArrayField;
+    private final RuntimeReflectionSupport reflectionSupport;
 
     public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
@@ -67,6 +72,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         ImageSingletons.add(ImageHeapScanner.class, this);
+        reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
     public static ImageHeapScanner instance() {
@@ -134,5 +140,17 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             rescanField(map, economicMapImplHashArrayField);
         }
 
+    }
+
+    @Override
+    protected void onObjectReachable(ImageHeapObject imageHeapObject) {
+        super.onObjectReachable(imageHeapObject);
+
+        Object object = SubstrateObjectConstant.asObject(imageHeapObject.getObject());
+        if (object instanceof Field || object instanceof Executable) {
+            reflectionSupport.registerHeapReflectionObject((AccessibleObject) object);
+        } else if (object instanceof DynamicHub) {
+            reflectionSupport.registerHeapDynamicHub(object);
+        }
     }
 }

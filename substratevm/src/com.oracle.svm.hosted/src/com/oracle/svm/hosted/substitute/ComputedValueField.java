@@ -53,6 +53,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
@@ -498,5 +500,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+    }
+
+    @Override
+    public boolean isUnknown() {
+        return annotated != null && (annotated.isAnnotationPresent(UnknownObjectField.class) || annotated.isAnnotationPresent(UnknownPrimitiveField.class));
     }
 }
