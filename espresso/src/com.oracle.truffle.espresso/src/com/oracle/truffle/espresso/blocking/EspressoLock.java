@@ -293,6 +293,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
+    @TruffleBoundary
     public void signal() {
         if (isHeldByCurrentThread()) {
             signals = Math.min(signals + 1, waiters);
@@ -302,6 +303,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
+    @TruffleBoundary
     public void signalAll() {
         if (isHeldByCurrentThread()) {
             signals = waiters;

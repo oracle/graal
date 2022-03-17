@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.security.AccessController;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -245,7 +246,6 @@ public final class JavaThreads {
      * with these unsupported features removed:
      * <ul>
      * <li>No security manager: using the ContextClassLoader of the parent.</li>
-     * <li>Not implemented: inheritableThreadLocals.</li>
      * </ul>
      */
     @SuppressWarnings({"deprecation"}) // AccessController is deprecated starting JDK 17
@@ -255,7 +255,8 @@ public final class JavaThreads {
                     Runnable target,
                     String name,
                     long stackSize,
-                    AccessControlContext acc) {
+                    AccessControlContext acc,
+                    boolean inheritThreadLocals) {
         if (name == null) {
             throw new NullPointerException("name cannot be null");
         }
@@ -282,6 +283,11 @@ public final class JavaThreads {
         tjlt.contextClassLoader = parent.getContextClassLoader();
 
         tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
+
+        Target_java_lang_Thread targetParent = SubstrateUtil.cast(parent, Target_java_lang_Thread.class);
+        if (inheritThreadLocals && targetParent.inheritableThreadLocals != null) {
+            tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(targetParent.inheritableThreadLocals);
+        }
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();

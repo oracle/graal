@@ -51,20 +51,23 @@ import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
-import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
-import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
+import com.oracle.truffle.espresso.nodes.commands.DestroyVMNode;
+import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
+import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
+import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
+// TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                dependentLanguages = "nfi")
+                dependentLanguages = "nfi", //
+                website = "https://www.graalvm.org/dev/reference-manual/java-on-truffle/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
@@ -191,6 +194,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
         if (GetBindingsNode.EVAL_NAME.equals(contents)) {
             RootNode node = new GetBindingsNode(this);
+            return node.getCallTarget();
+        }
+        if (ReferenceProcessNode.EVAL_NAME.equals(contents)) {
+            RootNode node = new ReferenceProcessNode(this);
             return node.getCallTarget();
         }
         throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");

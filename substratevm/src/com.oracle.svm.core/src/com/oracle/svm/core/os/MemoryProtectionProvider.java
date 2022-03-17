@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,18 +26,19 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.word.PointerBase;
 
-public interface MemoryProtectionKeyProvider {
+public interface MemoryProtectionProvider {
 
     @Fold
-    static MemoryProtectionKeyProvider singleton() {
-        return ImageSingletons.lookup(MemoryProtectionKeyProvider.class);
+    static MemoryProtectionProvider singleton() {
+        return ImageSingletons.lookup(MemoryProtectionProvider.class);
     }
 
     @Fold
     static boolean isAvailable() {
-        return ImageSingletons.contains(MemoryProtectionKeyProvider.class);
+        return ImageSingletons.contains(MemoryProtectionProvider.class);
     }
 
     /**
@@ -59,4 +60,32 @@ public interface MemoryProtectionKeyProvider {
      */
     void printSignalInfo(PointerBase sigInfo);
 
+    /**
+     * Retrieve the protection domain implemented by this provider.
+     *
+     * @return the protection domain
+     */
+    ProtectionDomain getProtectionDomain();
+
+    class UnsupportedDomainException extends Exception {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String getMessage() {
+            return "Protection domain unrecognized.";
+        }
+    }
+
+    /**
+     * Return a protection key representation of the given protection domain that can be used in the
+     * native {@code CEntryPointCreateIsolateParameters}. It will return {@code DOMAIN_UNRECOGNIZED}
+     * if the {@link MemoryProtectionProvider} implementation does not support the passed protection
+     * domain.
+     *
+     * @param domain memory protection domain
+     * @return the protection key for a given protection domain
+     * @throws UnsupportedDomainException if the passed protection domain is not supported by this
+     *             MemoryProtectionProvider
+     */
+    int asProtectionKey(ProtectionDomain domain) throws UnsupportedDomainException;
 }

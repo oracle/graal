@@ -997,6 +997,10 @@ public final class EspressoContext {
         referenceDrainer.waitForReferencePendingList();
     }
 
+    public void triggerDrain() {
+        referenceDrainer.triggerDrain();
+    }
+
     // endregion ReferenceDrain
 
     // region DebugAccess
