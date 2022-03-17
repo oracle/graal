@@ -33,9 +33,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 public final class InliningAcrossTruffleBoundaryPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        if (context.task.isCancelled()) {
-            return;
-        }
+        graph.checkCancellation();
         TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
         for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
             TruffleCompilerRuntime.InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);

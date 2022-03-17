@@ -32,9 +32,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 public final class MaterializeFramesPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        if (context.task.isCancelled()) {
-            return;
-        }
+        graph.checkCancellation();
         for (AllowMaterializeNode materializeNode : graph.getNodes(AllowMaterializeNode.TYPE).snapshot()) {
             materializeNode.replaceAtUsages(materializeNode.getFrame());
             graph.removeFixed(materializeNode);

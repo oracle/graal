@@ -36,9 +36,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        if (context.task.isCancelled()) {
-            return;
-        }
+        graph.checkCancellation();
         TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
         for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
             if (virtualObjectNode instanceof VirtualInstanceNode) {

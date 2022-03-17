@@ -505,9 +505,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         StructuredGraph graph = null;
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
             graph = truffleTier(wrapper, debug);
-            if (wrapper.task.isCancelled()) {
-                return;
-            }
+            graph.checkCancellation();
             // The Truffle compiler owns the last 2 characters of the compilation name, and uses
             // them to encode the compilation tier, so escaping the target name is not necessary.
             String compilationName = wrapper.compilable.toString() + (wrapper.task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);

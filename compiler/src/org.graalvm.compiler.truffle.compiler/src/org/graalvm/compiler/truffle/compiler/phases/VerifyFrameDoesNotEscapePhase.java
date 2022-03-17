@@ -39,9 +39,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 public class VerifyFrameDoesNotEscapePhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        if (context.task.isCancelled()) {
-            return;
-        }
+        graph.checkCancellation();
         for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.TYPE)) {
             for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
                 if (callTarget.invoke() != null) {
