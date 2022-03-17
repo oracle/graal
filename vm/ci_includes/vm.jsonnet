@@ -243,7 +243,7 @@ local jdks = common_json.jdks;
 
     # Darwin/AMD64
     vm_common.deploy_vm_base_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-amd64', patterns: ['daily-deploy-vm-base-java11-darwin-amd64']}]},
-    vm_common.deploy_vm_installable_java11_darwinomm_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
+    vm_common.deploy_vm_installable_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
     vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-amd64', patterns: ['daily-deploy-vm-base-java17-darwin-amd64']}]},
     vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-amd64', patterns: ['daily-deploy-vm-installable-java17-darwin-amd64']}]},
 
