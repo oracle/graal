@@ -106,10 +106,11 @@ public final class LLVMThreadingStack {
         ContextThreadLocal<LLVMThreadLocalValue> context = LLVMLanguage.get(null).contextThreadLocal;
         if (context != null) {
             LLVMThreadLocalValue value = context.get(thread);
-            assert value != null;
-            LLVMStack s = value.removeLLVMStack();
-            if (s != null) {
-                s.free(memory);
+            if (value != null) {
+                LLVMStack s = value.removeLLVMStack();
+                if (s != null) {
+                    s.free(memory);
+                }
             }
         }
     }
