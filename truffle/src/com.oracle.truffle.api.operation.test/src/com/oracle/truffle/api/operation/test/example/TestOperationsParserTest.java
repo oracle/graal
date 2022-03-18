@@ -144,8 +144,7 @@ public class TestOperationsParserTest {
             context.eval(org.graalvm.polyglot.Source.newBuilder("test", src, "test").build());
             fail();
         } catch (PolyglotException ex) {
-            List<TruffleStackTraceElement> els = TruffleStackTrace.getStackTrace(ex.asHostException());
-            System.out.println(els);
+            Assert.assertEquals(4, ex.getStackTrace()[0].getLineNumber());
         } catch (IOException e) {
             Assert.fail();
         }

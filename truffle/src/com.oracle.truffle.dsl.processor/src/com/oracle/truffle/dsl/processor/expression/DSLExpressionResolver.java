@@ -253,6 +253,10 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     return parent.resolveVariable(variable);
                 }
 
+                if ("$bci".equals(name)) {
+                    return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
+                }
+
                 return null;
         }
     }

@@ -12,6 +12,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -22,6 +23,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
@@ -491,6 +493,9 @@ public abstract class Instruction {
             CodeExecutableElement copy = CodeExecutableElement.clone(metExecute);
             copy.setSimpleName(CodeNames.of(executeName));
             GeneratorUtils.addSuppressWarnings(ProcessorContext.getInstance(), copy, "static-method");
+            copy.getParameters().add(0, new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "$bci"));
+
+            copy.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(ProcessorContext.getInstance().getTypes().CompilerDirectives_TruffleBoundary));
 
             vars.bytecodeNodeType.add(copy);
 
@@ -511,6 +516,8 @@ public abstract class Instruction {
 
             b.startCall("this", copy);
 
+            b.variable(vars.bci);
+
             int valIdx = 0;
 
             for (ParameterKind param : data.getMainProperties().parameters) {
@@ -519,11 +526,8 @@ public abstract class Instruction {
                     case VARIADIC:
                         b.tree(vals[valIdx++]);
                         break;
-                    case SPECIAL_NODE:
-                        b.string("this");
-                        break;
-                    case SPECIAL_ARGUMENTS:
-                        b.startCall(vars.frame, "getArguments").end();
+                    case VIRTUAL_FRAME:
+                        b.variable(vars.frame);
                         break;
                     default:
                         throw new UnsupportedOperationException("" + param);

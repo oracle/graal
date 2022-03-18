@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
 
@@ -56,14 +57,19 @@ import com.oracle.truffle.sl.runtime.SLLanguageView;
  * conditions just abort execution. This exception class is used when we abort from within the SL
  * implementation.
  */
-public class SLException extends AbstractTruffleException {
+public class SLException extends AbstractOperationsTruffleException {
 
     private static final long serialVersionUID = -6799734410727348507L;
     private static final InteropLibrary UNCACHED_LIB = InteropLibrary.getFactory().getUncached();
 
     @TruffleBoundary
+    public SLException(String message, Node location, int bci) {
+        super(message, location, bci);
+    }
+
+    @TruffleBoundary
     public SLException(String message, Node location) {
-        super(message, location);
+        super(message, location, -1);
     }
 
     /**
@@ -71,7 +77,7 @@ public class SLException extends AbstractTruffleException {
      * are no automatic type conversions of values.
      */
     @TruffleBoundary
-    public static SLException typeError(Node operation, Object... values) {
+    public static SLException typeError(Node operation, int bci, Object... values) {
         StringBuilder result = new StringBuilder();
         result.append("Type error");
 
@@ -128,7 +134,7 @@ public class SLException extends AbstractTruffleException {
                 }
             }
         }
-        return new SLException(result.toString(), operation);
+        return new SLException(result.toString(), operation, bci);
     }
 
 }

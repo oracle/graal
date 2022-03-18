@@ -13,7 +13,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -21,7 +20,6 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
@@ -89,7 +87,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         if (operationFunctions.isEmpty()) {
-            data.addError("Operation contains no operation functions (public static methods)");
+            data.addError("Operation contains no specializations");
             return data;
         }
 
@@ -122,7 +120,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         {
             int i = 0;
             for (ParameterKind param : props.parameters) {
-                metExecute.addParameter(new CodeVariableElement(param.getParameterType(context, types), "arg" + i));
+                metExecute.addParameter(new CodeVariableElement(param.getParameterType(context), "arg" + i));
                 i++;
             }
         }
@@ -175,24 +173,15 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 }
                 isVariadic = true;
                 parameters.add(ParameterKind.VARIADIC);
-            } else if (isSpecialParameter(param)) {
-                AnnotationMirror ann = ElementUtils.findAnnotationMirror(param, types.Special);
-                String kind = ElementUtils.getAnnotationValue(ann, "value").getValue().toString();
-                switch (kind) {
-                    case "NODE":
-                        parameters.add(ParameterKind.SPECIAL_NODE);
-                        break;
-                    case "ARGUMENTS":
-                        parameters.add(ParameterKind.SPECIAL_ARGUMENTS);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unexpected value: " + kind);
-                }
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
                     data.addError(method, "Value arguments after @Variadic not allowed");
                 }
-                parameters.add(ParameterKind.STACK_VALUE);
+                if (ElementUtils.isAssignable(param.asType(), types.VirtualFrame)) {
+                    parameters.add(ParameterKind.VIRTUAL_FRAME);
+                } else {
+                    parameters.add(ParameterKind.STACK_VALUE);
+                }
             }
         }
 
@@ -210,13 +199,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return true;
         } else if (ElementUtils.findAnnotationMirror(param, types.CachedLanguage) != null) {
             return true;
+        } else if (ElementUtils.findAnnotationMirror(param, types.CachedContext) != null) {
+            return true;
         }
 
         return false;
-    }
-
-    private boolean isSpecialParameter(VariableElement param) {
-        return ElementUtils.findAnnotationMirror(param, types.Special) != null;
     }
 
     private boolean isVariadicParameter(VariableElement param) {

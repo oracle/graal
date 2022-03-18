@@ -1,7 +1,5 @@
 package com.oracle.truffle.api.operation.test.example;
 
-import java.util.List;
-
 public abstract class TestLanguageAst {
     final int startOffset;
     final int length;

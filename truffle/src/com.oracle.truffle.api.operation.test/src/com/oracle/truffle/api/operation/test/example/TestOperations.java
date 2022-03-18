@@ -1,27 +1,24 @@
 package com.oracle.truffle.api.operation.test.example;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
-import com.oracle.truffle.api.operation.Special;
-import com.oracle.truffle.api.operation.Special.SpecialKind;
+import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.source.Source;
 
 @GenerateOperations
 public class TestOperations {
 
-    private static class TestException extends AbstractTruffleException {
+    private static class TestException extends AbstractOperationsTruffleException {
 
         private static final long serialVersionUID = -9143719084054578413L;
 
-        public TestException(String string, Node node) {
-            super(string, node);
+        public TestException(String string, OperationsNode node, int bci) {
+            super(string, node, bci);
         }
     }
 
@@ -41,7 +38,7 @@ public class TestOperations {
         }
 
         @Specialization
-        public static String addStrings(String lhs, String rhs, @Cached("1") int test) {
+        public static String addStrings(String lhs, String rhs) {
             return lhs + rhs;
         }
     }
@@ -65,8 +62,8 @@ public class TestOperations {
     @Operation
     static class ThrowOperation {
         @Specialization
-        public static void perform(@Special(SpecialKind.NODE) Node node) {
-            throw new TestException("fail", node);
+        public static void perform(@Cached("$bci") int bci, @Cached("this") OperationsNode node) {
+            throw new TestException("fail", node, bci);
         }
     }
 }

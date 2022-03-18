@@ -2,7 +2,6 @@ package com.oracle.truffle.api.operation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Stack;
 
 import com.oracle.truffle.api.source.Source;

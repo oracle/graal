@@ -5,6 +5,7 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.tracing.NodeTrace;
 import com.oracle.truffle.api.source.Source;
@@ -124,5 +125,19 @@ public abstract class OperationsNode extends RootNode {
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         int bci = element.getFrame().getInt(BCI_SLOT);
         return new OperationsStackTraceElement(element.getTarget().getRootNode(), getSourceSectionAtBci(bci));
+    }
+
+    public final Node createFakeLocationNode(final int bci) {
+        return new Node() {
+            @Override
+            public SourceSection getSourceSection() {
+                return getSourceSectionAtBci(bci);
+            }
+
+            @Override
+            public SourceSection getEncapsulatingSourceSection() {
+                return getSourceSectionAtBci(bci);
+            }
+        };
     }
 }

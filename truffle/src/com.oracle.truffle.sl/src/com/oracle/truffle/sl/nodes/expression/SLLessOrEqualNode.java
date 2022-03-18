@@ -41,8 +41,10 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
@@ -66,7 +68,7 @@ public abstract class SLLessOrEqualNode extends SLBinaryNode {
     }
 
     @Fallback
-    public static Object typeError(Object left, Object right) {
-        throw SLException.typeError(null, left, right);
+    public static Object typeError(Object left, Object right, @Cached("this") Node node, @Cached("$bci") int bci) {
+        throw SLException.typeError(node, bci, left, right);
     }
 }

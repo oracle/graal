@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
@@ -131,7 +132,7 @@ public abstract class SLAddNode extends SLBinaryNode {
     }
 
     @Fallback
-    public static Object typeError(Object left, Object right) {
-        throw SLException.typeError(null, left, right);
+    public static Object typeError(Object left, Object right, @Cached("this") Node node, @Cached("$bci") int bci) {
+        throw SLException.typeError(node, bci, left, right);
     }
 }

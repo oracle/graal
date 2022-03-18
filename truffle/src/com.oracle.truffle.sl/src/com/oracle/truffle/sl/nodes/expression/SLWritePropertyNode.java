@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -77,13 +78,15 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeArray(Object receiver, Object index, Object value,
+                    @Cached("this") Node node,
+                    @Cached("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
             arrays.writeArrayElement(receiver, numbers.asLong(index), value);
         } catch (UnsupportedMessageException | UnsupportedTypeException | InvalidArrayIndexException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(null, index);
+            throw SLUndefinedNameException.undefinedProperty(node, bci, index);
         }
         return value;
     }
@@ -98,13 +101,15 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeObject(Object receiver, Object name, Object value,
+                    @Cached("this") Node node,
+                    @Cached("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {
             objectLibrary.writeMember(receiver, asMember.execute(name), value);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             // write was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(null, name);
+            throw SLUndefinedNameException.undefinedProperty(node, bci, name);
         }
         return value;
     }

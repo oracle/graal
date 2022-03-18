@@ -109,7 +109,7 @@ public final class SLIfNode extends SLStatementNode {
              * The condition evaluated to a non-boolean result. This is a type error in the SL
              * program.
              */
-            throw SLException.typeError(this, ex.getResult());
+            throw SLException.typeError(this, -1, ex.getResult());
         }
     }
 }

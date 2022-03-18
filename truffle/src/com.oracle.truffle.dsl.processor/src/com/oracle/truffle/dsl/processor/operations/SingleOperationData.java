@@ -10,7 +10,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -26,20 +25,30 @@ public class SingleOperationData extends Template {
     static enum ParameterKind {
         STACK_VALUE,
         VARIADIC,
-        SPECIAL_NODE,
-        SPECIAL_ARGUMENTS;
+        VIRTUAL_FRAME;
 
-        public TypeMirror getParameterType(ProcessorContext context, TruffleTypes types) {
+        public TypeMirror getParameterType(ProcessorContext context) {
             switch (this) {
                 case STACK_VALUE:
                     return context.getType(Object.class);
                 case VARIADIC:
-                case SPECIAL_ARGUMENTS:
                     return new ArrayCodeTypeMirror(context.getType(Object.class));
-                case SPECIAL_NODE:
-                    return types.Node;
+                case VIRTUAL_FRAME:
+                    return context.getTypes().VirtualFrame;
                 default:
                     throw new IllegalArgumentException("" + this);
+            }
+        }
+
+        public boolean isStackValue() {
+            switch (this) {
+                case STACK_VALUE:
+                case VARIADIC:
+                    return true;
+                case VIRTUAL_FRAME:
+                    return false;
+                default:
+                    throw new IllegalArgumentException(this.toString());
             }
         }
     }
@@ -54,13 +63,13 @@ public class SingleOperationData extends Template {
         public MethodProperties(ExecutableElement element, List<ParameterKind> parameters, boolean isVariadic, boolean returnsValue) {
             this.element = element;
             this.parameters = parameters;
-            int numStackValues = 0;
+            int stackValues = 0;
             for (ParameterKind param : parameters) {
-                if (param == ParameterKind.STACK_VALUE || param == ParameterKind.VARIADIC) {
-                    numStackValues++;
+                if (param.isStackValue()) {
+                    stackValues++;
                 }
             }
-            this.numStackValues = numStackValues;
+            this.numStackValues = stackValues;
             this.isVariadic = isVariadic;
             this.returnsValue = returnsValue;
         }

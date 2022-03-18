@@ -121,5 +121,6 @@ fragment HEX_DIGIT : [0-9] | [a-f] | [A-F];
 fragment OCT_DIGIT : [0-7];
 fragment BINARY_DIGIT : '0' | '1';
 
-IDENTIFIER : LETTER (LETTER | DIGIT)*;
+IDENTIFIER : LETTER (LETTER | DIGIT)*; 
+
 NUMERIC_LITERAL : '0' ( 'x' HEX_DIGIT* | 'b' BINARY_DIGIT* | OCT_DIGIT* )? | NON_ZERO_DIGIT DIGIT*;
