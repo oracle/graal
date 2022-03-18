@@ -129,6 +129,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @CompilationFinal private volatile MethodVersion methodVersion;
 
     private boolean removedByRedefinition;
+    private final ClassHierarchyAssumption isLeaf;
 
     private MethodHook[] hooks = MethodHook.EMPTY;
     private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
@@ -140,7 +141,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private Method(Method method, CodeAttribute split) {
         this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getMethodVersion().isLeaf,
+        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(),
                         method.getMethodVersion().poisonPill, split);
 
         try {
@@ -153,6 +154,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
         this.proxy = method.proxy == null ? method : method.proxy;
+        this.isLeaf = method.isLeaf;
     }
 
     Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
@@ -162,7 +164,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         this.declaringKlass = klassVersion.getKlass();
         this.rawSignature = rawSignature;
-        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, null, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -172,6 +174,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
         this.proxy = null;
+        this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
     }
 
     public Method identity() {
@@ -215,6 +218,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Symbol<Type>[] getParsedSignature() {
         assert parsedSignature != null;
         return parsedSignature;
+    }
+
+    public ClassHierarchyAssumption getLeafAssumption(ClassHierarchyOracle.ClassHierarchyAccessor accessor) {
+        Objects.requireNonNull(accessor);
+        return isLeaf;
     }
 
     private Source source;
@@ -1069,7 +1077,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final LinkedMethod linkedMethod;
         private final CodeAttribute codeAttribute;
         private final ExceptionsAttribute exceptionsAttribute;
-        private final ClassHierarchyAssumption isLeaf;
 
         @CompilationFinal private CallTarget callTarget;
 
@@ -1090,19 +1097,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Multiple maximally-specific interface methods. Fail on call.
         @CompilationFinal private boolean poisonPill;
 
-        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, ClassHierarchyAssumption leafAssumption, boolean poisonPill,
+        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, boolean poisonPill,
                         CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
             this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
-
-            if (leafAssumption != null) {
-                this.isLeaf = leafAssumption;
-            } else {
-                this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
-            }
             this.poisonPill = poisonPill;
             initRefKind();
         }
@@ -1121,7 +1122,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public MethodVersion replace(ObjectKlass.KlassVersion version, RuntimeConstantPool constantPool, LinkedMethod newLinkedMethod, CodeAttribute newCodeAttribute) {
-            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, null, false, newCodeAttribute);
+            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, false, newCodeAttribute);
             // make sure the table indices are copied
             result.vtableIndex = vtableIndex;
             result.itableIndex = itableIndex;
@@ -1159,11 +1160,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public Assumption getRedefineAssumption() {
             return klassVersion.getAssumption();
-        }
-
-        public ClassHierarchyAssumption getLeafAssumption(ClassHierarchyOracle.ClassHierarchyAccessor accessor) {
-            Objects.requireNonNull(accessor);
-            return getMethodVersion().isLeaf;
         }
 
         public CodeAttribute getCodeAttribute() {

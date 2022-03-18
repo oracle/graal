@@ -37,15 +37,17 @@ import java.util.ArrayList;
  */
 public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
-        if (newKlass.isConcrete()) {
-            addImplementorToAncestors(newKlass);
-            updateVirtualAndInterfaceTables(newKlass);
+    public ClassHierarchyMarker registerNewKlassVersion(ObjectKlass.KlassVersion newVersion) {
+        if (newVersion.isConcrete()) {
+            addImplementorToAncestors(newVersion);
+            updateVirtualAndInterfaceTables(newVersion);
         }
-        if (newKlass.isFinalFlagSet()) {
-            return ClassHierarchyAssumptionImpl.AlwaysValid;
-        }
-        return new ClassHierarchyAssumptionImpl(newKlass.getKlass());
+        return ClassHierarchyMarker.initialized;
+    }
+
+    @Override
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+        return new ClassHierarchyAssumptionImpl(newKlass);
     }
 
     @Override
@@ -104,20 +106,17 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
                 if (newKlass.getSuperKlass() != null) {
                     newKlass.getSuperKlass().lookupVirtualMethodOverrides(m.getMethod(), newKlass.getKlass(), overrides);
                     for (Method.MethodVersion override : overrides) {
-                        override.getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
+                        override.getMethod().getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
                     }
                 }
             }
         }
         Method.MethodVersion[][] itables = newKlass.getItable();
         for (int tableIndex = 0; tableIndex < itables.length; tableIndex++) {
-            // itable == klass.itables[tableIndex]
-            // currInterface == klass.iKlassTable[tableIndex].getKlass()
             updateLeafAssumptions(itables[tableIndex], newKlass.getiKlassTable()[tableIndex].getKlass());
         }
     }
 
-    // TODO: is the note still correct in presence of redefinition?
     /**
      * Note: Leaf assumptions are not invalidated on creation of an interface. This means that in
      * the following example:
@@ -154,15 +153,15 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
         // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
-        if (klass.getKlass().getType() == Symbol.Type.java_io_Serializable || klass.getKlass().getType() == Symbol.Type.java_lang_Cloneable) {
+        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
             return SingleImplementor.MultipleImplementors;
         }
         if (klass.isAbstract() || klass.isInterface()) {
             return new SingleImplementor();
         }
-        return new SingleImplementor(klass.getKlass());
+        return new SingleImplementor(klass);
     }
 
     @Override
@@ -171,12 +170,14 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method.MethodVersion newMethod) {
+    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method newMethod) {
         if (newMethod.isAbstract()) {
             // Disabled for abstract methods to reduce footprint.
             return ClassHierarchyAssumptionImpl.NeverValid;
         }
-        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet() || newMethod.getKlassVersion().isFinalFlagSet()) {
+        // Changing modifiers results in creating a new method, so it is correct to return
+        // an AlwaysValid assumption
+        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet()) {
             // Nothing to assume, spare an assumption.
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
@@ -184,7 +185,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public ClassHierarchyAssumption isLeafMethod(Method.MethodVersion method) {
+    public ClassHierarchyAssumption isLeafMethod(Method method) {
         return method.getLeafAssumption(ClassHierarchyAccessor.accessor);
     }
 }

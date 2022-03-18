@@ -43,12 +43,11 @@ final class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
         underlying = Truffle.getRuntime().createAssumption(assumptionName);
     }
 
-    // TODO: version?
     ClassHierarchyAssumptionImpl(ObjectKlass klass) {
         this(klass.getNameAsString() + " has no concrete subclasses");
     }
 
-    ClassHierarchyAssumptionImpl(Method.MethodVersion method) {
+    ClassHierarchyAssumptionImpl(Method method) {
         this(method.toString() + " is leaf");
     }
 

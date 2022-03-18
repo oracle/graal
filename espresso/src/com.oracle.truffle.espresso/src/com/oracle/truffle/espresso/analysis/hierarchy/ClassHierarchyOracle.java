@@ -42,21 +42,36 @@ public interface ClassHierarchyOracle {
         }
     }
 
+    final class ClassHierarchyMarker {
+        static final ClassHierarchyMarker initialized = new ClassHierarchyMarker();
+
+        private ClassHierarchyMarker() {
+        }
+    }
+
     /**
-     * Must be called to initialize {@code noConcreteSubclassesAssumption} of {@code newKlass}. In
-     * addition, it communicates to the oracle that a new klass has been created and its ancestors
-     * are no longer leaves.
+     * Must be called whenever a new
+     * {@link com.oracle.truffle.espresso.impl.ObjectKlass.KlassVersion klass version} is created.
+     * Communicates to the oracle the changes to the class hierarchy.
      *
-     * @param newKlass -- newly created class
-     * @return the assumption, indicating whether the class has subclasses
+     * @param newVersion -- newly created klass version
+     * @return -- a marker, enforcing that this method is called on every version creation.
      */
-    ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass);
+    ClassHierarchyMarker registerNewKlassVersion(ObjectKlass.KlassVersion newVersion);
+
+    /**
+     * Must be called to initialize {@code noConcreteSubclassesAssumption} of {@code newKlass}.
+     * 
+     * @param newKlass -- newly created class
+     * @return the assumption, indicating whether the class has concrete subclasses
+     */
+    ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass);
 
     /**
      * @return the assumption, valid only if {@code klass} is a concrete class and has no concrete
      *         subclasses. Automatically invalidated in
-     *         {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a concrete child
-     *         of {@code klass} is created.
+     *         {@link #registerNewKlassVersion(ObjectKlass.KlassVersion)} when a concrete child of
+     *         {@code klass} is created.
      */
 
     ClassHierarchyAssumption isLeafKlass(ObjectKlass klass);
@@ -64,16 +79,31 @@ public interface ClassHierarchyOracle {
     /**
      * @return the assumption, valid only if {@code klass} has no implementors, including itself
      *         (i.e. it must be abstract or an interface). Automatically invalidated in
-     *         {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a concrete child
-     *         of {@code klass} is created.
+     *         {@link #registerNewKlassVersion(ObjectKlass.KlassVersion)} when a concrete child of
+     *         {@code klass} is created.
      */
     ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass);
 
-    SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass);
+    SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass);
 
     AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass);
 
-    ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method.MethodVersion newMethod);
+    /**
+     * @param newMethod -- a newly created method
+     * @return an assumption that tracks whether this method is leaf. The assumption is invalidated
+     *         when a klass version that overrides this method is
+     *         {@link ClassHierarchyOracle#registerNewKlassVersion(ObjectKlass.KlassVersion)
+     *         registered}.
+     */
+    ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method newMethod);
 
-    ClassHierarchyAssumption isLeafMethod(Method.MethodVersion method);
+    /**
+     * @return an assumption that indicates whether this method has been overridden or it is still a
+     *         leaf.
+     */
+    ClassHierarchyAssumption isLeafMethod(Method method);
+
+    default ClassHierarchyAssumption isLeafMethod(Method.MethodVersion version) {
+        return isLeafMethod(version.getMethod());
+    }
 }

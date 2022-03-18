@@ -34,7 +34,12 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
-    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
+    public ClassHierarchyMarker registerNewKlassVersion(ObjectKlass.KlassVersion newVersion) {
+        return ClassHierarchyMarker.initialized;
+    }
+
+    @Override
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
         if (newKlass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
@@ -55,7 +60,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
         return SingleImplementor.MultipleImplementors;
     }
 
@@ -65,22 +70,19 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method.MethodVersion newMethod) {
+    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method newMethod) {
         if (newMethod.isAbstract()) {
-            // Disabled for abstract methods to reduce footprint.
             return ClassHierarchyAssumptionImpl.NeverValid;
         }
-        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet() || newMethod.getKlassVersion().isFinalFlagSet()) {
-            // Nothing to assume, spare an assumption.
+        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
         return ClassHierarchyAssumptionImpl.NeverValid;
     }
 
     @Override
-    public ClassHierarchyAssumption isLeafMethod(Method.MethodVersion method) {
-        if (method.isStatic() || method.isPrivate() || method.isFinalFlagSet() || method.getDeclaringKlass().isFinalFlagSet()) {
-            // Nothing to assume, spare an assumption.
+    public ClassHierarchyAssumption isLeafMethod(Method method) {
+        if (method.isStatic() || method.isPrivate() || method.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
         return ClassHierarchyAssumptionImpl.NeverValid;

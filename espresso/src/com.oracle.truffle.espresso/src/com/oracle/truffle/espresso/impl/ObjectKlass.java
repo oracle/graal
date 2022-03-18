@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyMarker;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -148,6 +149,13 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
+    // Class hierarchy information is managed by ClassHierarchyOracle,
+    // stored in ObjectKlass only for convenience.
+    // region class hierarchy information
+    private final SingleImplementor implementor;
+    private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
+    // endregion
+
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
     }
@@ -198,6 +206,8 @@ public final class ObjectKlass extends Klass {
         if (!info.addedToRegistry()) {
             initSelfReferenceInPool();
         }
+        this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+        this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -1571,14 +1581,9 @@ public final class ObjectKlass extends Klass {
         @CompilationFinal //
         boolean hasDeclaredDefaultMethods = false;
 
-        // Class hierarchy information is managed by ClassHierarchyOracle,
-        // stored in ObjectKlass only for convenience.
-        // region class hierarchy information
-        private final SingleImplementor implementor;
-        private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
-        // endregion
-
         @CompilationFinal private HierarchyInfo hierarchyInfo;
+
+        @SuppressWarnings("unused") private final ClassHierarchyMarker initializationMarker;
 
         // used to create the first version only
         private KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
@@ -1622,8 +1627,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
-            this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
+            this.initializationMarker = getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         // used to create a redefined version
@@ -1727,11 +1731,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            // TODO: we should not create a new valid assumption in case the old version's
-            // assumption has already been invalidated.
-            // However, we should notify the oracle about changes in either case
-            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
-            this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
+            this.initializationMarker = getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         public KlassVersion replace(Ids<Object> ids) {
