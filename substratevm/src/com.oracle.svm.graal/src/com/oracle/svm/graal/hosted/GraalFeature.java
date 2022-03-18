@@ -730,6 +730,9 @@ public final class GraalFeature implements Feature {
         GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.updateDataDuringAnalysis();
+
+        /* All the temporary data structures used during encoding are no longer necessary. */
+        graphEncoder = null;
     }
 
     private static void removeUnreachableInvokes(CallTreeNode node) {
