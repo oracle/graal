@@ -116,6 +116,7 @@ import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -653,6 +654,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length), getMaxVectorSize()));
         return result;
+    }
+
+    protected boolean supports(CPUFeature feature) {
+        return ((AMD64) target().arch).getFeatures().contains(feature);
     }
 
     /**

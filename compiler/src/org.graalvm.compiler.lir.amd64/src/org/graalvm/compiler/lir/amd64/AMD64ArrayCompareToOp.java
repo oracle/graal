@@ -108,7 +108,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
 
         // We only need the vector temporaries if we generate SSE code.
-        if (tool.supports(CPUFeature.SSE4_2)) {
+        if (supports(tool.target(), CPUFeature.SSE4_2)) {
             this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;

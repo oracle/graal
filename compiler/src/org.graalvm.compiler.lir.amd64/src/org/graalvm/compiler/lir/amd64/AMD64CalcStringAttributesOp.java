@@ -206,7 +206,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         this.op = op;
         this.assumeValid = assumeValid;
 
-        assert tool.supports(CPUFeature.SSE4_1);
+        assert supports(tool.target(), CPUFeature.SSE4_1);
         assert op.stride.isNumericInteger();
 
         this.scale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(op.stride)));
@@ -221,7 +221,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         for (int i = 0; i < temp.length; i++) {
             temp[i] = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         }
-        this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(op, tool.supports(CPUFeature.AVX), assumeValid)];
+        this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(op, supports(tool.target(), CPUFeature.AVX), assumeValid)];
         for (int i = 0; i < vectorTemp.length; i++) {
             vectorTemp[i] = tool.newVariable(LIRKind.value(getVectorKind(JavaKind.Byte)));
         }

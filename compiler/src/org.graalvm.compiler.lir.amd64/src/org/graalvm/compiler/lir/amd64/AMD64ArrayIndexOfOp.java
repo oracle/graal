@@ -129,7 +129,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         this.nValues = nValues;
         assert 0 < nValues && nValues <= 4;
         assert valueKind == JavaKind.Byte || valueKind == JavaKind.Char || valueKind == JavaKind.Int;
-        assert tool.supports(CPUFeature.SSE2) || tool.supports(CPUFeature.AVX) || tool.supports(CPUFeature.AVX2);
+        assert supports(tool.target(), CPUFeature.SSE2) || supports(tool.target(), CPUFeature.AVX) || supports(tool.target(), CPUFeature.AVX2);
         assert !(!withMask && findTwoConsecutive) || nValues == 2;
         assert !(withMask && findTwoConsecutive) || nValues == 4;
         assert !(withMask && !findTwoConsecutive) || nValues == 2;

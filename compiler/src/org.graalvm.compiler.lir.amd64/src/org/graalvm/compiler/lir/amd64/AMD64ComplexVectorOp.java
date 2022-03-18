@@ -29,8 +29,10 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -54,7 +56,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     }
 
     public static boolean useAVX512(LIRGeneratorTool tool) {
-        return tool.supports(CPUFeature.AVX512VL) && tool.supports(CPUFeature.AVX512BW) && tool.supports(CPUFeature.BMI2);
+        return supports(tool.target(), CPUFeature.AVX512VL) && supports(tool.target(), CPUFeature.AVX512BW) && supports(tool.target(), CPUFeature.BMI2);
     }
 
     private boolean isXMM(AVXSize size) {
@@ -117,6 +119,10 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
             default:
                 throw GraalError.shouldNotReachHere("Unsupported vector size.");
         }
+    }
+
+    public static boolean supports(TargetDescription target, CPUFeature cpuFeature) {
+        return ((AMD64) target.arch).getFeatures().contains(cpuFeature);
     }
 
     @Override

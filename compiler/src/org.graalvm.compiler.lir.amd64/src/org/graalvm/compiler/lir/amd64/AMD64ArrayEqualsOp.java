@@ -166,7 +166,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
 
         // We only need the vector temporaries if we generate SSE code.
-        if (tool.supports(CPUFeature.SSE4_1)) {
+        if (supports(tool.target(), CPUFeature.SSE4_1)) {
             LIRKind lirKind = LIRKind.value(getVectorKind(JavaKind.Byte));
             this.vectorTemp1 = tool.newVariable(lirKind);
             this.vectorTemp2 = tool.newVariable(lirKind);
