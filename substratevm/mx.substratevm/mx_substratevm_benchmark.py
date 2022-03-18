@@ -331,7 +331,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         if benchmark == 'db-shootout' and is_gate:
             # We are skipping build assertions in this package due to a problem with reflective access to a fields
             # annotated with InjectAccessors (GR-36056).
-            return build_assertions + ['-J-da', 'com.oracle.svm.hosted.ameta']
+            return build_assertions + ['-J-da:com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider']
         else:
             return build_assertions
 
