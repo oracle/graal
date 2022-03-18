@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -217,6 +217,14 @@ public final class ThreadsHandler implements ThreadsListener {
         return false;
     }
 
+    void dispose() {
+        synchronized (thread2Ids) {
+            for (SuspendedThreadInfo info : suspendedThreads.values()) {
+                info.resume();
+            }
+        }
+    }
+
     public final class SuspendedThreadInfo {
 
         private final int threadId;
@@ -257,6 +265,11 @@ public final class ThreadsHandler implements ThreadsListener {
                 ref = id2Refs.get(id);
             }
             return cls.isInstance(ref) ? cls.cast(ref) : null;
+        }
+
+        private void resume() {
+            // Provide an executable that returns true to resume
+            executables.add(info -> true);
         }
 
         private void runExecutables() {

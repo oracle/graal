@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,13 +113,13 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
     private final ExecutionContext context;
     private volatile DebugProtocolClient client;
-    private volatile ExecutorService clientConnectionExecutor;
     private volatile DebuggerSession debuggerSession;
+    private boolean disposed = false;
 
     private DebugProtocolServerImpl(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, @SuppressWarnings("unused") final boolean inspectInitialization) {
         this.context = context;
         if (debugBreak) {
-            startDebuggerSession();
+            debuggerSession = startDebuggerSession();
             context.initSession(debuggerSession);
             debuggerSession.suspendNextExecution();
         }
@@ -236,7 +236,18 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
     @Override
     public CompletableFuture<Void> disconnect(DisconnectArguments args) {
-        return CompletableFuture.completedFuture(null);
+        return CompletableFuture.runAsync(() -> {
+            DebuggerSession session;
+            synchronized (DebugProtocolServerImpl.this) {
+                disposed = true;
+                session = debuggerSession;
+                debuggerSession = null;
+            }
+            if (session != null) {
+                session.close();
+            }
+            context.dispose();
+        });
     }
 
     @Override
@@ -487,8 +498,19 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     protected void connect(DebugProtocolClient clnt) {
         this.client = clnt;
         if (debuggerSession == null) {
-            startDebuggerSession();
-            context.initSession(debuggerSession);
+            DebuggerSession session = startDebuggerSession();
+            boolean isDisposed;
+            synchronized (this) {
+                isDisposed = disposed;
+                if (!isDisposed) {
+                    debuggerSession = session;
+                }
+            }
+            if (isDisposed) {
+                session.close();
+            } else {
+                context.initSession(session);
+            }
         }
         context.initClient(client);
     }
@@ -514,7 +536,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     public CompletableFuture<?> start(final ServerSocket serverSocket, final Runnable onConnectCallback) {
-        clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+        ExecutorService clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             @Override
             public Thread newThread(Runnable r) {
@@ -527,6 +549,8 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
             @Override
             public void run() {
+                // We want to shut down the executor after this task finishes
+                clientConnectionExecutor.shutdown();
                 try {
                     if (serverSocket.isClosed()) {
                         context.getErr().println("[Graal DAP] Server socket is closed.");
@@ -565,10 +589,11 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         }, clientConnectionExecutor);
     }
 
-    private void startDebuggerSession() {
+    private DebuggerSession startDebuggerSession() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
-        debuggerSession = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
-        debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
+        DebuggerSession session = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
+        session.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
+        return session;
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
@@ -584,11 +609,16 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 // Debugger has been disabled while waiting
                 return;
             }
-            if (event.hasSourceElement(SourceElement.ROOT) && !event.hasSourceElement(SourceElement.STATEMENT) && event.getSuspendAnchor() == SuspendAnchor.BEFORE &&
-                            event.getBreakpoints().isEmpty()) {
-                // Suspend requested and we're at the begining of a ROOT.
-                debuggerSession.suspendNextExecution();
-                return;
+            DebugValue returnValue = event.getReturnValue();
+            if (event.hasSourceElement(SourceElement.ROOT) && event.getBreakpoints().isEmpty()) {
+                if ((!event.hasSourceElement(SourceElement.STATEMENT) && event.getSuspendAnchor() == SuspendAnchor.BEFORE) ||
+                                (event.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
+                    // We're at the begining of a `RootTag` node, or
+                    // we're at the end of `RootTag` node and have no return value.
+                    // Do not suspend in this case, not to cause distrations.
+                    event.prepareStepInto(STEP_CONFIG);
+                    return;
+                }
             }
             context.getLoadedSourcesHandler().assureLoaded(ss.getSource());
             context.getThreadsHandler().threadSuspended(Thread.currentThread(), event);
