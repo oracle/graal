@@ -33,6 +33,7 @@ public final class BuildPhaseProvider {
 
     private boolean analysisFinished;
     private boolean hostedUniverseBuilt;
+    private boolean compilationFinished;
 
     public static void init() {
         ImageSingletons.add(BuildPhaseProvider.class, new BuildPhaseProvider());
@@ -59,5 +60,13 @@ public final class BuildPhaseProvider {
 
     public static boolean isHostedUniverseBuilt() {
         return singleton().hostedUniverseBuilt;
+    }
+
+    public static void markCompilationFinished() {
+        singleton().compilationFinished = true;
+    }
+
+    public static boolean isCompilationFinished() {
+        return singleton().compilationFinished;
     }
 }

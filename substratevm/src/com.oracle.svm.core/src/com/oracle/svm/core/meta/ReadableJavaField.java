@@ -34,10 +34,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
     static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
         if (javaField instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) javaField;
-            if (!readableField.isValueAvailable()) {
-                assert !readableField.allowConstantFolding() && readableField.isUnknown();
-                return JavaConstant.forIllegal();
-            }
+            assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
             return readableField.readValue(metaAccess, javaConstant);
         } else {
             return originalConstantReflection.readFieldValue(javaField, javaConstant);
@@ -64,9 +61,5 @@ public interface ReadableJavaField extends ResolvedJavaField {
         } else {
             return false;
         }
-    }
-
-    default boolean isUnknown() {
-        return false;
     }
 }

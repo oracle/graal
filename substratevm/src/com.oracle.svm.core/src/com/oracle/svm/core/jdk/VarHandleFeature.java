@@ -223,6 +223,11 @@ class VarHandleFieldOffsetComputer implements RecomputeFieldValue.CustomFieldVal
         guarantee(sField.isAccessed() && sField.getLocation() > 0, "Field not marked as accessed");
         return Long.valueOf(sField.getLocation());
     }
+
+    @Override
+    public Class<?>[] types() {
+        return new Class<?>[]{long.class};
+    }
 }
 
 class VarHandleFieldStaticBasePrimitiveAccessor {

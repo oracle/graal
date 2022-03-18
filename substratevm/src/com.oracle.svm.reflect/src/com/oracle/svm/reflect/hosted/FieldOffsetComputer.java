@@ -60,4 +60,9 @@ public class FieldOffsetComputer implements CustomFieldValueComputer {
             return -1;
         }
     }
+
+    @Override
+    public Class<?>[] types() {
+        return new Class<?>[]{int.class};
+    }
 }
