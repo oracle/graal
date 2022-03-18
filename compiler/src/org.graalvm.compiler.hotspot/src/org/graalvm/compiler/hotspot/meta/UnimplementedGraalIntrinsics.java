@@ -263,7 +263,8 @@ public final class UnimplementedGraalIntrinsics {
         }
         // DigestBase intrinsics
         if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
-                        !(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
+                        !(config.md5ImplCompressMultiBlock != 0L || config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics() ||
+                                        config.sha3ImplCompressMultiBlock != 0L)) {
             add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
         }
         // SHA intrinsics
