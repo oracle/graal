@@ -583,7 +583,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RegisterValue cnt2 = AMD64.rdx.asValue(length2.getValueKind());
         emitMove(cnt1, length1);
         emitMove(cnt2, length2);
-        append(new AMD64ArrayCompareToOp(this, getAVX3Threshold(), kind1, kind2, array1BaseOffset, array2BaseOffset, raxRes, array1, array2, cnt1, cnt2));
+        append(new AMD64ArrayCompareToOp(this, getAVX3Threshold(), kind1, kind2, array1BaseOffset, array2BaseOffset, raxRes, array1, array2, cnt1, cnt2, getMaxVectorSize()));
         Variable result = newVariable(resultKind);
         emitMove(result, raxRes);
         return result;
@@ -644,23 +644,28 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
+        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset, getMaxVectorSize()));
         return result;
     }
 
     @Override
     public Variable emitHasNegatives(Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
+        append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length), getMaxVectorSize()));
         return result;
     }
 
     /**
      * Return the maximum size of vector registers used in SSE/AVX instructions.
      */
-    protected int getMaxVectorSize() {
-        // default for "unlimited"
-        return -1;
+    protected AVXSize getMaxVectorSize() {
+        if (supports(AMD64.CPUFeature.AVX512VL)) {
+            return AVXSize.ZMM;
+        }
+        if (supports(AMD64.CPUFeature.AVX2)) {
+            return AVXSize.YMM;
+        }
+        return AVXSize.XMM;
     }
 
     /**

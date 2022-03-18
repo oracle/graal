@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -70,8 +71,12 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
             if (plugin != null && !plugin.inlineOnly()) {
                 ResolvedJavaMethod method = CheckGraalIntrinsics.resolveIntrinsic(getMetaAccess(), intrinsic);
                 if (!method.isNative()) {
-                    StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, AllowAssumptions.YES, null);
-                    getCode(method, graph);
+                    try {
+                        StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, AllowAssumptions.YES, null);
+                        getCode(method, graph);
+                    } catch (AssertionError e) {
+                        throw new GraalError(e, "Assertion error at %s", intrinsic.toString());
+                    }
                 }
             }
         }

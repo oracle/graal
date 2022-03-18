@@ -40,6 +40,7 @@ import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 
+import jdk.vm.ci.code.CPUFeatureName;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -344,4 +345,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * {@code isPreSync == true}) or following (if {@code isPreSync == false}) memory writes.
      */
     void emitCacheWritebackSync(boolean isPreSync);
+
+    /**
+     * Tests if {@code feature} is supported.
+     */
+    default boolean supports(CPUFeatureName feature) {
+        return target().arch.getFeatures().contains(feature);
+    }
 }
