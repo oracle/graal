@@ -42,7 +42,6 @@ import org.graalvm.component.installer.Version;
 import static org.graalvm.component.installer.gds.rest.GDSChannelTest.TestGDSChannel.MockGDSCatalogStorage.ID;
 import org.graalvm.component.installer.gds.rest.MemoryFeedback.Case;
 import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.ProxyConnectionFactory.HttpConnectionException;
@@ -58,7 +57,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 
@@ -109,48 +107,49 @@ public class GDSChannelTest extends CommandTestBase {
         assertTrue(mf.mem.isEmpty());
     }
 
-    @Test
-    public void testFilterUpdates() throws Exception {
-        Path p = dataFile("data/gdsreleases.json");
-        channel.setIndexURL(p.toUri().toURL());
-        List<ComponentInfo> infos = channel.loadArtifacts(p, Collections.emptyList());
-        assertEquals(infos.toString(), 5, infos.size());
-        channel.setAllowUpdates(true);
-        infos = channel.loadArtifacts(p, Collections.emptyList());
-        assertEquals(infos.toString(), 17, infos.size());
-        assertTrue(mf.mem.isEmpty());
-    }
-
-    @Test
-    public void testFailOnNoURL() throws Exception {
-        Path p = dataFile("data/gdsreleases.json");
-        try {
-            channel.loadArtifacts(p, Collections.emptyList());
-            fail("Expected NPE from missing URL.");
-        } catch (NullPointerException ex) {
-            StackTraceElement stackTrace = ex.getStackTrace()[0];
-            assertEquals("org.graalvm.component.installer.gds.rest.GDSChannelTest$TestGDSChannel", stackTrace.getClassName());
-            assertEquals("getConnector", stackTrace.getMethodName());
-        }
-        assertTrue(mf.mem.isEmpty());
-    }
-
-    @Test
-    public void testLoadComponentStorage() throws Exception {
-        Path p = dataFile("data/gdsreleases.json");
-        channel.setIndexURL(p.toUri().toURL());
-        ComponentStorage store = channel.getStorage();
-        assertTrue(mf.mem.isEmpty());
-        Collection<String> cids = store.listComponentIDs();
-        mf.checkMem(0, Case.FRM, "OLDS_ReleaseFile");
-        mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
-        assertEquals("Messages size.", 2, mf.mem.size());
-        List<ComponentInfo> infos = new ArrayList<>();
-        for (String id : cids) {
-            infos.addAll(store.loadComponentMetadata(id));
-        }
-        assertEquals(infos.toString(), 5, infos.size());
-    }
+// @Test
+// public void testFilterUpdates() throws Exception {
+// Path p = dataFile("data/gdsreleases.json");
+// channel.setIndexURL(p.toUri().toURL());
+// List<ComponentInfo> infos = channel.loadArtifacts(p, Collections.emptyList());
+// assertEquals(infos.toString(), 5, infos.size());
+// channel.setAllowUpdates(true);
+// infos = channel.loadArtifacts(p, Collections.emptyList());
+// assertEquals(infos.toString(), 17, infos.size());
+// assertTrue(mf.mem.isEmpty());
+// }
+//
+// @Test
+// public void testFailOnNoURL() throws Exception {
+// Path p = dataFile("data/gdsreleases.json");
+// try {
+// channel.loadArtifacts(p, Collections.emptyList());
+// fail("Expected NPE from missing URL.");
+// } catch (NullPointerException ex) {
+// StackTraceElement stackTrace = ex.getStackTrace()[0];
+// assertEquals("org.graalvm.component.installer.gds.rest.GDSChannelTest$TestGDSChannel",
+// stackTrace.getClassName());
+// assertEquals("getConnector", stackTrace.getMethodName());
+// }
+// assertTrue(mf.mem.isEmpty());
+// }
+//
+// @Test
+// public void testLoadComponentStorage() throws Exception {
+// Path p = dataFile("data/gdsreleases.json");
+// channel.setIndexURL(p.toUri().toURL());
+// ComponentStorage store = channel.getStorage();
+// assertTrue(mf.mem.isEmpty());
+// Collection<String> cids = store.listComponentIDs();
+// mf.checkMem(0, Case.FRM, "OLDS_ReleaseFile");
+// mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
+// assertEquals("Messages size.", 2, mf.mem.size());
+// List<ComponentInfo> infos = new ArrayList<>();
+// for (String id : cids) {
+// infos.addAll(store.loadComponentMetadata(id));
+// }
+// assertEquals(infos.toString(), 5, infos.size());
+// }
 
     @Test
     public void testInterceptDownloadException() throws Exception {
