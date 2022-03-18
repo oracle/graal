@@ -80,6 +80,7 @@ import com.oracle.truffle.tools.dap.types.StackTraceArguments;
 import com.oracle.truffle.tools.dap.types.StackTraceResponse;
 import com.oracle.truffle.tools.dap.types.StepInArguments;
 import com.oracle.truffle.tools.dap.types.StepOutArguments;
+import com.oracle.truffle.tools.dap.types.TerminatedEvent;
 import com.oracle.truffle.tools.dap.types.ThreadsResponse;
 import com.oracle.truffle.tools.dap.types.Variable;
 import com.oracle.truffle.tools.dap.types.VariablesArguments;
@@ -90,10 +91,12 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -115,6 +118,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private volatile DebugProtocolClient client;
     private volatile DebuggerSession debuggerSession;
     private boolean disposed = false;
+    private final List<Runnable> runOnDispose = new CopyOnWriteArrayList<>();
 
     private DebugProtocolServerImpl(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, @SuppressWarnings("unused") final boolean inspectInitialization) {
         this.context = context;
@@ -248,6 +252,23 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
             }
             context.dispose();
         });
+    }
+
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+        DebugProtocolClient theClient = client;
+        if (theClient != null) {
+            theClient.terminated(TerminatedEvent.EventBody.create());
+        }
+        for (Runnable r : runOnDispose) {
+            r.run();
+        }
+    }
+
+    private void onDispose(Runnable r) {
+        runOnDispose.add(r);
     }
 
     @Override
@@ -535,7 +556,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         };
     }
 
-    public CompletableFuture<?> start(final ServerSocket serverSocket, final Runnable onConnectCallback) {
+    public CompletableFuture<?> start(final ServerSocket serverSocket) {
         ExecutorService clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             @Override
@@ -545,21 +566,29 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return thread;
             }
         });
+        context.getInfo().println("[Graal DAP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
         return CompletableFuture.runAsync(new Runnable() {
 
             @Override
             public void run() {
                 // We want to shut down the executor after this task finishes
                 clientConnectionExecutor.shutdown();
+                AtomicBoolean terminated = new AtomicBoolean(false);
                 try {
                     if (serverSocket.isClosed()) {
                         context.getErr().println("[Graal DAP] Server socket is closed.");
                         return;
                     }
 
-                    context.getInfo().println("[Graal DAP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
+                    onDispose(() -> {
+                        terminated.set(true);
+                        try {
+                            serverSocket.close();
+                        } catch (IOException e) {
+                            context.getErr().println("[Graal DAP] Error while closing the server socket: " + e.getLocalizedMessage());
+                        }
+                    });
                     try (Socket clientSocket = serverSocket.accept()) {
-                        onConnectCallback.run();
                         context.getInfo().println("[Graal DAP] Client connected on " + clientSocket.getRemoteSocketAddress());
 
                         ExecutorService dapRequestExecutor = Executors.newCachedThreadPool(new ThreadFactory() {
@@ -583,7 +612,13 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                         }
                     }
                 } catch (IOException e) {
-                    context.getErr().println("[Graal DAP] Error while connecting to client: " + e.getLocalizedMessage());
+                    if (terminated.get() && (e instanceof SocketException)) {
+                        // We've terminated the socket, thus we ignore any exceptions from it.
+                        // serverSocket.accept() will always throw "Socket closed" exception
+                        // when serverSocket.close() is called.
+                    } else {
+                        context.getErr().println("[Graal DAP] Error while connecting to client: " + e.getLocalizedMessage());
+                    }
                 }
             }
         }, clientConnectionExecutor);
@@ -615,7 +650,9 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                                 (event.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
                     // We're at the begining of a `RootTag` node, or
                     // we're at the end of `RootTag` node and have no return value.
-                    // Do not suspend in this case, not to cause distrations.
+                    // We use `RootTag` to intercept return values of functions during stepping.
+                    // But if there's no return value, there's no point in suspending at the end of
+                    // a function. That would cause an unnecessary distraction.
                     event.prepareStepInto(STEP_CONFIG);
                     return;
                 }

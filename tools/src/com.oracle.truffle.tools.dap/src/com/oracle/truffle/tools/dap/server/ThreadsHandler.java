@@ -219,6 +219,7 @@ public final class ThreadsHandler implements ThreadsListener {
 
     void dispose() {
         synchronized (thread2Ids) {
+            // We need to resume all suspended threads
             for (SuspendedThreadInfo info : suspendedThreads.values()) {
                 info.resume();
             }
