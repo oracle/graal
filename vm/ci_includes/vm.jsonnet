@@ -247,7 +247,6 @@ local jdks = common_json.jdks;
     vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-amd64', patterns: ['daily-deploy-vm-base-java17-darwin-amd64']}]},
     vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-amd64', patterns: ['daily-deploy-vm-installable-java17-darwin-amd64']}]},
 
-    # TODO: move to ci_common/common.jsonnet once we need EE stuff.
     # Darwin/AARCH64
     vm_common.deploy_vm_base_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-aarch64', patterns: ['daily-deploy-vm-base-java11-darwin-aarch64']}]},
     vm_common.deploy_vm_installable_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java11-darwin-aarch64']}]},
