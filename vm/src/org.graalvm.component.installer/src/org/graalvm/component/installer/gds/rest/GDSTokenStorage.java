@@ -41,6 +41,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
 import static org.graalvm.component.installer.CommonConstants.PATH_USER_GU;
+import java.io.File;
 
 /**
  *
@@ -148,16 +149,35 @@ public class GDSTokenStorage {
             // cannot happen, but Spotbugs keeps yelling
             return;
         }
-        Files.createDirectories(parent, PosixFilePermissions.asFileAttribute(
-                        Set.of(PosixFilePermission.OWNER_READ,
-                                        PosixFilePermission.OWNER_WRITE,
-                                        PosixFilePermission.OWNER_EXECUTE)));
+        Files.createDirectories(parent);
+        if (SystemUtils.isWindows()) {
+            File file = parent.toFile();
+            file.setReadable(false, false);
+            file.setExecutable(false, false);
+            file.setWritable(false, false);
+            file.setReadable(true);
+            file.setExecutable(true);
+            file.setWritable(true);
+        } else {
+            Files.setPosixFilePermissions(parent, Set.of(PosixFilePermission.OWNER_READ,
+                            PosixFilePermission.OWNER_WRITE,
+                            PosixFilePermission.OWNER_EXECUTE));
+        }
         try (OutputStream os = Files.newOutputStream(propertiesPath)) {
             properties.store(os, null);
         }
-        Files.setPosixFilePermissions(propertiesPath,
-                        Set.of(PosixFilePermission.OWNER_READ,
-                                        PosixFilePermission.OWNER_WRITE));
+        if (SystemUtils.isWindows()) {
+            File file = propertiesPath.toFile();
+            file.setReadable(false, false);
+            file.setExecutable(false, false);
+            file.setWritable(false, false);
+            file.setReadable(true);
+            file.setWritable(true);
+        } else {
+            Files.setPosixFilePermissions(propertiesPath,
+                            Set.of(PosixFilePermission.OWNER_READ,
+                                            PosixFilePermission.OWNER_WRITE));
+        }
     }
 
     public static void printToken(Feedback feedback, CommandInput input) {
