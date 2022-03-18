@@ -68,7 +68,7 @@
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
-  darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
+  darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64,
   windows_amd64:: windows_amd64 + sulong_deps.windows,
 
   sulong_notifications:: {

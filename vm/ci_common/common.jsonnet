@@ -95,11 +95,12 @@ local devkits = common_json.devkits;
 
   # SULONG
   sulong_linux: common_json.sulong.deps.common + common_json.sulong.deps.linux,
-  sulong_darwin: common_json.sulong.deps.common + common_json.sulong.deps.darwin,
+  sulong_darwin_amd64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_amd64,
+  sulong_darwin_aarch64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_aarch64,
 
   # TRUFFLERUBY
   truffleruby_linux: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
-  truffleruby_darwin: self.sulong_darwin + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
+  truffleruby_darwin_amd64: self.sulong_darwin_amd64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
 
   # FASTR
   # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
@@ -173,7 +174,7 @@ local devkits = common_json.devkits;
     },
   },
 
-  graalpython_darwin: self.sulong_darwin + {},
+  graalpython_darwin_amd64: self.sulong_darwin_amd64 + {},
 
   vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
@@ -399,9 +400,9 @@ local devkits = common_json.devkits;
   full_vm_build_linux: self.ruby_vm_build_linux + self.fastr_linux + self.graalpython_linux,
   full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + vm.custom_vm_linux,
 
-  ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin + self.truffleruby_darwin + vm.custom_vm_darwin,
-  full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin,
-  full_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin,
+  ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin_amd64 + self.truffleruby_darwin_amd64 + vm.custom_vm_darwin,
+  full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin_amd64,
+  full_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64,
 
   local libgraal_build(build_args) =
     ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + ['build'],

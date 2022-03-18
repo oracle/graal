@@ -96,9 +96,14 @@
           "cmake": "==3.15.2"
         }
       },
-      "darwin": {
+      "darwin_amd64": {
         "packages": {
-          "cmake": ">=3.15.2"
+          "cmake": "==3.15.2"
+        }
+      },
+      "darwin_aarch64": {
+        "packages": {
+          "cmake": "==3.22.2"
         }
       },
       "windows": {
