@@ -197,9 +197,6 @@ local devkits = common_json.devkits;
       # for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
-    packages+: {
-    # GR-37497: should have gcc: '==4.9.2', but not available on darwin-aarch64 yet
-    },
   },
 
   vm_windows: self.common_vm_windows + graal_common.windows_server_2016_amd64,
