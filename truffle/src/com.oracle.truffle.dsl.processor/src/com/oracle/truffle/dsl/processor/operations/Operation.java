@@ -420,7 +420,7 @@ public abstract class Operation {
 
         @Override
         public List<Argument> getArguments() {
-            return List.of(new Argument.Integer(2));
+            return List.of(new Argument.IntegerArgument(2));
         }
 
         @Override

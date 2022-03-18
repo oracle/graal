@@ -280,7 +280,7 @@ public abstract class Instruction {
 
     public static class LoadArgument extends SimpleInstruction {
         public LoadArgument(int id) {
-            super("ldarg", id, 1, 0, new Argument.Integer(2));
+            super("ldarg", id, 1, 0, new Argument.IntegerArgument(2));
         }
 
         @Override
@@ -306,7 +306,7 @@ public abstract class Instruction {
 
     public static class LoadLocal extends SimpleInstruction {
         public LoadLocal(int id) {
-            super("ldloc", id, 1, 0, new Argument.Integer(2));
+            super("ldloc", id, 1, 0, new Argument.IntegerArgument(2));
         }
 
         @Override
@@ -330,7 +330,7 @@ public abstract class Instruction {
 
     public static class StoreLocal extends SimpleInstruction {
         public StoreLocal(int id) {
-            super("stloc", id, 0, 1, new Argument.Integer(2));
+            super("stloc", id, 0, 1, new Argument.IntegerArgument(2));
         }
 
         @Override

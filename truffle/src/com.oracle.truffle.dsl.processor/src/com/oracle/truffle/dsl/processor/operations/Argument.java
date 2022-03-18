@@ -34,8 +34,8 @@ public abstract class Argument {
 
     public abstract CodeTree getDumpCode(ExecuteVariables vars, CodeTree offset);
 
-    public static class Integer extends Argument {
-        public Integer(int length) {
+    public static class IntegerArgument extends Argument {
+        public IntegerArgument(int length) {
             super(length);
             assert length == 1 || length == 2;
         }
@@ -87,7 +87,7 @@ public abstract class Argument {
         }
     }
 
-    public static class VarArgsCount extends Integer {
+    public static class VarArgsCount extends IntegerArgument {
 
         private final int minCount;
 
