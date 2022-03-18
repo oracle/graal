@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -430,7 +430,7 @@ public abstract class RootNode extends ExecutableNode {
      * @since 19.0
      * @deprecated in 22.0, call targets are lazily initialized in {@link #getCallTarget()} now.
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     protected final void setCallTarget(RootCallTarget callTarget) {
         if (this.callTarget != null) {
             throw new UnsupportedOperationException();
@@ -446,7 +446,7 @@ public abstract class RootNode extends ExecutableNode {
      *             removal.
      */
     @SuppressWarnings("deprecation")
-    @Deprecated
+    @Deprecated(since = "22.1")
     public com.oracle.truffle.api.CompilerOptions getCompilerOptions() {
         return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
     }

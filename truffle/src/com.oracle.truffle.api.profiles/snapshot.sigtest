@@ -122,7 +122,7 @@ CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
 meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
 meth public static com.oracle.truffle.api.profiles.ValueProfile createClassProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createEqualityProfile()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.2")
 meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()
 supr com.oracle.truffle.api.profiles.Profile

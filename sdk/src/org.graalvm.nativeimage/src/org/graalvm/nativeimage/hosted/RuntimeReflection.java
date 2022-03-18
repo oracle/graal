@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,7 +112,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "21.1")
     public static void register(boolean finalIsWritable, Field... fields) {
         register(fields);
     }
@@ -123,7 +123,7 @@ public final class RuntimeReflection {
      * @since 21.0
      */
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "21.1")
     public static void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
         register(fields);
     }

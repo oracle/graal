@@ -1355,7 +1355,7 @@ public abstract class TruffleLanguage<C> {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link ContextReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
         try {
             return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
@@ -1370,7 +1370,7 @@ public abstract class TruffleLanguage<C> {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link LanguageReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         try {
             return ENGINE.getCurrentContext(languageClass);
@@ -3022,7 +3022,7 @@ public abstract class TruffleLanguage<C> {
          * @since 20.3.0
          * @deprecated since 22.1; replaced by {@link #createHostAdapter(Object[])}.
          */
-        @Deprecated
+        @Deprecated(since = "22.1")
         @TruffleBoundary
         public Object createHostAdapterClass(Class<?>[] types) {
             Objects.requireNonNull(types, "types");
@@ -3034,7 +3034,7 @@ public abstract class TruffleLanguage<C> {
          * @deprecated since 22.1; replaced by
          *             {@link #createHostAdapterWithClassOverrides(Object[], Object)}.
          */
-        @Deprecated
+        @Deprecated(since = "22.1")
         @TruffleBoundary
         public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
             Objects.requireNonNull(types, "types");
@@ -3472,7 +3472,7 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          * @deprecated in 21.3, use {@link #get(Node)} instead.
          */
-        @Deprecated
+        @Deprecated(since = "21.3")
         public abstract L get();
 
         /**
@@ -3598,7 +3598,7 @@ public abstract class TruffleLanguage<C> {
          * @deprecated in 21.3, use {@link #get(Node)} instead.
          */
         @SuppressWarnings("unchecked")
-        @Deprecated
+        @Deprecated(since = "21.3")
         public abstract C get();
 
         /**

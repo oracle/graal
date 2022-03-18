@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -155,7 +155,7 @@ public final class TruffleContext implements AutoCloseable {
      * @since 0.27
      * @deprecated use {@link #enter(Node)} instead and pass in the node context is possible.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
     public Object enter() {
         return enter(null);
     }
@@ -393,7 +393,7 @@ public final class TruffleContext implements AutoCloseable {
      * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
      *             possible.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
     public void leave(Object prev) {
         leave(null, prev);
     }
