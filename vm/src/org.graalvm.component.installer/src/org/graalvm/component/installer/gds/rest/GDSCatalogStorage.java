@@ -66,7 +66,7 @@ class GDSCatalogStorage extends AbstractCatalogStorage implements DownloadInterc
         return dn;
     }
 
-    private Map<String, Set<ComponentInfo>> buildComponentsMap(Collection<ComponentInfo> artifacts) {
+    private static Map<String, Set<ComponentInfo>> buildComponentsMap(Collection<ComponentInfo> artifacts) {
         Map<String, Set<ComponentInfo>> comps = new HashMap<>();
         for (ComponentInfo info : artifacts) {
             comps.computeIfAbsent(info.getId(), i -> new HashSet<>()).add(info);

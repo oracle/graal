@@ -845,7 +845,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             if snapshot_catalog and _suite.vc:
                 catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
                 if gds_snapshot_catalog:
-                    catalog += "|" + gds_snapshot_catalog;
+                    catalog += "|" + gds_snapshot_catalog
             elif gds_snapshot_catalog:
                 catalog = gds_snapshot_catalog
             else:

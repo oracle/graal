@@ -38,7 +38,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Test;
-import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
@@ -95,9 +94,10 @@ public class ArtifactParserTest extends TestBase {
     GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
 
     @Test
-    public void testConstruct() throws MalformedURLException {
+    public void testConstruct() {
+        ArtifactParser ap = null;
         try {
-            new ArtifactParser(null);
+            ap = new ArtifactParser(null);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             assertEquals("Parsed Artifact JSON cannot be null.", ex.getMessage());
@@ -105,7 +105,7 @@ public class ArtifactParserTest extends TestBase {
         }
         JSONObject jo = new JSONObject();
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (JSONException ex) {
             tstJsonExc(ex, JSON_KEY_ID);
@@ -113,7 +113,7 @@ public class ArtifactParserTest extends TestBase {
         }
         jo.put(JSON_KEY_ID, JSON_VAL_ID);
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (JSONException ex) {
             tstJsonExc(ex, JSON_KEY_CHECKSUM);
@@ -121,7 +121,7 @@ public class ArtifactParserTest extends TestBase {
         }
         jo.put(JSON_KEY_CHECKSUM, JSON_VAL_CHECKSUM);
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (JSONException ex) {
             tstJsonExc(ex, JSON_KEY_METADATA);
@@ -130,7 +130,7 @@ public class ArtifactParserTest extends TestBase {
         JSONArray meta = new JSONArray();
         jo.put(JSON_KEY_METADATA, meta);
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (JSONException ex) {
             tstJsonExc(ex, JSON_KEY_DISP_NAME);
@@ -138,14 +138,14 @@ public class ArtifactParserTest extends TestBase {
         }
         jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME);
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
             assertEquals("begin 0, end -1, length 15", ex.getMessage());
         }
         setMeta(meta, JSON_META_KEY_BASE, Boolean.toString(true));
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (JSONException ex) {
             tstJsonExc(ex, JSON_KEY_LIC_ID);
@@ -153,31 +153,31 @@ public class ArtifactParserTest extends TestBase {
         }
         jo.put(JSON_KEY_LIC_ID, JSON_VAL_LIC_ID);
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (JSONException ex) {
             tstJsonExc(ex, JSON_KEY_LIC_NAME);
             // expected
         }
         jo.put(JSON_KEY_LIC_NAME, JSON_VAL_LIC_NAME);
-        new ArtifactParser(jo);
+        ap = new ArtifactParser(jo);
         setMeta(meta, JSON_META_KEY_BASE, Boolean.toString(false));
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
             assertEquals("begin 0, end -1, length 15", ex.getMessage());
         }
         jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());
         try {
-            new ArtifactParser(jo);
+            ap = new ArtifactParser(jo);
             fail("JSONException expected.");
         } catch (IllegalArgumentException ex) {
             assertEquals("metadata.symbolicName: Cannot be null.", ex.getMessage());
             // expected
         }
         setMeta(meta, JSON_META_KEY_SYMBOLIC_NAME, JSON_META_VAL_SYMBOLIC_NAME);
-        ArtifactParser ap = new ArtifactParser(jo);
+        ap = new ArtifactParser(jo);
         assertEquals(SystemUtils.ARCH.get().getName(), ap.getArch());
         assertEquals(SystemUtils.OS.get().getName(), ap.getOs());
         assertEquals(SystemUtils.getJavaMajorVersion() + "", ap.getJava());

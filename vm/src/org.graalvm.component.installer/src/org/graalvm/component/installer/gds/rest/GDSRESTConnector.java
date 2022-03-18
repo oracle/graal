@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -88,12 +87,13 @@ class GDSRESTConnector {
         if (baseURL == null || baseURL.isBlank()) {
             throw new IllegalArgumentException("Base URL String can't be empty.");
         }
+        URL url = null;
         try {
-            new URL(baseURL);
+            url = new URL(baseURL);
         } catch (MalformedURLException ex) {
             throw new IllegalArgumentException("Base URL String must be convertible to URL.");
         }
-        this.baseURL = baseURL;
+        this.baseURL = url.toString();
         if (feedback == null) {
             throw new IllegalArgumentException("Feedback can't be null.");
         }
@@ -155,13 +155,14 @@ class GDSRESTConnector {
         assert (SystemUtils.nonBlankString(email) && config == null) || (SystemUtils.nonBlankString(config) && email == null);
         String licID = licAddr.substring(licAddr.lastIndexOf("/") + 1);
         String acceptLicLink = baseURL + ENDPOINT_LICENSE_ACCEPT;
+        String token = config;
         try {
             GDSRequester tr = getGDSRequester(acceptLicLink, licID);
-            config = email != null ? tr.obtainConfig(email) : tr.acceptLic(config);
+            token = email != null ? tr.obtainConfig(email) : tr.acceptLic(config);
         } catch (IOException ex) {
             throw feedback.failure("ERR_VerificationEmail", ex, email == null ? feedback.l10n("MSG_YourEmail") : email);
         }
-        return config;
+        return token;
     }
 
     public String makeLicenseURL(String licenseId) {

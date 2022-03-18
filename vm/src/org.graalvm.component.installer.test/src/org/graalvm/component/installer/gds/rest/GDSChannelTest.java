@@ -40,7 +40,6 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
 import static org.graalvm.component.installer.gds.rest.GDSChannelTest.TestGDSChannel.MockGDSCatalogStorage.ID;
-import org.graalvm.component.installer.gds.rest.GDSChannelTest.TestGDSChannel.MockHttpURLConnection;
 import org.graalvm.component.installer.gds.rest.MemoryFeedback.Case;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;

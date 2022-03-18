@@ -26,7 +26,6 @@
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.Feedback;
-import static org.graalvm.component.installer.Feedback.AUTO_YES;
 import static org.junit.Assert.assertEquals;
 import java.net.URL;
 import java.nio.file.Path;
@@ -63,7 +62,7 @@ final class MemoryFeedback implements Feedback {
     }
 
     final List<Memory> mem = new ArrayList<>();
-    boolean verbose = true;
+    boolean verb = true;
     Function<Boolean, String> lineAccept = null;
 
     static final class Memory {
@@ -93,7 +92,7 @@ final class MemoryFeedback implements Feedback {
         }
     }
 
-    private void assEq(Object exp, Object obj, Supplier<String> msg) {
+    private static void assEq(Object exp, Object obj, Supplier<String> msg) {
         try {
             assertEquals(exp, obj);
         } catch (AssertionError ae) {
@@ -101,7 +100,7 @@ final class MemoryFeedback implements Feedback {
         }
     }
 
-    private Supplier<String> form(String format, Object... args) {
+    private static Supplier<String> form(String format, Object... args) {
         return () -> String.format(format, args);
     }
 
@@ -174,12 +173,12 @@ final class MemoryFeedback implements Feedback {
 
     @Override
     public boolean verbosePart(String bundleKey, Object... params) {
-        return verbose;
+        return verb;
     }
 
     @Override
     public boolean verboseOutput(String bundleKey, Object... params) {
-        return verbose;
+        return verb;
     }
 
     @Override
@@ -206,12 +205,12 @@ final class MemoryFeedback implements Feedback {
 
     @Override
     public boolean backspace(int chars, boolean beVerbose) {
-        return verbose;
+        return verb;
     }
 
     @Override
     public boolean isNonInteractive() {
-        return verbose;
+        return verb;
     }
 
     @Override

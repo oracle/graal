@@ -40,7 +40,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.URLConnectionFactory;
@@ -49,7 +48,8 @@ import java.io.InputStreamReader;
 
 /**
  * Creates URLConnections to the given destination. Caches the decision about proxy. For the first
- * {@link #openConnection(java.net.URI, java.util.function.Consumer)}, the code wil open
+ * {@link #openConnection(java.net.URI, org.graalvm.component.installer.URLConnectionFactory.Configure)},
+ * the code wil open
  * <ul>
  * <li>a direct connection to the proxy
  * <li>a connection through http proxy, if configured

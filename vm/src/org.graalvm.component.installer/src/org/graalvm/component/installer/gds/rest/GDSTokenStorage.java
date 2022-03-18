@@ -38,7 +38,6 @@ import org.graalvm.component.installer.gds.GdsCommands;
 import static org.graalvm.component.installer.CommonConstants.PATH_GDS_CONFIG;
 import org.graalvm.component.installer.SystemUtils;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
 import static org.graalvm.component.installer.CommonConstants.PATH_USER_GU;
 import java.io.File;
@@ -182,25 +181,25 @@ public class GDSTokenStorage {
 
     public static void printToken(Feedback feedback, CommandInput input) {
         GDSTokenStorage storage = new GDSTokenStorage(feedback, input);
-        feedback = storage.feedback;
+        Feedback fb = storage.feedback;
         String token = storage.getToken();
         String msg = storage.tokenSource == Source.NON ? "MSG_EmptyToken" : "MSG_PrintToken";
         String source = "";
         switch (storage.tokenSource) {
             case ENV:
-                source = feedback.l10n("MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
+                source = fb.l10n("MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
                 break;
             case CMD:
-                source = feedback.l10n("MSG_PrintTokenCmdFile", storage.getCmdFile());
+                source = fb.l10n("MSG_PrintTokenCmdFile", storage.getCmdFile());
                 break;
             case FIL:
-                source = feedback.l10n("MSG_PrintTokenFile", storage.propertiesPath);
+                source = fb.l10n("MSG_PrintTokenFile", storage.propertiesPath);
                 break;
             default:
                 // NOOP
                 break;
         }
-        feedback.output(msg, token, source);
+        fb.output(msg, token, source);
     }
 
     public enum Source {

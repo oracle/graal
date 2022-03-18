@@ -32,8 +32,6 @@ import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.URLConnectionFactory;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.gds.rest.GDSRESTConnector.GDSRequester;
-import org.graalvm.component.installer.gds.rest.GDSRESTConnectorTest.GDSTestConnector.TestGDSRequester;
-import org.graalvm.component.installer.gds.rest.GDSRESTConnectorTest.GDSTestConnector.TestGDSRequester.TestURLConnectionFactory;
 import org.graalvm.component.installer.gds.rest.GDSRESTConnectorTest.GDSTestConnector.TestGDSRequester.TestURLConnectionFactory.TestURLConnection;
 import org.graalvm.component.installer.gds.rest.MemoryFeedback.Case;
 import org.graalvm.component.installer.remote.FileDownloader;
@@ -53,7 +51,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  *
@@ -93,55 +90,57 @@ public class GDSRESTConnectorTest extends TestBase {
         assertEquals(testURL, testConnector.baseURL);
         assertEquals(TEST_ID, testConnector.productId);
         assertEquals(TEST_GDS_AGENT, testConnector.gdsUserAgent);
+        GDSTestConnector conn = null;
         try {
-            new GDSTestConnector(null, this, TEST_ID, TEST_VERSION);
+            conn = new GDSTestConnector(null, this, TEST_ID, TEST_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector("", this, TEST_ID, TEST_VERSION);
+            conn = new GDSTestConnector("", this, TEST_ID, TEST_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector("notURL", this, TEST_ID, TEST_VERSION);
+            conn = new GDSTestConnector("notURL", this, TEST_ID, TEST_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector(testURL, null, TEST_ID, TEST_VERSION);
+            conn = new GDSTestConnector(testURL, null, TEST_ID, TEST_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector(testURL, this, null, TEST_VERSION);
+            conn = new GDSTestConnector(testURL, this, null, TEST_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector(testURL, this, "", TEST_VERSION);
+            conn = new GDSTestConnector(testURL, this, "", TEST_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector(testURL, this, TEST_ID, null);
+            conn = new GDSTestConnector(testURL, this, TEST_ID, null);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
         try {
-            new GDSTestConnector(testURL, this, TEST_ID, Version.NO_VERSION);
+            conn = new GDSTestConnector(testURL, this, TEST_ID, Version.NO_VERSION);
             fail("IllegalArgumentException expected.");
         } catch (IllegalArgumentException ex) {
             // expected
         }
 
+        assertTrue(conn == null);
         assertTrue(mf.toString(), mf.mem.isEmpty());
     }
 
@@ -266,7 +265,7 @@ public class GDSRESTConnectorTest extends TestBase {
     }
 
     @Test
-    public void testSendVerificationEmail() throws IOException {
+    public void testSendVerificationEmail() {
         String tkn = testConnector.sendVerificationEmail(null, testURL, TEST_TOKEN_OLD);
         assertEquals(TEST_TOKEN_OLD, tkn);
         TestURLConnection tc = testConnector.conn;
@@ -345,8 +344,8 @@ public class GDSRESTConnectorTest extends TestBase {
         }
 
         @Override
-        protected FileDownloader obtain(String endpoint) {
-            this.endpoint = endpoint;
+        protected FileDownloader obtain(String endp) {
+            this.endpoint = endp;
             // endpoint is appended to baseURL
             return super.obtain("");
         }
