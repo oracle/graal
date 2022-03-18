@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -178,6 +179,8 @@ public class ReflectionFeature implements GraalFeature {
         analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         /* duplicated to reduce the number of analysis iterations */
         reflectionData.flushConditionalConfiguration(access);
+        /* Make sure array classes don't need to be registered for reflection. */
+        RuntimeReflection.register(Object[].class.getMethods());
     }
 
     @Override

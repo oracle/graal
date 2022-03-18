@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -86,7 +87,7 @@ public class SubstitutionReflectivityFilter {
             if (!universe.hostVM().platformSupported(aField)) {
                 return true;
             }
-            if (aField.isAnnotationPresent(Delete.class)) {
+            if (aField.isAnnotationPresent(Delete.class) || aField.isAnnotationPresent(InjectAccessors.class)) {
                 return true; // accesses would fail at runtime
             }
         } catch (UnsupportedFeatureException ignored) {
