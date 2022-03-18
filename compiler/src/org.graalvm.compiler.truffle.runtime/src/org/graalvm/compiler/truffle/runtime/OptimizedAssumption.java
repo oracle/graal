@@ -291,8 +291,9 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         if (isValid) {
             if (this.name == Lazy.ALWAYS_VALID_NAME) {
                 /*
-                 * Always valid assumption do not need registration, as they are by definition
-                 * always valid. If they attempted to get invalidated an error is thrown.
+                 * An ALWAYS_VALID assumption does not need registration, as they are by definition
+                 * always valid. If they attempted to get invalidated an error is thrown, so we can
+                 * just discard the dependency.
                  */
                 return DISCARD_DEPENDENCY;
             }
