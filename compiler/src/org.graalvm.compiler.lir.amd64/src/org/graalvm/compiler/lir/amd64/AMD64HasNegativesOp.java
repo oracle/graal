@@ -44,7 +44,6 @@ import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
@@ -54,13 +53,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-// @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 3376,
-          lineEnd   = 3592,
-          commit    = "fb17a8ece0a3593c51a8be60533916bf70778a93",
-          sha1      = "bb0a5ceba73bfeeec91bd96f738a48b5275ac51e")
-// @formatter:on
 @Opcode("AMD64_HAS_NEGATIVES")
 public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64HasNegativesOp> TYPE = LIRInstructionClass.create(AMD64HasNegativesOp.class);
