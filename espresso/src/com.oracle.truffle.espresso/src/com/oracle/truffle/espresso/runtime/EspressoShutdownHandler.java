@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
@@ -59,6 +61,7 @@ final class EspressoShutdownHandler implements ContextAccess {
         this.threadManager = threadManager;
         this.referenceDrainer = referenceDrainer;
         this.softExit = softExit;
+        this.shutdownSynchronizer = EspressoLock.create(context.getBlockingSupport());
     }
 
     /**
@@ -78,8 +81,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * On return of the main method, host main thread waits on this synchronizer. Once a thread
      * terminates, or an exit method is called, it is notified
      */
-    private final Object shutdownSynchronizer = new Object() {
-    };
+    private final EspressoLock shutdownSynchronizer;
 
     boolean isClosing() {
         return isClosing;
@@ -98,13 +100,13 @@ final class EspressoShutdownHandler implements ContextAccess {
     }
 
     private void beginClose(int code) {
-        assert Thread.holdsLock(getShutdownSynchronizer());
+        assert getShutdownSynchronizer().isHeldByCurrentThread();
         isClosing = true;
         exitStatus = code;
         context.getLogger().finer(() -> "Starting close process with code=" + code);
     }
 
-    Object getShutdownSynchronizer() {
+    EspressoLock getShutdownSynchronizer() {
         return shutdownSynchronizer;
     }
 
@@ -139,6 +141,8 @@ final class EspressoShutdownHandler implements ContextAccess {
      */
     @TruffleBoundary
     void destroyVM() {
+        // This thread needs to be attached to call guest code.
+        context.createThread(Thread.currentThread(), context.getMainThreadGroup(), "DestroyJavaVM", false);
         waitForClose();
         try {
             getMeta().java_lang_Shutdown_shutdown.invokeDirect(null);
@@ -152,39 +156,45 @@ final class EspressoShutdownHandler implements ContextAccess {
         if (isClosing()) {
             return;
         }
-        Object sync = getShutdownSynchronizer();
-        synchronized (sync) {
+        EspressoLock sync = getShutdownSynchronizer();
+        sync.lock();
+        try {
             if (isClosing()) {
                 return;
             }
             beginClose(code);
             if (notifyNaturalExit) {
                 // Wake up spinning natural exiting thread if needed.
-                sync.notifyAll();
+                sync.signalAll();
             }
+        } finally {
+            sync.unlock();
         }
         teardown();
     }
 
     private void waitForClose() throws EspressoExitException {
-        Object synchronizer = getShutdownSynchronizer();
+        EspressoLock synchronizer = getShutdownSynchronizer();
         Thread initiating = Thread.currentThread();
         context.getLogger().fine("Waiting for non-daemon threads to finish or exit");
-        synchronized (synchronizer) {
+        synchronizer.lock();
+        try {
             while (true) {
                 if (isClosing()) {
                     return;
                 }
                 if (hasActiveNonDaemon(initiating)) {
                     try {
-                        synchronizer.wait();
-                    } catch (InterruptedException e) {
+                        synchronizer.await(0L);
+                    } catch (GuestInterruptedException e) {
                         /* loop back */
                     }
                 } else {
                     return;
                 }
             }
+        } finally {
+            synchronizer.unlock();
         }
     }
 

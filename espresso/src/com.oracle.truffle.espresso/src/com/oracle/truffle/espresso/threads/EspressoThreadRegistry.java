@@ -203,10 +203,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 }
             }
         }
-        Object sync = context.getShutdownSynchronizer();
-        synchronized (sync) {
-            sync.notifyAll();
-        }
+        context.notifyShutdownSynchronizer();
     }
 
     /**
