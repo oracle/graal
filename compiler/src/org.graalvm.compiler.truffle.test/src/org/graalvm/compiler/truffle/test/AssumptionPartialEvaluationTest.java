@@ -128,7 +128,9 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertTrue(node.assumption.isValid());
 
         OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getCallTarget();
-        Assert.assertEquals(2, callTarget.call());
+        int intResult = (int) callTarget.call();
+        // might be 42 or 2 dependent whether compile immediately is set
+        assertTrue(intResult == 42 || intResult == 2);
         callTarget.compile(true);
         Assert.assertEquals(42, callTarget.call());
 
@@ -172,7 +174,9 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertFalse(node.assumption.isValid());
 
         OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getCallTarget();
-        Assert.assertEquals(2, callTarget.call());
+        int intResult = (int) callTarget.call();
+        // might be 42 or 2 dependent whether compile immediately is set
+        assertTrue(intResult == 42 || intResult == 2);
         callTarget.compile(true);
         Assert.assertEquals(42, callTarget.call());
 
