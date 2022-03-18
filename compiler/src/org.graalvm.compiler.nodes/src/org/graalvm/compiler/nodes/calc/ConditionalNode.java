@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.services.Services;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two (eagerly
@@ -59,9 +58,6 @@ import jdk.vm.ci.services.Services;
 public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     public static final NodeClass<ConditionalNode> TYPE = NodeClass.create(ConditionalNode.class);
-
-    private static boolean isAArch64 = false;
-
     @Input(InputType.Condition) LogicNode condition;
     @Input(InputType.Value) ValueNode trueValue;
     @Input(InputType.Value) ValueNode falseValue;
@@ -80,11 +76,6 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         this.condition = condition;
         this.trueValue = trueValue;
         this.falseValue = falseValue;
-        // In order to be able to generate some platform-specific nodes,
-        // this Boolean variable records whether the platform is AArch64 or not.
-        if (Services.getSavedProperties().get("os.arch").equals("aarch64")) {
-            isAArch64 = true;
-        }
     }
 
     public static ValueNode create(LogicNode condition, NodeView view) {
@@ -238,14 +229,14 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
             }
 
             if (condition instanceof IntegerLessThanNode) {
-                /*
-                 * Convert a conditional add ((x < 0) ? (x + y) : x) into (x + (y & (x >> (bits -
-                 * 1)))) to avoid the test.
-                 */
                 IntegerLessThanNode lt = (IntegerLessThanNode) condition;
-                if (lt.getY().isDefaultConstant()) {
-                    if (falseValue == lt.getX()) {
+                if (falseValue == lt.getX()) {
+                    if (lt.getY().isDefaultConstant()) {
                         if (trueValue instanceof AddNode) {
+                            /*
+                             * Convert a conditional add ((x < 0) ? (x + y) : x) into (x + (y & (x
+                             * >> (bits - 1)))) to avoid the test.
+                             */
                             AddNode add = (AddNode) trueValue;
                             if (add.getX() == falseValue) {
                                 int bits = ((IntegerStamp) trueValue.stamp(NodeView.DEFAULT)).getBits();
@@ -253,17 +244,18 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                                 ValueNode and = new AndNode(shift, add.getY());
                                 return new AddNode(add.getX(), and);
                             }
-                        } else if (isAArch64 && trueValue instanceof NegateNode) {
+                        } else if (trueValue instanceof NegateNode && ((NegateNode) trueValue).getValue() == falseValue) {
                             /*
-                             * Detect (x < 0) ? -x : x (and similar variants) and replace with an
-                             * "abs" node. The "absolute" node only applies to AArch64 machines.
+                             * Detect (x < 0) ? -x : x and replace with an "abs" node.
                              */
-                            if (lt.getY().isJavaConstant() && (lt.getY().asJavaConstant().asLong() == 0 || lt.getY().asJavaConstant().asLong() == 1)) {
-                                NegateNode negate = (NegateNode) trueValue;
-                                if (negate.getValue() == falseValue) {
-                                    return new AbsNode(falseValue);
-                                }
-                            }
+                            return AbsNode.create(falseValue, NodeView.DEFAULT);
+                        }
+                    } else if (lt.getY().isJavaConstant() && lt.getY().asJavaConstant().asLong() == 1) {
+                        /*
+                         * Detect (x < 1) ? -x : x and replace with an "abs" node.
+                         */
+                        if (trueValue instanceof NegateNode && ((NegateNode) trueValue).getValue() == falseValue) {
+                            return AbsNode.create(falseValue, NodeView.DEFAULT);
                         }
                     }
                 }
