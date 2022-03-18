@@ -106,5 +106,4 @@ public class LLVMAlias extends LLVMSymbol {
     public boolean isThreadLocalSymbol() {
         return target.isThreadLocalSymbol();
     }
-
 }

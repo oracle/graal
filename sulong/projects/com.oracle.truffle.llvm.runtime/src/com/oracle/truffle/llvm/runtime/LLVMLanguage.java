@@ -63,6 +63,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
@@ -209,6 +210,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         final LLVMContext context;
         LLVMPointer[] sections = new LLVMPointer[10];
+        LLVMGlobalContainer[][] managedSections;
         final WeakReference<Thread> thread;
         boolean isFinalized;
 

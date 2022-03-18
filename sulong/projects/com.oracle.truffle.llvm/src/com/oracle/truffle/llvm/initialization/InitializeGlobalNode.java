@@ -90,7 +90,6 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
     public void execute(VirtualFrame frame, LLVMPointer roDataBase) {
         globalVarInit.execute(frame);
         if (roDataBase != null) {
-            // TODO could be a compile-time check
             protectRoData.execute(roDataBase);
         }
         LLVMContext context = LLVMContext.get(this);
@@ -99,8 +98,6 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             for (Thread thread : threads) {
                 threadGlobalVarInit.call(thread);
             }
-            // TODO: remove the rootnode for the call target of the node, once code can be ran
-            // inside initialize thread.
             context.addThreadLocalGlobalInitializer((AggregateTLGlobalInPlaceNode) threadGlobalVarInit.getCurrentRootNode());
         }
     }

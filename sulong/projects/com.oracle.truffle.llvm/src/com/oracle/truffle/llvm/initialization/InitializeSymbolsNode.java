@@ -101,36 +101,24 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final int globalLength;
 
     public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName, DataSectionFactory dataSectionFactory) {
-        // DataLayout dataLayout = result.getDataLayout();
         this.nodeFactory = result.getRuntime().getNodeFactory();
         this.fileScope = result.getRuntime().getFileScope();
         this.globalLength = result.getSymbolTableSize();
         this.bitcodeID = result.getRuntime().getBitcodeID();
         this.moduleName = moduleName;
         this.exception = BranchProfile.create();
-        // allocate all non-pointer types as two structs
-        // one for read-only and one for read-write
-        /*
-         * DataSection roSection = new DataSection(dataLayout); DataSection rwSection = new
-         * DataSection(dataLayout); DataSection threadLocalSection = new DataSection(dataLayout);
-         */
         List<GlobalVariable> definedGlobals = result.getDefinedGlobals();
         List<GlobalVariable> threadLocalGlobals = result.getThreadLocalGlobals();
         int globalsCount = definedGlobals.size();
         int threadLocalGlobalsCount = threadLocalGlobals.size();
         this.threadLocalGlobalsArray = new LLVMSymbol[threadLocalGlobalsCount];
-        // this.globalOffsets = new int[globalsCount];
         this.globals = new LLVMSymbol[globalsCount];
-
-        // this.threadLocalPointers = new LLVMThreadLocalPointer[threadLocalGlobalsCount];
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.get(null).getCapability(LLVMIntrinsicProvider.class);
-
         this.globalOffsets = dataSectionFactory.getGlobalOffsets();
         this.threadLocalGlobalOffsets = dataSectionFactory.getThreadLocalGlobalOffsets();
         this.globalIsReadOnly = dataSectionFactory.getGlobalIsReadOnly();
         assert threadLocalGlobalOffsets.length == threadLocalGlobalsArray.length;
 
-        // this will all be moved to a new class called from loadmodules and passed here.
         for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
             LLVMSymbol symbol = fileScope.get(global.getName());
@@ -138,7 +126,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
             globals[i] = symbol;
         }
 
-        // Thread local globals
         for (int i = 0; i < threadLocalGlobalsCount; i++) {
             GlobalVariable tlGlobals = threadLocalGlobals.get(i);
             LLVMSymbol symbol = fileScope.get(tlGlobals.getName());
@@ -146,15 +133,15 @@ public final class InitializeSymbolsNode extends LLVMNode {
             threadLocalGlobalsArray[i] = symbol;
         }
 
-        /*
-         * Functions are allocated based on whether they are intrinsic function, regular llvm
-         * bitcode function, or eager llvm bitcode function.
-         */
-
         List<FunctionSymbol> definedFunctions = result.getDefinedFunctions();
         int functionCount = definedFunctions.size();
         this.functions = new LLVMSymbol[functionCount];
         this.allocFuncs = new AllocSymbolNode[functionCount];
+
+        /*
+         * Functions are allocated based on whether they are intrinsic function, regular llvm
+         * bitcode function, or eager llvm bitcode function.
+         */
         for (int i = 0; i < functionCount; i++) {
             FunctionSymbol functionSymbol = definedFunctions.get(i);
             LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
@@ -169,10 +156,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
             }
             functions[i] = function;
         }
-
-        // this will all be moved to a new class called from loadmodules and passed here.
-        // this.allocTLSection = threadLocalSection.createAllocateNode(nodeFactory,
-        // "tlglobals_struct", true);
         this.allocRoSection = dataSectionFactory.getRoSection().createAllocateNode(nodeFactory, "roglobals_struct", true);
         this.allocRwSection = dataSectionFactory.getRwSection().createAllocateNode(nodeFactory, "rwglobals_struct", false);
     }
@@ -186,10 +169,9 @@ public final class InitializeSymbolsNode extends LLVMNode {
         if (LibraryLocator.loggingEnabled()) {
             LibraryLocator.traceStaticInits(ctx, "symbol initializers", moduleName);
         }
-        // this will all be moved to a new class called from loadmodules and passed here.
+
         LLVMPointer roBase = allocOrNull(allocRoSection);
         LLVMPointer rwBase = allocOrNull(allocRwSection);
-
         initializeGlobalSymbols(ctx, roBase, rwBase);
         initializeFunctionSymbols(ctx);
         initializeTLGlobalSymbols(ctx);
@@ -200,11 +182,10 @@ public final class InitializeSymbolsNode extends LLVMNode {
         if (allocRwSection != null) {
             ctx.registerGlobals(bitcodeID.getId(), rwBase, nodeFactory);
         }
-        return roBase; // needed later to apply memory protection after initialization
+        return roBase;
     }
 
     public void initializeTLGlobalSymbols(LLVMContext context) {
-        // create the value for the globals
         for (int i = 0; i < threadLocalGlobalOffsets.length; i++) {
             int offset = threadLocalGlobalOffsets[i];
             LLVMThreadLocalPointer pointer = new LLVMThreadLocalPointer(threadLocalGlobalsArray[i], offset);
@@ -276,38 +257,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
 
     private static int getAlignment(DataLayout dataLayout, GlobalVariable global, Type type) {
         return global.getAlign() > 0 ? 1 << (global.getAlign() - 1) : type.getAlignment(dataLayout);
-    }
-
-    static final class DataSection {
-
-        final DataLayout dataLayout;
-        final ArrayList<Type> types = new ArrayList<>();
-
-        private long offset = 0;
-
-        DataSection(DataLayout dataLayout) {
-            this.dataLayout = dataLayout;
-        }
-
-        long add(GlobalVariable global, Type type) throws Type.TypeOverflowException {
-            int alignment = getAlignment(dataLayout, global, type);
-            int padding = Type.getPadding(offset, alignment);
-            addPaddingTypes(types, padding);
-            offset = Type.addUnsignedExact(offset, padding);
-            long ret = offset;
-            types.add(type);
-            offset = Type.addUnsignedExact(offset, type.getSize(dataLayout));
-            return ret;
-        }
-
-        LLVMAllocateNode createAllocateNode(NodeFactory factory, String typeName, boolean readOnly) {
-            if (offset > 0) {
-                StructureType structType = StructureType.createNamedFromList(typeName, true, types);
-                return factory.createAllocateGlobalsBlock(structType, readOnly);
-            } else {
-                return null;
-            }
-        }
     }
 
     abstract static class AllocSymbolNode extends LLVMNode {

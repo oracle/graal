@@ -77,6 +77,6 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
 
     @Override
     public String getName() {
-        return "TLS" + '/' + bitcodeID.getId();
+        return "AggregateThreadLocalGlobalInPlaceNode" + '/' + bitcodeID.getId();
     }
 }

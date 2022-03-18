@@ -533,7 +533,6 @@ public final class LLVMContext {
                 language.freeThreadLocalGlobal(value);
             }
         }
-
     }
 
     /**
