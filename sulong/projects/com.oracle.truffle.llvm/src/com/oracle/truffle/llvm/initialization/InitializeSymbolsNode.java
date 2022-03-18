@@ -47,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalPointer;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
@@ -55,9 +54,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -243,20 +239,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
         } else {
             return null;
         }
-    }
-
-    private static void addPaddingTypes(ArrayList<Type> result, int padding) {
-        assert padding >= 0;
-        int remaining = padding;
-        while (remaining > 0) {
-            int size = Math.min(Long.BYTES, Integer.highestOneBit(remaining));
-            result.add(PrimitiveType.getIntegerType(size * Byte.SIZE));
-            remaining -= size;
-        }
-    }
-
-    private static int getAlignment(DataLayout dataLayout, GlobalVariable global, Type type) {
-        return global.getAlign() > 0 ? 1 << (global.getAlign() - 1) : type.getAlignment(dataLayout);
     }
 
     abstract static class AllocSymbolNode extends LLVMNode {
