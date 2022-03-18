@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -189,7 +189,7 @@ public abstract class TruffleSafepoint {
      *             Though similar in functionality, this method costs an additional lambda
      *             expression, which may be unfavorable in partial evaluated code.
      */
-    @Deprecated
+    @Deprecated(since = "22.1")
     public final <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
         setBlockedWithException(location, interrupter, interruptible, object, beforeInterrupt,
                         // Runnable -> Consumer<Throwable>

@@ -350,7 +350,7 @@ public final class EventContext {
      *             observable by the guest language application.
      * @since 20.0
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     @SuppressWarnings("static-method")
     public RuntimeException createError(RuntimeException e) {
         return e;

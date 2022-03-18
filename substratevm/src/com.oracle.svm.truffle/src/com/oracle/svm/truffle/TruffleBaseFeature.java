@@ -762,6 +762,11 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
             assert metaAccess instanceof HostedMetaAccess;
             return ((HostedMetaAccess) metaAccess).lookupJavaField(f).getLocation();
         }
+
+        @Override
+        public Class<?>[] types() {
+            return new Class<?>[]{int.class};
+        }
     }
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //

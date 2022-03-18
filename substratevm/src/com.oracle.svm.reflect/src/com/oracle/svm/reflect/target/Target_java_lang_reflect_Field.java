@@ -44,12 +44,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
+import com.oracle.svm.reflect.hosted.ReflectionMetadataComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -68,7 +68,7 @@ public final class Target_java_lang_reflect_Field {
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = AnnotationsComputer.class) //
-    @UnknownObjectField(types = {byte[].class}) byte[] annotations;
+    byte[] annotations;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
     public int offset;
@@ -134,13 +134,7 @@ public final class Target_java_lang_reflect_Field {
         }
     }
 
-    static class AnnotationsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
-
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterCompilation;
-        }
-
+    static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);

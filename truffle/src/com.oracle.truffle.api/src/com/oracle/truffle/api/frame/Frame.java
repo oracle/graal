@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     Object getObject(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -85,7 +85,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setObject(FrameSlot slot, Object value);
 
     /**
@@ -97,7 +97,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     byte getByte(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -108,7 +108,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setByte(FrameSlot slot, byte value);
 
     /**
@@ -119,7 +119,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -130,7 +130,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setBoolean(FrameSlot slot, boolean value);
 
     /**
@@ -141,7 +141,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     int getInt(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -152,7 +152,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setInt(FrameSlot slot, int value);
 
     /**
@@ -163,7 +163,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     long getLong(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -174,7 +174,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setLong(FrameSlot slot, long value);
 
     /**
@@ -185,7 +185,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     float getFloat(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -196,7 +196,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setFloat(FrameSlot slot, float value);
 
     /**
@@ -207,7 +207,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     double getDouble(FrameSlot slot) throws FrameSlotTypeException;
 
     /**
@@ -218,7 +218,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     void setDouble(FrameSlot slot, double value);
 
     /**
@@ -229,7 +229,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     Object getValue(FrameSlot slot);
 
     /**
@@ -247,7 +247,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isObject(FrameSlot slot);
 
     /**
@@ -256,7 +256,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isByte(FrameSlot slot);
 
     /**
@@ -265,7 +265,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isBoolean(FrameSlot slot);
 
     /**
@@ -274,7 +274,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isInt(FrameSlot slot);
 
     /**
@@ -283,7 +283,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isLong(FrameSlot slot);
 
     /**
@@ -292,7 +292,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isFloat(FrameSlot slot);
 
     /**
@@ -301,7 +301,7 @@ public interface Frame {
      * @since 0.8 or earlier
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     boolean isDouble(FrameSlot slot);
 
     /**
@@ -320,7 +320,7 @@ public interface Frame {
      * @since 21.1
      * @deprecated use index-based slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     default void clear(FrameSlot slot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();

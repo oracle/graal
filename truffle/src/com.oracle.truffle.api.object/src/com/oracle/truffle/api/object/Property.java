@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ public abstract class Property {
      * @since 0.8 or earlier
      * @deprecated no replacement
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Property relocate(Location newLocation);
 
     /**
@@ -165,7 +165,7 @@ public abstract class Property {
      * @since 0.8 or earlier
      * @deprecated Properties can be set using {@link DynamicObjectLibrary#put}.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract void setInternal(DynamicObject store, Object value);
 
     /**
@@ -183,7 +183,7 @@ public abstract class Property {
      * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
      *             and {@link DynamicObjectLibrary#putWithFlags}.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException;
 
     /**
@@ -200,7 +200,7 @@ public abstract class Property {
      * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
      *             and {@link DynamicObjectLibrary#putWithFlags}.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
     /**
@@ -225,7 +225,7 @@ public abstract class Property {
      * @since 0.8 or earlier
      * @deprecated Equivalent to comparing the property's key and flags.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract boolean isSame(Property other);
 
     /**
@@ -252,13 +252,13 @@ public abstract class Property {
      * @deprecated Property flags can be changed using
      *             {@link DynamicObjectLibrary#setPropertyFlags(DynamicObject, Object, int)}.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Property copyWithFlags(int newFlags);
 
     /**
      * @since 0.8 or earlier
      * @deprecated no replacement
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Property copyWithRelocatable(boolean newRelocatable);
 }

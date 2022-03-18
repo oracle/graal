@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -39,6 +38,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -52,7 +52,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final DynamicHubInitializer dynamicHubInitializer;
-    private final UnknownFieldHandler unknownFieldHandler;
+    private final CustomTypeFieldHandler customTypeFieldHandler;
     private final CallChecker callChecker;
 
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
@@ -61,7 +61,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);
-        unknownFieldHandler = new PointsToUnknownFieldHandler(this, metaAccess);
+        customTypeFieldHandler = new PointsToCustomTypeFieldHandler(this, metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -83,7 +83,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
-        unknownFieldHandler.cleanupAfterAnalysis();
+        customTypeFieldHandler.cleanupAfterAnalysis();
     }
 
     @Override
@@ -99,7 +99,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onFieldAccessed(AnalysisField field) {
-        unknownFieldHandler.handleUnknownValueField(field);
+        customTypeFieldHandler.handleField(field);
     }
 
     @Override

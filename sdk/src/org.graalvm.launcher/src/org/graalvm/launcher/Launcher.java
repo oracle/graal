@@ -1128,7 +1128,7 @@ public abstract class Launcher {
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
 
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.3")
     protected final void maybeNativeExec(List<String> args, boolean isPolyglotLauncher, Map<String, String> polyglotOptions) {
         maybeNativeExec(args, args, isPolyglotLauncher);
     }
@@ -1254,7 +1254,7 @@ public abstract class Launcher {
     }
 
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.3")
     protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs, Map<String, String> polyglotOptions) {
         executeJVM(classpath, jvmArgs, remainingArgs);
     }
@@ -1272,7 +1272,7 @@ public abstract class Launcher {
     }
 
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.3")
     protected void executePolyglot(List<String> mainArgs, Map<String, String> polyglotOptions, boolean forceNative) {
         executePolyglot(mainArgs, forceNative);
     }

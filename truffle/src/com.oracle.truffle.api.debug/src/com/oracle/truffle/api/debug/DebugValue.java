@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -114,7 +114,7 @@ public abstract class DebugValue {
      *             set}({@link #getSession()}{@link DebuggerSession#createPrimitiveValue(Object, Languageinfo)
      *             .createPrimitiveValue(primitiveValue, null)}) instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.2")
     public abstract void set(Object primitiveValue) throws DebugException;
 
     /**
@@ -135,7 +135,7 @@ public abstract class DebugValue {
      * @since 0.17
      * @deprecated Use {@link #toDisplayString()} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.1")
     public abstract <T> T as(Class<T> clazz) throws DebugException;
 
     /**
