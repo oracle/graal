@@ -40,6 +40,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 
+import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -177,6 +178,17 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     public SubstrateAMD64Backend(Providers providers) {
         super(providers);
+    }
+
+    public static boolean buildtimeToRuntimeIsAvxSseTransition(TargetDescription target) {
+        if (SubstrateUtil.HOSTED) {
+            // hosted does not need to care about this
+            return false;
+        }
+        var arch = (AMD64) target.arch;
+        var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildTimeCPUFeatures();
+        var runtimeCPUFeatures = arch.getFeatures();
+        return !hostedCPUFeatures.contains(AVX) && runtimeCPUFeatures.contains(AVX);
     }
 
     @Opcode("CALL_DIRECT")
@@ -353,12 +365,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     private void vzeroupper(LIRGeneratorTool gen, Value[] arguments, LIRFrameState callState) {
         if (!SubstrateUtil.HOSTED) {
-            boolean mayContainFP = /* hsLinkage.mayContainFP(); */ true;
-            boolean isInImage = /* !hsLinkage.isCompiledStub(); */ true;
-            AMD64 arch = (AMD64) gen.target().arch;
-            var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildTimeCPUFeatures();
-            var runtimeCPUFeatures = arch.getFeatures();
-            if (!hostedCPUFeatures.contains(AVX) && runtimeCPUFeatures.contains(AVX) && mayContainFP && isInImage && !isRuntimeToRuntimeCall(callState)) {
+            // TODO we might want to avoid vzeroupper if the target does not use SSE (cf.
+            // hsLinkage.mayContainFP())
+            boolean mayContainFP = true;
+            if (buildtimeToRuntimeIsAvxSseTransition(gen.target()) && mayContainFP && !isRuntimeToRuntimeCall(callState)) {
                 /*
                  * If the target may contain FP ops, and it is not compiled by us, we may have an
                  * AVX-SSE transition.
