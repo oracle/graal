@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
@@ -34,7 +36,9 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        rerunClassInit(access, "jdk.internal.net.http.websocket.OpeningHandshake");
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        rci.initializeAtRunTime("jdk.internal.net.http", "for reading properties at run time");
+        rci.rerunInitialization("jdk.internal.net.http.websocket.OpeningHandshake", "contains a SecureRandom reference");
     }
 
     @Override
