@@ -102,6 +102,9 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testAssumptionDependencyManagement() {
+        Assert.assertNotNull(((OptimizedAssumption) Assumption.ALWAYS_VALID).registerDependency());
+        Assert.assertNull(((OptimizedAssumption) Assumption.NEVER_VALID).registerDependency());
+
         OptimizedAssumption assumption = (OptimizedAssumption) Truffle.getRuntime().createAssumption();
         Assert.assertEquals(0, assumption.countDependencies());
 

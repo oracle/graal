@@ -285,7 +285,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      * (e.g., the compiler) must ensure the dependent code is never executed.
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
-        if (isValid && name != Lazy.ALWAYS_VALID_NAME) {
+        if (isValid) {
             if (size >= 2 * sizeAfterLastRemove) {
                 removeInvalidEntries();
             }
