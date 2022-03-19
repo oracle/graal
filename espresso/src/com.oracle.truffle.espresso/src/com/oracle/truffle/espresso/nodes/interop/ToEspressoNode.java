@@ -23,16 +23,16 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -43,95 +43,171 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+/**
+ * Handles conversions of (potentially) foreign objects to Espresso types.
+ */
 @GenerateUncached
 public abstract class ToEspressoNode extends EspressoNode {
-    static final int LIMIT = 2;
+
+    public static final int LIMIT = 2;
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
-    @Specialization(guards = "cachedKlass == primitiveKlass", limit = "LIMIT")
+    @Specialization
+    Object doEspresso(StaticObject value, Klass klass,
+                    @Cached BranchProfile exceptionProfile,
+                    @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
+        if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), klass)) {
+            return value; // pass through, NULL coercion not needed.
+        }
+        exceptionProfile.enter();
+        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
+    }
+
+    @Specialization
     Object doPrimitive(Object value,
                     PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached("primitiveKlass") PrimitiveKlass cachedKlass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
         try {
-            switch (cachedKlass.getJavaKind()) {
-                case Boolean:
-                    if (interop.isBoolean(value)) {
-                        return interop.asBoolean(value);
+            // @formatter:off
+            switch (primitiveKlass.getJavaKind()) {
+                case Boolean : return interop.asBoolean(value);
+                case Byte    : return interop.asByte(value);
+                case Short   : return interop.asShort(value);
+                case Int     : return interop.asInt(value);
+                case Float   : return interop.asFloat(value);
+                case Long    : return interop.asLong(value);
+                case Double  : return interop.asDouble(value);                
+                case Char: {
+                    String str = interop.asString(value);
+                    if (str.length() == 1) {
+                        return str.charAt(0);
                     }
                     break;
-                case Byte:
-                    if (interop.fitsInByte(value)) {
-                        return interop.asByte(value);
-                    }
-                    break;
-                case Short:
-                    if (interop.fitsInShort(value)) {
-                        return interop.asShort(value);
-                    }
-                    break;
-                case Char:
-                    if (interop.isString(value)) {
-                        String str = interop.asString(value);
-                        if (str.length() == 1) {
-                            return str.charAt(0);
-                        }
-                    }
-                    break;
-                case Int:
-                    if (interop.fitsInInt(value)) {
-                        return interop.asInt(value);
-                    }
-                    break;
-                case Float:
-                    if (interop.fitsInFloat(value)) {
-                        return interop.asFloat(value);
-                    }
-                    break;
-                case Long:
-                    if (interop.fitsInLong(value)) {
-                        return interop.asLong(value);
-                    }
-                    break;
-                case Double:
-                    if (interop.fitsInDouble(value)) {
-                        return interop.asDouble(value);
-                    }
-                    break;
+                }                
                 case Void:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("Unexpected cast to void");
             }
+            // @formatter:on
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if fitsIn{type} returns true, as{type} must succeed.");
+            // fall-through
         }
         exceptionProfile.enter();
         throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
     }
 
-    @TruffleBoundary
-    @Specialization(replaces = "doPrimitive")
-    Object doPrimitiveUncached(Object value, PrimitiveKlass primitiveKlass) throws UnsupportedTypeException {
-        return doPrimitive(value, primitiveKlass, InteropLibrary.getFactory().getUncached(value), primitiveKlass, BranchProfile.getUncached());
+    @Specialization
+    Object doEspressoException(EspressoException value, ObjectKlass klass) throws UnsupportedTypeException {
+        return execute(value.getGuestException(), klass);
     }
 
-    @Specialization(guards = "!klass.isPrimitive()")
-    Object doEspresso(StaticObject value,
-                    Klass klass,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-        // TODO(peterssen): Use a node for the instanceof check.
-        if (StaticObject.isNull(value) || InterpreterToVM.instanceOf(value, klass)) {
-            return value; // pass through, NULL coercion not needed.
+    @Specialization(guards = "isStringCompatible(klass)")
+    Object doHostString(String value, ObjectKlass klass) {
+        return klass.getMeta().getMeta().toGuestString(value);
+    }
+
+    @Specialization(guards = {
+                    "!isStaticObject(value)",
+                    "interop.isNull(value)",
+                    "!isPrimitiveKlass(klass)"
+    })
+    Object doForeignNull(Object value, Klass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
+    }
+
+    @Specialization(guards = {
+                    "interop.isString(value)",
+                    // !interop.isNull(value), // redundant
+                    "!isStaticObject(value)",
+                    "!isHostString(value)",
+                    "!isEspressoException(value)",
+                    "isString(klass)"
+    })
+    Object doForeignString(Object value, ObjectKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        try {
+            String hostString = interop.asString(value);
+            return klass.getMeta().toGuestString(hostString);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
         }
-        exceptionProfile.enter();
+    }
+
+    @Specialization(guards = {
+                    "interop.isException(value)",
+                    // !interop.isNull(value), // redundant
+                    "!isStaticObject(value)",
+                    "!isHostString(value)",
+                    "!isEspressoException(value)",
+                    "isForeignException(klass)"
+    })
+    Object doForeignException(Object value, ObjectKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached InitCheck initCheck) {
+        initCheck.execute(klass);
+        return StaticObject.createForeignException(klass.getMeta(), value, interop);
+    }
+
+    @Specialization(guards = {
+                    "interop.hasArrayElements(value)",
+                    "!interop.isNull(value)",
+                    "!isStaticObject(value)",
+                    "!isHostString(value)",
+                    "!isEspressoException(value)"
+    })
+    Object doForeignArray(Object value, ArrayKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
+    }
+
+    @Specialization(guards = {
+                    "interop.hasBufferElements(value)",
+                    "!interop.isNull(value)",
+                    "!isStaticObject(value)",
+                    "!isHostString(value)",
+                    "!isEspressoException(value)",
+                    "isByteArray(klass)"
+    })
+    Object doForeignBuffer(Object value, ArrayKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
+    }
+
+    @Specialization(guards = {
+                    "!isStaticObject(value)",
+                    "!interop.isNull(value)",
+                    "!isHostString(value)",
+                    "!isEspressoException(value)",
+                    "!isForeignException(klass)",
+                    "!klass.isAbstract()",
+                    "!isString(klass)"
+    })
+    Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached BranchProfile errorProfile,
+                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
+        // Skip expensive checks for java.lang.Object.
+        if (!klass.isJavaLangObject()) {
+            try {
+                checkHasAllFieldsOrThrow(value, klass, interop, getMeta());
+            } catch (ClassCastException e) {
+                errorProfile.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
+            }
+        }
+        initCheck.execute(klass);
+        return StaticObject.createForeign(getLanguage(), klass, value, interop);
+    }
+
+    @Fallback
+    Object doUnsupportedType(Object value, Klass klass) throws UnsupportedTypeException {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
@@ -139,16 +215,25 @@ public abstract class ToEspressoNode extends EspressoNode {
         return obj instanceof StaticObject;
     }
 
+    static boolean isHostString(Object object) {
+        return object instanceof String;
+    }
+
     static boolean isString(Klass klass) {
         return klass.getMeta().java_lang_String.equals(klass);
     }
 
     static boolean isStringCompatible(Klass klass) {
+        // Accept String superclasses and superinterfaces.
         return klass.isAssignableFrom(klass.getMeta().java_lang_String);
     }
 
-    static boolean isStringArray(Klass klass) {
-        return klass.getMeta().java_lang_String.array().equals(klass);
+    static boolean isByteArray(Klass klass) {
+        return klass.getMeta()._byte_array.equals(klass);
+    }
+
+    static boolean isPrimitiveKlass(Klass klass) {
+        return klass instanceof PrimitiveKlass;
     }
 
     static boolean isForeignException(Klass klass) {
@@ -156,104 +241,8 @@ public abstract class ToEspressoNode extends EspressoNode {
         return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
-    Object doForeignNull(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
-        return StaticObject.createForeignNull(getLanguage(), value);
-    }
-
-    @Specialization(guards = {"isStringCompatible(klass)"})
-    Object doHostString(String value, ObjectKlass klass) {
-        return klass.getMeta().toGuestString(value);
-    }
-
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isString(klass)"})
-    Object doString(Object value,
-                    ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile)
-                    throws UnsupportedTypeException {
-        if (interop.isString(value)) {
-            try {
-                return klass.getMeta().toGuestString(interop.asString(value));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
-            }
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
-    }
-
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isForeignException(klass)"})
-    Object doForeignException(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
-        if (!interop.isException(value)) {
-            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s", klass.getNameAsString()));
-        }
-        initCheck.execute(klass);
-        return StaticObject.createForeignException(klass.getMeta(), value, interop);
-    }
-
-    static boolean instanceOfThrowable(Klass klass) {
-        Meta meta = klass.getMeta();
-        return meta.java_lang_Throwable.isAssignableFrom(klass);
-    }
-
-    /**
-     * Partial workaround for GR-28998.
-     *
-     * <p>
-     * Can receive any {@link AbstractTruffleException} carrier here, but Espresso only knows how to
-     * unwrap its own carrier {@link EspressoException}. The carrier exception is unwrapped iff the
-     * target class either the same or a subclass of {@link Throwable}, otherwise the carrier
-     * identity is preserved.
-     */
-    @Specialization(guards = {"instanceOfThrowable(klass)", "!isForeignException(klass)"})
-    Object doEspressoExceptionCarrier(EspressoException value, ObjectKlass klass,
-                    @Cached ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
-        return toEspressoNode.execute(value.getGuestException(), klass);
-    }
-
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!isForeignException(klass)", "!klass.isAbstract()"})
-    Object doForeignClass(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile errorProfile,
-                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
-        try {
-            checkHasAllFieldsOrThrow(value, klass, interop, getMeta());
-        } catch (ClassCastException e) {
-            errorProfile.enter();
-            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
-        }
-        initCheck.execute(klass);
-        return StaticObject.createForeign(getLanguage(), klass, value, interop);
-    }
-
-/*
- * TODO(goltsova): split this into abstract classes and interfaces once casting to interfaces is
- * supported
- */
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isAbstract() || klass.isInterface()"})
-    Object doForeignAbstract(Object value, ObjectKlass klass,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
-    }
-
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)"})
-    Object doForeignArray(Object value, ArrayKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
-        Meta meta = getMeta();
-        // Buffer-like can be casted to byte[] only.
-        // Array-like can be casted to *[].
-        if ((klass == meta._byte_array && interop.hasBufferElements(value)) || interop.hasArrayElements(value)) {
-            return StaticObject.createForeign(getLanguage(), klass, value, interop);
-        }
-        errorProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, "Cannot cast a non-array value to an array type");
-
+    static boolean isEspressoException(Object object) {
+        return object instanceof EspressoException;
     }
 
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {
