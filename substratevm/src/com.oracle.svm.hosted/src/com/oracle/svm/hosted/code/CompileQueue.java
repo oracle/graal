@@ -410,10 +410,8 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
-            // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
-            // Checking @RestrictHeapAccess annotations does not take long enough to justify a
-            // timer.
+            // Checking annotations does not take long enough to justify a timer.
+            UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
             /*
@@ -1110,6 +1108,9 @@ public class CompileQueue {
                 assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
+                if (!parseOnce) {
+                    UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+                }
 
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
