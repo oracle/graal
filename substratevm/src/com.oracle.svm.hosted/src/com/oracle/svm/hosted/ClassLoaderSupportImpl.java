@@ -44,6 +44,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
@@ -69,20 +70,20 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
-        classLoaderSupport.classpath().stream().distinct().forEach(classpathFile -> {
+        for (Path classpathFile : classLoaderSupport.classpath()) {
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector);
+                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector);
                 }
             } catch (IOException ex) {
                 throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
             }
-        });
+        }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector, AbstractNativeImageClassLoaderSupport support) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -104,8 +105,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 if (collector.isIncluded(null, relativeFilePath)) {
                     matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
                 }
-                try (Stream<Path> files = Files.list(entry)) {
-                    files.forEach(queue::push);
+                try (Stream<Path> pathStream = Files.list(entry)) {
+                    Stream<Path> filtered = pathStream;
+                    if (support.excludeDirectoriesRoot.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    }
+                    filtered.forEach(queue::push);
                 }
             } else {
                 if (collector.isIncluded(null, relativeFilePath)) {
