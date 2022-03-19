@@ -50,19 +50,13 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
 
     private static final Map<String, String> OPTIONS = new HashMap<>();
 
-    private TokenStorage tokenStorage;
     private Feedback feedback;
 
     static {
-        OPTIONS.put(GdsCommands.OPTION_DOWNLOAD_TOKEN, "s");
-        OPTIONS.put(GdsCommands.LONG_OPTION_DOWNLOAD_TOKEN, GdsCommands.OPTION_DOWNLOAD_TOKEN);
-    }
-
-    private TokenStorage initTokenStorage(Feedback output) {
-        if (tokenStorage == null) {
-            tokenStorage = new TokenStorage(output);
-        }
-        return tokenStorage;
+        OPTIONS.put(GdsCommands.OPTION_GDS_CONFIG, "s");
+        OPTIONS.put(GdsCommands.LONG_OPTION_GDS_CONFIG, GdsCommands.OPTION_GDS_CONFIG);
+        OPTIONS.put(GdsCommands.OPTION_SHOW_TOKEN, "");
+        OPTIONS.put(GdsCommands.LONG_OPTION_SHOW_TOKEN, GdsCommands.OPTION_SHOW_TOKEN);
     }
 
     @Override
@@ -86,7 +80,6 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
         GDSChannel ch = new GDSChannel(input, output, input.getLocalRegistry());
         ch.setIndexURL(u);
         ch.setEdition(source.getParameter("edition"));
-        ch.setTokenStorage(initTokenStorage(output));
         return ch;
     }
 

@@ -39,25 +39,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.SystemUtils.ARCH;
 import org.graalvm.component.installer.SystemUtils.OS;
 import org.graalvm.component.installer.Version;
-import org.graalvm.component.installer.ce.WebCatalog;
 import org.graalvm.component.installer.gds.GdsCommands;
 import org.graalvm.component.installer.gds.GraalChannelBase;
 import org.graalvm.component.installer.gds.MailStorage;
+import static org.graalvm.component.installer.gds.rest.GDSRESTConnector.HEADER_VAL_GZIP;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.MetadataLoaderAdapter;
 import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.remote.MergeStorage;
 import org.graalvm.component.installer.remote.ProxyConnectionFactory.HttpConnectionException;
 import java.net.HttpURLConnection;
 import java.util.zip.GZIPInputStream;
@@ -74,17 +73,19 @@ import java.util.zip.GZIPInputStream;
 public class GDSChannel extends GraalChannelBase {
     private static final Logger LOG = Logger.getLogger(GDSChannel.class.getName());
 
-    private static final String HEADER_DOWNLOAD_TOKEN = "x-download-token";
+    private static final String HEADER_DOWNLOAD_CONFIG = "x-download-token";
+    private static final String HEADER_CONTENT_ENCODING = "Content-Encoding";
     private static final String JSON_ITEMS = "items";
     private static final String JSON_EXC_CODE = "code";
     private static final String EXC_URL_END = "/content";
-    private static final String EXC_CODE_INVALID_TOKEN = "InvalidToken";
+    private static final String EXC_CODE_UNVERIFIED_CONFIG = "UnverifiedToken";
+    private static final String EXC_CODE_INVALID_CONFIG = "InvalidToken";
     private static final String EXC_CODE_UNACCEPTED = "InvalidLicenseAcceptance";
 
     /**
-     * Helper to read/store last email and token setting.
+     * Helper to read/store GDS token settings.
      */
-    private TokenStorage tokenStorage;
+    private GDSTokenStorage tokenStorage;
 
     private GDSRESTConnector gdsConnector;
 
@@ -92,15 +93,15 @@ public class GDSChannel extends GraalChannelBase {
         super(aInput, aFeedback.withBundle(GDSChannel.class), aRegistry);
     }
 
-    void setTokenStorage(TokenStorage s) {
+    void setTokenStorage(GDSTokenStorage s) {
         this.tokenStorage = s;
     }
 
-    private TokenStorage initTokenStorage() {
+    private String getToken() {
         if (tokenStorage == null) {
-            tokenStorage = new TokenStorage(fb);
+            tokenStorage = new GDSTokenStorage(fb, input);
         }
-        return tokenStorage;
+        return tokenStorage.getToken();
     }
 
     /**
@@ -112,58 +113,59 @@ public class GDSChannel extends GraalChannelBase {
      */
     @Override
     public FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn) {
-        String token = getToken(info.getLicensePath());
-        dn.addRequestHeader(HEADER_DOWNLOAD_TOKEN, token);
-        gdsConnector.fillBasics(dn);
+        String token = getToken();
+        if (!SystemUtils.nonBlankString(token)) {
+            token = getToken(info.getLicensePath());
+        }
+        dn.addRequestHeader(HEADER_DOWNLOAD_CONFIG, token);
+        getConnector().fillBasics(dn);
         dn.setDownloadExceptionInterceptor(this::interceptDownloadException);
         return dn;
     }
 
     public IOException interceptDownloadException(IOException downloadException, FileDownloader fileDownloader) {
-        if (downloadException instanceof HttpConnectionException) {
-            HttpConnectionException hex = (HttpConnectionException) downloadException;
-            if (hex.getRetCode() < HttpURLConnection.HTTP_BAD_REQUEST) {
-                return (IOException) hex.getCause();
-            }
-            String downloadURL = hex.getConnectionUrl().toString();
-            if (!downloadURL.endsWith(EXC_URL_END)) {
-                return (IOException) hex.getCause();
-            }
-            String licensePath = findLicensePath(downloadURL);
-            if (!nonBlankString(licensePath)) {
-                return (IOException) hex.getCause();
-            }
-            String code;
-            try {
-                code = new JSONObject(hex.getResponse()).getString(JSON_EXC_CODE);
-            } catch (JSONException ex) {
-                return (IOException) hex.getCause();
-            }
-            String token = getToken(licensePath);
-            switch (code) {
-                case EXC_CODE_INVALID_TOKEN:
-                    fb.output("ERR_InvalidToken", hex, token);
-                    token = getToken(licensePath, true);
-                    break;
-                case EXC_CODE_UNACCEPTED:
-                    Map.Entry<String, String> downloadToken = initTokenStorage().getToken();
-                    if (fileDownloader.getAttemptNr() == 1) {
-                        token = gdsConnector.sendVerificationEmail(downloadToken.getKey(), licensePath, downloadToken.getValue());
-                    } else {
-                        token = downloadToken.getValue();
-                    }
-                    if (nonBlankString(token)) {
-                        fb.output("PROMPT_VerifyEmailAddressEntry", downloadToken.getKey());
-                        fb.acceptLine(false);
-                    }
-                    break;
-                default:
-                    return (IOException) hex.getCause();
-            }
-            fileDownloader.addRequestHeader(HEADER_DOWNLOAD_TOKEN, token);
-        } else {
+        if (!(downloadException instanceof HttpConnectionException)) {
             return downloadException;
         }
+        HttpConnectionException hex = (HttpConnectionException) downloadException;
+        if (hex.getRetCode() < HttpURLConnection.HTTP_BAD_REQUEST) {
+            return (IOException) hex.getCause();
+        }
+        String downloadURL = hex.getConnectionUrl().toString();
+        if (!downloadURL.endsWith(EXC_URL_END)) {
+            return (IOException) hex.getCause();
+        }
+        String licensePath = findLicensePath(downloadURL);
+        if (!SystemUtils.nonBlankString(licensePath)) {
+            return (IOException) hex.getCause();
+        }
+        String code;
+        try {
+            code = new JSONObject(hex.getResponse()).getString(JSON_EXC_CODE);
+        } catch (JSONException ex) {
+            return (IOException) hex.getCause();
+        }
+        String token = getToken();
+        switch (code) {
+            case EXC_CODE_INVALID_CONFIG:
+                fb.output("ERR_WrongToken", token);
+                token = getToken(licensePath);
+                break;
+            case EXC_CODE_UNVERIFIED_CONFIG:
+                fb.output("ERR_InvalidToken", token);
+                fb.acceptLine(false);
+                break;
+            case EXC_CODE_UNACCEPTED:
+                if (fileDownloader.getAttemptNr() == 1) {
+                    getConnector().sendVerificationEmail(null, licensePath, token);
+                }
+                fb.output("PROMPT_VerifyEmailAddressEntry", fb.l10n("MSG_YourEmail"));
+                fb.acceptLine(false);
+                break;
+            default:
+                return (IOException) hex.getCause();
+        }
+        fileDownloader.addRequestHeader(HEADER_DOWNLOAD_CONFIG, token);
         return null;
     }
 
@@ -184,59 +186,23 @@ public class GDSChannel extends GraalChannelBase {
     }
 
     private String getToken(String licensePath) {
-        return getToken(licensePath, false);
-    }
-
-    private String getToken(String licensePath, boolean forceToken) {
-        String token = input.optValue(GdsCommands.OPTION_DOWNLOAD_TOKEN);
-        if (!forceToken && nonBlankString(token)) {
-            return token;
-        }
-        if (forceToken && nonBlankString(token)) {
-            return askForToken(true);
-        } else {
-            Map.Entry<String, String> downloadToken = initTokenStorage().getToken();
-            if (downloadToken == null || forceToken) {
-                if (input == null) {
-                    throw fb.failure("ERR_EmailAddressMissing", null);
-                }
-                String email = downloadToken != null ? downloadToken.getKey() : MailStorage.checkEmailAddress(receiveEmailAddress(), fb);
-                token = receiveToken(email, licensePath);
-                downloadToken = Map.entry(email, token);
-                try {
-                    tokenStorage.setToken(downloadToken);
-                    tokenStorage.save();
-                } catch (IOException ex) {
-                    fb.error("WARN_CannotSaveEmailAddress", ex, ex.getLocalizedMessage());
-                }
-            }
-            return downloadToken.getValue();
-        }
-    }
-
-    private String askForToken(boolean tokenFromCmdLine) {
-        fb.output(tokenFromCmdLine ? "MSG_InputCmdTokenEntry" : "MSG_InputTokenEntry");
+        fb.output("MSG_InputTokenEntry");
         fb.outputPart("PROMPT_InputTokenEntry");
         String token = fb.acceptLine(false);
-        if (nonBlankString(token)) {
-            return token;
+        if (!SystemUtils.nonBlankString(token)) {
+            String email = MailStorage.checkEmailAddress(receiveEmailAddress(), fb);
+            token = getConnector().sendVerificationEmail(email, licensePath, null);
+            fb.output("PROMPT_VerifyEmailAddressEntry", email);
+            fb.acceptLine(false);
         }
-        return null;
-    }
-
-    private String receiveToken(String email, String licensePath) {
-        String token = askForToken(false);
-        if (nonBlankString(token)) {
-            return token;
+        fb.output("MSG_ObtainedToken", token);
+        try {
+            tokenStorage.setToken(token);
+            tokenStorage.save();
+        } catch (IOException ex) {
+            fb.error("WARN_CannotSaveToken", ex, tokenStorage.getPropertiesPath());
         }
-        token = gdsConnector.sendVerificationEmail(email, licensePath, null);
-        fb.output("PROMPT_VerifyEmailAddressEntry", email);
-        fb.acceptLine(false);
         return token;
-    }
-
-    private static boolean nonBlankString(String token) {
-        return token != null && !token.isBlank();
     }
 
     @Override
@@ -263,16 +229,16 @@ public class GDSChannel extends GraalChannelBase {
     }
 
     /**
-     * Initializes the component storage. Loads the releases index, selects matching releases and
-     * creates {@link WebCatalog} for each of the catalogs. Merges using {@link MergeStorage}.
+     * Initializes the component storage.
      *
      * @return merged storage.
      * @throws IOException in case of an I/O error.
      */
     @Override
     protected ComponentStorage loadStorage() throws IOException {
-        Path storagePath = getConnector().obtainArtifacts(localRegistry.getJavaVersion());
-        List<ComponentInfo> artifacts = loadArtifacts(storagePath);
+        FileDownloader fd = getConnector().obtainArtifacts(localRegistry.getJavaVersion());
+        Path storagePath = fd.getLocalFile().toPath();
+        List<ComponentInfo> artifacts = loadArtifacts(storagePath, fd.getResponseHeader().get(HEADER_CONTENT_ENCODING));
         if (artifacts.isEmpty()) {
             return throwEmptyStorage();
         }
@@ -286,12 +252,15 @@ public class GDSChannel extends GraalChannelBase {
      * @return list of entries in the index
      * @throws IOException in case of I/O error.
      */
-    List<ComponentInfo> loadArtifacts(Path releasesIndexPath) throws IOException {
+    List<ComponentInfo> loadArtifacts(Path releasesIndexPath, List<String> contentEncoding) throws IOException {
         if (edition == null) {
             edition = localRegistry.getGraalCapabilities().get(CommonConstants.CAP_EDITION);
         }
         List<ComponentInfo> result = new ArrayList<>();
-        try (InputStreamReader urlReader = new InputStreamReader(new GZIPInputStream(Files.newInputStream(releasesIndexPath)))) {
+        try (InputStreamReader urlReader = new InputStreamReader(
+                        contentEncoding != null && contentEncoding.contains(HEADER_VAL_GZIP)
+                                        ? new GZIPInputStream(Files.newInputStream(releasesIndexPath))
+                                        : Files.newInputStream(releasesIndexPath))) {
             JSONTokener tokener = new JSONTokener(urlReader);
             JSONObject obj = new JSONObject(tokener);
 
@@ -322,7 +291,7 @@ public class GDSChannel extends GraalChannelBase {
                 } else if (!acceptsVersion(v, Version.fromString(e.getVersion()))) {
                     LOG.log(Level.FINER, "Old version: {0} != {1}", new Object[]{v, Version.fromString(e.getVersion()), e.getVersion()});
                 } else {
-                    result.add(e.asComponentInfo(gdsConnector, fb));
+                    result.add(e.asComponentInfo(getConnector(), fb));
                 }
             }
         }
