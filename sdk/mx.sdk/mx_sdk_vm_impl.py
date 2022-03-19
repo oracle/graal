@@ -837,14 +837,23 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)
         if _suite.is_release():
             catalog = _release_catalog()
+            gds_product_id = _release_product_id()
         else:
             snapshot_catalog = _snapshot_catalog()
+            gds_product_id = _snapshot_product_id()
+            gds_snapshot_catalog = _gds_snapshot_catalog()
             if snapshot_catalog and _suite.vc:
                 catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+                if gds_snapshot_catalog:
+                    catalog += "|" + gds_snapshot_catalog
+            elif gds_snapshot_catalog:
+                catalog = gds_snapshot_catalog
             else:
                 catalog = None
         if catalog:
             _metadata_dict['component_catalog'] = catalog
+        if gds_product_id:
+            _metadata_dict['GDS_PRODUCT_ID'] = gds_product_id
 
         # COMMIT_INFO is unquoted to simplify JSON parsing
         return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})
@@ -3312,7 +3321,10 @@ mx.add_argument('--skip-libraries', action='store', help='Do not build native im
 mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included (all by default).', default=None)
 mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
+mx.add_argument('--gds-snapshot-catalog', action='store', help='Change the default appended URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
+mx.add_argument('--snapshot-product-id', action='store', help='Change the default ID of the GDS product ID for snapshots.', default=None)
+mx.add_argument('--release-product-id', action='store', help='Change the default ID of the GDS product ID for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
@@ -3542,9 +3554,18 @@ def _with_debuginfo():
 def _snapshot_catalog():
     return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
 
+def _gds_snapshot_catalog():
+    return mx.get_opts().gds_snapshot_catalog or mx.get_env('GDS_SNAPSHOT_CATALOG')
+
+def _snapshot_product_id():
+    return mx.get_opts().snapshot_product_id or mx.get_env('SNAPSHOT_PRODUCT_ID')
+
 
 def _release_catalog():
     return mx.get_opts().release_catalog or mx.get_env('RELEASE_CATALOG')
+
+def _release_product_id():
+    return mx.get_opts().release_product_id or mx.get_env('RELEASE_PRODUCT_ID')
 
 
 def _base_jdk_info():

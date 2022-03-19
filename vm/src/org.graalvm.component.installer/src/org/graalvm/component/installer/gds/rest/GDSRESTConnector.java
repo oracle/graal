@@ -29,7 +29,6 @@ import com.oracle.truffle.tools.utils.json.JSONException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
-import static org.graalvm.component.installer.SystemUtils.getJavaMajorVersion;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.URLConnectionFactory;
 import org.graalvm.component.installer.Version;
@@ -41,113 +40,127 @@ import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class serves as GDS REST Endpoint connector for communication with service.
  *
  * @author odouda
  */
-public class GDSRESTConnector {
-    private static final String ENDPOINT_ARTIFACTS = "artifacts/";
-    private static final String ENDPOINT_DOWNLOAD = "/content";
-    private static final String ENDPOINT_PRODUCTS = "products";
-    private static final String ENDPOINT_LICENSE = "licenses/";
-    private static final String ENDPOINT_LICENSE_ACCEPT = "licenseAcceptance/";
+class GDSRESTConnector {
+    static final String ENDPOINT_ARTIFACTS = "artifacts/";
+    static final String ENDPOINT_DOWNLOAD = "/content";
+    static final String ENDPOINT_PRODUCTS = "products";
+    static final String ENDPOINT_LICENSE = "licenses/";
+    static final String ENDPOINT_LICENSE_ACCEPT = "licenseAcceptance/";
 
-    private static final String QUERRY_DISPLAY_NAME = "displayName";
-    private static final String QUERRY_PRODUCT_NAME = "GraalVM";
-    private static final String QUERRY_PRODUCT = "productId";
-    private static final String QUERRY_METADATA = "metadata";
-    private static final String QUERRY_ARCH = "arch:";
-    private static final String QUERRY_OS = "os:";
-    private static final String QUERRY_TYPE = "type:";
-    private static final String QUERRY_TYPE_CORE = QUERRY_TYPE + "core";
-    private static final String QUERRY_TYPE_COMP = QUERRY_TYPE + "component";
-    private static final String QUERRY_RELEASE = "release:";
-    private static final String QUERRY_JAVA = "java:";
-    private static final String QUERRY_LIMIT_KEY = "limit";
-    private static final String QUERRY_LIMIT_VAL = "1000";
+    static final String QUERRY_DISPLAY_NAME = "displayName";
+    static final String QUERRY_PRODUCT_NAME = "GraalVM";
+    static final String QUERRY_PRODUCT = "productId";
+    static final String QUERRY_METADATA = "metadata";
+    static final String QUERRY_ARCH = "arch:";
+    static final String QUERRY_OS = "os:";
+    static final String QUERRY_TYPE = "type:";
+    static final String QUERRY_TYPE_CORE = QUERRY_TYPE + "core";
+    static final String QUERRY_TYPE_COMP = QUERRY_TYPE + "component";
+    static final String QUERRY_RELEASE = "release:";
+    static final String QUERRY_JAVA = "java:";
+    static final String QUERRY_LIMIT_KEY = "limit";
+    static final String QUERRY_LIMIT_VAL = "1000";
 
-    private static final String HEADER_ENCODING = "Accept-Encoding";
-    private static final String HEADER_VAL_GZIP = "gzip";
-    private static final String HEADER_USER_AGENT = "User-Agent";
-    private final String gdsUserAgent;
+    public static final String HEADER_VAL_GZIP = "gzip";
+    static final String HEADER_ENCODING = "Accept-Encoding";
+    static final String HEADER_USER_AGENT = "User-Agent";
+    final String gdsUserAgent;
 
-    private final String baseURL;
-    private final Feedback feedback;
-    private final Map<String, List<String>> params = new HashMap<>();
+    final String baseURL;
+    final Feedback feedback;
+    final Map<String, List<String>> params = new HashMap<>();
 
-    private final String productId;
+    final String productId;
 
-    public GDSRESTConnector(String baseURL, Feedback feedback, String productId, Version gvmVersion) {
-        this.baseURL = baseURL;
-        if (baseURL == null || baseURL.isEmpty()) {
-            throw new IllegalArgumentException("Base URL can't be empty.");
+    GDSRESTConnector(String baseURL, Feedback feedback, String productId, Version gvmVersion) {
+        if (baseURL == null || baseURL.isBlank()) {
+            throw new IllegalArgumentException("Base URL String can't be empty.");
+        }
+        URL url = null;
+        try {
+            url = new URL(baseURL);
+        } catch (MalformedURLException ex) {
+            throw new IllegalArgumentException("Base URL String must be convertible to URL.");
+        }
+        this.baseURL = url.toString();
+        if (feedback == null) {
+            throw new IllegalArgumentException("Feedback can't be null.");
         }
         this.feedback = feedback.withBundle(GDSRESTConnector.class);
-        if (productId == null || productId.isEmpty()) {
+        if (productId == null || productId.isBlank()) {
             throw new IllegalArgumentException("Product ID can't be empty.");
         }
+        this.productId = productId;
         if (gvmVersion == null || gvmVersion == Version.NO_VERSION) {
             throw new IllegalArgumentException("Version can't be empty.");
         }
-        this.productId = productId;
         this.gdsUserAgent = String.format("GVM/%s (arch:%s; os:%s; java:%s)",
                         gvmVersion.toString(),
                         SystemUtils.ARCH.sysName(),
                         SystemUtils.OS.sysName(),
-                        getJavaMajorVersion());
+                        SystemUtils.getJavaMajorVersion());
     }
 
-    public Path obtainComponents() {
+    Map<String, List<String>> getParams() {
+        return params;
+    }
+
+    public FileDownloader obtainComponents() {
         fillMetaComponent();
         return obtainArtifacts();
     }
 
-    public Path obtainComponents(String releaseVersion) {
+    public FileDownloader obtainComponents(String releaseVersion) {
         fillMetaRelease(releaseVersion);
         return obtainComponents();
     }
 
-    public Path obtainReleases(String javaVersion) {
+    public FileDownloader obtainReleases(String javaVersion) {
         fillMetaJava(javaVersion);
         return obtainReleases();
     }
 
-    public Path obtainReleases() {
+    public FileDownloader obtainReleases() {
         fillMetaCore();
         return obtainArtifacts();
     }
 
-    public Path obtainArtifacts(String javaVersion) {
+    public FileDownloader obtainArtifacts(String javaVersion) {
         fillMetaJava(javaVersion);
         return obtainArtifacts();
     }
 
-    public Path obtainArtifacts() {
+    public FileDownloader obtainArtifacts() {
         fillArtifacts();
         return obtain(ENDPOINT_ARTIFACTS);
     }
 
-    public Path obtainProduct() {
+    public FileDownloader obtainProduct() {
         fillDisplayName();
         return obtain(ENDPOINT_PRODUCTS);
     }
 
-    public String sendVerificationEmail(String email, String licAddr, String oldToken) {
+    public String sendVerificationEmail(String email, String licAddr, String config) {
+        assert (SystemUtils.nonBlankString(email) && config == null) || (SystemUtils.nonBlankString(config) && email == null);
         String licID = licAddr.substring(licAddr.lastIndexOf("/") + 1);
         String acceptLicLink = baseURL + ENDPOINT_LICENSE_ACCEPT;
-        String token = null;
+        String token = config;
         try {
-            TokenRequester tr = new TokenRequester(new URL(acceptLicLink), licID, email, oldToken);
-            token = tr.obtainToken();
+            GDSRequester tr = getGDSRequester(acceptLicLink, licID);
+            token = email != null ? tr.obtainConfig(email) : tr.acceptLic(config);
         } catch (IOException ex) {
-            throw feedback.failure("ERR_VerificationEmail", ex, email);
+            throw feedback.failure("ERR_VerificationEmail", ex, email == null ? feedback.l10n("MSG_YourEmail") : email);
         }
         return token;
     }
@@ -159,7 +172,7 @@ public class GDSRESTConnector {
     public String makeArtifactsURL(String javaVersion) {
         fillArtifacts();
         fillMetaJava(javaVersion);
-        String out = SystemUtils.buildUrlStringWithParameters(baseURL + ENDPOINT_ARTIFACTS, params);
+        String out = SystemUtils.buildUrlStringWithParameters(baseURL + ENDPOINT_ARTIFACTS, getParams());
         params.clear();
         return out;
     }
@@ -168,7 +181,7 @@ public class GDSRESTConnector {
         fillArtifacts();
         fillMetaJava(javaVersion);
         fillMetaRelease(releaseVersion);
-        String out = SystemUtils.buildUrlStringWithParameters(baseURL + ENDPOINT_ARTIFACTS, params);
+        String out = SystemUtils.buildUrlStringWithParameters(baseURL + ENDPOINT_ARTIFACTS, getParams());
         params.clear();
         return out;
     }
@@ -183,16 +196,16 @@ public class GDSRESTConnector {
         return null;
     }
 
-    private Path obtain(String endpoint) {
+    protected FileDownloader obtain(String endpoint) {
         addParam(QUERRY_LIMIT_KEY, QUERRY_LIMIT_VAL);
         try {
             FileDownloader dn = new FileDownloader(
                             feedback.l10n("OLDS_ReleaseFile"),
-                            new URL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, params)),
+                            new URL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
                             feedback);
             fillBasics(dn);
             dn.download();
-            return dn.getLocalFile().toPath();
+            return dn;
         } catch (IOException ex) {
             throw feedback.failure("ERR_CouldNotLoadGDS", ex, baseURL, ex.getLocalizedMessage());
         } finally {
@@ -243,65 +256,71 @@ public class GDSRESTConnector {
         fd.addRequestHeader(HEADER_ENCODING, HEADER_VAL_GZIP);
     }
 
-    private class TokenRequester {
-        private static final String GENERATE_TOKEN = "GENERATE_TOKEN_AND_ACCEPT_LICENSE";
-        private static final String ACCEPT_LICENSE = "ACCEPT_LICENSE";
+    GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
+        return new GDSRequester(new URL(acceptLicLink), licID);
+    }
 
-        private static final String HEADER_CONTENT = "Content-Type";
-        private static final String HEADER_VAL_JSON = "application/json";
+    class GDSRequester {
+        static final String GENERATE_CONFIG = "GENERATE_TOKEN_AND_ACCEPT_LICENSE";
+        static final String ACCEPT_LICENSE = "ACCEPT_LICENSE_USING_TOKEN";
 
-        private static final String REQUEST_BODY = "{\"email\":\"%s\",\"licenseId\":\"%s\",\"type\":\"%s\"}";
+        static final String HEADER_CONTENT = "Content-Type";
+        static final String HEADER_VAL_JSON = "application/json";
 
-        private static final String JSON_TOKEN = "token";
+        static final String REQUEST_CONFIG_BODY = "{\"email\":\"%s\",\"licenseId\":\"%s\",\"type\":\"%s\"}";
+        static final String REQUEST_ACCEPT_BODY = "{\"token\":\"%s\",\"licenseId\":\"%s\",\"type\":\"%s\"}";
 
-        private final URL licenseUrl;
-        private final String licID;
-        private final String email;
-        private final String oldToken;
-        private URLConnectionFactory factory;
+        static final String JSON_CONFIG = "token";
 
-        TokenRequester(URL licenseUrl, String licID, String email, String oldToken) {
+        final URL licenseUrl;
+        final String licID;
+        URLConnectionFactory factory;
+
+        GDSRequester(URL licenseUrl, String licID) {
             this.licenseUrl = licenseUrl;
             this.licID = licID;
-            this.email = email;
-            this.oldToken = oldToken;
         }
 
-        public String obtainToken() throws IOException {
-            String token = null;
-            URLConnection connector = getConnectionFactory().createConnection(licenseUrl, this::configCallBack);
+        public String obtainConfig(String email) throws IOException {
+            String config = null;
+            URLConnection connector = getConnectionFactory().createConnection(licenseUrl, createConfigCallBack(true, email));
             String response = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connector.getInputStream()))) {
-                response = reader.lines().reduce("", (s1, s2) -> s1 + s2);
-                token = new JSONObject(response).getString(JSON_TOKEN);
+                response = reader.lines().collect(Collectors.joining());
+                config = new JSONObject(response).getString(JSON_CONFIG);
             } catch (JSONException ex) {
-                if (response != null && !response.isBlank()) {
-                    feedback.error("ERR_ResponseBody", ex, response);
-                }
+                throw feedback.failure("ERR_ResponseBody", ex, response);
             }
-            return oldToken == null && token != null && !token.isBlank() ? token : oldToken;
+            if (!SystemUtils.nonBlankString(config)) {
+                throw feedback.failure("ERR_ResponseBody", null, response);
+            }
+            return config;
         }
 
-        private String generateRequestBody() {
-            return String.format(REQUEST_BODY,
-                            email,
+        public String acceptLic(String config) throws IOException {
+            getConnectionFactory().createConnection(licenseUrl, createConfigCallBack(false, config)).connect();
+            return config;
+        }
+
+        private String generateRequestBody(boolean configGenerate, String content) {
+            return String.format(configGenerate ? REQUEST_CONFIG_BODY : REQUEST_ACCEPT_BODY,
+                            content,
                             licID,
-                            oldToken == null ? GENERATE_TOKEN : ACCEPT_LICENSE);
+                            configGenerate ? GENERATE_CONFIG : ACCEPT_LICENSE);
         }
 
-        private void configCallBack(URLConnection connector) {
-            connector.addRequestProperty(HEADER_USER_AGENT, gdsUserAgent);
-            connector.setDoOutput(true);
-            connector.setRequestProperty(HEADER_CONTENT, HEADER_VAL_JSON);
-            try (OutputStreamWriter out = new OutputStreamWriter(connector.getOutputStream())) {
-                String body = generateRequestBody();
-                out.append(body);
-            } catch (IOException ex) {
-                // swallow
-            }
+        private URLConnectionFactory.Configure createConfigCallBack(boolean configGenerate, String content) {
+            return (URLConnection connector) -> {
+                connector.addRequestProperty(HEADER_USER_AGENT, gdsUserAgent);
+                connector.setDoOutput(true);
+                connector.setRequestProperty(HEADER_CONTENT, HEADER_VAL_JSON);
+                try (OutputStreamWriter out = new OutputStreamWriter(connector.getOutputStream())) {
+                    out.append(generateRequestBody(configGenerate, content));
+                }
+            };
         }
 
-        private URLConnectionFactory getConnectionFactory() throws MalformedURLException {
+        URLConnectionFactory getConnectionFactory() throws MalformedURLException {
             if (factory == null) {
                 factory = new ProxyConnectionFactory(feedback, new URL(baseURL));
             }

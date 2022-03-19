@@ -28,12 +28,16 @@ package org.graalvm.component.installer;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.function.Consumer;
 
 /**
  *
  * @author sdedic
  */
 public interface URLConnectionFactory {
-    URLConnection createConnection(URL u, Consumer<URLConnection> configCallback) throws IOException;
+    URLConnection createConnection(URL u, Configure configCallback) throws IOException;
+
+    @FunctionalInterface
+    interface Configure {
+        void accept(URLConnection connection) throws IOException;
+    }
 }

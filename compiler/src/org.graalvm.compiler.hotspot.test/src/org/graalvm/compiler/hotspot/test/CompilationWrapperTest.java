@@ -167,7 +167,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
-                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -203,7 +203,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
-                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1:PermanentBailout"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }

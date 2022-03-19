@@ -439,6 +439,11 @@ public interface TruffleCompilerRuntime {
     int getFrameSlotKindTagsCount();
 
     /**
+     * Determines if {@code method} can be inlined by the runtime (independently from Truffle).
+     */
+    boolean isInlineable(ResolvedJavaMethod method);
+
+    /**
      * Determines if {@code method} is annotated by {@code TruffleBoundary}.
      */
     boolean isTruffleBoundary(ResolvedJavaMethod method);

@@ -1036,7 +1036,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return FrameSlotKind.values().length;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
         TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
@@ -1060,6 +1059,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineKind.INLINE;
+    }
+
+    @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        /*
+         * Ensure that methods excluded from inlining are also never inlined during Truffle
+         * compilation.
+         */
+        return method.canBeInlined();
     }
 
     @Override

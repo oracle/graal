@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jni.hosted;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -79,6 +80,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
@@ -94,6 +96,7 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -245,7 +248,12 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
             ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedReceiver, hubNode));
             kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROFILE);
             kit.thenPart();
-            ValueNode createdObjectOrNull = createNewObjectCall(metaAccess, kit, invokeMethod, state, args);
+            ValueNode createdObjectOrNull;
+            if (invokeMethod.getDeclaringClass().isAbstract()) {
+                createdObjectOrNull = throwInstantiationException(metaAccess, kit, state);
+            } else {
+                createdObjectOrNull = createNewObjectCall(metaAccess, kit, invokeMethod, state, args);
+            }
             kit.elsePart();
             args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
             ValueNode unboxedReceiverOrNull = createMethodCall(kit, invokeMethod, invokeKind, state, args);
@@ -342,6 +350,24 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
         Stamp objectStamp = StampFactory.forDeclaredType(null, constructor.getDeclaringClass(), true).getTrustedStamp();
         ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
         return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdObject, exceptionValue}));
+    }
+
+    private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
+
+    /**
+     * When trying to allocate an abstract class, allocate and throw exception instead. The
+     * exception is installed as the JNI pending exception, and the null constant is returned.
+     */
+    private static ValueNode throwInstantiationException(UniverseMetaAccess metaAccess, JNIGraphKit kit, FrameStateBuilder state) {
+        ResolvedJavaMethod throwMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR), true);
+        int bci = kit.bci();
+        kit.startInvokeWithException(throwMethod, InvokeKind.Static, state, bci);
+        kit.noExceptionPart();
+        kit.append(new LoweredDeadEndNode());
+        kit.exceptionPart();
+        kit.setPendingException(kit.exceptionObject());
+        kit.endInvokeWithException();
+        return kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
     }
 
     /**
