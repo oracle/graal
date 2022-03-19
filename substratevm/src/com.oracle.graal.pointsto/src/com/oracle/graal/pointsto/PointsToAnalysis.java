@@ -797,7 +797,7 @@ public abstract class PointsToAnalysis implements BigBang {
         /* Register the type as instantiated with all its super types. */
 
         assert type.isAllocated() || type.isInHeap();
-        assert type.isArray() || (type.isInstanceClass() && !type.isAbstract()) : this;
+        AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
         universe.hostVM().checkForbidden(type, usageKind);
 
         TypeState typeState = TypeState.forExactType(this, type, true);
