@@ -96,8 +96,10 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            /* Removing saturated type flows needs array type flows aliasing. */
-            AliasArrayTypeFlows.update(values, newValue);
+            if (newValue) {
+                /* Removing saturated type flows needs array type flows aliasing. */
+                AliasArrayTypeFlows.update(values, true);
+            }
         }
     };
 
@@ -105,8 +107,10 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> AliasArrayTypeFlows = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            /* Aliasing array type flows implies relaxation of type flow constraints. */
-            RelaxTypeFlowStateConstraints.update(values, newValue);
+            if (newValue) {
+                /* Aliasing array type flows implies relaxation of type flow constraints. */
+                RelaxTypeFlowStateConstraints.update(values, true);
+            }
         }
     };
 
