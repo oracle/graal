@@ -1057,19 +1057,14 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def get_vm_registry(self):
         return _polybench_vm_registry
 
-    @property
-    def _hpc_metrics(self):
-        # Metrics representing hardware performance counters
-        return ["instructions", "l1-data-misses", "l1-instruction-misses", "reference-cycles", "total-cycles"]
-
     def rules(self, output, benchmarks, bmSuiteArgs):
         metric_name = self._get_metric_name(bmSuiteArgs)
         rules = []
-        if metric_name == "time" or metric_name in self._hpc_metrics:
-            # Special case for "time" metric and hpc metrics: Instead of reporting the aggregate numbers,
+        if metric_name == "time":
+            # Special case for metric "time": Instead of reporting the aggregate numbers,
             # report individual iterations. Two metrics will be reported:
             # - "warmup" includes all iterations (warmup and run)
-            # - "time" or the hpc metric includes only the "run" iterations
+            # - "time" includes only the "run" iterations
             rules += [
                 mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
@@ -1084,7 +1079,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
-                    "metric.name": metric_name,
+                    "metric.name": "time",
                     "metric.unit": ("<unit>", str),
                     "metric.value": ("<value>", float),
                     "metric.type": "numeric",
@@ -1134,11 +1129,17 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def _get_metric_name(self, bmSuiteArgs):
         metric = None
-        for arg in bmSuiteArgs:
+        for i, arg in enumerate(bmSuiteArgs):
             if arg.startswith("--metric="):
                 metric = arg[len("--metric="):]
                 break
-        if metric == "compilation-time":
+            elif arg == "--metric":
+                metric = bmSuiteArgs[i+1]
+                break
+
+        if metric is None:
+            return "time"
+        elif metric == "compilation-time":
             return "compile-time"
         elif metric == "partial-evaluation-time":
             return "pe-time"
@@ -1146,10 +1147,9 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "one-shot"
         elif metric == "allocated-bytes":
             return "allocated-memory"
-        elif metric in self._hpc_metrics:
-            return metric
         else:
-            return "time"
+            return metric
+
 
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
