@@ -6,6 +6,7 @@ New Features:
 * Support for Time, Date, TimeZone and Instant polyglot interop. See new APIs in `graalvm/llvm/polyglot-time.h`.
 * Support converting primitive types such as boolean values into polyglot
   values. See `polyglot_from_*` functions in `graalvm/llvm/polyglot.h`.
+* Support for thread local globals.
 
 Changes:
 

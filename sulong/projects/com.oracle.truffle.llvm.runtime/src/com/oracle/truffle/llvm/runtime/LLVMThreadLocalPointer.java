@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.func;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNodeGen;
+public class LLVMThreadLocalPointer {
 
-public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionNode {
+    private LLVMSymbol symbol;
+    private long offset;
 
-    protected final LLVMFunction function;
-
-    protected LLVMLookupDispatchTargetSymbolNode(LLVMFunction function) {
-        this.function = function;
+    public LLVMThreadLocalPointer(LLVMSymbol symbol, long offset) {
+        this.symbol = symbol;
+        this.offset = offset;
     }
 
-    @Specialization(guards = {"code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"}, assumptions = "function.getFixedCodeAssumption()")
-    protected LLVMFunctionCode getCode(
-                    @Cached("function.getFixedCode()") LLVMFunctionCode code) {
-        return code;
+    public LLVMSymbol getSymbol() {
+        return symbol;
     }
 
-    @Specialization(replaces = "getCode")
-    protected Object getGeneric(VirtualFrame frame,
-                    @Cached("createLookupNode()") LLVMLookupDispatchTargetNode node) {
-        return node.executeGeneric(frame);
-    }
-
-    protected LLVMLookupDispatchTargetNode createLookupNode() {
-        return LLVMLookupDispatchTargetNodeGen.create(LLVMAccessGlobalSymbolNodeGen.create(function));
+    public long getOffset() {
+        return offset;
     }
 }

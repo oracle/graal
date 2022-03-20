@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.func;
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNodeGen;
+void *inc(void *ptr);
 
-public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionNode {
+__thread int j = 0;
 
-    protected final LLVMFunction function;
+int main() {
+    pthread_t th1;
+    pthread_create(&th1, NULL, inc, NULL);
+    pthread_join(th1, NULL);
+    pthread_create(&th1, NULL, inc, NULL);
+    pthread_join(th1, NULL);
+    pthread_create(&th1, NULL, inc, NULL);
+    pthread_join(th1, NULL);
+    printf("now value is %d\n", j);
+    return 0;
+}
 
-    protected LLVMLookupDispatchTargetSymbolNode(LLVMFunction function) {
-        this.function = function;
-    }
-
-    @Specialization(guards = {"code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"}, assumptions = "function.getFixedCodeAssumption()")
-    protected LLVMFunctionCode getCode(
-                    @Cached("function.getFixedCode()") LLVMFunctionCode code) {
-        return code;
-    }
-
-    @Specialization(replaces = "getCode")
-    protected Object getGeneric(VirtualFrame frame,
-                    @Cached("createLookupNode()") LLVMLookupDispatchTargetNode node) {
-        return node.executeGeneric(frame);
-    }
-
-    protected LLVMLookupDispatchTargetNode createLookupNode() {
-        return LLVMLookupDispatchTargetNodeGen.create(LLVMAccessGlobalSymbolNodeGen.create(function));
-    }
+void *inc(void *ptr) {
+    j++;
+    printf("thread %d\n", j);
+    return NULL;
 }

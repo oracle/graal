@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,33 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.function.Supplier;
-
-import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMElemPtrSymbol extends LLVMSymbol {
-    private final Type type;
-    private final Supplier<LLVMExpressionNode> createGetElementPtrNode;
+public class LLVMThreadLocalSymbol extends LLVMSymbol {
 
-    public LLVMElemPtrSymbol(String name, BitcodeID bitcodeID, int symbolIndex, boolean exported, Type type, LLVMSymbol base, Supplier<LLVMExpressionNode> createGetElementPtrNode) {
-        super(name, bitcodeID, symbolIndex, exported, base.isExternalWeak());
-        this.type = type;
-        this.createGetElementPtrNode = createGetElementPtrNode;
+    private final String name;
+
+    public LLVMThreadLocalSymbol(String name, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
+        super(name, bitcodeID, symbolIndex, exported, externalWeak);
+        this.name = name;
     }
 
-    @Override
-    public boolean isGlobalVariable() {
-        return false;
+    public static LLVMThreadLocalSymbol create(String symbolName, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
+        return new LLVMThreadLocalSymbol(symbolName, bitcodeID, symbolIndex, exported, externalWeak);
     }
 
     @Override
     public boolean isFunction() {
+        return false;
+    }
+
+    @Override
+    public boolean isGlobalVariable() {
         return false;
     }
 
@@ -64,39 +61,31 @@ public final class LLVMElemPtrSymbol extends LLVMSymbol {
 
     @Override
     public LLVMFunction asFunction() {
-        throw new IllegalStateException("GetElementPointerConstant " + getName() + " has to be resolved and might not be a function.");
+        throw new IllegalStateException("Thread local global " + name + " is not a function.");
     }
 
     @Override
     public LLVMGlobal asGlobalVariable() {
-        throw new IllegalStateException("GetElementPointerConstant " + getName() + " has to be resolved and might not be a global variable.");
-    }
-
-    public Type getType() {
-        return type;
-    }
-
-    public Supplier<LLVMExpressionNode> createGetElementPtrNode() {
-        return createGetElementPtrNode;
+        throw new IllegalStateException("Thread local global " + name + " is not a global.");
     }
 
     @Override
     public boolean isElemPtrExpression() {
+        return false;
+    }
+
+    @Override
+    public boolean isThreadLocalSymbol() {
         return true;
     }
 
     @Override
     public LLVMElemPtrSymbol asElemPtrExpression() {
-        return this;
-    }
-
-    @Override
-    public boolean isThreadLocalSymbol() {
-        return false;
+        throw new IllegalStateException("Thread local global " + name + " is not a GetElementPointer symbol.");
     }
 
     @Override
     public LLVMThreadLocalSymbol asThreadLocalSymbol() {
-        throw new IllegalStateException("GetElementPointerConstant " + getName() + " has to be resolved and might not be a thread local global variable.");
+        return this;
     }
 }

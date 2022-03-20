@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @NodeChild(value = "dispatchTarget", type = LLVMExpressionNode.class)
@@ -55,8 +55,8 @@ public abstract class LLVMCallNode extends LLVMExpressionNode {
 
     public static LLVMCallNode create(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
         LLVMFunction llvmFun = null;
-        if (functionNode instanceof LLVMAccessSymbolNode) {
-            LLVMAccessSymbolNode node = (LLVMAccessSymbolNode) functionNode;
+        if (functionNode instanceof LLVMAccessGlobalSymbolNode) {
+            LLVMAccessGlobalSymbolNode node = (LLVMAccessGlobalSymbolNode) functionNode;
             if (node.getSymbol() instanceof LLVMFunction) {
                 llvmFun = (LLVMFunction) node.getSymbol();
             }

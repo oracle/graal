@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -154,9 +154,13 @@ public abstract class LLVMSymbol {
 
     public abstract boolean isElemPtrExpression();
 
+    public abstract boolean isThreadLocalSymbol();
+
     public abstract LLVMFunction asFunction();
 
     public abstract LLVMGlobal asGlobalVariable();
 
     public abstract LLVMElemPtrSymbol asElemPtrExpression();
+
+    public abstract LLVMThreadLocalSymbol asThreadLocalSymbol();
 }

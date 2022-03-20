@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,6 +43,7 @@ public final class LLVMParserResult {
     private final List<FunctionSymbol> externalFunctions;
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
+    private final List<GlobalVariable> threadLocalGlobals;
     private final DataLayout dataLayout;
     private final int symbolTableSize;
     private final TargetTriple targetTriple;
@@ -52,16 +53,18 @@ public final class LLVMParserResult {
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
+                    List<GlobalVariable> threadLocalGlobals,
                     DataLayout dataLayout,
                     TargetTriple targetTriple) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
         this.externalFunctions = externalFunctions;
+        this.threadLocalGlobals = threadLocalGlobals;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
         this.dataLayout = dataLayout;
         this.targetTriple = targetTriple;
-        this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size();
+        this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size() + threadLocalGlobals.size();
     }
 
     public LLVMParserRuntime getRuntime() {
@@ -82,6 +85,10 @@ public final class LLVMParserResult {
 
     public List<GlobalVariable> getExternalGlobals() {
         return externalGlobals;
+    }
+
+    public List<GlobalVariable> getThreadLocalGlobals() {
+        return threadLocalGlobals;
     }
 
     public DataLayout getDataLayout() {
