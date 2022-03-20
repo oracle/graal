@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.io.IOException;
-import java.io.Reader;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,7 +35,6 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 /**
@@ -62,9 +60,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
+    public void parseAndRegister(Object json, URI origin) {
         parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
     }
 

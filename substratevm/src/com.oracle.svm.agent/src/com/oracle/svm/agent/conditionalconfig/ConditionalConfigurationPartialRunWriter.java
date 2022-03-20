@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.configwithorigins;
+package com.oracle.svm.agent.conditionalconfig;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsTracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.configure.config.conditional.HumanReadableConfigurationWithOrigins;
+import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigins;
+import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.configure.ConfigurationFile;
 
-public class ConfigurationWithOriginsWriter implements TracingResultWriter {
+public class ConditionalConfigurationPartialRunWriter implements TracingResultWriter {
 
-    public static final String CONFIG_WITH_ORIGINS_SUFFIX = "-origins.txt";
     private final ConfigurationWithOriginsTracer tracer;
 
-    public ConfigurationWithOriginsWriter(ConfigurationWithOriginsTracer tracer) {
+    public ConditionalConfigurationPartialRunWriter(ConfigurationWithOriginsTracer tracer) {
         this.tracer = tracer;
     }
 
@@ -53,7 +55,10 @@ public class ConfigurationWithOriginsWriter implements TracingResultWriter {
 
     @Override
     public List<Path> writeToDirectory(Path directoryPath) throws IOException {
-        return ConfigurationSet.writeConfiguration(configFile -> directoryPath.resolve(configFile.getFileName(CONFIG_WITH_ORIGINS_SUFFIX)),
-                        configFile -> new HumanReadableConfigurationWithOrigins(tracer.getRootNode(), configFile));
+        Path resolvedPath = directoryPath.resolve(ConfigurationFile.PARTIAL_CONFIGURATION_WITH_ORIGINS);
+        try (JsonWriter writer = new JsonWriter(resolvedPath)) {
+            new PartialConfigurationWithOrigins(tracer.getRootNode(), null).printJson(writer);
+        }
+        return Collections.singletonList(resolvedPath);
     }
 }

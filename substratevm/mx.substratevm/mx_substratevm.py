@@ -495,9 +495,6 @@ def native_unittests_task(extra_build_args=None):
 
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
-    config_dir = join(svmbuild_dir(), 'cond-config-test-config')
-    if exists(config_dir):
-        mx.rmtree(config_dir)
     conditional_config_filter_path = join(svmbuild_dir(), 'conditional-config-filter.json')
     with open(conditional_config_filter_path, 'w') as conditional_config_filter:
         conditional_config_filter.write(
@@ -509,11 +506,56 @@ def conditional_config_task(native_image):
 }
 '''
         )
-    agent_opts = ['config-output-dir=' + config_dir, 'experimental-conditional-config-filter-file=' + conditional_config_filter_path]
+
+    run_agent_conditional_config_test(agent_path, conditional_config_filter_path)
+
+    run_nic_conditional_config_test(agent_path, conditional_config_filter_path)
+
+
+def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
+    test_cases = [
+        "createConfigPartOne",
+        "createConfigPartTwo",
+        "createConfigPartThree"
+    ]
+    config_directories = []
+    nic_test_dir = join(svmbuild_dir(), 'nic-cond-config-test')
+    if exists(nic_test_dir):
+        mx.rmtree(nic_test_dir)
+    for test_case in test_cases:
+        config_dir = join(nic_test_dir, test_case)
+        config_directories.append(config_dir)
+
+        agent_opts = ['config-output-dir=' + config_dir,
+                      'experimental-conditional-config-part']
+        jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                      '-Dcom.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator.enabled=true',
+                      'com.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator#' + test_case])
+    config_output_dir = join(nic_test_dir, 'config-output')
+    nic_exe = mx.cmd_suffix(join(mx.JDKConfig(home=mx_sdk_vm_impl.graalvm_output()).home, 'bin', 'native-image-configure'))
+    nic_command = [nic_exe, 'create-conditional'] \
+                  + ['--user-code-filter=' + conditional_config_filter_path] \
+                  + ['--input-dir=' + config_dir for config_dir in config_directories] \
+                  + ['--output-dir=' + config_output_dir]
+    mx.run(nic_command)
+    jvm_unittest(
+        ['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_output_dir,
+         "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
+         'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
+
+
+def run_agent_conditional_config_test(agent_path, conditional_config_filter_path):
+    config_dir = join(svmbuild_dir(), 'cond-config-test-config')
+    if exists(config_dir):
+        mx.rmtree(config_dir)
+
+    agent_opts = ['config-output-dir=' + config_dir,
+                  'experimental-conditional-config-filter-file=' + conditional_config_filter_path]
+    # This run generates the configuration from different test cases
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
                   'com.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator'])
-
+    # This run verifies that the generated configuration matches the expected one
     jvm_unittest(['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_dir,
                   "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
                   'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])

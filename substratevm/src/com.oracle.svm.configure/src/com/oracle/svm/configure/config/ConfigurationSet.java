@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -125,20 +126,21 @@ public class ConfigurationSet {
         return predefinedClassesConfiguration;
     }
 
-    public ConfigurationBase<?, ?> getConfiguration(ConfigurationFile configurationFile) {
+    @SuppressWarnings("unchecked")
+    public <T extends ConfigurationBase<T, ?>> T getConfiguration(ConfigurationFile configurationFile) {
         switch (configurationFile) {
             case DYNAMIC_PROXY:
-                return proxyConfiguration;
+                return (T) proxyConfiguration;
             case RESOURCES:
-                return resourceConfiguration;
+                return (T) resourceConfiguration;
             case JNI:
-                return jniConfiguration;
+                return (T) jniConfiguration;
             case REFLECTION:
-                return reflectionConfiguration;
+                return (T) reflectionConfiguration;
             case SERIALIZATION:
-                return serializationConfiguration;
+                return (T) serializationConfiguration;
             case PREDEFINED_CLASSES_NAME:
-                return predefinedClassesConfiguration;
+                return (T) predefinedClassesConfiguration;
             default:
                 throw VMError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
         }
@@ -146,15 +148,13 @@ public class ConfigurationSet {
 
     public static List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver, Function<ConfigurationFile, JsonPrintable> configSupplier) throws IOException {
         List<Path> writtenFiles = new ArrayList<>();
-        for (ConfigurationFile configFile : ConfigurationFile.values()) {
-            if (configFile.canBeGeneratedByAgent()) {
-                Path path = configFilePathResolver.apply(configFile);
-                writtenFiles.add(path);
-                JsonWriter writer = new JsonWriter(path);
-                configSupplier.apply(configFile).printJson(writer);
-                writer.newline();
-                writer.close();
-            }
+        for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
+            Path path = configFilePathResolver.apply(configFile);
+            writtenFiles.add(path);
+            JsonWriter writer = new JsonWriter(path);
+            configSupplier.apply(configFile).printJson(writer);
+            writer.newline();
+            writer.close();
         }
         return writtenFiles;
     }

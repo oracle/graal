@@ -33,8 +33,7 @@ public class ConfigurationGenerator {
 
     @Test
     public void createTestConfig() {
-        String enabledProperty = System.getProperty(ConfigurationGenerator.class.getName() + ".enabled");
-        if (!Boolean.parseBoolean(enabledProperty)) {
+        if (!Boolean.getBoolean(ConfigurationGenerator.class.getName() + ".enabled")) {
             return;
         }
         NoPropagationNecessary.runTest();

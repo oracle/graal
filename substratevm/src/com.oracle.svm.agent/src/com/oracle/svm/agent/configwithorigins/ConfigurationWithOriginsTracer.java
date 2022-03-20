@@ -28,6 +28,8 @@ import java.util.Map;
 
 import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
 import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.configure.config.conditional.MethodCallNode;
+import com.oracle.svm.configure.config.conditional.MethodInfo;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
@@ -39,7 +41,7 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
  * resulting from the trace events from that method. When writing configuration files, the call tree
  * is written node by node, once per configuration file.
  */
-public abstract class ConfigurationWithOriginsTracer extends Tracer {
+public final class ConfigurationWithOriginsTracer extends Tracer {
 
     protected final TraceProcessor processor;
     protected final MethodCallNode rootNode;
@@ -63,27 +65,27 @@ public abstract class ConfigurationWithOriginsTracer extends Tracer {
             Map<String, Object> transformedEntry = ConfigurationResultWriter.arraysToLists(entry);
 
             if (stackTrace == null) {
-                rootNode.traceEntry(processor, transformedEntry);
+                traceEntry(rootNode, transformedEntry);
             } else {
-                stackTrace = filterStackTrace(stackTrace);
-                if (stackTrace != null) {
-                    dispatchTraceEntry(stackTrace, entry);
-                }
+                dispatchTraceEntry(stackTrace, transformedEntry);
             }
         }
     }
 
-    public void dispatchTraceEntry(MethodInfo[] stackTrace, Map<String, Object> entry) {
+    public MethodCallNode getRootNode() {
+        return rootNode;
+    }
+
+    private void dispatchTraceEntry(MethodInfo[] stackTrace, Map<String, Object> entry) {
         MethodCallNode currentNode = rootNode;
         for (int i = stackTrace.length - 1; i >= 0; i--) {
             MethodInfo nextMethodInfo = stackTrace[i];
-            MethodCallNode current = currentNode;
-            currentNode = currentNode.calledMethods.computeIfAbsent(nextMethodInfo, key -> new MethodCallNode(key, current));
+            currentNode = currentNode.getOrCreateChild(nextMethodInfo);
         }
-        currentNode.traceEntry(processor, entry);
+        traceEntry(currentNode, entry);
     }
 
-    protected MethodInfo[] filterStackTrace(MethodInfo[] stackTrace) {
-        return stackTrace;
+    private void traceEntry(MethodCallNode node, Map<String, Object> entry) {
+        processor.processEntry(entry, node.getConfiguration());
     }
 }

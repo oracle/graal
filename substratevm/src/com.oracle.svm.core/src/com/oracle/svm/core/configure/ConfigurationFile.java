@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.configure;
 
+import java.util.Arrays;
+
 public enum ConfigurationFile {
     DYNAMIC_PROXY("proxy", true),
     RESOURCES("resource", true),
@@ -40,6 +42,9 @@ public enum ConfigurationFile {
     public static final String LOCK_FILE_NAME = ".lock";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
+    public static final String PARTIAL_CONFIGURATION_WITH_ORIGINS = "partial-config-with-origins.json";
+
+    private static final ConfigurationFile[] agentGeneratedFiles = computeAgentGeneratedFiles();
 
     ConfigurationFile(String name, boolean canAgentGenerate) {
         this.name = name;
@@ -62,4 +67,20 @@ public enum ConfigurationFile {
         return canAgentGenerate;
     }
 
+    public static ConfigurationFile getByName(String name) {
+        for (ConfigurationFile file : values()) {
+            if (file.getName().equals(name)) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+    public static ConfigurationFile[] agentGeneratedFiles() {
+        return agentGeneratedFiles;
+    }
+
+    private static ConfigurationFile[] computeAgentGeneratedFiles() {
+        return Arrays.stream(values()).filter(ConfigurationFile::canBeGeneratedByAgent).toArray(ConfigurationFile[]::new);
+    }
 }
