@@ -125,10 +125,12 @@ public class JNIAccessFeature implements Feature {
     }
 
     private class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry implements JNIRuntimeAccess.JNIRuntimeAccessibilitySupport, ReflectionRegistry {
+
         @Override
-        public void register(ConfigurationCondition condition, Class<?>... classes) {
+        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+            assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newClasses.addAll(Arrays.asList(classes)));
+            registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
         }
 
         @Override

@@ -127,6 +127,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
         boolean experimentalClassDefineSupport = false;
+        boolean experimentalUnsafeAllocationSupport = false;
         boolean experimentalOmitClasspathConfig = false;
         boolean build = false;
         boolean configurationWithOrigins = false;
@@ -187,6 +188,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 experimentalClassDefineSupport = true;
             } else if (token.startsWith("experimental-class-define-support=")) {
                 experimentalClassDefineSupport = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("experimental-unsafe-allocation-support")) {
+                experimentalUnsafeAllocationSupport = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.startsWith("experimental-unsafe-allocation-support=")) {
+                experimentalUnsafeAllocationSupport = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.startsWith("config-write-period-secs=")) {
                 configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriod <= 0) {
@@ -370,7 +375,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         try {
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
-                            experimentalClassLoaderSupport, experimentalClassDefineSupport, trackReflectionMetadata);
+                            experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);
         } catch (Throwable t) {
             return error(3, t.toString());
         }
