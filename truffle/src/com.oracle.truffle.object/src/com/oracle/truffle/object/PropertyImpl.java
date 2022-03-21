@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
@@ -128,9 +127,9 @@ public final class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
+    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException {
         assert verifyShapeParameter(store, shape);
-        getLocation().set(store, value, shape);
+        ((LocationImpl) getLocation()).set(store, value, shape);
     }
 
     /** @since 0.17 or earlier */
@@ -138,8 +137,8 @@ public final class PropertyImpl extends Property {
     public void setSafe(DynamicObject store, Object value, Shape shape) {
         assert verifyShapeParameter(store, shape);
         try {
-            getLocation().set(store, value, shape);
-        } catch (IncompatibleLocationException | FinalLocationException ex) {
+            ((LocationImpl) getLocation()).set(store, value, shape);
+        } catch (IncompatibleLocationException ex) {
             throw new IllegalStateException();
         }
     }
@@ -150,7 +149,7 @@ public final class PropertyImpl extends Property {
         assert verifyShapeParameter(store, shape);
         try {
             set(store, value, shape);
-        } catch (IncompatibleLocationException | FinalLocationException ex) {
+        } catch (IncompatibleLocationException ex) {
             setSlowCase(store, value);
         }
     }
@@ -165,7 +164,7 @@ public final class PropertyImpl extends Property {
     @Override
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         assert verifyShapeParameters(store, oldShape, newShape);
-        getLocation().set(store, value, oldShape, newShape);
+        ((LocationImpl) getLocation()).set(store, value, oldShape, newShape);
     }
 
     /** @since 0.17 or earlier */
@@ -173,7 +172,7 @@ public final class PropertyImpl extends Property {
     public void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
         assert verifyShapeParameters(store, oldShape, newShape);
         try {
-            getLocation().set(store, value, oldShape, newShape);
+            ((LocationImpl) getLocation()).set(store, value, oldShape, newShape);
         } catch (IncompatibleLocationException ex) {
             throw new IllegalStateException();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,6 +125,7 @@ public abstract class Location {
      * @throws IncompatibleLocationException if value is of non-assignable type
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     @SuppressWarnings("deprecation")
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
@@ -146,11 +147,13 @@ public abstract class Location {
      * @throws FinalLocationException for effectively final fields
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public final void set(DynamicObject store, Object value) throws IncompatibleLocationException, FinalLocationException {
         set(store, value, null);
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated(since = "22.2")
     protected abstract Object getInternal(DynamicObject store);
 
     /**
@@ -161,6 +164,7 @@ public abstract class Location {
      * @throws IncompatibleLocationException if value is of non-assignable type
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
 
     /**
