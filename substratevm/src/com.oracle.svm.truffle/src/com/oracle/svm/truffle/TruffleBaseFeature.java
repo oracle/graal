@@ -439,7 +439,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                  *
                  * If a field is registered for unsafe access and there is more than one
                  * implementation for a value of a field, then any inlining could get prevented
-                 * unnecessarily. As an opimization we try to avoid registering for unsafe access
+                 * unnecessarily. As an optimization we try to avoid registering for unsafe access
                  * whenever possible to leverage the result of the type flow analysis.
                  */
                 Class<?> type = field.getType();
