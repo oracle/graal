@@ -57,7 +57,7 @@ The following options are equally supported with both GraalVM Communty and Enter
 * `--native-compiler-path`: provide a custom path to the C compiler used to query code compilation
 and linking
 * `--native-image-info`: show native toolchain information and image's build settings
-* `--no-fallback`: build a standalone image or report a failure
+* `--auto-fallback`: build stand-alone image if possible
 * `--pgo`: a comma-separated list of files from which to read the data  collected for profile-guided optimization of AOT compiled code (reads from  _default.iprof_ if nothing is specified). GraalVM Enterprise only
 * `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file. GraalVM Enterprise only
 * `--report-unsupported-elements-at-runtime`: report the usage of unsupported methods and fields at runtime when they are accessed the first time, instead of an error during image building

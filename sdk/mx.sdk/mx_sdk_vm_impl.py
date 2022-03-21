@@ -1255,7 +1255,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         if self._contents is None:
             image_config = self.subject.image_config
             build_args = [
-                '--no-fallback',
                 '--initialize-at-build-time=org,com,net,jdk,javax,java,sun,apple',
                 '-H:+AssertInitializationSpecifiedForAllClasses',
                 '-H:+EnforceMaxRuntimeCompileMethods',

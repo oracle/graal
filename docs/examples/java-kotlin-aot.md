@@ -46,7 +46,7 @@ This example demonstrates how to compile a Java and Kotlin application ahead-of-
 Have a look at the `build.sh` script which creates a native executable from a Java class.
 The `native-image` utility compiles the application ahead-of-time for faster startup and lower general overhead at runtime.
 ```shell
-$JAVA_HOME/bin/native-image --no-fallback -cp ./target/mixed-code-hello-world-1.0-SNAPSHOT-jar-with-dependencies.jar -H:Name=helloworld -H:Class=hello.JavaHello -H:+ReportUnsupportedElementsAtRuntime
+$JAVA_HOME/bin/native-image -cp ./target/mixed-code-hello-world-1.0-SNAPSHOT-jar-with-dependencies.jar -H:Name=helloworld -H:Class=hello.JavaHello -H:+ReportUnsupportedElementsAtRuntime
 ```
 
 It takes a few parameters: the classpath, the main class of the application with `-H:Class=...`, and the name of the resulting executable with `-H:Name=...`.

@@ -108,7 +108,7 @@ The _jni-config.json_, _proxy-config.json_ , and _resource-config.json_ configur
 
 3. Build a native image:
 ```shell
-$JAVA_HOME/bin/native-image --no-fallback ReflectionExample
+$JAVA_HOME/bin/native-image ReflectionExample
 ```
 The native image builder automatically picks up configuration files in the _META-INF/native-image_ directory or subdirectories.
 However, it is recommended to have _META-INF/native-image_ location on the class path, either via a JAR file or via the `-cp` flag.
