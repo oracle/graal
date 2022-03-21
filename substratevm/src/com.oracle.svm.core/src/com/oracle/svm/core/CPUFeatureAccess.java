@@ -41,5 +41,5 @@ public interface CPUFeatureAccess {
     /**
      * CPU features enabled at image generation time.
      */
-    EnumSet<?> buildTimeCPUFeatures();
+    EnumSet<?> buildtimeCPUFeatures();
 }

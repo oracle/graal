@@ -228,7 +228,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          *         checks are needed).
          */
         private boolean emitConditionalXMMSaveRestore(Label end, AMD64.CPUFeature avxVersion) {
-            var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildTimeCPUFeatures();
+            var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
             if (hostedCPUFeatures.contains(avxVersion)) {
                 emitSaveRestore(avxVersion);
                 return true;

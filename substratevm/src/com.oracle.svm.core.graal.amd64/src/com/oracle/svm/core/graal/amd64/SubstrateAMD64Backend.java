@@ -186,7 +186,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             return false;
         }
         var arch = (AMD64) target.arch;
-        var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildTimeCPUFeatures();
+        var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
         var runtimeCPUFeatures = arch.getFeatures();
         return !hostedCPUFeatures.contains(AVX) && runtimeCPUFeatures.contains(AVX);
     }

@@ -47,17 +47,17 @@ import jdk.vm.ci.code.Architecture;
 
 public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
-    private final EnumSet<?> buildTimeCPUFeatures;
+    private final EnumSet<?> buildtimeCPUFeatures;
 
     public AMD64CPUFeatureAccess() {
         var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
         var arch = (AMD64) targetDescription.arch;
-        buildTimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
+        buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
     }
 
     @Override
-    public EnumSet<?> buildTimeCPUFeatures() {
-        return buildTimeCPUFeatures;
+    public EnumSet<?> buildtimeCPUFeatures() {
+        return buildtimeCPUFeatures;
     }
 
     /**
