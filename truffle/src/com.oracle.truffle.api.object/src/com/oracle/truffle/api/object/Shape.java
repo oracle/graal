@@ -753,7 +753,9 @@ public abstract class Shape {
      * Obtain an {@link Allocator} instance for the purpose of allocating locations.
      *
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @Deprecated(since = "22.2")
     public abstract Allocator allocator();
 
     /**
@@ -996,14 +998,16 @@ public abstract class Shape {
     /**
      * Utility class to allocate locations in an object layout.
      *
-     * Planned to be deprecated.
-     *
      * @since 0.8 or earlier
+     * @deprecated since 22.1, without replacement. Property locations are automatically allocated
+     *             by {@link DynamicObjectLibrary} methods; there's no need for manual allocation.
      */
+    @Deprecated(since = "22.2")
     public abstract static class Allocator {
         /**
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         protected Allocator() {
         }
 
@@ -1041,6 +1045,7 @@ public abstract class Shape {
         }
 
         /** @since 0.8 or earlier */
+        @Deprecated(since = "22.2")
         protected abstract Location locationForType(Class<?> type, boolean useFinal, boolean nonNull);
 
         /**
@@ -1049,6 +1054,7 @@ public abstract class Shape {
          * @param type the Java type this location must be compatible with (may be primitive)
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public final Location locationForType(Class<?> type) {
             return locationForType(type, false, false);
         }
@@ -1060,6 +1066,7 @@ public abstract class Shape {
          * @param modifiers additional restrictions and semantics
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public final Location locationForType(Class<?> type, EnumSet<LocationModifier> modifiers) {
             return locationForType(type, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
         }
@@ -1070,6 +1077,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Location constantLocation(Object value);
 
         /**
@@ -1078,6 +1086,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Location declaredLocation(Object value);
 
         /**
@@ -1086,6 +1095,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Allocator addLocation(Location location);
 
         /**
@@ -1093,6 +1103,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Allocator copy();
     }
 

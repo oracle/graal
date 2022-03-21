@@ -50,7 +50,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.object.Shape.Allocator;
 
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
@@ -180,7 +179,9 @@ public abstract class Layout {
      *
      * @since 0.8 or earlier
      */
-    public abstract Allocator createAllocator();
+    @Deprecated(since = "22.2")
+    @SuppressWarnings("deprecation")
+    public abstract Shape.Allocator createAllocator();
 
     /** @since 0.8 or earlier */
     protected static LayoutFactory getFactory() {
