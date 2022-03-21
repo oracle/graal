@@ -491,8 +491,8 @@ _DACAPO_SKIP_AGENT_ASSERTIONS = {
 }
 
 _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
-    'h2' :      ['--allow-incomplete-classpath'],
-    'pmd':      ['--allow-incomplete-classpath'],
+    'h2' :      [],
+    'pmd':      [],
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
     'xalan':    ['--report-unsupported-elements-at-runtime',
@@ -502,11 +502,10 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     #    This causes us to incorrectly parse the default log configuration, leading to output on stderr.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
-    'fop':      ['--allow-incomplete-classpath',
-                 '--report-unsupported-elements-at-runtime',
+    'fop':      ['--report-unsupported-elements-at-runtime',
                  '-H:-EnableLoggingFeature',
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
-    'batik':    ['--allow-incomplete-classpath']
+    'batik':    []
 }
 
 '''
@@ -669,10 +668,10 @@ _scala_dacapo_iterations = {
 }
 
 _SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
-    'scalariform'   : ['--allow-incomplete-classpath'],
-    'scalatest'     : ['--allow-incomplete-classpath'],
-    'specs'         : ['--allow-incomplete-classpath'],
-    'tmt'           : ['--allow-incomplete-classpath'],
+    'scalariform'   : [],
+    'scalatest'     : [],
+    'specs'         : [],
+    'tmt'           : [],
 }
 
 _scala_daCapo_exclude_lib = {

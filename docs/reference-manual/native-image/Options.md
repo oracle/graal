@@ -39,7 +39,7 @@ The following options are equally supported with both GraalVM Communty and Enter
 * `--version`: print the product version and exit
 * `--help`: print this help message
 * `--help-extra`: print help on non-standard options
-* `--allow-incomplete-classpath`: allow image building with an incomplete class path; report type resolution errors at run time when they are accessed the first time, instead of during image building
+* `--link-at-build-time`: Require all types in given class or module-path entries to be fully defined at image build-time.
 * `--auto-fallback`: build a standalone image if possible
 * `--configure-reflection-metadata`: enable runtime instantiation of reflection objects for non-invoked methods
 * `--enable-all-security-services`: add all security service classes to the generated image

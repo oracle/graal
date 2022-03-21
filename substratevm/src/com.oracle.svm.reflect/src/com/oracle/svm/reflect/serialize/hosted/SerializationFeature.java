@@ -437,13 +437,13 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
-        UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
+        UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored." +
                         " Please make sure it is in the classpath", targetClassName);
 
         if (customTargetConstructorClassName != null) {
             Class<?> customTargetConstructorClass = typeResolver.resolveType(customTargetConstructorClassName);
             UserError.guarantee(customTargetConstructorClass != null,
-                            "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
+                            "Cannot find targetConstructorClass %s. The missing of this class can't be ignored." +
                                             " Please make sure it is in the classpath",
                             customTargetConstructorClass);
             registerWithTargetConstructorClass(condition, serializationTargetClass, customTargetConstructorClass);
