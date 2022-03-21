@@ -578,16 +578,6 @@ public abstract class Shape {
     public abstract Iterable<Property> getProperties();
 
     /**
-     * Get a list of properties that this Shape stores.
-     *
-     * @return list of properties
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getPropertyList()} instead
-     */
-    @Deprecated(since = "19.3")
-    public abstract List<Property> getPropertyList(Pred<Property> filter);
-
-    /**
      * Get a list of all properties that this Shape stores.
      *
      * Properties with a {@link HiddenKey} are not included.
@@ -605,15 +595,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract List<Property> getPropertyListInternal(boolean ascending);
-
-    /**
-     * Get a filtered list of property keys in insertion order.
-     *
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getKeyList()} instead
-     */
-    @Deprecated(since = "19.3")
-    public abstract List<Object> getKeyList(Pred<Property> filter);
 
     /**
      * Get a list of all property keys in insertion order.
@@ -1107,27 +1088,5 @@ public abstract class Shape {
          */
         @Deprecated(since = "22.2")
         public abstract Allocator copy();
-    }
-
-    /**
-     * Represents a predicate (boolean-valued function) of one argument.
-     *
-     * For Java 7 compatibility (equivalent to Predicate).
-     *
-     * @param <T> the type of the input to the predicate
-     * @since 0.8 or earlier
-     * @deprecated all methods that use this interface are deprecated; use
-     *             {@link java.util.function.Predicate} instead.
-     */
-    @Deprecated(since = "19.3")
-    public interface Pred<T> {
-        /**
-         * Evaluates this predicate on the given argument.
-         *
-         * @param t the input argument
-         * @return {@code true} if the input argument matches the predicate, otherwise {@code false}
-         * @since 0.8 or earlier
-         */
-        boolean test(T t);
     }
 }

@@ -43,7 +43,6 @@ package com.oracle.truffle.object;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -654,25 +653,6 @@ public abstract class ShapeImpl extends Shape {
         return false;
     }
 
-    /**
-     * Get a list of all properties that this Shape stores.
-     *
-     * @return list of properties
-     * @since 0.17 or earlier
-     */
-    @TruffleBoundary
-    @Override
-    public final List<Property> getPropertyList(Pred<Property> filter) {
-        ArrayDeque<Property> props = new ArrayDeque<>();
-        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
-            Property currentProperty = it.next();
-            if (!currentProperty.isHidden() && filter.test(currentProperty)) {
-                props.addFirst(currentProperty);
-            }
-        }
-        return Arrays.asList(props.toArray(new Property[0]));
-    }
-
     /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
@@ -713,25 +693,6 @@ public abstract class ShapeImpl extends Shape {
             }
         }
         return Arrays.asList(props);
-    }
-
-    /**
-     * Get a list of all (visible) property names in insertion order.
-     *
-     * @return list of property names
-     * @since 0.17 or earlier
-     */
-    @TruffleBoundary
-    @Override
-    public final List<Object> getKeyList(Pred<Property> filter) {
-        ArrayDeque<Object> keys = new ArrayDeque<>();
-        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
-            Property currentProperty = it.next();
-            if (!currentProperty.isHidden() && filter.test(currentProperty)) {
-                keys.addFirst(currentProperty.getKey());
-            }
-        }
-        return Arrays.asList(keys.toArray(new Object[0]));
     }
 
     /** @since 0.17 or earlier */
