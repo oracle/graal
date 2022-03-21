@@ -900,10 +900,10 @@ public abstract class Shape {
     /**
      * Get mutex object shared by related shapes, i.e. shapes with a common root.
      *
-     * Planned to be deprecated.
-     *
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @Deprecated(since = "22.2")
     public abstract Object getMutex();
 
     /**
