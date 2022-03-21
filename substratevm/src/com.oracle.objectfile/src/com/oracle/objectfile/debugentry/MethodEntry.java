@@ -36,7 +36,10 @@ public class MethodEntry extends MemberEntry {
     static final int DEOPT = 1 << 0;
     static final int IN_RANGE = 1 << 1;
     static final int INLINED = 1 << 2;
+    static final int IS_OVERRIDE = 1 << 3;
+    static final int IS_CONSTRUCTOR = 1 << 4;
     int flags;
+    int vtableOffset = -1;
     final String symbolName;
 
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
@@ -52,6 +55,13 @@ public class MethodEntry extends MemberEntry {
         if (debugMethodInfo.isDeoptTarget()) {
             setIsDeopt();
         }
+        if (debugMethodInfo.isConstructor()) {
+            setIsConstructor();
+        }
+        if (debugMethodInfo.isOverride()) {
+            setIsOverride();
+        }
+        vtableOffset = debugMethodInfo.vtableOffset();
         updateRangeInfo(debugInfoBase, debugMethodInfo);
     }
 
@@ -117,13 +127,29 @@ public class MethodEntry extends MemberEntry {
         return (flags & INLINED) != 0;
     }
 
+    private void setIsOverride() {
+        flags |= IS_OVERRIDE;
+    }
+
+    public boolean isOverride() {
+        return (flags & IS_OVERRIDE) != 0;
+    }
+
+    private void setIsConstructor() {
+        flags |= IS_CONSTRUCTOR;
+    }
+
+    public boolean isConstructor() {
+        return (flags & IS_CONSTRUCTOR) != 0;
+    }
+
     /**
      * Sets {@code isInRange} and ensures that the {@code fileEntry} is up to date. If the
      * MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry will point
      * to the original source file, thus it will be wrong for substituted methods. As a result when
      * setting a MethodEntry as isInRange we also make sure that its fileEntry reflects the file
      * info associated with the corresponding Range.
-     * 
+     *
      * @param debugInfoBase
      * @param debugMethodInfo
      */
@@ -151,6 +177,14 @@ public class MethodEntry extends MemberEntry {
                 fileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
             }
         }
+    }
+
+    public boolean isVirtual() {
+        return vtableOffset >= 0;
+    }
+
+    public int getVtableOffset() {
+        return vtableOffset;
     }
 
     public String getSymbolName() {

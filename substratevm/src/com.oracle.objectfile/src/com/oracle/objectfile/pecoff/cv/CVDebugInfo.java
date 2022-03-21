@@ -27,6 +27,9 @@
 package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.debugentry.DebugInfoBase;
+import com.oracle.objectfile.pecoff.PECoffMachine;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 
 import java.nio.ByteOrder;
 
@@ -36,13 +39,18 @@ import java.nio.ByteOrder;
  */
 public final class CVDebugInfo extends DebugInfoBase {
 
-    private CVSymbolSectionImpl cvSymbolSection;
-    private CVTypeSectionImpl cvTypeSection;
+    private final CVSymbolSectionImpl cvSymbolSection;
+    private final CVTypeSectionImpl cvTypeSection;
+    private DebugContext debugContext;
 
-    public CVDebugInfo(ByteOrder byteOrder) {
+    public CVDebugInfo(PECoffMachine machine, ByteOrder byteOrder) {
         super(byteOrder);
         cvSymbolSection = new CVSymbolSectionImpl(this);
-        cvTypeSection = new CVTypeSectionImpl();
+        cvTypeSection = new CVTypeSectionImpl(this);
+        if (machine != PECoffMachine.X86_64) {
+            /* room for future aarch64 port */
+            throw GraalError.shouldNotReachHere("Unsupported architecture on Windows");
+        }
     }
 
     public CVSymbolSectionImpl getCVSymbolSection() {
@@ -53,4 +61,11 @@ public final class CVDebugInfo extends DebugInfoBase {
         return cvTypeSection;
     }
 
+    public DebugContext getDebugContext() {
+        return debugContext;
+    }
+
+    void setDebugContext(DebugContext debugContext) {
+        this.debugContext = debugContext;
+    }
 }

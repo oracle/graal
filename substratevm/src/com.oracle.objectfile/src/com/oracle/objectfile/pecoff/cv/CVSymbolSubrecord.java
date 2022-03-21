@@ -26,7 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 
 import java.util.HashMap;
@@ -40,7 +39,7 @@ abstract class CVSymbolSubrecord {
     private int subrecordStartPosition;
 
     private final short cmd;
-    CVDebugInfo cvDebugInfo;
+    protected final CVDebugInfo cvDebugInfo;
 
     CVSymbolSubrecord(CVDebugInfo cvDebugInfo, short cmd) {
         this.cvDebugInfo = cvDebugInfo;
@@ -75,7 +74,7 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVObjectNameRecord extends CVSymbolSubrecord {
 
-        String objName; /* find the full path to object file we will produce. */
+        private final String objName; /* find the full path to object file we will produce. */
 
         CVObjectNameRecord(CVDebugInfo cvDebugInfo, String objName) {
             super(cvDebugInfo, CVDebugConstants.S_OBJNAME);
@@ -123,20 +122,20 @@ abstract class CVSymbolSubrecord {
         private static final byte HAS_DEBUG_FLAG = 0;
         @SuppressWarnings("unused") private static final byte HAS_NO_DEBUG_FLAG = (byte) 0x80;
 
-        private byte language;
-        private byte cf1;
-        private byte cf2;
-        private byte padding;
-        private short machine;
-        private short feMajor;
-        private short feMinor;
-        private short feBuild;
-        private short feQFE;
-        private short beMajor;
-        private short beMinor;
-        private short beBuild;
-        private short beQFE;
-        private String compiler;
+        private final byte language;
+        private final byte cf1;
+        private final byte cf2;
+        private final byte padding;
+        private final short machine;
+        private final short feMajor;
+        private final short feMinor;
+        private final short feBuild;
+        private final short feQFE;
+        private final short beMajor;
+        private final short beMinor;
+        private final short beBuild;
+        private final short beQFE;
+        private final String compiler;
 
         CVCompile3Record(CVDebugInfo cvDebugInfo) {
             super(cvDebugInfo, CVDebugConstants.S_COMPILE3);
@@ -185,7 +184,7 @@ abstract class CVSymbolSubrecord {
 
         private static final int ENVMAP_INITIAL_CAPACITY = 10;
 
-        private Map<String, String> map = new HashMap<>(ENVMAP_INITIAL_CAPACITY);
+        private final Map<String, String> map = new HashMap<>(ENVMAP_INITIAL_CAPACITY);
 
         /*-
          * Example contents of the environment block:
@@ -252,24 +251,24 @@ abstract class CVSymbolSubrecord {
      */
     public static class CVSymbolGProc32Record extends CVSymbolSubrecord {
 
-        int pparent;
-        int pend;
-        int pnext;
-        int proclen;
-        int debugStart;
-        int debugEnd;
-        int typeIndex;
-        int offset;
-        short segment;
-        byte flags;
-        String externalName;
-        String debuggerName;
+        private final int pparent;
+        private final int pend;
+        private final int pnext;
+        private final int proclen;
+        private final int debugStart;
+        private final int debugEnd;
+        private final int typeIndex;
+        private final int offset;
+        private final short segment;
+        private final byte flags;
+        private final String symbolName;
+        private final String displayName;
 
-        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String externalName, String debuggerName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
                         int offset, short segment, byte flags) {
             super(cvDebugInfo, cmd);
-            this.externalName = externalName;
-            this.debuggerName = debuggerName;
+            this.symbolName = symbolName;
+            this.displayName = displayName;
             this.pparent = pparent;
             this.pend = pend;
             this.pnext = pnext;
@@ -282,9 +281,9 @@ abstract class CVSymbolSubrecord {
             this.flags = flags;
         }
 
-        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String externalName, String debuggerName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset,
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset,
                         short segment, byte flags) {
-            this(cvDebugInfo, CVDebugConstants.S_GPROC32, externalName, debuggerName, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
+            this(cvDebugInfo, CVDebugConstants.S_GPROC32, symbolName, displayName, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
         }
 
         @Override
@@ -296,35 +295,28 @@ abstract class CVSymbolSubrecord {
             pos = CVUtil.putInt(debugStart, buffer, pos);
             pos = CVUtil.putInt(debugEnd, buffer, pos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);
-            if (buffer != null) {
-                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECREL_4, externalName, 1L);
-            }
-            pos = CVUtil.putInt(0, buffer, pos);
-            if (buffer != null) {
-                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECTION_2, externalName, 1L);
-            }
-            pos = CVUtil.putShort((short) 0, buffer, pos);
+            pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, pos, symbolName);
             pos = CVUtil.putByte(flags, buffer, pos);
-            pos = CVUtil.putUTF8StringBytes(debuggerName, buffer, pos);
+            pos = CVUtil.putUTF8StringBytes(displayName, buffer, pos);
             return pos;
         }
 
         @Override
         public String toString() {
-            return String.format("S_GPROC32   name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x offset=0x%x type=0x%x flags=0x%x)", debuggerName, externalName, pparent, debugStart, debugEnd,
-                            proclen, offset, typeIndex, flags);
+            return String.format("S_GPROC32   name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x seg:offset=0x%x:0x%x type=0x%x flags=0x%x)", displayName, symbolName, pparent, debugStart,
+                            debugEnd, proclen, segment, offset, typeIndex, flags);
         }
     }
 
     public static final class CVSymbolFrameProcRecord extends CVSymbolSubrecord {
 
-        int framelen;
-        int padLen;
-        int padOffset;
-        int saveRegsCount;
-        int ehOffset;
-        short ehSection;
-        int flags;
+        private final int framelen;
+        private final int padLen;
+        private final int padOffset;
+        private final int saveRegsCount;
+        private final int ehOffset;
+        private final short ehSection;
+        private final int flags;
 
         CVSymbolFrameProcRecord(CVDebugInfo cvDebugInfo, int framelen, int padLen, int padOffset, int saveRegsCount, int ehOffset, short ehSection, int flags) {
             super(cvDebugInfo, CVDebugConstants.S_FRAMEPROC);
