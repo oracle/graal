@@ -630,7 +630,7 @@ abstract class AbstractBridgeParser {
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 annotations.stream().map(AnnotationMirror::getAnnotationType).forEach(marshallerAnnotations::add);
-                res = MarshallerData.marshalled(type, annotations, true);
+                res = MarshallerData.marshalled(type, annotations, this instanceof NativeToHotSpotBridgeParser);
             }
         }
         return res;
@@ -1024,6 +1024,10 @@ abstract class AbstractBridgeParser {
             this.customDispatchFactory = customDispatchFactory;
         }
 
+        boolean isCustom() {
+            return kind == Kind.CUSTOM;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -1098,6 +1102,10 @@ abstract class AbstractBridgeParser {
 
         MarshallerData getParameterMarshaller(int arg) {
             return parameterMarshallers.get(arg);
+        }
+
+        boolean needsMarshalledDataParameter() {
+            return parameterMarshallers.stream().anyMatch((md) -> md.kind == MarshallerData.Kind.CUSTOM);
         }
 
         boolean hasOverload() {
@@ -1180,6 +1188,8 @@ abstract class AbstractBridgeParser {
         final DeclaredType binaryOutput;
         final DeclaredType byReference;
         final DeclaredType byteArrayBinaryOutput;
+        final DeclaredType cCharPointer;
+        final DeclaredType cCharPointerBinaryOutput;
         final DeclaredType clazz;
         final DeclaredType collections;
         final DeclaredType customDispatchAccessor;
@@ -1223,10 +1233,12 @@ abstract class AbstractBridgeParser {
         final DeclaredType rawReference;
         final DeclaredType receiverMethod;
         final DeclaredType runtimeException;
+        final DeclaredType stackValue;
         final DeclaredType string;
         final DeclaredType suppressWarnings;
         final DeclaredType throwable;
         final DeclaredType typeLiteral;
+        final DeclaredType unmanagedMemory;
         final DeclaredType weakHashMap;
         final DeclaredType wordFactory;
 
@@ -1238,6 +1250,8 @@ abstract class AbstractBridgeParser {
             this.byReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.ByReference");
             this.byteArrayBinaryOutput = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput");
             this.clazz = (DeclaredType) processor.getType("java.lang.Class");
+            this.cCharPointer = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.type.CCharPointer");
+            this.cCharPointerBinaryOutput = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryOutput.CCharPointerBinaryOutput");
             this.collections = (DeclaredType) processor.getType("java.util.Collections");
             this.customDispatchAccessor = (DeclaredType) processor.getType("org.graalvm.nativebridge.CustomDispatchAccessor");
             this.customReceiverAccessor = (DeclaredType) processor.getType("org.graalvm.nativebridge.CustomReceiverAccessor");
@@ -1280,10 +1294,12 @@ abstract class AbstractBridgeParser {
             this.rawReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.RawReference");
             this.receiverMethod = (DeclaredType) processor.getType("org.graalvm.nativebridge.ReceiverMethod");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
+            this.stackValue = (DeclaredType) processor.getType("org.graalvm.nativeimage.StackValue");
             this.string = (DeclaredType) processor.getType("java.lang.String");
             this.suppressWarnings = (DeclaredType) processor.getType("java.lang.SuppressWarnings");
             this.throwable = (DeclaredType) processor.getType("java.lang.Throwable");
             this.typeLiteral = (DeclaredType) processor.getType("org.graalvm.polyglot.TypeLiteral");
+            this.unmanagedMemory = (DeclaredType) processor.getType("org.graalvm.nativeimage.UnmanagedMemory");
             this.weakHashMap = (DeclaredType) processor.getType("java.util.WeakHashMap");
             this.wordFactory = (DeclaredType) processor.getType("org.graalvm.word.WordFactory");
         }

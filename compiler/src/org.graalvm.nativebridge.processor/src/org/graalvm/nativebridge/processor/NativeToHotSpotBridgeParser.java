@@ -77,7 +77,6 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
         final DeclaredType jNIMethod;
         final DeclaredType jValue;
         final DeclaredType runtimeException;
-        final DeclaredType stackValue;
 
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
@@ -90,7 +89,6 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
-            this.stackValue = (DeclaredType) processor.getType("org.graalvm.nativeimage.StackValue");
         }
     }
 }

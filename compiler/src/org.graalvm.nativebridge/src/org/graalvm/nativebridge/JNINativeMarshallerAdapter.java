@@ -32,7 +32,6 @@ import org.graalvm.nativebridge.BinaryOutput.CCharPointerBinaryOutput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
 
 import java.io.IOException;
 

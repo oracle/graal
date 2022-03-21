@@ -64,6 +64,9 @@ import org.graalvm.nativebridge.processor.AbstractBridgeParser.MethodData;
 
 abstract class AbstractBridgeGenerator {
 
+    static final String MARSHALLED_DATA_PARAMETER = "marshalledData";
+    static final int BYTES_PER_PARAMETER = 256;
+
     final AbstractBridgeParser parser;
     final Types types;
     private final AbstractTypeCache typeCache;
@@ -90,6 +93,11 @@ abstract class AbstractBridgeGenerator {
         try (PrintWriter out = new PrintWriter(sourceFile.openWriter())) {
             out.print(content);
         }
+    }
+
+    final void reThrowAsAssertionError(CodeBuilder builder, CharSequence exceptionVariable) {
+        CodeBuilder message = new CodeBuilder(builder).invoke(exceptionVariable, "getMessage");
+        builder.lineStart("throw").space().newInstance(typeCache.assertionError, message.build(), exceptionVariable).lineEnd(";");
     }
 
     final FactoryMethodInfo generateStartPointFactory(CodeBuilder builder, DefinitionData data,
@@ -324,9 +332,11 @@ abstract class AbstractBridgeGenerator {
 
         abstract TypeMirror getEndPointMethodParameterType(TypeMirror type);
 
-        abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence jniEnvFieldName);
+        abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence marshalledParametersOutput,
+                        CharSequence jniEnvFieldName);
 
-        abstract CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName);
+        abstract CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput,
+                        CharSequence jniEnvFieldName);
 
         @SuppressWarnings("unused")
         boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName,
@@ -358,7 +368,7 @@ abstract class AbstractBridgeGenerator {
             return null;
         }
 
-        abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName);
+        abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName);
 
         abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName);
 
@@ -660,7 +670,7 @@ abstract class AbstractBridgeGenerator {
 
         CodeBuilder classEnd() {
             scope = scope.parent;
-            return write("}");
+            return line("}");
         }
 
         CodeBuilder methodStart(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType,

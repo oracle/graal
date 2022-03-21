@@ -212,7 +212,7 @@ public final class JNIConfig {
      */
     @SuppressWarnings("unchecked")
     @SafeVarargs
-    public final <T> BinaryMarshaller<T> lookupBinaryMarshaller(TypeLiteral<T> parameterizedType, Class<? extends Annotation>... annotationTypes) {
+    public final <T> BinaryMarshaller<T> lookupMarshaller(TypeLiteral<T> parameterizedType, Class<? extends Annotation>... annotationTypes) {
         BinaryMarshaller<?> res = lookupBinaryMarshallerImpl(parameterizedType.getType(), annotationTypes);
         if (res != null) {
             return (BinaryMarshaller<T>) res;
