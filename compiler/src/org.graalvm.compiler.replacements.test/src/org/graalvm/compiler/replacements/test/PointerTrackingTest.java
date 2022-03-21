@@ -54,6 +54,9 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
 
         int i = 0;
         while (untrackedBeforeGC == getTrackedPointer(obj)) {
+            // allocate something to increase likelyhood of GC moving the object
+            GraalDirectives.blackhole(new Object());
+
             System.gc();
             if (i++ > 100) {
                 return "Timeout! Object didn't move after 100 GCs.";
