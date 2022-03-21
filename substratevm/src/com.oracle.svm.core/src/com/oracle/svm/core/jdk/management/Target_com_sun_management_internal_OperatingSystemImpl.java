@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,17 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
-/**
- * Base class for defining methods introduced after JDK 11 by JDK-8226575.
- *
- * Putting these in a class that does not implement {@link com.sun.management.OperatingSystemMXBean}
- * avoids javac errors related these methods being annotated by {@link Override}.
- */
-public abstract class SubstrateOperatingSystemMXBeanBase {
-    static final String MSG = "OperatingSystemMXBean methods";
+import sun.management.VMManagement;
 
-    // Will be removed after [GR-20166] is implemented.
-    public double getCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    public abstract long getTotalPhysicalMemorySize();
-
-    public long getTotalMemorySize() {
-        return getTotalPhysicalMemorySize();
-    }
-
-    public long getFreeMemorySize() {
-        throw VMError.unsupportedFeature(MSG);
+@TargetClass(className = "com.sun.management.internal.OperatingSystemImpl")
+final class Target_com_sun_management_internal_OperatingSystemImpl {
+    @Substitute
+    Target_com_sun_management_internal_OperatingSystemImpl(@SuppressWarnings("unused") VMManagement vm) {
+        /* Workaround until we enable container support (GR-37365). */
+        SubstrateUtil.cast(this, Target_sun_management_BaseOperatingSystemImpl.class).loadavg = new double[1];
     }
 }
