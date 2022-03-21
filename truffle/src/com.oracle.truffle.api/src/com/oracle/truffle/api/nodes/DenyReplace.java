@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.dsl.test.issue20854;
+package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * JDT tends to reset declaration order for members in alphabetical order. This test tests, that the
- * {@link BaseType.IsMemberReadable} members are ordered correctly. If they are reset alphabetically
- * the replaces declaration fails with an error.
+ * If a {@link Node} subtype is annotated with this annotation then {@link Node#replace(Node)
+ * replacement} is denied. When replacement is denied an {@link IllegalArgumentException} will be
+ * thrown on replace. Only final subtypes of type {@link Node} may be annotated.
+ * <p>
+ * {@link DenyReplace} is recommended for uncached or not adoptable nodes that should never be
+ * replaceable. Truffle DSL automatically applies this annotation to all uncached versions of
+ * specialized nodes and libraries.
  *
- * Note that {@link BaseType} needs to be a top-level type for this.
+ * @since 22.2
  */
-@SuppressWarnings("unused")
-@ExportLibrary(InteropLibrary.class)
-final class Issue20854Test extends BaseType {
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public boolean isExecutable() {
-        return false;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    Object execute(Object[] args) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface DenyReplace {
 
 }

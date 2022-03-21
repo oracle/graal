@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.2.0
+* GR-37493 Added `@DenyReplace` to deny replacement of final node types. 
+* GR-37493 Potentially breaking: Disabled replace of all Truffle DSL generated uncached nodes. If you call `Node.replace()` on an uncached version of a generated node or library it will now fail with an `IllegalArgumentException`. As a rule of thumb, uncached versions of nodes should not ever be stored in `@Child` fields. Instead, they should always be used as singletons.
+* GR-37493 Removed long time deprecated API `NodeFieldAccessor` without replacement. Added a some utility methods in `NodeUtil` as a replacement for this API: `NodeUtil.collectFieldNames(Class)`, `NodeUtil.collectNodeChildren(Node)` and `NodeUtil.collectNodeProperties(Node)`.
+
 ## Version 22.1.0
 
 * GR-35924 Context preinitialization in combination with auxiliary engine caching now preinitializes a context for each sharing layer with the common configuration of previously created contexts.

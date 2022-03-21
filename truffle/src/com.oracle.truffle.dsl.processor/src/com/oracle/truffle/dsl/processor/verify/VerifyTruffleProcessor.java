@@ -159,6 +159,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
             TypeElement nodeType = ElementUtils.castTypeElement(types.Node);
             TypeElement nodeInterfaceType = ElementUtils.castTypeElement(types.NodeInterface);
+
             for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Node_Child))) {
                 if (e.getModifiers().contains(Modifier.FINAL)) {
                     emitError("@Child field cannot be final", e);
@@ -188,7 +189,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                     reportError = true;
                 }
                 if (reportError) {
-                    emitError("@Children field must be an array of NodeInerface sub-types", annotatedField);
+                    emitError("@Children field must be an array of NodeInterface sub-types", annotatedField);
                     continue;
                 }
                 if (!processingEnv.getTypeUtils().isSubtype(annotatedField.getEnclosingElement().asType(), nodeType.asType())) {
@@ -199,6 +200,24 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                     assertNoErrorExpected(annotatedField);
                 }
             }
+
+            for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.DenyReplace))) {
+                try {
+                    if (element.getKind() != ElementKind.CLASS) {
+                        continue;
+                    }
+                    TypeElement type = (TypeElement) element;
+
+                    if (!type.getModifiers().contains(Modifier.FINAL)) {
+                        emitError(String.format("@%s may only be used for final classes.", ElementUtils.getSimpleName(types.DenyReplace)), type);
+                        continue;
+                    }
+
+                } catch (Throwable t) {
+                    reportException(isBug367599(t) ? Kind.NOTE : Kind.ERROR, element, t);
+                }
+            }
+
             return false;
         } finally {
             ProcessorContext.leave();

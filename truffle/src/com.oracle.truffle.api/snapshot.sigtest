@@ -1008,6 +1008,11 @@ meth public final java.lang.Throwable fillInStackTrace()
 supr java.lang.RuntimeException
 hfds serialVersionUID
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.DenyReplace
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
 CLSS public abstract com.oracle.truffle.api.nodes.DirectCallNode
 cons protected init(com.oracle.truffle.api.CallTarget)
 fld protected final com.oracle.truffle.api.CallTarget callTarget
@@ -1153,27 +1158,14 @@ cons public init(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
 meth protected abstract boolean isChildField(java.lang.Object)
 meth protected abstract boolean isChildrenField(java.lang.Object)
 meth protected abstract boolean isCloneableField(java.lang.Object)
+meth protected abstract boolean isReplaceAllowed()
 meth protected abstract java.lang.Class<?> getFieldType(java.lang.Object)
-meth protected abstract java.lang.Iterable<?> getNodeFields()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="20.2")
 meth protected abstract java.lang.Object getFieldObject(java.lang.Object,com.oracle.truffle.api.nodes.Node)
 meth protected abstract java.lang.Object getFieldValue(java.lang.Object,com.oracle.truffle.api.nodes.Node)
 meth protected abstract java.lang.Object[] getNodeFieldArray()
 meth protected abstract java.lang.String getFieldName(java.lang.Object)
 meth protected abstract void putFieldObject(java.lang.Object,com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.nodes.Node> getType()
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor getNodeClassField()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor getParentField()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getChildFields()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getChildrenFields()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getCloneableFields()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getFields()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.util.Iterator<com.oracle.truffle.api.nodes.Node> makeIterator(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.NodeClass get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.NodeClass get(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
@@ -1197,54 +1189,6 @@ meth public static com.oracle.truffle.api.nodes.NodeCost fromCount(int)
 meth public static com.oracle.truffle.api.nodes.NodeCost valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.nodes.NodeCost[] values()
 supr java.lang.Enum<com.oracle.truffle.api.nodes.NodeCost>
-
-CLSS public abstract com.oracle.truffle.api.nodes.NodeFieldAccessor
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-cons protected init(com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind,java.lang.Class<?>,java.lang.String,java.lang.Class<?>)
-fld protected final java.lang.Class<?> type
-innr public abstract static AbstractUnsafeNodeFieldAccessor
-innr public final static !enum NodeFieldKind
-meth protected static com.oracle.truffle.api.nodes.NodeFieldAccessor create(com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind,java.lang.reflect.Field)
-meth public abstract java.lang.Object getObject(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public abstract java.lang.Object loadValue(com.oracle.truffle.api.nodes.Node)
-meth public abstract void putObject(com.oracle.truffle.api.nodes.Node,java.lang.Object)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind getKind()
-meth public java.lang.Class<?> getDeclaringClass()
-meth public java.lang.Class<?> getType()
-meth public java.lang.String getName()
-meth public java.lang.String toString()
-supr java.lang.Object
-hfds USE_UNSAFE,declaringClass,kind,name
-hcls ReflectionNodeField,UnsafeNodeField
-
-CLSS public abstract static com.oracle.truffle.api.nodes.NodeFieldAccessor$AbstractUnsafeNodeFieldAccessor
- outer com.oracle.truffle.api.nodes.NodeFieldAccessor
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-cons protected init(com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind,java.lang.Class<?>,java.lang.String,java.lang.Class<?>)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public abstract long getOffset()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public java.lang.Object getObject(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public java.lang.Object loadValue(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public void putObject(com.oracle.truffle.api.nodes.Node,java.lang.Object)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-supr com.oracle.truffle.api.nodes.NodeFieldAccessor
-hfds unsafe
-
-CLSS public final static !enum com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind
- outer com.oracle.truffle.api.nodes.NodeFieldAccessor
-fld public final static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind CHILD
-fld public final static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind CHILDREN
-fld public final static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind DATA
-fld public final static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind NODE_CLASS
-fld public final static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind PARENT
-meth public static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind valueOf(java.lang.String)
-meth public static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind[] values()
-supr java.lang.Enum<com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind>
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
  anno 0 java.lang.annotation.Inherited()
@@ -1274,16 +1218,18 @@ meth public static boolean isReplacementSafe(com.oracle.truffle.api.nodes.Node,c
 meth public static boolean replaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static boolean verify(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.Node getNthParent(com.oracle.truffle.api.nodes.Node,int)
-meth public static com.oracle.truffle.api.nodes.NodeFieldAccessor findChildField(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static int countNodes(com.oracle.truffle.api.nodes.Node)
 meth public static int countNodes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.NodeUtil$NodeCountFilter)
+meth public static java.lang.String findChildFieldName(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.String printCompactTreeToString(com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.String printSourceAttributionTree(com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.String printSyntaxTags(java.lang.Object)
 meth public static java.lang.String printTreeToString(com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> collectNodes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> findNodeChildren(com.oracle.truffle.api.nodes.Node)
+meth public static java.util.List<java.lang.String> collectFieldNames(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public static java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.Node> collectNodeChildren(com.oracle.truffle.api.nodes.Node)
+meth public static java.util.Map<java.lang.String,java.lang.Object> collectNodeProperties(com.oracle.truffle.api.nodes.Node)
 meth public static void printCompactTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printSourceAttributionTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printSourceAttributionTree(java.io.PrintWriter,com.oracle.truffle.api.nodes.Node)
