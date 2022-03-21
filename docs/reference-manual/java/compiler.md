@@ -1,8 +1,9 @@
 ---
 layout: docs
-toc_group: reference-manual
+toc_group: java
 link_title: Graal Compiler
-permalink: /reference-manual/compiler/
+permalink: /reference-manual/java/compiler/
+redirect_from: /reference-manual/compiler/ 
 ---
 
 # Graal Compiler
@@ -16,7 +17,7 @@ permalink: /reference-manual/compiler/
 The Graal compiler is a dynamic just-in-time (JIT) compiler, written in Java, that transforms bytecode into machine code.
 The Graal compiler integrates with the Java HotSpot VM, which supports a compatible version of the JVM Compiler Interface (JVMCI).
 JVMCI is a privileged, low-level interface to the JVM, enabling a compiler written in Java to be used by the JVM as a dynamic compiler (see [JEP 243](https://openjdk.java.net/jeps/243)).
-It can read metadata from the VM, such as method bytecode, and install machine code into the VM .
+It can read metadata from the VM, such as method bytecode, and install machine code into the VM.
 GraalVM includes a version of the HotSpot JVM that supports JVMCI.
 
 ## Compiler Advantages
