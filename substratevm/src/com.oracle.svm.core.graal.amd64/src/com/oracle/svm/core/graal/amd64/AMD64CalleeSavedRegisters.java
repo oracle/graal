@@ -209,11 +209,13 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             Label end = new Label();
             try {
                 // AVX512
-                if (emitConditionalXMMSaveRestore(end, AMD64.CPUFeature.AVX512F)) {
+                if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX512F)) {
+                    // AVX512 statically available, no further checks needed
                     return;
                 }
                 // AVX
-                if (emitConditionalXMMSaveRestore(end, AMD64.CPUFeature.AVX)) {
+                if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX)) {
+                    // AVX statically available, no further checks needed
                     return;
                 }
                 // SSE
@@ -227,7 +229,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          * @return {@code true} if the {@code avxVersion} is statically available (so no further
          *         checks are needed).
          */
-        private boolean emitConditionalXMMSaveRestore(Label end, AMD64.CPUFeature avxVersion) {
+        private boolean emitConditionalSaveRestore(Label end, AMD64.CPUFeature avxVersion) {
             var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
             if (hostedCPUFeatures.contains(avxVersion)) {
                 emitSaveRestore(avxVersion);
