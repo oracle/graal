@@ -158,7 +158,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        new ClassInitWithModules(executor, imageClassLoader).init();
+        new ClassInit(executor, imageClassLoader).init();
     }
 
     private HostedOptionParser hostedOptionParser;
@@ -540,7 +540,37 @@ public class NativeImageClassLoaderSupport {
         }
 
         protected void init() {
+            List<String> requiresInit = Arrays.asList(
+                            "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
+                            "org.graalvm.sdk", "org.graalvm.truffle");
+
+            for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
+                if (requiresInit.contains(moduleReference.descriptor().name())) {
+                    initModule(moduleReference);
+                }
+            }
+            for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
+                initModule(moduleReference);
+            }
+
             classpath().parallelStream().forEach(this::loadClassesFromPath);
+        }
+
+        private void initModule(ModuleReference moduleReference) {
+            Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
+            if (optionalModule.isEmpty()) {
+                return;
+            }
+            try (ModuleReader moduleReader = moduleReference.open()) {
+                Module module = optionalModule.get();
+                moduleReader.list().forEach(moduleResource -> {
+                    if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                        executor.execute(() -> handleClassFileName(moduleReference.location().orElseThrow(), module, moduleResource, '/'));
+                    }
+                });
+            } catch (IOException e) {
+                throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
+            }
         }
 
         private void loadClassesFromPath(Path path) {
@@ -675,48 +705,6 @@ public class NativeImageClassLoaderSupport {
             }
             if (clazz != null) {
                 imageClassLoader.handleClass(clazz);
-            }
-        }
-    }
-
-    private class ClassInitWithModules extends ClassInit {
-
-        ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-            super(executor, imageClassLoader);
-        }
-
-        @Override
-        protected void init() {
-            List<String> requiresInit = Arrays.asList(
-                            "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
-                            "org.graalvm.sdk", "org.graalvm.truffle");
-
-            for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
-                if (requiresInit.contains(moduleReference.descriptor().name())) {
-                    initModule(moduleReference);
-                }
-            }
-            for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
-                initModule(moduleReference);
-            }
-
-            super.init();
-        }
-
-        private void initModule(ModuleReference moduleReference) {
-            Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
-            if (optionalModule.isEmpty()) {
-                return;
-            }
-            try (ModuleReader moduleReader = moduleReference.open()) {
-                Module module = optionalModule.get();
-                moduleReader.list().forEach(moduleResource -> {
-                    if (moduleResource.endsWith(CLASS_EXTENSION)) {
-                        executor.execute(() -> handleClassFileName(moduleReference.location().orElseThrow(), module, moduleResource, '/'));
-                    }
-                });
-            } catch (IOException e) {
-                throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
             }
         }
     }
