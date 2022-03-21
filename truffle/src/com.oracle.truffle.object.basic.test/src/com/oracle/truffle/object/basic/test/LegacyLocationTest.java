@@ -45,7 +45,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -166,7 +165,7 @@ public class LegacyLocationTest {
     @Test
     public void testDeleteDeclaredProperty() {
         DynamicObject object = rootShape.newInstance();
-        object.define("a", new Object(), 0, new LocationFactory() {
+        object.define("a", new Object(), 0, new com.oracle.truffle.api.object.LocationFactory() {
             public Location createLocation(Shape shape, Object value) {
                 return shape.allocator().declaredLocation(value);
             }

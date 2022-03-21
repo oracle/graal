@@ -51,7 +51,6 @@ import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
@@ -271,7 +270,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     @Override
     @TruffleBoundary
-    public void define(Object key, Object value, int flags, LocationFactory locationFactory) {
+    public void define(Object key, Object value, int flags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
         ShapeImpl oldShape = getShapeImpl();
         oldShape.getLayout().getStrategy().objectDefineProperty(this, key, value, flags, locationFactory, oldShape);
     }

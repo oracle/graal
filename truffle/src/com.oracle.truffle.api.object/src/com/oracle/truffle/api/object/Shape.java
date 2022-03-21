@@ -568,7 +568,7 @@ public abstract class Shape {
      *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
      */
     @Deprecated(since = "20.2")
-    public abstract Shape defineProperty(Object key, Object value, int flags, LocationFactory locationFactory);
+    public abstract Shape defineProperty(Object key, Object value, int flags, @SuppressWarnings("deprecation") LocationFactory locationFactory);
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.
