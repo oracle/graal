@@ -45,7 +45,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
@@ -64,7 +63,7 @@ public class LegacyLocationTest {
         DynamicObject object = rootShape.newInstance();
         object.define("obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
-        Assert.assertTrue(location instanceof ObjectLocation);
+        DOTestAsserts.assertObjectLocation(location);
         DOTestAsserts.assertLocationFields(location, 0, 1);
         DOTestAsserts.assertShapeFields(object, 0, 1);
     }

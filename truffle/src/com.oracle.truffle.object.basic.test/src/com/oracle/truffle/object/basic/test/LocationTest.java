@@ -52,7 +52,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
@@ -82,7 +81,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
         library.put(object, "obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
-        Assert.assertTrue(location instanceof ObjectLocation);
+        DOTestAsserts.assertObjectLocation(location);
         DOTestAsserts.assertLocationFields(location, 0, 1);
         DOTestAsserts.assertShapeFields(object, 0, 1);
     }
