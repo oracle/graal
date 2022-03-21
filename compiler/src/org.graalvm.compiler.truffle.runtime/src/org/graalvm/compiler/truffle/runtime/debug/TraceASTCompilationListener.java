@@ -36,7 +36,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeClass;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 
 /**
@@ -81,29 +81,10 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
                 if (parent == null) {
                     out.printf("%s", node.getClass().getSimpleName());
                 } else {
-                    String fieldName = getFieldName(parent, node);
+                    String fieldName = NodeUtil.findChildFieldName(parent, node);
                     out.printf("%s = %s", fieldName, node.getClass().getSimpleName());
                 }
                 return true;
-            }
-
-            @SuppressWarnings("deprecation")
-            private String getFieldName(Node parent, Node node) {
-                for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : NodeClass.get(parent).getFields()) {
-                    Object value = field.loadValue(parent);
-                    if (value == node) {
-                        return field.getName();
-                    } else if (value instanceof Node[]) {
-                        int index = 0;
-                        for (Node arrayNode : (Node[]) value) {
-                            if (arrayNode == node) {
-                                return field.getName() + "[" + index + "]";
-                            }
-                            index++;
-                        }
-                    }
-                }
-                return "unknownField";
             }
 
         });

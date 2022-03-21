@@ -302,6 +302,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             // maybe there is a way but I have no good idea how
             return Modifier.PRIVATE;
         } else {
+            if (libraryExport.getTemplateType().getModifiers().contains(Modifier.FINAL)) {
+                return Modifier.PRIVATE;
+            }
             // inherit subclass visibility from the template type.
             return ElementUtils.getVisibility(libraryExport.getExports().getTemplateType().getModifiers());
         }
@@ -1184,6 +1187,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTypeElement uncachedClass = createClass(libraryExports, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", uncachedBaseType);
         ElementUtils.setVisibility(uncachedClass.getModifiers(), classVisibility);
         ElementUtils.setFinal(uncachedClass.getModifiers(), isFinalExports);
+        if (isFinalExports) {
+            uncachedClass.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
+        }
 
         CodeTreeBuilder builder;
         CodeExecutableElement constructor = uncachedClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(PROTECTED), uncachedClass));

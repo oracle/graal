@@ -87,6 +87,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface Children {
+
     }
 
     /**
@@ -99,6 +100,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface Child {
+
     }
 
     /** @since 0.8 or earlier */
@@ -107,7 +109,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         assert NodeClass.get(getClass()) != null; // ensure NodeClass constructor does not throw
     }
 
-    NodeClass getNodeClass() {
+    final NodeClass getNodeClass() {
         return NodeClass.get(getClass());
     }
 
@@ -468,7 +470,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @since 0.8 or earlier
      */
     public final Iterable<Node> getChildren() {
-        return new Iterable<Node>() {
+        return new Iterable<>() {
             public Iterator<Node> iterator() {
                 return getNodeClass().makeIterator(Node.this);
             }
