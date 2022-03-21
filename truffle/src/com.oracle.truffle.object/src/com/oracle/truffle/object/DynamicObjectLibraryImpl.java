@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,9 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
-import static com.oracle.truffle.object.LocationImpl.alwaysValidAssumption;
 import static com.oracle.truffle.object.LocationImpl.expectDouble;
 import static com.oracle.truffle.object.LocationImpl.expectInteger;
 import static com.oracle.truffle.object.LocationImpl.expectLong;
-import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1628,9 +1626,9 @@ abstract class DynamicObjectLibraryImpl {
 
         private static Assumption getShapeValidAssumption(Shape oldShape, Shape newShape) {
             if (oldShape == newShape) {
-                return alwaysValidAssumption();
+                return Assumption.ALWAYS_VALID;
             }
-            return newShape.isValid() ? newShape.getValidAssumption() : neverValidAssumption();
+            return newShape.isValid() ? newShape.getValidAssumption() : Assumption.NEVER_VALID;
         }
     }
 
@@ -1679,11 +1677,11 @@ abstract class DynamicObjectLibraryImpl {
         @Override
         protected boolean isValid() {
             Assumption newShapeValid = newShapeValidAssumption;
-            return newShapeValid == neverValidAssumption() || newShapeValid == alwaysValidAssumption() || newShapeValid.isValid();
+            return newShapeValid == Assumption.NEVER_VALID || newShapeValid == Assumption.ALWAYS_VALID || newShapeValid.isValid();
         }
 
         protected void maybeUpdateShape(DynamicObject store) {
-            if (newShapeValidAssumption == neverValidAssumption()) {
+            if (newShapeValidAssumption == Assumption.NEVER_VALID) {
                 updateShapeImpl(store);
             }
         }

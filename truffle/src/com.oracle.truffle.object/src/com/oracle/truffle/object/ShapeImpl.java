@@ -41,7 +41,6 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -766,7 +765,7 @@ public abstract class ShapeImpl extends Shape {
                     return prev;
                 } else {
                     boolean isLeafShape = transitionMap == null;
-                    next = isLeafShape ? createLeafAssumption() : neverValidAssumption();
+                    next = isLeafShape ? createLeafAssumption() : Assumption.NEVER_VALID;
                 }
             } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
             return next;
@@ -782,13 +781,13 @@ public abstract class ShapeImpl extends Shape {
         Assumption prev;
         do {
             prev = LEAF_ASSUMPTION_UPDATER.get(this);
-            if (prev == neverValidAssumption()) {
+            if (prev == Assumption.NEVER_VALID) {
                 break;
             }
             if (prev != null) {
                 prev.invalidate();
             }
-        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, neverValidAssumption()));
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, Assumption.NEVER_VALID));
     }
 
     /** @since 0.17 or earlier */
@@ -1200,7 +1199,7 @@ public abstract class ShapeImpl extends Shape {
                 return propertyAssumption;
             }
         }
-        return neverValidAssumption();
+        return Assumption.NEVER_VALID;
     }
 
     protected boolean testPropertyFlags(IntPredicate predicate) {
@@ -1462,9 +1461,9 @@ public abstract class ShapeImpl extends Shape {
             CompilerAsserts.neverPartOfCompilation();
             EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
             Assumption assumption = map.get(propertyName);
-            if (assumption != null && assumption != neverValidAssumption()) {
+            if (assumption != null && assumption != Assumption.NEVER_VALID) {
                 assumption.invalidate("invalidatePropertyAssumption");
-                map.put(propertyName, neverValidAssumption());
+                map.put(propertyName, Assumption.NEVER_VALID);
                 propertyAssumptionsRemoved.inc();
             }
         }

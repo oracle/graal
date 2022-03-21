@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
@@ -425,31 +424,11 @@ public abstract class LocationImpl extends Location {
 
     @Override
     public Assumption getFinalAssumption() {
-        return neverValidAssumption();
+        return Assumption.NEVER_VALID;
     }
 
     protected static RuntimeException shouldNotHappen(Exception e) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new IllegalStateException(e);
-    }
-
-    /** Not using NeverValidAssumption.INSTANCE in order not to pollute profiles. */
-    protected static Assumption neverValidAssumption() {
-        return NEVER_VALID_ASSUMPTION;
-    }
-
-    /** Not using AlwaysValidAssumption.INSTANCE in order not to pollute profiles. */
-    protected static Assumption alwaysValidAssumption() {
-        assert ALWAYS_VALID_ASSUMPTION.isValid();
-        return ALWAYS_VALID_ASSUMPTION;
-    }
-
-    private static final Assumption NEVER_VALID_ASSUMPTION;
-    private static final Assumption ALWAYS_VALID_ASSUMPTION;
-
-    static {
-        NEVER_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("never valid");
-        NEVER_VALID_ASSUMPTION.invalidate();
-        ALWAYS_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("always valid");
     }
 }
