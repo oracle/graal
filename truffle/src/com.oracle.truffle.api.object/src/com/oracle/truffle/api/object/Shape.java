@@ -866,10 +866,10 @@ public abstract class Shape {
     /**
      * Change the shape's type, yielding a new shape.
      *
-     * Planned to be deprecated. To be replaced by {@link #setDynamicType(Object)}.
-     *
      * @since 0.8 or earlier
+     * @deprecated No replacement. Use {@link DynamicObjectLibrary#setDynamicType} instead.
      */
+    @Deprecated(since = "22.2")
     public abstract Shape changeType(ObjectType newOps);
 
     /**
