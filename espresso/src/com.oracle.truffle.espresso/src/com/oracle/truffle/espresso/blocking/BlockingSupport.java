@@ -160,17 +160,19 @@ public final class BlockingSupport<T> {
     }
 
     private static Interruptible<Long> sleepInterruptible() {
-        return new Interruptible<>() {
-            private final long start = System.nanoTime();
+        return new SleepInterruptible();
+    }
 
-            @Override
-            public void apply(Long nanoTimeout) throws InterruptedException {
-                long left = nanoTimeout - (System.nanoTime() - start);
-                if (left <= 0) {
-                    return; // fully waited.
-                }
-                Thread.sleep(TimeUnit.NANOSECONDS.toMillis(left));
+    private static final class SleepInterruptible implements Interruptible<Long> {
+        private final long start = System.nanoTime();
+
+        @Override
+        public void apply(Long time) throws InterruptedException {
+            long left = time - (System.nanoTime() - start);
+            if (left <= 0) {
+                return; // fully waited.
             }
-        };
+            Thread.sleep(TimeUnit.NANOSECONDS.toMillis(left));
+        }
     }
 }
