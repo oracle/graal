@@ -7,8 +7,7 @@ permalink: /docs/getting-started/container-images/
 
 ## GraalVM Community Images
 
-Containers can simplify application deployment and development.
-To support container-based development, GraalVM Community container images for each release are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages/container/package/graalvm-ce).
+To support container-based development, GraalVM Community container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 Learn here how to start using GraalVM Community images for Docker containers.
 
 1. Having the Docker daemon running, pull the image from GitHub with `docker pull`:
