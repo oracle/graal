@@ -773,6 +773,7 @@ public abstract class Shape {
      * @deprecated Deprecated since 20.3.0. Replaced by {@link #getDynamicType()}.
      */
     @Deprecated(since = "20.3")
+    @SuppressWarnings("deprecation")
     public abstract ObjectType getObjectType();
 
     /**
@@ -787,15 +788,16 @@ public abstract class Shape {
 
     /**
      * Returns a copy of the shape, with the dynamic object type identifier set to
-     * {@code objectType}. Currently, the object type must be an instance of {@link ObjectType}.
+     * {@code dynamicType}.
      *
-     * @param objectType the new dynamic object type identifier
-     * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType}
+     * @param dynamicType the new dynamic object type identifier
+     * @throws NullPointerException if the argument is null.
      * @see Shape.Builder#dynamicType(Object)
      * @since 20.2.0
      */
-    protected Shape setDynamicType(Object objectType) {
+    protected Shape setDynamicType(Object dynamicType) {
         CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(dynamicType);
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -870,7 +872,7 @@ public abstract class Shape {
      * @deprecated No replacement. Use {@link DynamicObjectLibrary#setDynamicType} instead.
      */
     @Deprecated(since = "22.2")
-    public abstract Shape changeType(ObjectType newOps);
+    public abstract Shape changeType(@SuppressWarnings("deprecation") ObjectType newOps);
 
     /**
      * Reserve the primitive extension array field.

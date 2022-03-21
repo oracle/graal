@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
 
 public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
@@ -122,8 +121,9 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         }
     }
 
+    @SuppressWarnings("deprecation")
     @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
-    public static final class SplittingObjectType extends ObjectType {
+    public static final class SplittingObjectType extends com.oracle.truffle.api.object.ObjectType {
 
         @ExportMessage
         @SuppressWarnings("unused")

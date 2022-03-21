@@ -142,7 +142,8 @@ public abstract class Layout {
      * @param objectType that describes the object instance with this shape.
      * @since 0.8 or earlier
      */
-    public abstract Shape createShape(ObjectType objectType);
+    @Deprecated(since = "22.2")
+    public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType);
 
     /**
      * Create a root shape.
@@ -151,7 +152,8 @@ public abstract class Layout {
      * @param sharedData for language-specific use
      * @since 0.8 or earlier
      */
-    public abstract Shape createShape(ObjectType objectType, Object sharedData);
+    @Deprecated(since = "22.2")
+    public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType, Object sharedData);
 
     /**
      * Create a root shape.
@@ -162,7 +164,8 @@ public abstract class Layout {
      * @return new instance of a shape
      * @since 0.8 or earlier
      */
-    public abstract Shape createShape(ObjectType objectType, Object sharedData, int flags);
+    @Deprecated(since = "22.2")
+    public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType, Object sharedData, int flags);
 
     /**
      * Create a root shape.
