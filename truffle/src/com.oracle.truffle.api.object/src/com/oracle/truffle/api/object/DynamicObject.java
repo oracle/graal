@@ -47,7 +47,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -114,20 +113,6 @@ public abstract class DynamicObject implements TruffleObject {
     @DynamicField private Object[] extRef;
     /** Primitive extension array. */
     @DynamicField private int[] extVal;
-
-    /**
-     * This constructor is obsolete, do not use it. Use {@link #DynamicObject(Shape)} instead.
-     *
-     * @throws AssertionError
-     * @since 0.8 or earlier
-     * @deprecated This obsolete constructor has been replaced by {@link #DynamicObject(Shape)} and
-     *             will be removed in the future.
-     */
-    @Deprecated(since = "19.0")
-    protected DynamicObject() {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
-    }
 
     /**
      * Constructor for {@link DynamicObject} subclasses. Initializes the object with the provided
