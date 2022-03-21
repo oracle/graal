@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
@@ -92,7 +91,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntOther() {
-        Shape rootShape = layout.createShape(new ObjectType());
+        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
         DynamicObject object = rootShape.newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
@@ -110,7 +109,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testOtherInt() {
-        Shape rootShape = layout.createShape(new ObjectType());
+        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
         DynamicObject object = rootShape.newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
@@ -128,7 +127,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntOtherDoesNotGoBack() {
-        Shape rootShape = layout.createShape(new ObjectType());
+        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
         DynamicObject object = rootShape.newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
@@ -152,7 +151,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntObject() {
-        Shape rootShape = layout.createShape(new ObjectType());
+        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
         DynamicObject object = rootShape.newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
@@ -166,7 +165,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntOtherObject() {
-        Shape rootShape = layout.createShape(new ObjectType());
+        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
         DynamicObject object = rootShape.newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
@@ -182,8 +181,8 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     @Test
     public void testLocationDecoratorEquals() {
         com.oracle.truffle.api.object.Layout defaultLayout = com.oracle.truffle.api.object.Layout.newLayout().build();
-        Shape defaultRootShape = defaultLayout.createShape(new ObjectType());
-        Shape implicitCastRootShape = layout.createShape(new ObjectType());
+        Shape defaultRootShape = defaultLayout.createShape(new com.oracle.truffle.api.object.ObjectType());
+        Shape implicitCastRootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
 
         DynamicObject object1 = implicitCastRootShape.newInstance();
 

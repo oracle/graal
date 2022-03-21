@@ -48,9 +48,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
@@ -92,18 +90,18 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     /** @since 0.17 or earlier */
     @Override
-    public final Shape createShape(ObjectType objectType, Object sharedData) {
+    public final Shape createShape(com.oracle.truffle.api.object.ObjectType objectType, Object sharedData) {
         return createShape(objectType, sharedData, 0);
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final Shape createShape(ObjectType objectType) {
+    public final Shape createShape(com.oracle.truffle.api.object.ObjectType objectType) {
         return createShape(objectType, null);
     }
 
     @Override
-    public final Shape createShape(ObjectType objectType, Object sharedData, int flags) {
+    public final Shape createShape(com.oracle.truffle.api.object.ObjectType objectType, Object sharedData, int flags) {
         return newShape(objectType, sharedData, ShapeImpl.checkObjectFlags(flags), null);
     }
 
@@ -138,7 +136,7 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     /** @since 0.17 or earlier */
     @Override
-    public abstract Allocator createAllocator();
+    public abstract Shape.Allocator createAllocator();
 
     /** @since 0.17 or earlier */
     public LayoutStrategy getStrategy() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
@@ -56,7 +55,7 @@ import com.oracle.truffle.api.object.Shape;
 public class LegacyDeclaredLocationTest {
 
     final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new ObjectType());
+    final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
     final Object value = new Object();
     final Location declaredLocation = rootShape.allocator().declaredLocation(value);
     final Shape shapeWithDeclared = rootShape.addProperty(Property.create("declared", declaredLocation, 0));

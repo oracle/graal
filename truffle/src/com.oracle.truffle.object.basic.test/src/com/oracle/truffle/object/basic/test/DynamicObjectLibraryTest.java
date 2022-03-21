@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
@@ -85,7 +84,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
 
         Object objectType = newObjectType();
         com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.createLayout();
-        Shape shape = layout.createShape((ObjectType) objectType);
+        Shape shape = layout.createShape((com.oracle.truffle.api.object.ObjectType) objectType);
         Supplier<? extends Object> doSupplier = () -> shape.newInstance();
         addParams(params, doSupplier);
 

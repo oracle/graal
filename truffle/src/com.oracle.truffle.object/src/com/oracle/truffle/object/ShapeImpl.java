@@ -71,8 +71,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
@@ -591,7 +589,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
-    public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, LocationFactory locationFactory) {
+    public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
         return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, locationFactory);
     }
 
@@ -990,7 +988,7 @@ public abstract class ShapeImpl extends Shape {
         if (getDynamicType() == newObjectType) {
             return this;
         }
-        if (getLayout().isLegacyLayout() && !(newObjectType instanceof ObjectType)) {
+        if (getLayout().isLegacyLayout() && !(newObjectType instanceof com.oracle.truffle.api.object.ObjectType)) {
             throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
         }
         ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
@@ -1109,7 +1107,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     @TruffleBoundary
-    public final ShapeImpl changeType(ObjectType newObjectType) {
+    public final ShapeImpl changeType(com.oracle.truffle.api.object.ObjectType newObjectType) {
         return setDynamicType(newObjectType);
     }
 
