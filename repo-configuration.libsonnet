@@ -9,6 +9,13 @@
     compiler_suite:: "compiler"
   },
 
+  vm:: {
+    suite_dir:: "vm",
+    mx_env:: {
+      libgraal:: "libgraal"
+    }
+  },
+
   native_image:: {
     vm_suite:: "vm",
   }

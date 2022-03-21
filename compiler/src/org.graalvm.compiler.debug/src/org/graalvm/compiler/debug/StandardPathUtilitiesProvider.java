@@ -190,7 +190,7 @@ public class StandardPathUtilitiesProvider implements PathUtilitiesProvider {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-                // Keep this in sync with the catch_files in common.hocon
+                // Keep this in sync with the catch_files in common.json
                 TTY.println(DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT, zipFile);
                 return zipFile.getAbsolutePath();
             } catch (IOException e) {

@@ -1,5 +1,8 @@
 local vm = import '../ci_includes/vm.jsonnet';
+local common = import '../../common.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
+
+local repo_config = import '../../repo-configuration.libsonnet';
 
 {
   vm_bench_common: {
@@ -38,7 +41,7 @@ local vm_common = import '../ci_common/common.jsonnet';
       self.base_cmd + ['build'],
       self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
     ],
-    notify_emails: [ 'aleksandar.prokopec@oracle.com' ],
+    notify_groups:: ['polybench'],
   },
 
   vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
@@ -129,6 +132,27 @@ local vm_common = import '../ci_common/common.jsonnet';
     timelimit: '55:00',
   },
 
+  x52_js_bench_compilation_throughput: self.vm_bench_common + common.heap.default + {
+    local libgraal_env = repo_config.vm.mx_env.libgraal,
+    setup+: [
+      ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js", "sforceimports"],  # clone the revision of /graal-js imported by /vm
+      ["git", "clone", "--depth", "1", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], "../../js-benchmarks"],
+      ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js,js-benchmarks", "sversions"],
+      ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js,js-benchmarks", "build", "--force-javac"]
+    ],
+    local xms = if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
+    local xmx = if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
+    run: [
+      ["mx", "--env", libgraal_env, "--dynamicimports", "js-benchmarks,/graal-js", "benchmark", "octane:typescript", "--results-file", self.result_file, "--"] + xms + xmx + ["--experimental-options", "--engine.CompilationFailureAction=ExitVM", "-Dgraal.DumpOnError=true", "-Dgraal.PrintGraph=File", "--js-vm=graal-js", "--js-vm-config=default", "--jvm=server", "--jvm-config=" + repo_config.compiler.default_jvm_config + "-libgraal-no-truffle-bg-comp", "-XX:+CITime"],
+      self.upload
+    ],
+    logs+: [
+      "runtime-graphs-*.bgv"
+    ],
+    timelimit: "2:30:00",
+    notify_groups:: ['compiler_bench']
+  },
+
   vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + vm_common.svm_common_linux_amd64 + self.vm_bench_polybench_nfi,
 
   local builds = [
@@ -149,6 +173,9 @@ local vm_common = import '../ci_common/common.jsonnet';
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java11-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64'},
+
+    vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput + vm.vm_java_11 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-throughput-js-typescript-java11-linux-amd64' },
+    vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-throughput-js-typescript-java17-linux-amd64' },
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64() + {
       # Override `self.vm_bench_js_linux_amd64.run`
