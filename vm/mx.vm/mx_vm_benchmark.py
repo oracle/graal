@@ -46,6 +46,13 @@ _polybench_modes = [
     ('interpreter', ['--mode=interpreter']),
 ]
 
+POLYBENCH_METRIC_MAPPING = {
+    "compilation-time": "compile-time",
+    "partial-evaluation-time": "pe-time",
+    "allocated-bytes": "allocated-memory",
+    "peak-time": "time"
+}  # Maps known PolyBench metric names to known Bench-Server benchmark names
+
 
 class GraalVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
@@ -1058,7 +1065,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return _polybench_vm_registry
 
     def rules(self, output, benchmarks, bmSuiteArgs):
-        metric_name = self._get_metric_name(bmSuiteArgs)
+        metric_name = self._get_metric_name(output)
         rules = []
         if metric_name == "time":
             # Special case for metric "time": Instead of reporting the aggregate numbers,
@@ -1127,29 +1134,18 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
         return rules
 
-    def _get_metric_name(self, bmSuiteArgs):
-        metric = None
-        for i, arg in enumerate(bmSuiteArgs):
-            if arg.startswith("--metric="):
-                metric = arg[len("--metric="):]
-                break
-            elif arg == "--metric":
-                metric = bmSuiteArgs[i+1]
-                break
+    def _get_metric_name(self, bench_output):
+        match = re.search(r"metric Class:\s*(?P<metric_class_name>\w+)Metric", bench_output)
+        if match is None:
+            match = re.search(r"metric Class:\s*(?P<metric_class_name>\w+)", bench_output)
 
-        if metric is None:
-            return "time"
-        elif metric == "compilation-time":
-            return "compile-time"
-        elif metric == "partial-evaluation-time":
-            return "pe-time"
-        elif metric == "one-shot":
-            return "one-shot"
-        elif metric == "allocated-bytes":
-            return "allocated-memory"
+        metric_class_name = match.group("metric_class_name")
+        metric_class_name = re.sub(r'(?<!^)(?=[A-Z])', '-', metric_class_name).lower()
+
+        if metric_class_name in POLYBENCH_METRIC_MAPPING:
+            return POLYBENCH_METRIC_MAPPING[metric_class_name]
         else:
-            return metric
-
+            return metric_class_name
 
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
