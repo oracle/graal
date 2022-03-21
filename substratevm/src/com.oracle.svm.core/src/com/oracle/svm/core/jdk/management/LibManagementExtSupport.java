@@ -35,6 +35,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -57,12 +59,12 @@ public final class LibManagementExtSupport {
          */
         CCharPointer errmsg = StackValue.get(128);
 
-        sprintf(errmsg, ERRMSG_FORMAT.get(), LibC.errno(), msg);
+        snprintf(errmsg, WordFactory.unsigned(128), ERRMSG_FORMAT.get(), LibC.errno(), msg);
         jnuThrowInternalError(env, errmsg);
     }
 
     @CFunction(transition = NO_TRANSITION)
-    private static native int sprintf(CCharPointer str, CCharPointer format, int errno, CCharPointer msg);
+    private static native int snprintf(CCharPointer str, UnsignedWord size, CCharPointer format, int errno, CCharPointer msg);
 
     @CLibrary(value = "java", requireStatic = true)
     @CFunction(value = "JNU_ThrowInternalError", transition = NO_TRANSITION)
