@@ -51,7 +51,7 @@ POLYBENCH_METRIC_MAPPING = {
     "partial-evaluation-time": "pe-time",
     "allocated-bytes": "allocated-memory",
     "peak-time": "time"
-}  # Maps known PolyBench metric names to known Bench-Server benchmark names
+}  # Maps some polybench metrics to standardized metric names
 
 
 class GraalVm(mx_benchmark.OutputCapturingJavaVm):
