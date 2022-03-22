@@ -50,9 +50,7 @@ public class ShapeTest {
 
     @Test
     public void testToString() {
-        com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong).build();
-
-        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
+        Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).allowImplicitCastIntToLong(true).build();
         DOTestAsserts.assertShape(new String[]{}, rootShape);
 
         Shape aInt = rootShape.defineProperty("a", 1, 0);

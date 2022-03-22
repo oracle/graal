@@ -52,13 +52,20 @@ import com.oracle.truffle.api.object.Shape;
 @SuppressWarnings("deprecation")
 public class LegacySharedShapeTest {
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong).build();
-    final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
+    final Shape rootShape = Shape.newBuilder().build();
     final Shape sharedShape = rootShape.makeSharedShape();
+
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
+    private DynamicObject newInstanceShared() {
+        return new TestDynamicObjectDefault(sharedShape);
+    }
 
     @Test
     public void testDifferentLocationsImplicitCast() {
-        DynamicObject object = sharedShape.newInstance();
+        DynamicObject object = newInstanceShared();
         object.define("a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
         object.define("a", 2L);
@@ -74,7 +81,7 @@ public class LegacySharedShapeTest {
 
     @Test
     public void testNoReuseOfPreviousLocation() {
-        DynamicObject object = sharedShape.newInstance();
+        DynamicObject object = newInstanceShared();
         object.define("a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
         object.define("a", 2L);
@@ -99,7 +106,7 @@ public class LegacySharedShapeTest {
 
     @Test
     public void testCanReuseLocationsUntilShared() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("a", 1);
         Location locationA1 = object.getShape().getProperty("a").getLocation();
         object.define("a", 2L);
@@ -137,7 +144,7 @@ public class LegacySharedShapeTest {
 
     @Test
     public void testShapeIsSharedAndIdentity() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         Assert.assertEquals(false, rootShape.isShared());
         Assert.assertSame(sharedShape, rootShape.makeSharedShape());
         Assert.assertEquals(true, sharedShape.isShared());
@@ -147,13 +154,13 @@ public class LegacySharedShapeTest {
         final Shape sharedShapeWithA = object.getShape();
         Assert.assertEquals(true, sharedShapeWithA.isShared());
 
-        DynamicObject object2 = rootShape.newInstance();
+        DynamicObject object2 = newInstance();
         object2.setShapeAndGrow(rootShape, sharedShape);
         object2.define("a", 1);
         Assert.assertSame(sharedShapeWithA, object2.getShape());
 
         // Currently, sharing is a transition and transitions do not commute magically
-        DynamicObject object3 = rootShape.newInstance();
+        DynamicObject object3 = newInstance();
         object3.define("a", 1);
         object3.setShapeAndGrow(object3.getShape(), object3.getShape().makeSharedShape());
         Assert.assertNotSame(sharedShapeWithA, object3.getShape());
@@ -161,7 +168,7 @@ public class LegacySharedShapeTest {
 
     @Test
     public void testReuseReplaceProperty() {
-        DynamicObject object = sharedShape.newInstance();
+        DynamicObject object = newInstanceShared();
         object.define("a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
         object.define("a", 2, 42);
@@ -171,7 +178,7 @@ public class LegacySharedShapeTest {
 
     @Test
     public void testDeleteFromSharedShape() {
-        DynamicObject object = sharedShape.newInstance();
+        DynamicObject object = newInstanceShared();
         Shape emptyShape = object.getShape();
 
         object.define("a", 1);
@@ -188,7 +195,7 @@ public class LegacySharedShapeTest {
 
     @Test
     public void testDeleteFromSharedShape2() {
-        DynamicObject object = sharedShape.newInstance();
+        DynamicObject object = newInstanceShared();
         Shape emptyShape = object.getShape();
 
         object.define("a", 1);

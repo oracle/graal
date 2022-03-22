@@ -54,15 +54,22 @@ import com.oracle.truffle.api.object.Shape;
 @SuppressWarnings("deprecation")
 public class LegacyDeclaredLocationTest {
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
+    final Shape rootShape = Shape.newBuilder().build();
     final Object value = new Object();
     final Location declaredLocation = rootShape.allocator().declaredLocation(value);
     final Shape shapeWithDeclared = rootShape.addProperty(Property.create("declared", declaredLocation, 0));
 
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
+    private DynamicObject newInstanceWithDeclared() {
+        return new TestDynamicObjectDefault(shapeWithDeclared);
+    }
+
     @Test
     public void testDeclaredLocation() {
-        DynamicObject object = shapeWithDeclared.newInstance();
+        DynamicObject object = newInstanceWithDeclared();
         Assert.assertSame(value, object.get("declared"));
 
         object.set("declared", value);
@@ -92,7 +99,7 @@ public class LegacyDeclaredLocationTest {
 
     @Test
     public void testMigrateDeclaredLocation() {
-        DynamicObject object = shapeWithDeclared.newInstance();
+        DynamicObject object = newInstanceWithDeclared();
         Assert.assertSame(shapeWithDeclared, object.getShape());
         Assert.assertSame(value, object.get("declared"));
 
@@ -106,12 +113,12 @@ public class LegacyDeclaredLocationTest {
     public void testAddDeclaredLocation() {
         Property property = shapeWithDeclared.getProperty("declared");
 
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         property.setSafe(object, value, rootShape, shapeWithDeclared);
         Assert.assertSame(shapeWithDeclared, object.getShape());
         Assert.assertSame(value, object.get("declared"));
 
-        DynamicObject object2 = rootShape.newInstance();
+        DynamicObject object2 = newInstance();
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         Assert.assertEquals(false, property.getLocation().canSet(newValue));

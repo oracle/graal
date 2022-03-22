@@ -47,22 +47,27 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 public class LegacyConstantLocationTest {
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
+    final Shape rootShape = Shape.newBuilder().build();
     final Object value = new Object();
-    final Location constantLocation = rootShape.allocator().constantLocation(value);
-    final Shape shapeWithConstant = rootShape.addProperty(Property.create("constant", constantLocation, 0));
+    final Shape shapeWithConstant = Shape.newBuilder(rootShape).addConstantProperty("constant", value, 0).build();
+
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
+    private DynamicObject newInstanceWithConstant() {
+        return new TestDynamicObjectDefault(shapeWithConstant);
+    }
 
     @Test
     public void testConstantLocation() {
-        DynamicObject object = shapeWithConstant.newInstance();
+        DynamicObject object = newInstanceWithConstant();
         Assert.assertSame(value, object.get("constant"));
 
         object.set("constant", value);
@@ -92,7 +97,7 @@ public class LegacyConstantLocationTest {
 
     @Test
     public void testMigrateConstantLocation() {
-        DynamicObject object = shapeWithConstant.newInstance();
+        DynamicObject object = newInstanceWithConstant();
         Assert.assertSame(shapeWithConstant, object.getShape());
         Assert.assertSame(value, object.get("constant"));
 
@@ -106,12 +111,12 @@ public class LegacyConstantLocationTest {
     public void testAddConstantLocation() {
         Property property = shapeWithConstant.getProperty("constant");
 
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         property.setSafe(object, value, rootShape, shapeWithConstant);
         Assert.assertSame(shapeWithConstant, object.getShape());
         Assert.assertSame(value, object.get("constant"));
 
-        DynamicObject object2 = rootShape.newInstance();
+        DynamicObject object2 = newInstance();
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         Assert.assertEquals(false, property.getLocation().canSet(newValue));

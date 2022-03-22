@@ -82,12 +82,6 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
     public static Collection<Object[]> parameters() {
         Collection<Object[]> params = new ArrayList<>();
 
-        Object objectType = newObjectType();
-        com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.createLayout();
-        Shape shape = layout.createShape((com.oracle.truffle.api.object.ObjectType) objectType);
-        Supplier<? extends Object> doSupplier = () -> shape.newInstance();
-        addParams(params, doSupplier);
-
         Shape shapeMin = Shape.newBuilder().build();
         Supplier<? extends DynamicObject> minimalSupplier = () -> new TestDynamicObjectMinimal(shapeMin);
         addParams(params, minimalSupplier);

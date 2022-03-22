@@ -67,12 +67,15 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         return Arrays.asList(TestRun.values());
     }
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
+    final Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
+    }
 
     @Test
     public void testOnlyObjectLocationForObject() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -85,7 +88,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testOnlyPrimLocationForPrimitive() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -98,7 +101,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testPrim2Object() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -117,7 +120,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testUnrelatedPrimitivesGoToObject() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -136,7 +139,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testChangeFlagsReuseLocation() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -153,7 +156,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testChangeFlagsChangeLocation() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -170,7 +173,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testDelete() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -196,7 +199,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testDeleteDeclaredProperty() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 

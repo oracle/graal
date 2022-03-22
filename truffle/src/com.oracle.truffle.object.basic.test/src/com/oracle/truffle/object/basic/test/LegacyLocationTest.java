@@ -53,12 +53,15 @@ import com.oracle.truffle.api.object.Shape;
 @SuppressWarnings("deprecation")
 public class LegacyLocationTest {
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
+    final Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
+    }
 
     @Test
     public void testOnlyObjectLocationForObject() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
         DOTestAsserts.assertObjectLocation(location);
@@ -68,7 +71,7 @@ public class LegacyLocationTest {
 
     @Test
     public void testOnlyPrimLocationForPrimitive() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("prim", 42);
         Location location = object.getShape().getProperty("prim").getLocation();
         Assert.assertEquals(int.class, getLocationType(location));
@@ -78,7 +81,7 @@ public class LegacyLocationTest {
 
     @Test
     public void testPrim2Object() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("foo", 42);
         Location location1 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(int.class, getLocationType(location1));
@@ -94,7 +97,7 @@ public class LegacyLocationTest {
 
     @Test
     public void testUnrelatedPrimitivesGoToObject() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("foo", 42L);
         Location location1 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(long.class, getLocationType(location1));
@@ -110,7 +113,7 @@ public class LegacyLocationTest {
 
     @Test
     public void testChangeFlagsReuseLocation() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("foo", 42);
         Location location = object.getShape().getProperty("foo").getLocation();
 
@@ -124,7 +127,7 @@ public class LegacyLocationTest {
 
     @Test
     public void testChangeFlagsChangeLocation() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("foo", 42);
         Location location = object.getShape().getProperty("foo").getLocation();
 
@@ -138,7 +141,7 @@ public class LegacyLocationTest {
 
     @Test
     public void testDelete() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
         object.define("a", 1);
         object.define("b", 2);
         object.delete("a");
@@ -157,20 +160,5 @@ public class LegacyLocationTest {
         Location intLocation2 = allocator.locationForType(int.class);
         Assert.assertEquals(intLocation1.getClass(), intLocation2.getClass());
         Assert.assertNotEquals(intLocation1, intLocation2);
-    }
-
-    @Test
-    public void testDeleteDeclaredProperty() {
-        DynamicObject object = rootShape.newInstance();
-        object.define("a", new Object(), 0, new com.oracle.truffle.api.object.LocationFactory() {
-            public Location createLocation(Shape shape, Object value) {
-                return shape.allocator().declaredLocation(value);
-            }
-        });
-        Assert.assertTrue(object.containsKey("a"));
-        object.define("a", 42);
-        Assert.assertEquals(1, object.getShape().getPropertyCount());
-        object.delete("a");
-        Assert.assertFalse(object.containsKey("a"));
     }
 }

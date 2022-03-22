@@ -54,41 +54,45 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class LegacyImplicitCastTest {
 
-    static final com.oracle.truffle.api.object.Layout longLayout = new DefaultLayoutFactory().createLayout(
-                    com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong));
-    static final com.oracle.truffle.api.object.Layout doubleLayout = new DefaultLayoutFactory().createLayout(
-                    com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToDouble));
-
     @Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
-                        {longLayout, 1, 1L << 42, long.class},
-                        {doubleLayout, 1, 3.14, double.class}
+                        {1, 1L << 42, long.class},
+                        {1, 3.14, double.class}
         });
     }
 
-    final com.oracle.truffle.api.object.Layout layout;
     final int intVal;
     final Object otherVal;
     final Class<?> otherPrimClass;
 
-    public LegacyImplicitCastTest(com.oracle.truffle.api.object.Layout layout, int intVal, Object otherVal, Class<?> otherPrimClass) {
-        this.layout = layout;
+    public LegacyImplicitCastTest(int intVal, Object otherVal, Class<?> otherPrimClass) {
         this.intVal = intVal;
         this.otherVal = otherVal;
         this.otherPrimClass = otherPrimClass;
     }
 
+    private DynamicObject newInstanceWithImplicitCast() {
+        Shape.Builder b = Shape.newBuilder();
+        b.allowImplicitCastIntToLong(otherPrimClass == long.class);
+        b.allowImplicitCastIntToDouble(otherPrimClass == double.class);
+        Shape rootShape = b.build();
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
+    private static DynamicObject newInstance() {
+        Shape rootShape = Shape.newBuilder().build();
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
     @Test
     public void testIntOther() {
-        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
         object.define("a", intVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(int.class, getLocationType(location1));
@@ -102,8 +106,7 @@ public class LegacyImplicitCastTest {
 
     @Test
     public void testOtherInt() {
-        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
         object.define("a", otherVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(otherPrimClass, getLocationType(location1));
@@ -117,8 +120,7 @@ public class LegacyImplicitCastTest {
 
     @Test
     public void testIntOtherDoesNotGoBack() {
-        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
         object.define("a", intVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(int.class, getLocationType(location1));
@@ -138,8 +140,7 @@ public class LegacyImplicitCastTest {
 
     @Test
     public void testIntObject() {
-        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
         object.define("a", intVal);
         object.define("a", "");
         Location location = object.getShape().getProperty("a").getLocation();
@@ -149,8 +150,7 @@ public class LegacyImplicitCastTest {
 
     @Test
     public void testIntOtherObject() {
-        Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
         object.define("a", intVal);
         object.define("a", otherVal);
         object.define("a", "");
@@ -161,11 +161,7 @@ public class LegacyImplicitCastTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        com.oracle.truffle.api.object.Layout defaultLayout = new DefaultLayoutFactory().createLayout(com.oracle.truffle.api.object.Layout.newLayout());
-        Shape defaultRootShape = defaultLayout.createShape(new com.oracle.truffle.api.object.ObjectType());
-        Shape implicitCastRootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-
-        DynamicObject object1 = implicitCastRootShape.newInstance();
+        DynamicObject object1 = newInstanceWithImplicitCast();
         object1.define("a", otherVal);
         Location location1 = object1.getShape().getProperty("a").getLocation();
 
@@ -173,7 +169,7 @@ public class LegacyImplicitCastTest {
         object1.set("a", intVal);
         Assert.assertEquals(location1, object1.getShape().getProperty("a").getLocation());
 
-        DynamicObject object2 = defaultRootShape.newInstance();
+        DynamicObject object2 = newInstance();
         object2.define("a", otherVal);
         Location location2 = object2.getShape().getProperty("a").getLocation();
 
