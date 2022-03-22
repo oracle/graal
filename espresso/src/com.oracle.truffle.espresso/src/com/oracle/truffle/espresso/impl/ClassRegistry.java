@@ -40,7 +40,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
@@ -275,7 +274,12 @@ public abstract class ClassRegistry {
     }
 
     private LinkedKlass loadLinkedKlassRecursively(ClassLoadingEnv env, Symbol<Type> type, ClassDefinitionInfo info, boolean notInterface) throws EspressoClassLoadingException {
-        LinkedKlass linkedKlass = loadLinkedKlass(env, type, info);
+        LinkedKlass linkedKlass;
+        try {
+            linkedKlass = loadLinkedKlass(env, type, info);
+        } catch (EspressoException e) {
+            throw EspressoClassLoadingException.transformGuestException(env, e);
+        }
         if (notInterface == Modifier.isInterface(linkedKlass.getFlags())) {
             throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
         }
@@ -538,21 +542,14 @@ public abstract class ClassRegistry {
     }
 
     private ObjectKlass loadKlassRecursively(ClassLoadingEnv.InContext env, Symbol<Type> type, boolean notInterface) throws EspressoClassLoadingException {
-        Meta meta = env.getMeta();
         Klass klass;
         try {
             klass = loadKlass(env, type, StaticObject.NULL);
         } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
-                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
-                throw meta.throwException(ncdfe);
-            }
-            throw e;
+            throw EspressoClassLoadingException.transformGuestException(env, e);
         }
         if (notInterface == klass.isInterface()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
+            throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
         }
         return (ObjectKlass) klass;
     }

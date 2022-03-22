@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Indicates an exception that occurred during class loading.
@@ -61,6 +62,20 @@ public abstract class EspressoClassLoadingException extends Exception {
     public static EspressoClassLoadingException.IllegalAccessError illegalAccessError(String msg) throws EspressoClassLoadingException.IllegalAccessError {
         CompilerDirectives.transferToInterpreter();
         throw new EspressoClassLoadingException.IllegalAccessError(msg);
+    }
+
+    public static EspressoException transformGuestException(ClassLoadingEnv env, EspressoException e) {
+        if (env instanceof ClassLoadingEnv.InContext) {
+            ClassLoadingEnv.InContext contextEnv = (ClassLoadingEnv.InContext) env;
+            Meta meta = contextEnv.getMeta();
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
+                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
+                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
+                throw meta.throwException(ncdfe);
+            }
+        }
+        throw e;
     }
 
     private EspressoClassLoadingException(String msg) {
