@@ -154,7 +154,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
         }
     }
 
-    protected static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
         SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog());
         spec.run();
         return spec.iterate;
