@@ -61,6 +61,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     public final AArch64ASIMDMacroAssembler neon;
 
+    // preferred byte alignment for the start of a loop
+    public static final int PREFERRED_LOOP_ALIGNMENT = 16;
+
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);
