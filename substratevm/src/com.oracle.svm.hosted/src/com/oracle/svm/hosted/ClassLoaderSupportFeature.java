@@ -23,15 +23,23 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.jdk;
+package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,39 +48,60 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.ClasspathUtils;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassLoaderSupportImpl;
-import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.ModuleSupport;
 
-final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
+class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
-    private final NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport;
+    private final NativeImageClassLoaderSupport classLoaderSupport;
+    private final ClassLoader imageClassLoader;
+
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImplJDK11OrLater(NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport) {
-        super(classLoaderSupport);
+    protected ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
+        this.imageClassLoader = classLoaderSupport.getClassLoader();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
 
     @Override
+    protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
+        return loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader;
+    }
+
+    @Override
     public void collectResources(ResourceCollector resourceCollector) {
         /* Collect resources from modules */
-        NativeImageClassLoaderSupportJDK11OrLater.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
+        NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
                         .flatMap(moduleLayer -> moduleLayer.configuration().modules().stream())
                         .forEach(resolvedModule -> collectResourceFromModule(resourceCollector, resolvedModule));
 
         /* Collect remaining resources from classpath */
-        super.collectResources(resourceCollector);
+        for (Path classpathFile : classLoaderSupport.classpath()) {
+            try {
+                if (Files.isDirectory(classpathFile)) {
+                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
+                } else if (ClasspathUtils.isJar(classpathFile)) {
+                    scanJar(classpathFile, resourceCollector);
+                }
+            } catch (IOException ex) {
+                throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
+            }
+        }
     }
 
     private static void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
@@ -97,6 +126,81 @@ final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
         }
     }
 
+    private static void scanDirectory(Path root, ResourceCollector collector, NativeImageClassLoaderSupport support) throws IOException {
+        Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
+        Set<String> allEntries = new HashSet<>();
+
+        ArrayDeque<Path> queue = new ArrayDeque<>();
+        queue.push(root);
+        while (!queue.isEmpty()) {
+            Path entry = queue.pop();
+
+            /* Resources always use / as the separator, as do our resource inclusion patterns */
+            String relativeFilePath;
+            if (entry != root) {
+                relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, RESOURCES_INTERNAL_PATH_SEPARATOR);
+                allEntries.add(relativeFilePath);
+            } else {
+                relativeFilePath = "";
+            }
+
+            if (Files.isDirectory(entry)) {
+                if (collector.isIncluded(null, relativeFilePath)) {
+                    matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
+                }
+                try (Stream<Path> pathStream = Files.list(entry)) {
+                    Stream<Path> filtered = pathStream;
+                    if (support.excludeDirectoriesRoot.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    }
+                    filtered.forEach(queue::push);
+                }
+            } else {
+                if (collector.isIncluded(null, relativeFilePath)) {
+                    try (InputStream is = Files.newInputStream(entry)) {
+                        collector.addResource(null, relativeFilePath, is, false);
+                    }
+                }
+            }
+        }
+
+        for (String entry : allEntries) {
+            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
+            String key = last == -1 ? "" : entry.substring(0, last);
+            List<String> dirContent = matchedDirectoryResources.get(key);
+            if (dirContent != null && !dirContent.contains(entry)) {
+                dirContent.add(entry.substring(last + 1));
+            }
+        }
+
+        matchedDirectoryResources.forEach((dir, content) -> {
+            content.sort(Comparator.naturalOrder());
+            collector.addDirectoryResource(null, dir, String.join(System.lineSeparator(), content), false);
+        });
+    }
+
+    private static void scanJar(Path jarPath, ResourceCollector collector) throws IOException {
+        try (JarFile jf = new JarFile(jarPath.toFile())) {
+            Enumeration<JarEntry> entries = jf.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    String dirName = entry.getName().substring(0, entry.getName().length() - 1);
+                    if (collector.isIncluded(null, dirName)) {
+                        // Register the directory with empty content to preserve Java behavior
+                        collector.addDirectoryResource(null, dirName, "", true);
+                    }
+                } else {
+                    if (collector.isIncluded(null, entry.getName())) {
+                        try (InputStream is = jf.getInputStream(entry)) {
+                            collector.addResource(null, entry.getName(), is, true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Override
     public List<ResourceBundle> getResourceBundle(String bundleSpec, Locale locale) {
         String[] specParts = bundleSpec.split(":", 2);
@@ -118,11 +222,11 @@ final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
         }
         if (modules.isEmpty()) {
             /* If bundle is not located in any module get it via classloader (from ALL_UNNAMED) */
-            return super.getResourceBundle(bundleName, locale);
+            return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
-            ModuleSupport.exportAndOpenPackageToClass(module.getName(), packageName, false, ClassLoaderSupportImplJDK11OrLater.class);
+            ModuleSupport.exportAndOpenPackageToClass(module.getName(), packageName, false, ClassLoaderSupportImpl.class);
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
         return resourceBundles;
@@ -136,8 +240,8 @@ final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
         return bundleName.substring(0, classSep);
     }
 
-    private void buildPackageToModulesMap(NativeImageClassLoaderSupportJDK11OrLater cls) {
-        for (ModuleLayer layer : NativeImageClassLoaderSupportJDK11OrLater.allLayers(cls.moduleLayerForImageBuild)) {
+    private void buildPackageToModulesMap(NativeImageClassLoaderSupport cls) {
+        for (ModuleLayer layer : NativeImageClassLoaderSupport.allLayers(cls.moduleLayerForImageBuild)) {
             for (Module module : layer.modules()) {
                 for (String packageName : module.getDescriptor().packages()) {
                     addToPackageNameModules(module, packageName);
@@ -165,10 +269,10 @@ final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
 }
 
 @AutomaticFeature
-public class ClassLoaderSupportFeatureJDK11OrLater implements Feature {
+public class ClassLoaderSupportFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImplJDK11OrLater((NativeImageClassLoaderSupportJDK11OrLater) access.getImageClassLoader().classLoaderSupport));
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl(access.getImageClassLoader().classLoaderSupport));
     }
 }
