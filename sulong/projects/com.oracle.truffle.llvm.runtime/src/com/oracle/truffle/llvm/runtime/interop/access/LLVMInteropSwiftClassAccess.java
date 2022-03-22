@@ -3,7 +3,6 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -25,7 +24,6 @@ public class LLVMInteropSwiftClassAccess implements TruffleObject {
         this.sulongLibrary = sulongLibrary;
         this.functionDescriptor = functionDescriptor;
         this.className = className;
-        System.out.println(getClass().getName() + "::<init>(" + className + ")");
     }
 
     @ExportMessage
@@ -54,7 +52,6 @@ public class LLVMInteropSwiftClassAccess implements TruffleObject {
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
         final Object[] newargs = argumentPackNode.execute(functionDescriptor, arguments, false);
         String mangledName = LLVMLanguage.getContext().getGlobalScopeChain().getMangledName(className, member);
-
         return interop.invokeMember(sulongLibrary, mangledName == null ? member : mangledName, newargs);
     }
 

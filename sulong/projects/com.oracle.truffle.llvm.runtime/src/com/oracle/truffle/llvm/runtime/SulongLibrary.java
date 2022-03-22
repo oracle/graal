@@ -180,8 +180,7 @@ public final class SulongLibrary implements TruffleObject {
     @ExportMessage
     Object readMember(String member,
                     @Shared("lookup") @Cached LookupNode lookup,
-                    @Cached @Shared("notFound") BranchProfile notFound,
-                    @Cached @Exclusive BranchProfile swiftName) throws UnknownIdentifierException {
+                    @Cached @Shared("notFound") BranchProfile notFound) throws UnknownIdentifierException {
         Object ret = lookup.execute(this, member);
         if (ret == null) {
             final String swiftMember = SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member});
@@ -190,7 +189,6 @@ public final class SulongLibrary implements TruffleObject {
                 notFound.enter();
                 throw UnknownIdentifierException.create(member);
             } else {
-                swiftName.enter();
                 return new LLVMInteropSwiftClassAccess(this, (LLVMFunctionDescriptor) ret, member);
             }
         }

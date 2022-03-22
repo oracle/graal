@@ -129,6 +129,7 @@ public class LLVMScopeChain implements TruffleObject {
         return elemPtrSymbol;
     }
 
+    @TruffleBoundary
     public long[] getSymbolOffsets(String name) {
         assert scope != null;
         long[] symbolOffsets = scope.getSymbolOffsets(name);

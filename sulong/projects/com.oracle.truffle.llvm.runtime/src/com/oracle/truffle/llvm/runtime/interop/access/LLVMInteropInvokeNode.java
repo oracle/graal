@@ -42,6 +42,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -82,11 +83,10 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
                     @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfArgumentPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-        // TODO scopes!
+        final BranchProfile symbolNotFound = BranchProfile.create();
         String functionFound = member.startsWith("$") ? member : getContext().getGlobalScopeChain().getMangledName(member);
         if (functionFound != null) {
             long[] symbolOffsets = getContext().getGlobalScopeChain().getSymbolOffsets(functionFound);
-
             if (symbolOffsets != null) {
                 LLVMPointer currentBase = receiver;
                 for (long idx : symbolOffsets) {
@@ -97,6 +97,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
                 return interop.execute(currentBase, selfArgs);
             }
         }
+        symbolNotFound.enter();
         throw UnknownIdentifierException.create(functionFound);
     }
 
