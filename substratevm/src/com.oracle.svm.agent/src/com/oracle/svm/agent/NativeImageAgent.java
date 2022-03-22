@@ -207,6 +207,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     return usage(1, "config-write-initial-delay-secs must be an integer greater or equal to 0");
                 }
             } else if (isBooleanOption(token, "build")) {
+                System.err.println("The 'build' command for the Native Image agent has been deprecated. This option will be removed in GraalVM 22.2.0");
                 build = getBooleanTokenValue(token);
             } else if (isBooleanOption(token, "experimental-configuration-with-origins")) {
                 configurationWithOrigins = getBooleanTokenValue(token);
