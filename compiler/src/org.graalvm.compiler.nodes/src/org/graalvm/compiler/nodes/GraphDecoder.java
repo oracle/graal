@@ -585,7 +585,7 @@ public class GraphDecoder {
         if (node.isDeleted()) {
             return loopScope;
         }
-        graph.beforeFixingProperties(node);
+        graph.beforeDecodingFields(node);
         try {
             if (DUMP_DURING_FIXED_NODE_PROCESSING) {
                 if (node != null) {
@@ -804,7 +804,7 @@ public class GraphDecoder {
             }
             return resultScope;
         } finally {
-            graph.afterFixingProperties(node);
+            graph.afterDecodingFields(node);
         }
     }
 

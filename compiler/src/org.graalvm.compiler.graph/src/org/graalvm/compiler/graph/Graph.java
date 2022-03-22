@@ -549,15 +549,30 @@ public class Graph {
         return node;
     }
 
-    public void afterFixingProperties(Node node) {
+    /**
+     * For node event listing we have multiple straight forward events like
+     *
+     * <ul>
+     * <li>adding a node -> NODE_ADDED</li>
+     * <li>removing a node -> NODE_REMOVED</li>
+     * <li>etc</li>
+     * </ul>
+     *
+     * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+     * form before filling any node fields. We want to observe these events as well.
+     */
+    public void beforeDecodingFields(Node node) {
         if (nodeEventListener != null) {
-            nodeEventListener.event(NodeEvent.NODE_PROPERTIES, node);
+            nodeEventListener.event(NodeEvent.BEFORE_DECODING_FIELDS, node);
         }
     }
 
-    public void beforeFixingProperties(Node node) {
+    /**
+     * @see #beforeDecodingFields(Node)
+     */
+    public void afterDecodingFields(Node node) {
         if (nodeEventListener != null) {
-            nodeEventListener.event(NodeEvent.NODE_BEFORE_PROPERTIES, node);
+            nodeEventListener.event(NodeEvent.AFTER_DECODING_FIELDS, node);
         }
     }
 
@@ -586,14 +601,19 @@ public class Graph {
         NODE_REMOVED,
 
         /**
-         * Before a node's properties were fixed (happens during PE).
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered before a "stub" node's fields are decoded and populated.
          */
-        NODE_BEFORE_PROPERTIES,
+        BEFORE_DECODING_FIELDS,
 
         /**
-         * A node's properties were fixed (happens during PE).
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered after a "stub" node's fields are decoded and populated i.e. when the node is
+         * no longer a stub.
          */
-        NODE_PROPERTIES,
+        AFTER_DECODING_FIELDS,
     }
 
     /**
@@ -628,11 +648,11 @@ public class Graph {
                 case NODE_REMOVED:
                     nodeRemoved(node);
                     break;
-                case NODE_BEFORE_PROPERTIES:
-                    nodeBeforeProperties(node);
+                case BEFORE_DECODING_FIELDS:
+                    beforeDecodingFields(node);
                     break;
-                case NODE_PROPERTIES:
-                    nodeProperties(node);
+                case AFTER_DECODING_FIELDS:
+                    afterDecodingFields(node);
                     break;
             }
             changed(e, node);
@@ -656,21 +676,20 @@ public class Graph {
         }
 
         /**
-         * Notifies this listener that the node properties are about to be fixed, i.e. be set
-         * finally.
+         * Notifies this listener that the decoding of fields for this node is about to commence.
          *
-         * @param node a node whose properties are about to be fixed.
+         * @param node a node whose fields are about to be decoded.
          */
-        public void nodeBeforeProperties(Node node) {
+        public void beforeDecodingFields(Node node) {
 
         }
 
         /**
-         * Notifies this listener about node properties being fixed, i.e. being set finally.
+         * Notifies this listener that the decoding of fields for this node has finished.
          *
-         * @param node a node who has had properties fixed.
+         * @param node a node who has had fields decoded.
          */
-        public void nodeProperties(Node node) {
+        public void afterDecodingFields(Node node) {
         }
 
         /**

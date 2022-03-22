@@ -307,41 +307,44 @@ public abstract class PartialEvaluator {
 
         private final int graphSizeLimit;
         private final StructuredGraph graph;
-        private int approximateGraphSize;
+        private int graphSize;
 
         private GraphSizeListener(OptionValues options, StructuredGraph graph) {
             this.graphSizeLimit = options.get(MaximumGraalGraphSize);
             this.graph = graph;
-            this.approximateGraphSize = NodeCostUtil.computeGraphSize(graph);
+            this.graphSize = NodeCostUtil.computeGraphSize(graph);
         }
 
         @Override
         public void nodeAdded(Node node) {
-            approximateGraphSize += node.estimatedNodeSize().value;
+            increaseSizeAndCheckLimit(node);
+        }
+
+        private void increaseSizeAndCheckLimit(Node node) {
+            graphSize += node.estimatedNodeSize().value;
             checkLimit();
         }
 
         private void checkLimit() {
-            if (approximateGraphSize > graphSizeLimit) {
+            if (graphSize > graphSizeLimit) {
                 throw new GraphTooBigBailoutException(
-                                "Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Graph Size: " + approximateGraphSize + ". Limit: " + graphSizeLimit + ".");
+                                "Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Graph Size: " + graphSize + ". Limit: " + graphSizeLimit + ".");
             }
         }
 
         @Override
-        public void nodeBeforeProperties(Node node) {
-            approximateGraphSize -= node.estimatedNodeSize().value;
+        public void beforeDecodingFields(Node node) {
+            graphSize -= node.estimatedNodeSize().value;
         }
 
         @Override
-        public void nodeProperties(Node node) {
-            approximateGraphSize += node.estimatedNodeSize().value;
-            checkLimit();
+        public void afterDecodingFields(Node node) {
+            increaseSizeAndCheckLimit(node);
         }
 
         @Override
         public void nodeRemoved(Node node) {
-            approximateGraphSize -= node.estimatedNodeSize().value;
+            graphSize -= node.estimatedNodeSize().value;
         }
     }
 
