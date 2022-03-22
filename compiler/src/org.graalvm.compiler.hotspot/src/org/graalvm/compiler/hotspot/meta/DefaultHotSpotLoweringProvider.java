@@ -571,7 +571,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
             guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
             IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
-            divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+            divisor = graph.addOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
         } else {
             guard = n.getZeroGuard();
             /*
@@ -581,7 +581,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
              */
             if (divisorStamp.contains(0)) {
                 IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
-                divisor = graph.maybeAddOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+                divisor = graph.addOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
             }
         }
         GraalError.guarantee(SignedDivNode.divisionIsJVMSCompliant(dividend, divisor, divisionOverflowIsJVMSCompliant), "Division must be allowed to float at this point. Dividend %s divisor %s",
