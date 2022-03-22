@@ -48,6 +48,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -99,6 +100,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     private static DefaultLayout getOrCreateLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
+        Objects.requireNonNull(type, "DynamicObject layout class");
         Key key = new Key(type, implicitCastFlags);
         DefaultLayout layout = LAYOUT_MAP.get(key);
         if (layout != null) {
