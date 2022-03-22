@@ -537,24 +537,24 @@ public abstract class Shape {
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
-     * Planned to be deprecated. Use {@link DynamicObjectLibrary#put} or
-     * {@link DynamicObjectLibrary#putWithFlags} to add properties to an object.
-     *
      * @param property the property to add
      * @return the new Shape
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put} or {@link DynamicObjectLibrary#putWithFlags}
+     *             to add properties to an object.
      */
+    @Deprecated(since = "22.2")
     public abstract Shape addProperty(Property property);
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
      *
-     * Planned to be deprecated. Use {@link DynamicObjectLibrary#put} or
-     * {@link DynamicObjectLibrary#putWithFlags} to add properties to an object.
-     *
      * @return the shape after defining the property
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
+     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
      */
+    @Deprecated(since = "22.2")
     public abstract Shape defineProperty(Object key, Object value, int flags);
 
     /**
@@ -562,8 +562,7 @@ public abstract class Shape {
      *
      * @return the shape after defining the property
      * @since 0.8 or earlier
-     * @deprecated Use {@link #defineProperty(Object, Object, int)} or
-     *             {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
      *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)} or
      *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
      */
