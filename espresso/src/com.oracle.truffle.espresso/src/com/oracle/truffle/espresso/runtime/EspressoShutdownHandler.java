@@ -141,8 +141,6 @@ final class EspressoShutdownHandler implements ContextAccess {
      */
     @TruffleBoundary
     void destroyVM() {
-        // This thread needs to be attached to call guest code.
-        context.createThread(Thread.currentThread(), context.getMainThreadGroup(), "DestroyJavaVM", false);
         waitForClose();
         try {
             getMeta().java_lang_Shutdown_shutdown.invokeDirect(null);
@@ -248,6 +246,13 @@ final class EspressoShutdownHandler implements ContextAccess {
 
             if (nextPhase) {
                 getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
+                getContext().getLogger().severe(() -> {
+                    String str = "Threads still alive: ";
+                    for (StaticObject guest : getManagedThreads()) {
+                        str = str + getThreadAccess().getHost(guest);
+                    }
+                    return str;
+                });
             }
 
             // Special handling of the reference drainer

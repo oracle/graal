@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso;
 
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -57,7 +59,6 @@ import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -176,8 +177,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
         if (exitMode == ExitMode.NATURAL) {
-            // Make sure thread is no longer considered alive by guest code.
-            context.getVM().DetachCurrentThread(context);
+            // Make sure current thread is no longer considered alive by guest code.
+            if (context.getVM().DetachCurrentThread(context) == JNI_OK) {
+                // Create a new guest thread to wait for other non-daemon threads
+                context.createThread(Thread.currentThread(), context.getMainThreadGroup(), "DestroyJavaVM", false);
+            }
             // Wait for ongoing threads to finish.
             context.destroyVM();
         } else {

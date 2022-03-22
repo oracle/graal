@@ -92,6 +92,12 @@ public class EspressoThreadLocalState {
         currentThread = t;
     }
 
+    public void clearCurrentThread(StaticObject expectedGuest) {
+        if (currentThread == expectedGuest) {
+            currentThread = null;
+        }
+    }
+
     public StaticObject getCurrentThread(EspressoContext context) {
         StaticObject result = currentThread;
         if (result == null) {

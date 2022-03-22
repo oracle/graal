@@ -203,6 +203,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 }
             }
         }
+        context.getLanguage().getThreadLocalState().clearCurrentThread(thread);
         context.notifyShutdownSynchronizer();
     }
 
