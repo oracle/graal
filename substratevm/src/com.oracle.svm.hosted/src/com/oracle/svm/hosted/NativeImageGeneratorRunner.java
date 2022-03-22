@@ -72,7 +72,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
-import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
@@ -178,8 +177,7 @@ public class NativeImageGeneratorRunner {
      */
     public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
-        AbstractNativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupportJDK11OrLater(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath,
-                        modulepath);
+        NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
@@ -193,10 +191,6 @@ public class NativeImageGeneratorRunner {
          * build-time present on the image classpath and modulepath.
          */
         nativeImageSystemClassLoader.setNativeImageClassLoader(nativeImageClassLoader);
-
-        if (!nativeImageClassLoaderSupport.imagecp.isEmpty()) {
-            ModuleSupport.openModuleByClass(JavaVersionUtil.class, null);
-        }
 
         /*
          * Iterating all classes can already trigger class initialization: We need annotation

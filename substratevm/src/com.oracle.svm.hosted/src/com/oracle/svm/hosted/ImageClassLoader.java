@@ -70,14 +70,14 @@ public final class ImageClassLoader {
     }
 
     public final Platform platform;
-    public final AbstractNativeImageClassLoaderSupport classLoaderSupport;
+    public final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    ImageClassLoader(Platform platform, AbstractNativeImageClassLoaderSupport classLoaderSupport) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
     }

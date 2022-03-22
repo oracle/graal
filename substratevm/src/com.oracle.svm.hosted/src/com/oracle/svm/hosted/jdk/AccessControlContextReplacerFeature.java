@@ -24,19 +24,20 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.AccessControllerUtil;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import java.security.AccessControlContext;
 import java.security.DomainCombiner;
 import java.security.Permission;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.AccessControllerUtil;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
 @SuppressWarnings({"unused"})
@@ -81,9 +82,6 @@ class AccessControlContextReplacerFeature implements Feature {
         allowContextIfExists("java.util.Calendar$CalendarAccessControlContext", "INSTANCE");
         allowContextIfExists("javax.management.monitor.Monitor", "noPermissionsACC");
 
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            allowContextIfExists("sun.misc.InnocuousThread", "ACC");
-        }
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             allowContextIfExists("java.security.AccessController$AccHolder", "innocuousAcc");
             allowContextIfExists("java.util.concurrent.ForkJoinPool$DefaultForkJoinWorkerThreadFactory", "ACC");

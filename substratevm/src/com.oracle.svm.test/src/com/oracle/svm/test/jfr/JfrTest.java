@@ -28,18 +28,21 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assume.assumeTrue;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
+import java.util.HashSet;
+
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.test.jfr.utils.Jfr;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.LocalJfr;
+import com.oracle.svm.util.ModuleSupport;
 
-import java.util.HashSet;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
@@ -123,5 +126,16 @@ public abstract class JfrTest {
         } catch (Exception e) {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }
+    }
+}
+
+class JFRTestFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        /*
+         * Use of org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC in
+         * com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser.parse
+         */
+        ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider", false, JFRTestFeature.class);
     }
 }
