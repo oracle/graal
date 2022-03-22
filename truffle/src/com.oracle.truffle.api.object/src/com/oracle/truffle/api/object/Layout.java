@@ -63,6 +63,7 @@ import com.oracle.truffle.api.Truffle;
  * @since 0.8 or earlier
  * @deprecated since 21.1. Use {@link Shape.Builder} instead.
  */
+@SuppressWarnings("deprecation")
 @Deprecated(since = "21.1")
 public abstract class Layout {
     /** @since 0.8 or earlier */
@@ -250,6 +251,7 @@ public abstract class Layout {
          *             invalid {@link DynamicObject.DynamicField @DynamicField}-annotated fields.
          * @since 0.8 or earlier
          */
+        @SuppressWarnings("deprecation")
         public Layout build() {
             return Layout.getFactory().createLayout(this);
         }

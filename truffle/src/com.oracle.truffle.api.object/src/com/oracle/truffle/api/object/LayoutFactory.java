@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,16 +44,21 @@ package com.oracle.truffle.api.object;
  * Implementation class.
  *
  * @since 0.8 or earlier
+ * @deprecated Implementation detail.
  */
 @SuppressWarnings("deprecation")
+@Deprecated(since = "22.2")
 public interface LayoutFactory {
     /** @since 0.8 or earlier */
+    @Deprecated(since = "22.2")
     Layout createLayout(Layout.Builder layoutBuilder);
 
     /** @since 0.8 or earlier */
+    @Deprecated(since = "22.2")
     Property createProperty(Object id, Location location);
 
     /** @since 0.8 or earlier */
+    @Deprecated(since = "22.2")
     Property createProperty(Object id, Location location, int flags);
 
     /** @since 0.8 or earlier */
