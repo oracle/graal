@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -30,6 +31,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -75,6 +77,10 @@ public abstract class IntArrayStore extends Node {
             return EspressoContext.get(this);
         }
 
+        protected EspressoLanguage getLanguage() {
+            return EspressoLanguage.get(this);
+        }
+
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, int value) {
             assert !StaticObject.isNull(array);
@@ -83,10 +89,11 @@ public abstract class IntArrayStore extends Node {
 
         @Specialization(guards = "array.isForeignObject()")
         void doArrayLike(StaticObject array, int index, int value,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            ForeignArrayUtils.writeForeignArrayElement(array, index, value, interop, getContext().getMeta(), exceptionProfile);
+            ForeignArrayUtils.writeForeignArrayElement(array, index, value, language, getContext().getMeta(), interop, exceptionProfile);
         }
     }
 }

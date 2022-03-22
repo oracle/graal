@@ -35,6 +35,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
@@ -90,6 +91,10 @@ public abstract class ByteArrayStore extends Node {
             return EspressoContext.get(this);
         }
 
+        protected EspressoLanguage getLanguage() {
+            return EspressoLanguage.get(this);
+        }
+
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, byte value) {
             assert !StaticObject.isNull(array);
@@ -98,16 +103,17 @@ public abstract class ByteArrayStore extends Node {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "isBufferLikeByteArray(context, interop, array)"
+                        "isBufferLikeByteArray(language, context, interop, array)"
         })
         void doBufferLike(StaticObject array, int index, byte value,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile outOfBoundsProfile,
                         @Cached BranchProfile readOnlyProfile) {
             assert !StaticObject.isNull(array);
             try {
-                interop.writeBufferByte(array.rawForeignObject(), index, value);
+                interop.writeBufferByte(array.rawForeignObject(language), index, value);
             } catch (InvalidBufferOffsetException e) {
                 outOfBoundsProfile.enter();
                 Meta meta = context.getMeta();
@@ -122,21 +128,22 @@ public abstract class ByteArrayStore extends Node {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "!isBufferLikeByteArray(context, interop, array)",
-                        "isArrayLike(interop, array.rawForeignObject())"
+                        "!isBufferLikeByteArray(language, context, interop, array)",
+                        "isArrayLike(interop, array.rawForeignObject(language))"
         })
         void doArrayLike(StaticObject array, int index, byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isByteArrayProfile) {
             assert !StaticObject.isNull(array);
             if (isByteArrayProfile.profile(array.getKlass() == context.getMeta()._byte_array)) {
-                ForeignArrayUtils.writeForeignArrayElement(array, index, value, interop, context.getMeta(), exceptionProfile);
+                ForeignArrayUtils.writeForeignArrayElement(array, index, value, language, context.getMeta(), interop, exceptionProfile);
             } else {
                 assert array.getKlass() == context.getMeta()._boolean_array;
                 boolean booleanValue = value != 0;
-                ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, interop, context.getMeta(), exceptionProfile);
+                ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, context.getMeta(), interop, exceptionProfile);
             }
         }
     }

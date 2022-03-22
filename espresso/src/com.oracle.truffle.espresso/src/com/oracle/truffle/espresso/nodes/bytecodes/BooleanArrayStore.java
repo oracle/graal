@@ -32,6 +32,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -83,6 +84,10 @@ public abstract class BooleanArrayStore extends Node {
             return EspressoContext.get(this);
         }
 
+        protected EspressoLanguage getLanguage() {
+            return EspressoLanguage.get(this);
+        }
+
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, byte value) {
             assert !StaticObject.isNull(array);
@@ -92,16 +97,17 @@ public abstract class BooleanArrayStore extends Node {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "isArrayLike(interop, array.rawForeignObject())"
+                        "isArrayLike(interop, array.rawForeignObject(language))"
         })
         void doArrayLike(StaticObject array, int index, byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
             assert array.getKlass() == context.getMeta()._boolean_array;
             boolean booleanValue = value != 0;
-            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, interop, context.getMeta(), exceptionProfile);
+            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, context.getMeta(), interop, exceptionProfile);
         }
     }
 }

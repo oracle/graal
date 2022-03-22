@@ -32,6 +32,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -77,15 +78,20 @@ public abstract class CharArrayLoad extends Node {
             return EspressoContext.get(this);
         }
 
+        protected EspressoLanguage getLanguage() {
+            return EspressoLanguage.get(this);
+        }
+
         @Specialization(guards = "array.isForeignObject()")
         char doForeign(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary arrayInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary elemInterop,
-                        @Bind("getContext()") EspressoContext context,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
             Meta meta = context.getMeta();
-            Object element = ForeignArrayUtils.readForeignArrayElement(array, index, arrayInterop, meta, exceptionProfile);
+            Object element = ForeignArrayUtils.readForeignArrayElement(array, index, language, meta, arrayInterop, exceptionProfile);
             try {
                 String string1 = elemInterop.asString(element);
                 if (string1.length() == 1) {

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -117,7 +118,7 @@ public final class ListInterop extends IterableInterop {
 
         public Object listGet(StaticObject receiver, long index, BranchProfile error) throws InvalidArrayIndexException {
             try {
-                return unwrapForeign(execute(receiver, (int) index));
+                return unwrapForeign(EspressoLanguage.get(this), execute(receiver, (int) index));
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {

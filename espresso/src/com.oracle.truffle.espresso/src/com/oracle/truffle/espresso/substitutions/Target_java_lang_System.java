@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -128,8 +129,9 @@ public final class Target_java_lang_System {
         void doForeign(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
                         @Inject SubstitutionProfiler profiler) {
             SYSTEM_ARRAYCOPY_COUNT.inc();
-            handleForeignArray(src.isForeignObject() ? src.rawForeignObject() : src, srcPos,
-                            dest.isForeignObject() ? dest.rawForeignObject() : dest, destPos, length,
+            EspressoLanguage language = EspressoLanguage.get(this);
+            handleForeignArray(src.isForeignObject() ? src.rawForeignObject(language) : src, srcPos,
+                            dest.isForeignObject() ? dest.rawForeignObject(language) : dest, destPos, length,
                             ((ArrayKlass) dest.getKlass()).getComponentType(), meta, profiler);
         }
 
@@ -319,7 +321,8 @@ public final class Target_java_lang_System {
         if (src.isForeignObject() || dest.isForeignObject()) {
             // TODO: handle foreign arrays efficiently.
             profiler.profile(FOREIGN_PROFILE);
-            handleForeignArray(src.isForeignObject() ? src.rawForeignObject() : src, srcPos, dest.isForeignObject() ? dest.rawForeignObject() : dest, destPos, length,
+            EspressoLanguage language = meta.getContext().getLanguage();
+            handleForeignArray(src.isForeignObject() ? src.rawForeignObject(language) : src, srcPos, dest.isForeignObject() ? dest.rawForeignObject(language) : dest, destPos, length,
                             ((ArrayKlass) dest.getKlass()).getComponentType(), meta, profiler);
             return;
         }

@@ -605,8 +605,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
                     Meta meta, SubstitutionProfiler profiler, char exceptionBranch) {
+        EspressoLanguage language = meta.getContext().getLanguage();
         try {
-            return interop.readArrayElement(array.rawForeignObject(), index);
+            return interop.readArrayElement(array.rawForeignObject(language), index);
         } catch (UnsupportedMessageException e) {
             profiler.profile(exceptionBranch);
             throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_ClassCastException, "The foreign object is not a readable array");
@@ -621,7 +622,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert array.isArray();
         int length;
         try {
-            long longLength = interop.getArraySize(array.rawForeignObject());
+            EspressoLanguage language = meta.getContext().getLanguage();
+            long longLength = interop.getArraySize(array.rawForeignObject(language));
             if (longLength > Integer.MAX_VALUE) {
                 profiler.profile(exceptionBranch);
                 throw meta.throwExceptionWithMessage(meta.java_lang_CloneNotSupportedException, "Cannot clone a foreign array whose length does not fit in int");
@@ -732,7 +734,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
-                return cloneForeignArray(self, meta, InteropLibrary.getUncached(self.rawForeignObject()), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
+                EspressoLanguage language = meta.getContext().getLanguage();
+                return cloneForeignArray(self, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
             }
             return self.copy();
         }

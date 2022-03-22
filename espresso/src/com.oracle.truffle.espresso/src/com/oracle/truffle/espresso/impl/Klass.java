@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -128,11 +129,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                     @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException {
 
+        EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
         Field field = lookupFieldNode.execute(this, member, true);
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
             if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-                return ((StaticObject) result).rawForeignObject();
+                return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
         }

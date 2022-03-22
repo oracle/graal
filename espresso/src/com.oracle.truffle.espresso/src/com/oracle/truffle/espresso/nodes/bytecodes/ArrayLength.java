@@ -34,6 +34,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -83,6 +84,10 @@ public abstract class ArrayLength {
             return EspressoContext.get(this);
         }
 
+        protected final EspressoLanguage getLanguage() {
+            return EspressoLanguage.get(this);
+        }
+
         @Specialization(guards = "array.isEspressoObject()")
         int doEspresso(StaticObject array) {
             assert !StaticObject.isNull(array);
@@ -91,15 +96,16 @@ public abstract class ArrayLength {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "isBufferLikeByteArray(context, interop, array)",
+                        "isBufferLikeByteArray(language, context, interop, array)",
         })
         int doBufferLike(StaticObject array,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile sizeOverflowProfile) {
             assert !StaticObject.isNull(array);
             try {
-                long bufferLength = interop.getBufferSize(array.rawForeignObject());
+                long bufferLength = interop.getBufferSize(array.rawForeignObject(language));
                 if (bufferLength > Integer.MAX_VALUE) {
                     sizeOverflowProfile.enter();
                     return Integer.MAX_VALUE;
@@ -113,16 +119,17 @@ public abstract class ArrayLength {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "!isBufferLikeByteArray(context, interop, array)",
-                        "isArrayLike(interop, array.rawForeignObject())"
+                        "!isBufferLikeByteArray(language, context, interop, array)",
+                        "isArrayLike(interop, array.rawForeignObject(language))"
         })
         int doArrayLike(StaticObject array,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile sizeOverflowProfile) {
             assert !StaticObject.isNull(array);
             try {
-                long arrayLength = interop.getArraySize(array.rawForeignObject());
+                long arrayLength = interop.getArraySize(array.rawForeignObject(language));
                 if (arrayLength > Integer.MAX_VALUE) {
                     sizeOverflowProfile.enter();
                     return Integer.MAX_VALUE;

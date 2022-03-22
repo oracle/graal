@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -31,6 +32,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
@@ -79,6 +81,10 @@ public abstract class ReferenceArrayLoad extends Node {
             return EspressoContext.get(this);
         }
 
+        protected EspressoLanguage getLanguage() {
+            return EspressoLanguage.get(this);
+        }
+
         @Specialization(guards = "array.isEspressoObject()")
         StaticObject doEspresso(StaticObject array, int index) {
             assert !StaticObject.isNull(array);
@@ -87,12 +93,13 @@ public abstract class ReferenceArrayLoad extends Node {
 
         @Specialization(guards = "array.isForeignObject()")
         StaticObject doForeign(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ToEspressoNode toEspressoNode,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
             Meta meta = getContext().getMeta();
-            Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
+            Object result = ForeignArrayUtils.readForeignArrayElement(array, index, language, meta, interop, exceptionProfile);
             ArrayKlass arrayKlass = (ArrayKlass) array.getKlass();
             try {
                 return (StaticObject) toEspressoNode.execute(result, arrayKlass.getComponentType());

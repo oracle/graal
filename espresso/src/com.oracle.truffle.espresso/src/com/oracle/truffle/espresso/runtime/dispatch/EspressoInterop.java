@@ -60,6 +60,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.impl.Field;
@@ -91,9 +92,9 @@ public class EspressoInterop extends BaseInterop {
         return EspressoContext.get(null).getMeta();
     }
 
-    static Object unwrapForeign(Object receiver) {
+    static Object unwrapForeign(EspressoLanguage language, Object receiver) {
         if (receiver instanceof StaticObject && ((StaticObject) receiver).isForeignObject()) {
-            return ((StaticObject) receiver).rawForeignObject();
+            return ((StaticObject) receiver).rawForeignObject(language);
         }
         return receiver;
     }
@@ -771,7 +772,7 @@ public class EspressoInterop extends BaseInterop {
         if (notNull(receiver)) {
             Field f = lookupField.execute(getInteropKlass(receiver), member);
             if (f != null) {
-                return unwrapForeign(f.get(receiver));
+                return unwrapForeign(EspressoLanguage.get(lookupField), f.get(receiver));
             }
             // Class<T>.static == Klass<T>
             if (CLASS_TO_STATIC.equals(member)) {

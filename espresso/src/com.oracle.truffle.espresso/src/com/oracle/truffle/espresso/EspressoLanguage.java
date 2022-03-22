@@ -98,11 +98,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilerDirectives.CompilationFinal //
     private static StaticShape<StaticObjectFactory> arrayShape;
 
-    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject");
-    // This field should be static final, but until we move the static object model we cannot have a
-    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    private final StaticProperty foreignProperty = new DefaultStaticProperty("foreignObject");
+    // This field should be final, but creating a shape requires a fully-initialized instance of
+    // TruffleLanguage.
     @CompilerDirectives.CompilationFinal //
-    private static StaticShape<StaticObjectFactory> foreignShape;
+    private StaticShape<StaticObjectFactory> foreignShape;
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -263,25 +263,21 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
     }
 
-    public static StaticProperty getForeignProperty() {
-        return FOREIGN_PROPERTY;
+    public StaticProperty getForeignProperty() {
+        return foreignProperty;
     }
 
     public StaticShape<StaticObjectFactory> getForeignShape() {
         if (foreignShape == null) {
-            return initializeForeignShape();
+            foreignShape = createForeignShape();
         }
         return foreignShape;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private StaticShape<StaticObjectFactory> initializeForeignShape() {
-        synchronized (EspressoLanguage.class) {
-            if (foreignShape == null) {
-                foreignShape = StaticShape.newBuilder(this).property(FOREIGN_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
-            }
-            return foreignShape;
-        }
+    private StaticShape<StaticObjectFactory> createForeignShape() {
+        assert foreignShape == null;
+        return StaticShape.newBuilder(this).property(foreignProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
     }
 
     private static final LanguageReference<EspressoLanguage> REFERENCE = LanguageReference.create(EspressoLanguage.class);

@@ -222,7 +222,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
         assert foreignObject != null;
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
-        EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
+        lang.getForeignProperty().setObject(newObj, foreignObject);
         if (klass != null) {
             klass.safeInitialize();
         }
@@ -273,8 +273,9 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public static boolean isNull(StaticObject object) {
         assert object != null;
-        assert (object.getKlass() != null) || object == NULL ||
-                        (object.isForeignObject() && InteropLibrary.getUncached().isNull(object.rawForeignObject())) : "klass can only be null for Espresso null (NULL) and interop nulls";
+        // TODO(da): do not call `EspressoLanguage.get(null)`
+        assert (object.getKlass() != null) || object == NULL || (object.isForeignObject() &&
+                        InteropLibrary.getUncached().isNull(object.rawForeignObject(EspressoLanguage.get(null)))) : "klass can only be null for Espresso null (NULL) and interop nulls";
         return object.getKlass() == null;
     }
 
@@ -355,9 +356,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         return !isForeignObject();
     }
 
-    public final Object rawForeignObject() {
+    public final Object rawForeignObject(EspressoLanguage language) {
         assert isForeignObject();
-        return EspressoLanguage.getForeignProperty().getObject(this);
+        return language.getForeignProperty().getObject(this);
     }
 
     public final boolean isStaticStorage() {
@@ -418,8 +419,11 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (this == NULL) {
             return "null";
         }
+        if (getKlass() == null) {
+            return "foreign object: null";
+        }
         if (isForeignObject()) {
-            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject()));
+            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject(getKlass().getContext().getLanguage())));
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
             Meta meta = getKlass().getMeta();

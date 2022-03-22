@@ -402,7 +402,7 @@ public final class JDWPContextImpl implements JDWPContext {
         StaticObject staticObject = (StaticObject) array;
         if (staticObject.isForeignObject()) {
             try {
-                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject());
+                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject(context.getLanguage()));
                 if (arrayLength > Integer.MAX_VALUE) {
                     return -1;
                 }
@@ -477,7 +477,7 @@ public final class JDWPContextImpl implements JDWPContext {
         StaticObject arrayRef = (StaticObject) array;
         Object value;
         if (arrayRef.isForeignObject()) {
-            value = ForeignArrayUtils.readForeignArrayElement(arrayRef, index, InteropLibrary.getUncached(), context.getMeta(), BranchProfile.create());
+            value = ForeignArrayUtils.readForeignArrayElement(arrayRef, index, context.getLanguage(), context.getMeta(), InteropLibrary.getUncached(), BranchProfile.create());
             if (!(value instanceof StaticObject)) {
                 // For JDWP we have to have a ref type, so here we have to create a copy
                 // value when possible as a StaticObject based on the foreign type.
