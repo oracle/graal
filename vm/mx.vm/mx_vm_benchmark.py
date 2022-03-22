@@ -151,7 +151,7 @@ class NativeImageVM(GraalVm):
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.image_build_report_path = os.path.join(self.output_dir, self.executable_name + '-image-build-stats.json')
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
+            self.base_image_build_args += ['--no-fallback', '-g']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
@@ -171,6 +171,10 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['--gc=' + vm.gc, '-H:+SpawnIsolates']
             if vm.native_architecture:
                 self.base_image_build_args += ['-H:+NativeArchitecture']
+            if vm.analysis_context_sensitivity:
+                self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
+            if vm.no_inlining_before_analysis:
+                self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
             self.base_image_build_args += self.extra_image_build_arguments
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
@@ -192,6 +196,8 @@ class NativeImageVM(GraalVm):
         self.native_architecture = False
         self.graalvm_edition = None
         self.config = None
+        self.analysis_context_sensitivity = None
+        self.no_inlining_before_analysis = False
         self._configure_from_name(config_name)
 
     def _configure_from_name(self, config_name):
@@ -209,7 +215,8 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?(?P<edition>ce-|ee-)?$'
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
         match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
@@ -277,6 +284,29 @@ class NativeImageVM(GraalVm):
             edition = matching.group("edition")[:-1]
             mx.logv("GraalVM edition is set to: {}".format(edition))
             self.graalvm_edition = edition
+
+        if matching.group("no_inlining_before_analysis") is not None:
+            option = matching.group("no_inlining_before_analysis")[:-1]
+            if option == "no-inline":
+                mx.logv("not doing inlining before analysis for {}".format(config_name))
+                self.no_inlining_before_analysis = True
+            else:
+                mx.abort("Unknown configuration for no inlining before analysis: {}".format(option))
+
+        if matching.group("analysis_context_sensitivity") is not None:
+            context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
+            if context_sensitivity == "insens":
+                mx.logv("analysis context sensitivity 'insens' is enabled for {}".format(config_name))
+                self.analysis_context_sensitivity = "insens"
+            elif context_sensitivity == "allocsens":
+                mx.logv("analysis context sensitivity 'allocsens' is enabled for {}".format(config_name))
+                self.analysis_context_sensitivity = "allocsens"
+            elif context_sensitivity == "1obj":
+                mx.logv("analysis context sensitivity '1obj' is enabled for {}".format(config_name))
+                self.analysis_context_sensitivity = "_1obj"
+            else:
+                mx.abort("Unknown analysis context sensitivity: {}".format(context_sensitivity))
+
 
     @staticmethod
     def supported_vm_arg_prefixes():
@@ -529,7 +559,8 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
 
-        measured_phases = ['setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image', 'write']
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
+                           'write']
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
@@ -1214,9 +1245,12 @@ def register_graalvm_vms():
             _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
+    # Inlining before analysis is done by default
+    analysis_context_sensitivity = ['insens', 'allocsens', '1obj']
+    analysis_context_sensitivity_no_inline = ['{}-{}'.format(analysis_component, 'no-inline') for analysis_component in analysis_context_sensitivity]
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture']:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 final_config_name = '{}-{}'.format(main_config, config_suffix)
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break

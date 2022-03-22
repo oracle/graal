@@ -394,7 +394,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
          * @param snippetReplaceeStamp the stamp of the node being replace by the snippet
          */
         public void makeReplacement(Stamp snippetReplaceeStamp) {
-            ValueNode value = graph().maybeAddOrUnique(PiNode.create(object(), snippetReplaceeStamp, null));
+            ValueNode value = graph().addOrUnique(PiNode.create(object(), snippetReplaceeStamp, null));
             replaceAndDelete(value);
         }
     }

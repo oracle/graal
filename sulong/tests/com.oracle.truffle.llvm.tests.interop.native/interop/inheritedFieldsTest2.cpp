@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,27 +61,27 @@ POLYGLOT_DECLARE_TYPE(A2);
 POLYGLOT_DECLARE_TYPE(A3);
 POLYGLOT_DECLARE_TYPE(A4);
 
-bool check0(void *a0Obj) {
+bool check0(polyglot_value a0Obj) {
     A0 *a0 = polyglot_as_A0(a0Obj);
     return a0->a0 == 0;
 }
 
-bool check1(void *a1Obj) {
+bool check1(polyglot_value a1Obj) {
     A1 *a1 = polyglot_as_A1(a1Obj);
     return (a1->a0 == 0) && (a1->a1 == 1);
 }
 
-bool check2(void *a2Obj) {
+bool check2(polyglot_value a2Obj) {
     A2 *a2 = polyglot_as_A2(a2Obj);
     return (a2->a0 == 0) && (a2->a1 == 1) && (a2->a2 == 2);
 }
 
-bool check3(void *a3Obj) {
+bool check3(polyglot_value a3Obj) {
     A3 *a3 = polyglot_as_A3(a3Obj);
     return (a3->a0 == 0) && (a3->a1 == 1) && (a3->a2 == 2) && (a3->a3 == 3);
 }
 
-bool check4(void *a4Obj) {
+bool check4(polyglot_value a4Obj) {
     A4 *a4 = polyglot_as_A4(a4Obj);
     return (a4->a0 == 0) && (a4->a1 == 1) && (a4->a2 == 2) && (a4->a3 == 3) && (a4->a4 == 4);
 }

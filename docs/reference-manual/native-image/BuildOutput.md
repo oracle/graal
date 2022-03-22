@@ -99,7 +99,7 @@ To reduce overhead, please ensure that the classpath only contains entries that 
 
 #### <a name="glossary-reflection-registrations"></a>Reflection Registrations
 The number of classes, fields, and methods that are registered for reflection.
-Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native image (see [method metadata](#glossary-method-metadata)).
+Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native image (see [reflection metadata](#glossary-reflection-metadata)).
 
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of classes, fields, and methods that are registered for [JNI][doc_jni] access.
@@ -136,16 +136,16 @@ Therefore, reducing the number of [reachable methods](#glossary-reachability) al
 The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes.
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
-The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [method metadata](#glossary-method-metadata), nor [graph encodings](#glossary-graph-encodings).
+The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [reflection metadata](#glossary-reflection-metadata), nor [graph encodings](#glossary-graph-encodings).
 Therefore, this can also include `byte[]` objects from application code.
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of this metadata.
 
-##### <a name="glossary-method-metadata"></a>Method Metadata Stored in `byte[]`
-The total size of all `byte[]` objects used for method metadata, a type of reflection metadata.
-To reduce the amount of method metadata, reduce the number of [classes registered for reflection](#glossary-reflection-classes).
+##### <a name="glossary-reflection-metadata"></a>Reflection Metadata Stored in `byte[]`
+The total size of all `byte[]` objects used for reflection metadata, including class, field, method and constructor data.
+To reduce the amount of reflection metadata, reduce the number of [elements registered for reflection](#glossary-reflection-registrations).
 
 ##### <a name="glossary-graph-encodings"></a>Graph Encodings Stored in `byte[]`
 The total size of all `byte[]` objects used for graph encodings.

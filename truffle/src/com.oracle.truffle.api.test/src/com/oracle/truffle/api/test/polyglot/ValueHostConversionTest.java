@@ -76,11 +76,9 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.test.examples.TargetMappings;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
@@ -183,10 +181,16 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(context.asValue(ByteBuffer.allocate(4)).hasBufferElements());
     }
 
+    public static class FortyTwoSuplier implements Supplier<Integer> {
+        @Override
+        public Integer get() {
+            return 42;
+        }
+    }
+
     @Test
     public void testBasicExamplesLambda() {
-        Assume.assumeFalse("Cannot get reflection data for a lambda", TruffleOptions.AOT);
-        assertTrue(context.asValue((Supplier<Integer>) () -> 42).execute().asInt() == 42);
+        assertEquals(42, context.asValue(new FortyTwoSuplier()).execute().asInt());
     }
 
     public static class JavaRecord {
@@ -980,36 +984,47 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("boolean", hierarchy.execute(String.valueOf(true)).asString());
     }
 
+    public static class TimesTwoFunction implements Function<Object, Object> {
+        @Override
+        public Object apply(Object t) {
+            return ((int) t) * 2;
+        }
+    }
+
     @Test
     public void testExecuteFunction() {
-        Value function = context.asValue(new Function<>() {
-            public Object apply(Object t) {
-                return ((int) t) * 2;
-            }
-        });
+        Value function = context.asValue(new TimesTwoFunction());
 
         assertEquals(2, function.execute(1).asInt());
     }
 
+    public static class ExceptionFunction implements Function<Object, Object> {
+        @Override
+        public Object apply(Object t) {
+            throw new RuntimeException("foobar");
+        }
+    }
+
+    public static class InnerFunctionExecutor implements Function<Object, Object> {
+        final Value inner;
+
+        public InnerFunctionExecutor(Value inner) {
+            this.inner = inner;
+        }
+
+        @Override
+        public Object apply(Object t) {
+            return inner.execute(t);
+        }
+    }
+
     @Test
     public void testExceptionFrames1() {
-        Value innerInner = context.asValue(new Function<>() {
-            public Object apply(Object t) {
-                throw new RuntimeException("foobar");
-            }
-        });
+        Value innerInner = context.asValue(new ExceptionFunction());
 
-        Value inner = context.asValue(new Function<>() {
-            public Object apply(Object t) {
-                return innerInner.execute(t);
-            }
-        });
+        Value inner = context.asValue(new InnerFunctionExecutor(innerInner));
 
-        Value outer = context.asValue(new Function<>() {
-            public Object apply(Object t) {
-                return inner.execute(t);
-            }
-        });
+        Value outer = context.asValue(new InnerFunctionExecutor(inner));
 
         try {
             outer.execute(1);
@@ -1067,6 +1082,9 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     private interface TestExceptionFrames3 {
 
         void foo();
@@ -1138,13 +1156,16 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     }
 
+    public static class ExceptionSupplier implements Supplier<Object> {
+        @Override
+        public Object get() {
+            throw new RuntimeException("foobar");
+        }
+    }
+
     @Test
     public void testExceptionFramesWithCallToMethodInvoke() {
-        Value inner = context.asValue(new Supplier<>() {
-            public Object get() {
-                throw new RuntimeException("foobar");
-            }
-        });
+        Value inner = context.asValue(new ExceptionSupplier());
 
         Value value = context.asValue(new TestExceptionFramesWithCallToMethodInvoke(inner));
         try {

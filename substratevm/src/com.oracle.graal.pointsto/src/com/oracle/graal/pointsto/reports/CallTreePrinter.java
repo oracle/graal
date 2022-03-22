@@ -59,13 +59,14 @@ import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
+
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.java.LambdaUtils;
 
 public final class CallTreePrinter {
 
@@ -178,16 +179,25 @@ public final class CallTreePrinter {
     }
 
     public void buildCallTree() {
-
         /* Add all the roots to the tree. */
-        bb.getUniverse().getMethods().stream()
-                        .filter(m -> m.isRootMethod() && !methodToNode.containsKey(m))
-                        .sorted(methodComparator)
-                        .forEach(method -> methodToNode.put(method, new MethodNode(method, true)));
-
+        List<AnalysisMethod> roots = new ArrayList<>();
+        for (AnalysisMethod m : bb.getUniverse().getMethods()) {
+            if (m.isDirectRootMethod() && m.isImplementationInvoked()) {
+                roots.add(m);
+            }
+            if (m.isVirtualRootMethod()) {
+                for (AnalysisMethod impl : m.getImplementations()) {
+                    AnalysisError.guarantee(impl.isImplementationInvoked());
+                    roots.add(impl);
+                }
+            }
+        }
+        roots.sort(methodComparator);
+        for (AnalysisMethod m : roots) {
+            methodToNode.put(m, new MethodNode(m, true));
+        }
         /* Walk the call graph starting from the roots, do a breadth-first tree reduction. */
-        ArrayDeque<MethodNode> workList = new ArrayDeque<>();
-        workList.addAll(methodToNode.values());
+        ArrayDeque<MethodNode> workList = new ArrayDeque<>(methodToNode.values());
 
         while (!workList.isEmpty()) {
             MethodNode node = workList.removeFirst();
@@ -311,7 +321,7 @@ public final class CallTreePrinter {
             String name = method.getDeclaringClass().toJavaName(true);
             if (packageNameOnly) {
                 name = packagePrefix(name);
-                if (name.contains("$$Lambda$")) {
+                if (name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
                     /* Also strip synthetic package names added for lambdas. */
                     name = packagePrefix(name);
                 }
@@ -373,7 +383,7 @@ public final class CallTreePrinter {
         }
 
         try {
-            Files.createSymbolicLink(csvLink, csvFile);
+            Files.createSymbolicLink(csvLink, csvFile.getFileName());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

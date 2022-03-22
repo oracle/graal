@@ -191,8 +191,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         Value regMask = mask == null ? Value.ILLEGAL : REG_MASK.asValue(mask.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
 
-        tool.emitMove(regArrayA, arrayA);
-        tool.emitMove(regArrayB, arrayB);
+        tool.emitConvertNullToZero(regArrayA, arrayA);
+        tool.emitConvertNullToZero(regArrayB, arrayB);
         tool.emitMove(regLength, length);
         if (offsetA != null) {
             tool.emitMove(regOffsetA, offsetA);

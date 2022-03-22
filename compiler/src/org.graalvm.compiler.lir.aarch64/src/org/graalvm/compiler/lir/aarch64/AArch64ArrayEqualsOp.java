@@ -113,12 +113,12 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
             if (!offset1Value.equals(Value.ILLEGAL)) {
                 // optional offset parameter is present, add to base pointer
-                masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
+                masm.add(64, array1, array1, asRegister(offset1Value));
             }
             masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
             if (!offset2Value.equals(Value.ILLEGAL)) {
                 // optional offset parameter is present, add to base pointer
-                masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
+                masm.add(64, array2, array2, asRegister(offset2Value));
             }
 
             // Get array length in bytes.

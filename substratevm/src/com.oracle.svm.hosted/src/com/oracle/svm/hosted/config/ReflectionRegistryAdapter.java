@@ -152,6 +152,11 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
+    public void registerUnsafeAllocated(ConditionalElement<Class<?>> clazz) {
+        registry.register(clazz.getCondition(), true, clazz.getElement());
+    }
+
+    @Override
     public void registerMethod(boolean queriedOnly, ConditionalElement<Class<?>> type, String methodName, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
         Method method;

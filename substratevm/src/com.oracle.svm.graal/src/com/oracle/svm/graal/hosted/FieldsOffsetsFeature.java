@@ -40,7 +40,6 @@ import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -58,9 +57,9 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import sun.misc.Unsafe;
 
 /**
  * Graal uses unsafe memory accesses to access {@link Node}s and {@link LIRInstruction}s. The
@@ -70,8 +69,6 @@ import sun.misc.Unsafe;
  * offsets.
  */
 public class FieldsOffsetsFeature implements Feature {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     abstract static class IterationMaskRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
@@ -86,6 +83,11 @@ public class FieldsOffsetsFeature implements Feature {
             assert replacement.fields == edges;
             assert replacement.newValuesAvailable : "Cannot access iteration mask before field offsets are assigned";
             return replacement.newIterationInitMask;
+        }
+
+        @Override
+        public Class<?>[] types() {
+            return new Class<?>[]{long.class};
         }
 
         protected abstract Edges getEdges(NodeClass<?> nodeClass);
@@ -243,7 +245,7 @@ public class FieldsOffsetsFeature implements Feature {
             long[] newOffsets = new long[fields.getCount()];
             for (int i = 0; i < newOffsets.length; i++) {
                 Field field = findField(fields, i);
-                assert UNSAFE.objectFieldOffset(field) == fields.getOffsets()[i];
+                assert Unsafe.getUnsafe().objectFieldOffset(field) == fields.getOffsets()[i];
                 newOffsets[i] = hMetaAccess.lookupJavaField(field).getLocation();
             }
             replacement.newOffsets = newOffsets;

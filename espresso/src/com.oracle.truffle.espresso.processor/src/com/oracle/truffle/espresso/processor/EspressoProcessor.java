@@ -92,7 +92,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
      *
      * package com.oracle.truffle.espresso.substitutions;
      *
-     * import com.oracle.truffle.espresso.meta.Meta;
      * import com.oracle.truffle.espresso.substitutions.Collect;
      *
      * import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
@@ -120,15 +119,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
      *         }
      *
      *         @Override
-     *         public final JavaSubstitution create(Meta meta) {
-     *             return new Target_java_lang_invoke_MethodHandleNatives_Resolve_2(meta);
+     *         public final JavaSubstitution create() {
+     *             return new Target_java_lang_invoke_MethodHandleNatives_Resolve_2();
      *         }
      *     }
      *
      *     private @Child Resolve node;
      *
      *     @SuppressWarnings("unused")
-     *     private Target_java_lang_invoke_MethodHandleNatives_Resolve_2(Meta meta) {
+     *     private Target_java_lang_invoke_MethodHandleNatives_Resolve_2() {
      *         this.node = com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNativesFactory.ResolveNodeGen.create();
      *     }
      *
@@ -241,21 +240,17 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 
-    static final String META_CLASS = "Meta ";
+    static final String CONTEXT = "EspressoContext.get(this)";
+    static final String CONTEXT_META = "EspressoContext.get(this).getMeta()";
     static final String META_TYPE = "Meta";
-    static final String META_VAR = "meta";
-    static final String META_ARG_CALL = "meta";
-    private static final String SET_META = "this." + META_VAR + " = " + META_VAR + ";";
 
     static final String PROFILE_CLASS = "SubstitutionProfiler";
     static final String PROFILE_ARG_CALL = "this";
 
     static final String ESPRESSO_CONTEXT_CLASS = "EspressoContext ";
-    static final String ESPRESSO_CONTEXT_ARG_CALL = "meta.getContext()";
 
     static final String CREATE = "create";
 
-    static final String SHOULD_SPLIT = "shouldSplit";
     static final String SPLIT = "split";
 
     static final String ARGS_NAME = "args";
@@ -584,21 +579,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType(substitutor) //
-                        .withParams(META_CLASS + META_VAR) //
-                        .addBodyLine("return new ", className, "(", META_VAR, ");"));
+                        .addBodyLine("return new ", className, "();"));
         return factory;
-    }
-
-    /**
-     * Injects meta data in the substitutor's field, so the Meta be passed along during substitution
-     * invocation.
-     */
-    private static void generateMetaInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
-        if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            FieldBuilder field = new FieldBuilder(META_TYPE, META_VAR) //
-                            .withQualifiers(new ModifierBuilder().asPrivate().asFinal());
-            cb.withField(field);
-        }
     }
 
     private static void generateChildInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
@@ -616,12 +598,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static MethodBuilder generateConstructor(String substitutorName, SubstitutionHelper helper) {
         MethodBuilder constructor = new MethodBuilder(substitutorName) //
                         .asConstructor() //
-                        .withModifiers(new ModifierBuilder().asPrivate()) //
-                        .withParams(META_TYPE + " " + META_VAR);
+                        .withModifiers(new ModifierBuilder().asPrivate());
 
-        if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            constructor.addBodyLine(SET_META);
-        }
         if (helper.isNodeTarget()) {
             TypeElement enclosing = (TypeElement) helper.getNodeTarget().getEnclosingElement();
             constructor.addBodyLine("this.node = ", enclosing.getQualifiedName(), "Factory.", helper.getNodeTarget().getSimpleName(), "NodeGen", ".create();");
@@ -653,7 +631,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectMeta(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(META_ARG_CALL);
+        str.append(CONTEXT_META);
         return false;
     }
 
@@ -665,7 +643,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectContext(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(ESPRESSO_CONTEXT_ARG_CALL);
+        str.append(CONTEXT);
         return false;
     }
 
@@ -685,11 +663,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
-        expectedImports.add(IMPORT_META);
-        if (helper.hasContextInjection) {
+
+        if (helper.hasMetaInjection || helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
+        if (helper.hasMetaInjection && !helper.isNodeTarget()) {
+            expectedImports.add(IMPORT_META);
+        }
         expectedImports.add(IMPORT_COLLECT);
+
         // Add imports (filter useless import)
         for (String toImport : expectedImports) {
             String maybePackage = toImport.substring(0, toImport.lastIndexOf('.'));
@@ -705,7 +687,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
         if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            generateMetaInstanceField(substitutorClass, helper);
             generateChildInstanceField(substitutorClass, helper);
         }
 
@@ -713,10 +694,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withAnnotation(SUPPRESS_UNUSED);
         substitutorClass.withMethod(constructor);
 
-        if (helper.hasProfileInjection) {
-            substitutorClass.withMethod(generateShouldSplit());
-            substitutorClass.withMethod(generateSplit());
-        }
+        substitutorClass.withMethod(generateSplit());
 
         if (isTrivial(helper.getTarget(), helper.getImplAnnotation())) {
             substitutorClass.withMethod(generateIsTrivial(helper));
@@ -729,18 +707,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     /**
-     * Injects override of 'shouldSplit()' methods.
-     */
-    private static MethodBuilder generateShouldSplit() {
-        MethodBuilder method = new MethodBuilder(SHOULD_SPLIT) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("boolean") //
-                        .addBodyLine("return true;");
-        return method;
-    }
-
-    /**
      * Injects override of 'split()' methods.
      */
     private MethodBuilder generateSplit() {
@@ -748,7 +714,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType(substitutor) //
-                        .addBodyLine("return new ", FACTORY, "().", CREATE, "(", META_VAR, ");");
+                        .addBodyLine("return new ", FACTORY, "().", CREATE, "();");
         return method;
     }
 

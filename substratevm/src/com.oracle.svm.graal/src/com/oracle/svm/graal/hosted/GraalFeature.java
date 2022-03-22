@@ -471,7 +471,7 @@ public final class GraalFeature implements Feature {
 
         if (!methods.containsKey(aMethod)) {
             methods.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
-            config.registerAsInvoked(aMethod);
+            config.registerAsInvoked(aMethod, true);
         }
 
         return sMethod;

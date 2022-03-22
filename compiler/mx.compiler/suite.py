@@ -739,6 +739,12 @@ suite = {
         "jdk.unsupported",
         "java.management",
       ],
+      "requiresConcealed" : {
+        "java.instrument" : [
+          "sun.instrument",
+          "java.lang.instrument",
+        ],
+      },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],

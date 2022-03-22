@@ -466,8 +466,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitNegate(Value inputVal) {
-        return emitUnary(getOpCode(inputVal, AArch64ArithmeticOp.NEG, AArch64ArithmeticOp.FNEG), inputVal);
+    public Value emitNegate(Value inputVal, boolean setFlags) {
+        if (isNumericInteger(inputVal.getPlatformKind())) {
+            AArch64ArithmeticOp op = setFlags ? AArch64ArithmeticOp.NEGS : AArch64ArithmeticOp.NEG;
+            return emitUnary(op, inputVal);
+        } else {
+            assert !setFlags : "Cannot set flags on floating point arithmetic";
+            return emitUnary(AArch64ArithmeticOp.FNEG, inputVal);
+        }
     }
 
     @Override

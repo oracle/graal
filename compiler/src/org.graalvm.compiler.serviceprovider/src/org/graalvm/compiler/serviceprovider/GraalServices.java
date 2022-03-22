@@ -30,9 +30,8 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -58,52 +57,50 @@ import jdk.vm.ci.services.Services;
  */
 public final class GraalServices {
 
-    // NOTE: The use of MethodHandles to access JVMCI API is to support
+    // NOTE: The use of reflection to access JVMCI API is to support
     // compiling on JDKs with varying versions of JVMCI.
 
     private static final Map<Class<?>, List<?>> servicesCache = IS_BUILDING_NATIVE_IMAGE ? new HashMap<>() : null;
 
-    private static final MethodHandle encodedSpeculationReasonConstructor;
-    private static final MethodHandle constantPoolLookupReferencedType;
-    private static final MethodHandle virtualObjectGet;
-    private static final MethodHandle implicitExceptionDispatchConstructor;
+    private static final Constructor<? extends SpeculationReason> encodedSpeculationReasonConstructor;
+    private static final Method constantPoolLookupReferencedType;
+    private static final Method virtualObjectGet;
+    private static final Constructor<? extends Infopoint> implicitExceptionDispatchConstructor;
 
     static {
-        MethodHandle get = null;
-        MethodHandle constructor = null;
-        MethodHandle lookupReferencedType = null;
-        MethodHandle tempConstructor = null;
-        Lookup l = MethodHandles.lookup();
+        Method get = null;
+        Method lookupReferencedType = null;
+        Constructor<? extends SpeculationReason> esrConstructor = null;
+        Constructor<? extends Infopoint> iedConstructor = null;
 
         try {
-            Class<?> theClass = Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
-            constructor = l.unreflectConstructor(theClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class));
+            @SuppressWarnings("unchecked")
+            Class<? extends SpeculationReason> theClass = (Class<? extends SpeculationReason>) Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
+            esrConstructor = theClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
         } catch (ClassNotFoundException e) {
-        } catch (NoSuchMethodException | IllegalAccessException e) {
+        } catch (NoSuchMethodException e) {
             throw new InternalError("EncodedSpeculationReason exists but constructor is missing or inaccessible", e);
         }
 
         try {
-            get = l.unreflect(VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE));
-            lookupReferencedType = l.unreflect(ConstantPool.class.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE));
+            get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
+            lookupReferencedType = ConstantPool.class.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE);
         } catch (NoSuchMethodException e) {
             // VirtualObject.get that understands autobox isn't available
-        } catch (IllegalAccessException e) {
-            throw new InternalError(e);
         }
 
         try {
-            Class<?> implicitExceptionDispatch = Class.forName("jdk.vm.ci.code.site.ImplicitExceptionDispatch");
-            tempConstructor = l.unreflectConstructor(implicitExceptionDispatch.getConstructor(int.class, int.class, DebugInfo.class));
+            @SuppressWarnings("unchecked")
+            Class<? extends Infopoint> implicitExceptionDispatch = (Class<? extends Infopoint>) Class.forName("jdk.vm.ci.code.site.ImplicitExceptionDispatch");
+            iedConstructor = implicitExceptionDispatch.getConstructor(int.class, int.class, DebugInfo.class);
         } catch (ClassNotFoundException | NoSuchMethodException e) {
-        } catch (IllegalAccessException e) {
-            throw new InternalError(e);
+            // ImplicitExceptionDispatch isn't available
         }
 
-        encodedSpeculationReasonConstructor = constructor;
+        encodedSpeculationReasonConstructor = esrConstructor;
         virtualObjectGet = get;
         constantPoolLookupReferencedType = lookupReferencedType;
-        implicitExceptionDispatchConstructor = tempConstructor;
+        implicitExceptionDispatchConstructor = iedConstructor;
     }
 
     private GraalServices() {
@@ -300,7 +297,7 @@ public final class GraalServices {
             SpeculationEncodingAdapter adapter = new SpeculationEncodingAdapter();
             try {
                 Object[] flattened = adapter.flatten(context);
-                return (SpeculationReason) encodedSpeculationReasonConstructor.invoke(groupId, groupName, flattened);
+                return encodedSpeculationReasonConstructor.newInstance(groupId, groupName, flattened);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
             }
@@ -471,7 +468,7 @@ public final class GraalServices {
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
         if (virtualObjectGet != null) {
             try {
-                return (VirtualObject) virtualObjectGet.invoke(type, id, isAutoBox);
+                return (VirtualObject) virtualObjectGet.invoke(null, type, id, isAutoBox);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
             }
@@ -482,7 +479,7 @@ public final class GraalServices {
     /**
      * Gets the update-release counter for the current Java runtime.
      *
-     * @see "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Runtime.Version.html"
+     * @see java.lang.Runtime.Version
      */
     public static int getJavaUpdateVersion() {
         return Runtime.version().update();
@@ -541,7 +538,7 @@ public final class GraalServices {
             return new Infopoint(pcOffset, debugInfo, InfopointReason.IMPLICIT_EXCEPTION);
         }
         try {
-            return (Infopoint) implicitExceptionDispatchConstructor.invoke(pcOffset, dispatchOffset, debugInfo);
+            return implicitExceptionDispatchConstructor.newInstance(pcOffset, dispatchOffset, debugInfo);
         } catch (Throwable e) {
             throw new InternalError("Exception when instantiating implicit exception dispatch", e);
         }

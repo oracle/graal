@@ -220,10 +220,6 @@ final class Target_jdk_internal_access_SharedSecrets {
 final class Target_jdk_internal_access_JavaAWTAccess {
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaLangAccess")
-final class Target_jdk_internal_access_JavaLangAccess {
-}
-
 @TargetClass(className = "sun.reflect.misc.MethodUtil")
 final class Target_sun_reflect_misc_MethodUtil {
     @Substitute

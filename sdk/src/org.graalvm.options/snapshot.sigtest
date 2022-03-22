@@ -120,9 +120,9 @@ CLSS public final org.graalvm.options.OptionType<%0 extends java.lang.Object>
 cons public init(java.lang.String,java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>)
 cons public init(java.lang.String,java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>,java.util.function.Consumer<{org.graalvm.options.OptionType%0}>)
 cons public init(java.lang.String,{org.graalvm.options.OptionType%0},java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 cons public init(java.lang.String,{org.graalvm.options.OptionType%0},java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>,java.util.function.Consumer<{org.graalvm.options.OptionType%0}>)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public java.lang.String getName()
 meth public java.lang.String toString()
 meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionType<{%%0}> defaultType(java.lang.Class<{%%0}>)
@@ -131,14 +131,14 @@ meth public void validate({org.graalvm.options.OptionType%0})
 meth public {org.graalvm.options.OptionType%0} convert(java.lang.Object,java.lang.String,java.lang.String)
 meth public {org.graalvm.options.OptionType%0} convert(java.lang.String)
 meth public {org.graalvm.options.OptionType%0} getDefaultValue()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 supr java.lang.Object
-hfds DEFAULTTYPES,EMPTY_VALIDATOR,converter,isOptionMap,name,validator
+hfds DEFAULTTYPES,EMPTY_VALIDATOR,converter,isDefaultType,isOptionMap,name,validator
 hcls Converter
 
 CLSS public abstract interface org.graalvm.options.OptionValues
 meth public <%0 extends java.lang.Object> void set(org.graalvm.options.OptionKey<{%%0}>,{%%0})
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.0")
 meth public abstract <%0 extends java.lang.Object> {%%0} get(org.graalvm.options.OptionKey<{%%0}>)
 meth public abstract boolean hasBeenSet(org.graalvm.options.OptionKey<?>)
 meth public abstract org.graalvm.options.OptionDescriptors getDescriptors()

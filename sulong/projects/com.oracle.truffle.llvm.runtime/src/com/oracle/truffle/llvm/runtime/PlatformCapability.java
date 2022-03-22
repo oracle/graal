@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -149,5 +149,13 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      *         <code>va_list</code> objects and thus to remain platform independent.
      */
     public abstract VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached);
+
+    public enum OS {
+        Linux,
+        Windows,
+        Darwin;
+    }
+
+    public abstract OS getOS();
 
 }

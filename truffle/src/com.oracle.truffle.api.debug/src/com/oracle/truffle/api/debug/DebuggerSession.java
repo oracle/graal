@@ -775,7 +775,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.24
      * @deprecated Use {@link #setBreakpointsActive(Breakpoint.Kind, boolean)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public void setBreakpointsActive(boolean active) {
         for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             setBreakpointsActive(kind, active);
@@ -816,7 +816,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.24
      * @deprecated Use {@link #isBreakpointsActive(Breakpoint.Kind)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public boolean isBreakpointsActive() {
         for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             if (isBreakpointsActive(kind)) {

@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * This class holds thread-specific data that must be freed when the thread detaches. However, it
@@ -41,7 +39,7 @@ import sun.misc.Unsafe;
  * unexpectedly.
  */
 public final class ThreadData extends UnacquiredThreadData {
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final long LOCK_OFFSET;
     private static final long UNSAFE_PARK_EVENT_OFFSET;
     private static final long SLEEP_PARK_EVENT_OFFSET;
@@ -75,10 +73,9 @@ public final class ThreadData extends UnacquiredThreadData {
     }
 
     /**
-     * Returns the {@link ParkEvent} for {@link sun.misc.Unsafe#park} and
-     * {@link sun.misc.Unsafe#unpark}. If this method is called to access the {@link ParkEvent} of
-     * another thread, then the returned value must not be used after {@link #release() releasing}
-     * the {@link ThreadData}.
+     * Returns the {@link ParkEvent} for {@link Unsafe#park} and {@link Unsafe#unpark}. If this
+     * method is called to access the {@link ParkEvent} of another thread, then the returned value
+     * must not be used after {@link #release() releasing} the {@link ThreadData}.
      */
     public ParkEvent ensureUnsafeParkEvent() {
         assert isForCurrentThread() || refCount > 0;

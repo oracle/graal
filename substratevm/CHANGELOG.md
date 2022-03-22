@@ -8,6 +8,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * Remove support for JDK8. As a result, `JDK8OrEarlier` and `JDK11OrLater` have been deprecated and will be removed in a future release.
 * (GR-26814) (GR-37018) (GR-37038) Red Hat added support for the following JFR events: `SafepointBegin`, `SafepointEnd`, `GarbageCollection`, `GCPhasePause`, and `GCPhasePauseLevel*`. All GC-related JFR events are currently limited to the serial GC.
 * (GR-35721) Deprecate `-H:±BuildOutputUseNewStyle` option. The old build output style will be removed in a future release.
+* (GR-36905) Allow incomplete classes at build-time is now default. Add --link-at-build-time option and @<prop-values-file> support for native-image.properties. Add --link-at-build-time-paths option.
 
 ## Version 22.0.0
 * (GR-33930) Decouple HostedOptionParser setup from classpath/modulepath scanning (use ServiceLoader for collecting options).

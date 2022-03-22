@@ -45,6 +45,7 @@ import java.util.function.Function;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
@@ -142,6 +143,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
             return new DefaultBlockNode<>(elements, executor);
+        }
+
+        @Override
+        public Assumption createAlwaysValidAssumption() {
+            return DefaultAssumption.createAlwaysValid();
         }
 
         @Override

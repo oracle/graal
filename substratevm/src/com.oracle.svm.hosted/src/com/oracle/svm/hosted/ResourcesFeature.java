@@ -62,7 +62,6 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
@@ -115,7 +114,7 @@ public final class ResourcesFeature implements Feature {
     public final Set<String> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
-        private ConfigurationTypeResolver configurationTypeResolver;
+        private final ConfigurationTypeResolver configurationTypeResolver;
 
         ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
             this.configurationTypeResolver = configurationTypeResolver;
@@ -174,7 +173,7 @@ public final class ResourcesFeature implements Feature {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
         ImageSingletons.add(ResourcesRegistry.class,
-                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue())));
+                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader)));
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -208,7 +207,6 @@ public final class ResourcesFeature implements Feature {
 
         @Override
         public boolean isIncluded(String moduleName, String resourceName) {
-            VMError.guarantee(!resourceName.contains("\\"), "Resource path contains backslash!");
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
 
             for (ResourcePattern rp : excludePatterns) {
@@ -233,15 +231,15 @@ public final class ResourcesFeature implements Feature {
         }
 
         @Override
-        public void addResource(String moduleName, String resourceName, InputStream resourceStream) {
+        public void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
             collectModuleName(moduleName);
-            registerResource(debugContext, moduleName, resourceName, resourceStream);
+            registerResource(debugContext, moduleName, resourceName, resourceStream, fromJar);
         }
 
         @Override
-        public void addDirectoryResource(String moduleName, String dir, String content) {
+        public void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar) {
             collectModuleName(moduleName);
-            registerDirectoryResource(debugContext, moduleName, dir, content);
+            registerDirectoryResource(debugContext, moduleName, dir, content, fromJar);
         }
 
         private void collectModuleName(String moduleName) {
@@ -283,7 +281,7 @@ public final class ResourcesFeature implements Feature {
         if (moduleNameWithPattern.length < 2) {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
-            Optional<? extends Object> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
+            Optional<?> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
             if (optModule.isPresent()) {
                 return new ResourcePattern(moduleNameWithPattern[0], Pattern.compile(moduleNameWithPattern[1]));
             } else {
@@ -319,20 +317,20 @@ public final class ResourcesFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream) {
+    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(moduleName, resourceName, resourceStream);
+            Resources.registerResource(moduleName, resourceName, resourceStream, fromJar);
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content) {
+    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
-            Resources.registerDirectoryResource(moduleName, dir, content);
+            Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
         }
     }
 }

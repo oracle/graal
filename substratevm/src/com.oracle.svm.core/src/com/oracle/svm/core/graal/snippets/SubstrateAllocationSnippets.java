@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 
 import java.util.Map;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -69,7 +70,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -105,8 +105,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", true);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, HUB_ERROR, ARRAY_HUB_ERROR};
 
-    private static final String RUNTIME_REFLECTION_TYPE_NAME = RuntimeReflection.class.getTypeName();
-
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);
     }
@@ -117,7 +115,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -133,7 +131,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), length, arrayBaseOffset, log2ElementSize, fillContents,
                         fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -142,7 +140,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
         UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -155,7 +153,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), length, arrayBaseOffset, log2ElementSize, fillContents,
                         arrayBaseOffset, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -216,8 +214,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!LayoutEncoding.isInstance(hub.getLayoutEncoding())) {
             throw new InstantiationException("Cannot allocate instance.");
         } else if (!hub.isInstantiated()) {
-            throw new IllegalArgumentException("Class " + DynamicHub.toClass(hub).getTypeName() +
-                            " is instantiated reflectively but was never registered. Register the class by using " + RUNTIME_REFLECTION_TYPE_NAME);
+            throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
+                            " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else {
             throw VMError.shouldNotReachHere();
         }
@@ -250,8 +248,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (elementType == DynamicHub.fromClass(void.class)) {
             throw new IllegalArgumentException("Cannot allocate void array.");
         } else if (elementType.getArrayHub() == null || !elementType.getArrayHub().isInstantiated()) {
-            throw new IllegalArgumentException("Class " + DynamicHub.toClass(elementType).getTypeName() + "[]" +
-                            " is instantiated reflectively but was never registered. Register the class by using " + RUNTIME_REFLECTION_TYPE_NAME);
+            throw new IllegalArgumentException("Class " + DynamicHub.toClass(elementType).getTypeName() + "[] is instantiated reflectively but was never registered." +
+                            "Register the class by adding \"unsafeAllocated\" for the class in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else {
             VMError.shouldNotReachHere();
         }

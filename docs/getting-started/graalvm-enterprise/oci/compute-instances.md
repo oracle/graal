@@ -34,7 +34,7 @@ For more details, refer to the [Connecting to Your Linux Instance Using SSH](ht
 
    ```shell
    yum check-update
-   sudo yum provides graalvm21-ee-11-jdk
+   sudo yum provides graalvm22-ee-11-jdk
    ```
    The resulting list includes both current and previous versions of all of the core package and additional features.
 
@@ -42,19 +42,19 @@ For more details, refer to the [Connecting to Your Linux Instance Using SSH](ht
 For example, to install the latest version of "Oracle GraalVM Enterprise Edition JDK11 Java Development Kit", run:
 
    ```shell
-   sudo yum install graalvm21-ee-11-jdk
+   sudo yum install graalvm22-ee-11-jdk
    ```
    The dependent packages, e.g., `libpolyglot`, `llvm` and so on, will also be resolved.
 
    ![See the resolved dependencies for GraalVM Enterprise](dependencies-resolved.png)
 
-3. Set up environment variables to point to the GraalVM Enterprise directory.
+   After the installation, the GraalVM Enterprise binary is placed in _/usr/lib64/graalvm_.
 
-   > **Note:** After the installation, the GraalVM Enterprise binary is placed in _/usr/lib64/graalvm_.
+3. Set up environment variables to point to the GraalVM Enterprise directory. 
 
    - Configure the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to GraalVM Enterprise for this SSH session with the following commands:
    ```shell
-   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm21-ee-java11" >> ~/.bashrc
+   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm22-ee-java11" >> ~/.bashrc
    echo "export PATH='$JAVA_HOME'/bin:'$PATH' " >> ~/.bashrc
    ```
    - Activate this change:
@@ -75,47 +75,63 @@ Now you have a ready-to-go VM instance with GraalVM Enterprise installed and rea
 
    ```shell
    yum check-update
-   sudo yum provides graalvm21*
+   sudo yum provides graalvm22*
    ```
 
 2. Look up the necessary RPM package name and add it to GraalVM Enterprise with the `yum install <package_name> command` command.
-For example, to install [Native Image](../../../reference-manual/native-image/README.md), which is a technology to ahead-of-time compile Java code to a standalone native executable, run this command:
+For example, to install [Native Image](../../../reference-manual/native-image/README.md), which is a technology to turn your Java application into a standalone native executable, run this command:
 
    ```shell
-   sudo yum install graalvm21-ee-11-native-image
+   sudo yum install graalvm22-ee-11-native-image
    ```
    All required dependencies will be automatically installed:
 
    ![See the resolved dependencies for GraalVM Enterprise Native Image](ni-dependencies-resolved.png)
 
 > **Note:** To add Native Image to GraalVM Enterprise on Oracle Linux 8, currently run these commands:
-```shell
-sudo yum update -y oraclelinux-release-el8
-sudo yum config-manager --set-enabled ol8_codeready_builder
-sudo yum install graalvm21-ee-11-native-image
-```
-For Linux images with `dnf` or `microdnf` default package managers, run:
-```shell
-dnf update -y oraclelinux-release-el8
-dnf --enablerepo ol8_codeready_builder
-dnf install graalvm21-ee-11-native-image
-```
+   ```shell
+   sudo yum update -y oraclelinux-release-el8
+   sudo yum config-manager --set-enabled ol8_codeready_builder
+   sudo yum install graalvm22-ee-11-native-image
+   ```
+   For Linux images with `dnf` or `microdnf` default package managers, run:
+   ```shell
+   dnf update -y oraclelinux-release-el8
+   dnf --enablerepo ol8_codeready_builder
+   dnf install graalvm22-ee-11-native-image
+   ```
 
 ## Update GraalVM Enterprise
 
-If you have GraalVM Enterprise installed in the VM instance already, but you want to replace it with another version, use this command:
-```shell
-sudo yum install <package_name>
-```
+The `yum` package manager for Oracle Linux can be used to update an existing GraalVM installation or replace it with another version. 
 
-If you want to upgrade an existing version, and also remove the obsolete GraalVM Enterprise package, run:
+1. To update GraalVM, for example, from version 21.x to 22.x and install the distribution for Java 17 instead of Java 11, run:
 
-```shell
-sudo yum upgrade <package_name>
-```
-The `yum upgrade` command will upgrade the whole system.
+   ```shell
+   sudo yum install graalvm22-ee-17-jdk
+   ```
+
+2. Confirm if the installed package size is okay by typing `yes` at the prompt.
+3. Check the Java version to see if the update was successful:
+
+   ```shell
+   java -version
+   ```
+
+The **graalvm22-ee-17-jdk** package is installed alongside **graalvm21-ee-11-jdk** in the _/usr/lib64/graalvm_ directory. Note that regardless the version printed to the console, the `PATH` and `JAVA_HOME` environment variables still point to the old version. Reset the variables as described in [Install GraalVM Enterprise](#install-graalvm-enterprise), step 3.
+
+### Note on `yum upgrade`
+
+The `yum upgrade` command can be used to update on the same year package line, for example, to upgrade from GraalVM Enterprise 22.0.0 to version 22.0.1 when this RPM package becomes available:
+
+   ```shell
+   sudo yum upgrade graalvm22-ee-17-jdk
+   ```
+
+It will update the whole system and remove the obsolete GraalVM Enterprise installation.
 
 ## Learn More
 
-To test GraalVM Enterprise in OCI, we recommend running the [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1/steps) interactive workshop.
-The purpose of this lab is to give you an overview of GraalVM Enterprise and its advantages. You will run demo projects to compare performance and see how GraalVM Enterprise can accelerate applications in OracIe Cloud.
+- Run the [Get Started with GraalVM on Oracle Linux in OCI](https://luna.oracle.com/lab/3b0dcf97-22d0-489b-a049-5d269199fa00) interactive workshop to get hands-on lab experience installing GraalVM Enterprise on Oracle Linux 8 (all the necessary compute resources are provisioned).
+
+- Take the [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1) interactive lab to see how GraalVM Enterprise accelerates Java applications in Oracle Cloud.

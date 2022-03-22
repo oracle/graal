@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,7 +148,7 @@ public abstract class ValueProfile extends Profile {
      *             method will mark too many equals implementations reachable for runtime
      *             compilation in a native image.
      */
-    @Deprecated
+    @Deprecated(since = "21.2")
     public static ValueProfile createEqualityProfile() {
         if (Profile.isProfilingEnabled()) {
             return Equality.create();

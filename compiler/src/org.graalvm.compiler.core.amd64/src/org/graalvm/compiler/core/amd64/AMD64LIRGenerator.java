@@ -96,6 +96,8 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
+import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
@@ -636,6 +638,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         AMD64CalcStringAttributesOp.Op op = (AMD64CalcStringAttributesOp.Op) opObj;
         Variable result = newVariable(LIRKind.value(op == AMD64CalcStringAttributesOp.Op.UTF_8 || op == AMD64CalcStringAttributesOp.Op.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
         append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, op, array, offset, length, result, getMaxVectorSize(), isValid));
+        return result;
+    }
+
+    @Override
+    public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
+        return result;
+    }
+
+    @Override
+    public Variable emitHasNegatives(Value array, Value length) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
         return result;
     }
 

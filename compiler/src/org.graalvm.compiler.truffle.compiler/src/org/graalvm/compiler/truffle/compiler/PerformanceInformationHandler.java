@@ -53,6 +53,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class PerformanceInformationHandler implements Closeable {
@@ -79,7 +80,7 @@ public final class PerformanceInformationHandler implements Closeable {
         instance.remove();
     }
 
-    static PerformanceInformationHandler install(OptionValues options) {
+    public static PerformanceInformationHandler install(OptionValues options) {
         assert instance.get() == null : "PerformanceInformationHandler already installed";
         PerformanceInformationHandler handler = new PerformanceInformationHandler(options);
         instance.set(handler);
@@ -157,22 +158,20 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     @SuppressWarnings("try")
-    void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
+    public void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
         ArrayList<ValueNode> warnings = new ArrayList<>();
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL)) {
             for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                if (call.targetMethod().isNative()) {
+                ResolvedJavaMethod targetMethod = call.targetMethod();
+                if (targetMethod.isNative()) {
                     continue; // native methods cannot be inlined
                 }
 
                 TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-                if (runtime.getInlineKind(call.targetMethod(), true).allowsInlining()) {
+                if (runtime.isInlineable(targetMethod) && runtime.getInlineKind(targetMethod, true).allowsInlining()) {
                     logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target, Arrays.asList(call),
-                                    String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).",
-                                                    call.invokeKind(),
-                                                    call.targetMethod(),
-                                                    call),
+                                    String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).", call.invokeKind(), targetMethod, call),
                                     null);
                     warnings.add(call);
                 }

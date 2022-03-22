@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import java.util.List;
+
 import javax.lang.model.type.DeclaredType;
 
 public class TruffleTypes {
@@ -52,7 +54,7 @@ public class TruffleTypes {
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
-    public static final String TEST_PACKAGE = "com.oracle.truffle.api.test";
+    public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test");
 
     public final DeclaredType AlwaysSlowPath = c.getDeclaredTypeOptional(ALWAYS_SLOW_PATH_MODE_NAME);
 
@@ -79,6 +81,7 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
+    public static final String DenyReplace_Name = "com.oracle.truffle.api.nodes.DenyReplace";
     public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
@@ -112,6 +115,7 @@ public class TruffleTypes {
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
+    public final DeclaredType DenyReplace = c.getDeclaredType(DenyReplace_Name);
     public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);

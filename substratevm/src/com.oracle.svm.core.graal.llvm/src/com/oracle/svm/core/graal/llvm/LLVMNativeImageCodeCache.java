@@ -43,7 +43,6 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -57,6 +56,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
@@ -73,6 +73,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -129,6 +130,19 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(postlink)")) {
                 linkCompiledBatches(executor, debug, numBatches);
             }
+        }
+    }
+
+    private void llvmCleanupStackMaps(DebugContext debug, String inputPath) {
+        List<String> args = new ArrayList<>();
+        args.add("--remove-section=" + SectionName.LLVM_STACKMAPS.getFormatDependentName(ObjectFile.getNativeFormat()));
+        args.add(inputPath);
+
+        try {
+            LLVMToolchain.runLLVMCommand("llvm-objcopy", basePath, args);
+        } catch (RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("Removing stack maps failed for " + inputPath + ": " + e.getStatus() + "\nCommand: llvm-objcopy " + String.join(" ", args));
         }
     }
 
@@ -206,6 +220,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
 
+        llvmCleanupStackMaps(debug, getLinkedFilename());
+
         HostedMethod firstMethod = (HostedMethod) getFirstCompilation().getMethods()[0];
         buildRuntimeMetadata(new MethodPointer(firstMethod), WordFactory.signed(textSectionInfo.getCodeSize()));
     }
@@ -255,7 +271,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         args.add("--trap-unreachable");
         args.add("-march=" + LLVMTargetSpecific.get().getLLVMArchName());
         args.addAll(LLVMTargetSpecific.get().getLLCAdditionalOptions());
-        args.add("-O" + SubstrateOptions.optimizationLevel());
+        args.add("-O" + optimizationLevel());
         args.add("-filetype=obj");
         args.add("-o");
         args.add(outputPath);
@@ -266,6 +282,20 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         } catch (RunFailureException e) {
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: llc " + String.join(" ", args));
+        }
+    }
+
+    private static int optimizationLevel() {
+        switch (SubstrateOptions.optimizationLevel()) {
+            case O0:
+            case BUILD_TIME:
+                return 0;
+            case O1:
+                return 1;
+            case O2:
+                return 2;
+            default:
+                throw VMError.shouldNotReachHere();
         }
     }
 

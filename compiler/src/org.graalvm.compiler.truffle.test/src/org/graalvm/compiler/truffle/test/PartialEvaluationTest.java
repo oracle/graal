@@ -48,7 +48,10 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
@@ -245,12 +248,18 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             if (!compilable.wasExecuted()) {
                 compilable.prepareForAOT();
             }
-            final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
-            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
-                            compilationId, speculationLog,
-                            new TruffleCompilerImpl.CancellableTruffleCompilationTask(newTask()));
-            try (Graph.NodeEventScope nes = nodeEventListener == null ? null : request.graph.trackNodeEvents(nodeEventListener)) {
-                return partialEvaluator.evaluate(request);
+            TruffleCompilerImpl truffleCompiler = getTruffleCompiler(compilable);
+            TruffleTier truffleTier = truffleCompiler.getTruffleTier();
+            final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
+            try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compilable.getOptionValues())) {
+                final TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                                compilationId, speculationLog,
+                                new TruffleCompilerImpl.CancellableTruffleCompilationTask(newTask()),
+                                handler);
+                try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
+                    truffleTier.apply(context.graph, context);
+                    return context.graph;
+                }
             }
         } catch (Throwable e) {
             throw debug.handle(e);

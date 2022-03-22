@@ -79,6 +79,7 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
@@ -151,7 +152,6 @@ import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPlugins {
 
@@ -547,7 +547,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, reason, true);
+        registerUnsafePlugins(metaAccess, new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, reason, true);
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
         registerUnsafePlugins(metaAccess, r, snippetReflection, reason, false);
 
@@ -568,32 +568,12 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-        r.register(new RequiredInvocationPlugin("allocateUninitializedArray", Receiver.class, Class.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
-                /*
-                 * For simplicity, we only intrinsify if the componentType is a compile-time
-                 * constant. That also allows us to constant-fold the required check that the
-                 * component type is a primitive type.
-                 */
-                if (!componentTypeNode.isJavaConstant() || componentTypeNode.asJavaConstant().isNull()) {
-                    return false;
-                }
-                ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
-                if (componentType == null || !componentType.isPrimitive()) {
-                    return false;
-                }
-                /* Emits a null-check for the otherwise unused receiver. */
-                unsafe.get();
-                /*
-                 * Note that allocateUninitializedArray must throw a IllegalArgumentException, and
-                 * not a NegativeArraySizeException, when the length is negative.
-                 */
-                ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
-                b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthPositive, false));
-                return true;
-            }
-        });
+        // We intrinsify allocateUninitializedArray instead of the
+        // HotSpotIntrinsicCandidate-annotated method allocateUninitializedArray0, because when
+        // intrinsifying the latter, the Class argument is never a compile-time constant without
+        // method inlining, while allocateUninitializedArray is too large and not inlined before
+        // static analysis.
+        r.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray", true));
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason, boolean isSunMiscUnsafe) {
@@ -646,7 +626,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe)) {
+        if (!isValidField(targetField, isSunMiscUnsafe) || reason == ParsingReason.JITCompilation) {
             return false;
         }
 

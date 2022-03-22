@@ -35,7 +35,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
@@ -43,7 +46,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -54,6 +56,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.ValueAvailability;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
@@ -63,6 +66,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -70,7 +74,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * Wraps a field whose value is recomputed when added to an image.
@@ -80,7 +83,6 @@ import sun.misc.Unsafe;
  */
 public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
@@ -91,7 +93,16 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     private final CustomFieldValueProvider customValueProvider;
     private final boolean isFinal;
     private final boolean disableCaching;
+    /** True if the value doesn't depend on any analysis results. */
     private final boolean isValueAvailableBeforeAnalysis;
+    /** True if the value depends on analysis results. */
+    private final boolean isValueAvailableOnlyAfterAnalysis;
+    /** True if the value depends on compilation results. */
+    private final boolean isValueAvailableOnlyAfterCompilation;
+    /** Types that this field can take, if its value is not available during analysis. */
+    private final Class<?>[] customTypes;
+    /** True if the computer can return `null`. */
+    private final boolean computedValueCanBeNull;
 
     private JavaConstant constantValue;
 
@@ -120,6 +131,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         this.disableCaching = disableCaching;
 
         boolean customValueAvailableBeforeAnalysis = true;
+        boolean customValueAvailableOnlyAfterAnalysis = false;
+        boolean customValueAvailableOnlyAfterCompilation = false;
+        boolean canBeNull = false;
+        Class<?>[] customProviderTypes = null;
         CustomFieldValueProvider customProvider = null;
         Field f = null;
         switch (kind) {
@@ -147,7 +162,22 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                     }
                     constructor.setAccessible(true);
                     customProvider = (CustomFieldValueProvider) constructor.newInstance(constructorArgs);
-                    customValueAvailableBeforeAnalysis = customProvider.isAvailableBeforeAnalysis();
+                    ValueAvailability valueAvailability = customProvider.valueAvailability();
+                    customValueAvailableBeforeAnalysis = valueAvailability == ValueAvailability.BeforeAnalysis;
+                    customValueAvailableOnlyAfterAnalysis = valueAvailability == ValueAvailability.AfterAnalysis;
+                    customValueAvailableOnlyAfterCompilation = valueAvailability == ValueAvailability.AfterCompilation;
+                    Class<?>[] types = customProvider.types();
+                    if (types != null) {
+                        List<Class<?>> nonNullTypes = new ArrayList<>();
+                        for (Class<?> clazz : types) {
+                            if (clazz == null) {
+                                canBeNull = true;
+                            } else {
+                                nonNullTypes.add(clazz);
+                            }
+                        }
+                        customProviderTypes = nonNullTypes.toArray(new Class<?>[0]);
+                    }
                 } catch (InvocationTargetException | InstantiationException | IllegalAccessException ex) {
                     throw shouldNotReachHere("Error creating custom field value computer for alias " + annotated.format("%H.%n"), ex);
                 }
@@ -155,6 +185,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         boolean isOffsetField = isOffsetRecomputation(kind);
         guarantee(!isFinal || !isOffsetField);
         this.isValueAvailableBeforeAnalysis = customValueAvailableBeforeAnalysis && !isOffsetField;
+        this.isValueAvailableOnlyAfterAnalysis = customValueAvailableOnlyAfterAnalysis || isOffsetField;
+        this.isValueAvailableOnlyAfterCompilation = customValueAvailableOnlyAfterCompilation;
+        this.customTypes = customProviderTypes;
+        this.computedValueCanBeNull = canBeNull;
         this.targetField = f;
         this.customValueProvider = customProvider;
         this.valueCache = EconomicMap.create();
@@ -171,11 +205,21 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public boolean isValueAvailable() {
-        return constantValue != null || BuildPhaseProvider.isAnalysisFinished() || isValueAvailableBeforeAnalysis();
+        return constantValue != null || isValueAvailableBeforeAnalysis() ||
+                        (isValueAvailableOnlyAfterAnalysis && BuildPhaseProvider.isAnalysisFinished()) ||
+                        (isValueAvailableOnlyAfterCompilation && BuildPhaseProvider.isCompilationFinished());
     }
 
     public ResolvedJavaField getAnnotated() {
         return annotated;
+    }
+
+    public Class<?>[] getCustomTypes() {
+        return customTypes;
+    }
+
+    public boolean getComputedValueCanBeNull() {
+        return computedValueCanBeNull;
     }
 
     @Override
@@ -314,6 +358,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     private JavaConstant computeValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
+        assert isValueAvailable() : "Field " + format("%H.%n") + " value not available for reading.";
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         JavaConstant result;
         Object originalValue;
@@ -343,16 +388,65 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                     throw UserError.abort("The custom field value computer class %s does not implement %s or %s", targetClass.getName(),
                                     CustomFieldValueComputer.class.getSimpleName(), CustomFieldValueTransformer.class.getSimpleName());
                 }
-
+                checkValue(newValue);
                 result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), newValue);
+
                 assert result.getJavaKind() == annotated.getJavaKind();
                 break;
             default:
-                throw shouldNotReachHere("Field recomputation of kind " + kind + " for field " + original.format("%H.%n") +
-                                (annotated != null ? " specified by alias " + annotated.format("%H.%n") : "") +
-                                " not yet supported");
+                throw shouldNotReachHere("Field recomputation of kind " + kind + " for " + fieldFormat() + " not yet supported");
         }
         return result;
+    }
+
+    private void checkValue(Object newValue) {
+        if (customTypes != null) {
+            /* Only check the value if custom types are specified. */
+            if (newValue == null) {
+                if (!computedValueCanBeNull) {
+                    throw shouldNotReachHere("Computed value for " + fieldFormat() + " should not be null.");
+                }
+            } else {
+                /*
+                 * The compute/transform methods autobox primitive values. We unbox them here, but
+                 * only if the original field is primitive.
+                 */
+                boolean primitive = ((ResolvedJavaType) original.getType()).isPrimitive();
+                Class<?> actualType = primitive ? toUnboxedClass(newValue.getClass()) : newValue.getClass();
+                for (Class<?> customType : customTypes) {
+                    if (customType.isAssignableFrom(actualType)) {
+                        return;
+                    }
+                }
+                VMError.shouldNotReachHere("Unexpected class " + actualType + " for " + fieldFormat() + ". Expected types :" + Arrays.toString(customTypes) + ".");
+            }
+        }
+    }
+
+    private static Class<?> toUnboxedClass(Class<?> clazz) {
+        if (clazz == Boolean.class) {
+            return boolean.class;
+        } else if (clazz == Byte.class) {
+            return byte.class;
+        } else if (clazz == Short.class) {
+            return short.class;
+        } else if (clazz == Character.class) {
+            return char.class;
+        } else if (clazz == Integer.class) {
+            return int.class;
+        } else if (clazz == Long.class) {
+            return long.class;
+        } else if (clazz == Float.class) {
+            return float.class;
+        } else if (clazz == Double.class) {
+            return double.class;
+        } else {
+            return clazz;
+        }
+    }
+
+    private String fieldFormat() {
+        return "field " + original.format("%H.%n") + (annotated != null ? " specified by alias " + annotated.format("%H.%n") : "");
     }
 
     private JavaConstant createNewInstance(SnippetReflectionProvider originalSnippetReflection) {
@@ -422,7 +516,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         // search the declared fields for a field with a matching offset
         for (Field f : tclass.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = UNSAFE.objectFieldOffset(f);
+                long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = (HostedField) metaAccess.lookupJavaField(f);
                     guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));

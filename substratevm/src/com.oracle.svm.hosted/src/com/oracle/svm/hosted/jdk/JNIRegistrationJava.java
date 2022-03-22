@@ -65,7 +65,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
                         "java.lang.NoSuchFieldError", "java.lang.NoSuchMethodError", "java.lang.UnsatisfiedLinkError", "java.lang.StringIndexOutOfBoundsException",
                         "java.lang.InstantiationException", "java.lang.UnsupportedOperationException",
                         "java.io.IOException", "java.io.FileNotFoundException", "java.io.SyncFailedException", "java.io.InterruptedIOException",
-                        "java.util.zip.DataFormatException");
+                        "java.util.zip.DataFormatException", "java.lang.IndexOutOfBoundsException");
         JNIRuntimeAccess.register(constructor(a, "java.io.FileNotFoundException", String.class, String.class));
 
         /* Unconditional Integer and Boolean JNI registration (cheap) */

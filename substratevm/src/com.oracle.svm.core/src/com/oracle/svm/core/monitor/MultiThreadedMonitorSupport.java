@@ -38,7 +38,6 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
@@ -61,7 +60,7 @@ import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implementation of synchronized-related operations.
@@ -86,7 +85,7 @@ import sun.misc.Unsafe;
  */
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
@@ -334,7 +333,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         int newState = oldState + 1;
         VMError.guarantee(newState > 0, "Maximum lock count exceeded");
 
-        boolean success = UNSAFE.compareAndSwapInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
+        boolean success = UNSAFE.compareAndSetInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
         VMError.guarantee(success, "Could not re-lock object during deoptimization");
         aSync.exclusiveOwnerThread = currentThread;
     }
@@ -429,7 +428,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
         /* Atomically put a new lock in place of the null at the monitorOffset. */
         ReentrantLock newMonitor = newMonitorLock();
-        if (UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
+        if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
@@ -519,7 +518,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             return existingCondition;
         }
         ConditionObject newCondition = (ConditionObject) monitorLock.newCondition();
-        if (!UNSAFE.compareAndSwapObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
+        if (!UNSAFE.compareAndSetObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
             newCondition = SubstrateUtil.cast(sync.objectMonitorCondition, ConditionObject.class);
             assert isMonitorCondition(newCondition) : "race winner must have installed valid condition";
         }

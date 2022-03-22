@@ -26,20 +26,68 @@ package com.oracle.svm.core.thread;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.compiler.api.replacements.Fold;
+
+import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.util.VMError;
+
 /** Our own implementation of virtual threads that does not need Project Loom. */
 final class SubstrateVirtualThreads implements VirtualThreads {
+    @Fold
+    static boolean haveAssertions() {
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SubstrateVirtualThreads.class);
+    }
+
     private static final class CarrierThread extends ForkJoinWorkerThread {
         CarrierThread(ForkJoinPool pool) {
             super(pool);
         }
+
+        /**
+         * Ignore any handlers that other code tries to install. {@link #UNCAUGHT_EXCEPTION_HANDLER}
+         * will still be installed through other means.
+         */
+        @Override
+        public void setUncaughtExceptionHandler(UncaughtExceptionHandler eh) {
+        }
+
+        @Override
+        protected void onTermination(Throwable exception) {
+            if (exception != null) {
+                /*
+                 * Exceptions thrown in virtual threads are caught, but an exception thrown in the
+                 * continuation or virtual thread mechanisms themselves can propagate further. On
+                 * JDK 11, such exceptions terminate a worker thread, cancelling all tasks in its
+                 * queue, and therefore cause liveness problems, so we fail below.
+                 *
+                 * On JDK 17, a worker thread continues executing tasks after catching an exception,
+                 * so we can reach here only if there is an internal exception in ForkJoinPool.
+                 */
+                throw VMError.shouldNotReachHere("Carrier thread must not terminate abnormally because it cancels pending tasks " +
+                                "which can result in virtual threads never being scheduled again.", exception);
+            }
+        }
     }
 
+    /**
+     * Exceptions thrown in virtual threads are caught, so we reach here only for exceptions thrown
+     * in the continuation or virtual thread mechanisms themselves. Project Loom does nothing in
+     * this handler, so we fail only if (system) assertions are on.
+     *
+     * NOTE: the caller silently ignores any exception thrown by this method.
+     *
+     * @see CarrierThread#onTermination
+     */
     private static final Thread.UncaughtExceptionHandler UNCAUGHT_EXCEPTION_HANDLER = (t, e) -> {
+        if (haveAssertions()) {
+            throw VMError.shouldNotReachHere("Exception in continuation or virtual thread code", e);
+        }
     };
 
     /**
@@ -124,5 +172,10 @@ final class SubstrateVirtualThreads implements VirtualThreads {
     @Override
     public void unpinCurrent() {
         current().unpin();
+    }
+
+    @Override
+    public Executor getScheduler(Thread thread) {
+        return cast(thread).getScheduler();
     }
 }

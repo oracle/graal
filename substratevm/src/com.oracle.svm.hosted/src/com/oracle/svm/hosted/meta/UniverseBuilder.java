@@ -998,6 +998,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
     }
 }

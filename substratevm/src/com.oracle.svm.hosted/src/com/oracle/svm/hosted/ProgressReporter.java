@@ -45,7 +45,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -60,6 +59,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.OS;
@@ -69,7 +69,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
@@ -358,10 +358,6 @@ public class ProgressReporter {
         };
     }
 
-    public void printInliningSkipped() {
-        stagePrinter.skipped(BuildStage.INLINING);
-    }
-
     public ReporterClosable printCompiling() {
         Timer timer = getTimer(TimerCollection.Registry.COMPILE);
         timer.start();
@@ -503,9 +499,9 @@ public class ProgressReporter {
                 classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
                 remainingBytes -= codeInfoSize;
             }
-            long metadataByteLength = ImageSingletons.lookup(MethodMetadataDecoder.class).getMetadataByteLength();
+            long metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-reflection-metadata"), metadataByteLength);
                 remainingBytes -= metadataByteLength;
             }
             if (graphEncodingByteLength > 0) {
@@ -521,18 +517,12 @@ public class ProgressReporter {
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
         l().printLineSeparator();
         printResourceStatistics();
-        l().printLineSeparator();
 
-        l().yellowBold().a("Produced artifacts:").reset().println();
-        generator.getBuildArtifacts().forEach((artifactType, paths) -> {
-            for (Path p : paths) {
-                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
-            }
-        });
-        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
+        Map<ArtifactType, List<Path>> artifacts = generator.getBuildArtifacts();
+        if (!artifacts.isEmpty()) {
+            l().printLineSeparator();
+            printArtifacts(imageName, generator, parsedHostedOptions, artifacts);
         }
-        l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).println();
 
         l().printHeadlineSeparator();
 
@@ -546,6 +536,19 @@ public class ProgressReporter {
         l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
         executor.shutdown();
+    }
+
+    private void printArtifacts(String imageName, NativeImageGenerator generator, OptionValues parsedHostedOptions, Map<ArtifactType, List<Path>> artifacts) {
+        l().yellowBold().a("Produced artifacts:").reset().println();
+        artifacts.forEach((artifactType, paths) -> {
+            for (Path p : paths) {
+                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
+            }
+        });
+        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
+            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
+        }
+        l().a(" ").link(reportBuildArtifacts(imageName, artifacts)).println();
     }
 
     private Path reportImageBuildStatistics(String imageName, BigBang bb) {

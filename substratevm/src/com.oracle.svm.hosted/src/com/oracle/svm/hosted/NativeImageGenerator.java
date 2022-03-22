@@ -55,10 +55,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -135,6 +131,7 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
@@ -149,11 +146,14 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -639,7 +639,8 @@ public class NativeImageGenerator {
                 codeCache.layoutConstants();
                 codeCache.layoutMethods(debug, imageName, bb, compilationExecutor);
 
-                AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilationTasks(), heap, debug, runtime);
+                BuildPhaseProvider.markCompilationFinished();
+                AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), heap, debug, runtime);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
             }
             CodeCacheProvider codeCacheProvider = runtime.getRuntimeConfig().getBackendForNormalMethod().getProviders().getCodeCache();
@@ -815,7 +816,6 @@ public class NativeImageGenerator {
                 }
 
                 if (SubstrateOptions.useEconomyCompilerConfig()) {
-                    HostedConfiguration.setInstanceIfEmpty(new EconomyHostedConfiguration());
                     GraalConfiguration.setHostedInstanceIfEmpty(new EconomyGraalConfiguration());
                 }
 
@@ -987,19 +987,16 @@ public class NativeImageGenerator {
             bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInHeap();
             bb.addRootClass(PointerBase[].class, false, false).registerAsInHeap();
 
-            try {
-                bb.addRootMethod(SubstrateArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
-                bb.addRootMethod(Object.class.getDeclaredMethod("getClass"));
-            } catch (NoSuchMethodException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
+            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
 
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bb.addRootClass(kind.toJavaClass(), false, true);
+                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap();
                     bb.addRootField(kind.toBoxedJavaClass(), "value");
-                    bb.addRootMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass());
-                    bb.addRootMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value");
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);
                     /*
                      * Register the cache location as reachable.
                      * BoxingSnippets$Templates#getCacheLocation accesses the cache field.

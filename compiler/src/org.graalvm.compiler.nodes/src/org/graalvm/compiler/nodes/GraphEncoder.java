@@ -470,6 +470,7 @@ public class GraphEncoder {
         // @formatter:off
         StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debugContext, AllowAssumptions.YES).
                         method(originalGraph.method()).
+                        profileProvider(originalGraph.getProfileProvider()).
                         setIsSubstitution(originalGraph.isSubstitution()).
                         trackNodeSourcePosition(originalGraph.trackNodeSourcePosition()).
                         build();

@@ -734,22 +734,30 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
     }
 
+    static class TestGetContextRunnable implements Runnable {
+        private final Context c;
+        private final boolean executeNested;
+
+        TestGetContextRunnable(Context c, boolean executeNested) {
+            this.c = c;
+            this.executeNested = executeNested;
+        }
+
+        @Override
+        public void run() {
+            testGetContext(c);
+            if (executeNested) {
+                Value.asValue(new TestGetContextRunnable(c, false)).execute();
+            }
+        }
+    }
+
     @Test
     public void testEnteredContextInJava() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Value v = c.asValue(new Runnable() {
-            public void run() {
-                testGetContext(c);
-
-                Value.asValue(new Runnable() {
-                    public void run() {
-                        testGetContext(c);
-                    }
-                }).execute();
-            }
-        });
+        Value v = c.asValue(new TestGetContextRunnable(c, true));
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         v.execute();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);

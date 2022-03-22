@@ -672,6 +672,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static long defaultPrototypeMarkWord(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.defaultPrototypeMarkWord();
+    }
+
+    @Fold
     static int uninitializedIdentityHashCodeValue(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.uninitializedIdentityHashCodeValue;
     }

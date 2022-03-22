@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -635,6 +635,17 @@ public final class IntegerStamp extends PrimitiveStamp {
             return (((x ^ y) & (x ^ result)) < 0);
         }
         return result < CodeUtil.minValue(bits) || result > CodeUtil.maxValue(bits);
+    }
+
+    /**
+     * Returns if {@code stamp} can overflow when applying negation. It effectively tests if
+     * {@code stamp}'s value range contains the minimal value of an N-bits integer, where N is the
+     * width in bits of the values described by {@code stamp}.
+     *
+     * @see Math#negateExact
+     */
+    public static boolean negateCanOverflow(IntegerStamp stamp) {
+        return stamp.lowerBound() == CodeUtil.minValue(stamp.getBits());
     }
 
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(

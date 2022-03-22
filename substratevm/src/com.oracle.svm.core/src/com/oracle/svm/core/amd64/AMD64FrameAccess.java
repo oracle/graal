@@ -57,6 +57,7 @@ public final class AMD64FrameAccess extends FrameAccess {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
         sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
     }

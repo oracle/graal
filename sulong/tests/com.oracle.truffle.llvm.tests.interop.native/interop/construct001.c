@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@
 
 #define CALLBACK(str)                                                                                                                                \
     {                                                                                                                                                \
-        void (*callback)(const char *) = polyglot_import("callback");                                                                                \
+        void (*callback)(const polyglot_value) = (void *) polyglot_import("callback");                                                               \
         callback(polyglot_from_string(str, "ascii"));                                                                                                \
     }
 

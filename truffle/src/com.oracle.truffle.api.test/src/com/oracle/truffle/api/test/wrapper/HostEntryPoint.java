@@ -150,7 +150,6 @@ final class HostEntryPoint {
             try {
                 result = lib.send(receiver, message, localValues);
             } catch (Exception e) {
-                // probably needs to support TruffleException too, but this is just a sketch
                 if (e instanceof AbstractTruffleException) {
                     // also send over stack traces and messages
                     return new GuestExceptionPointer(guestToHost(e), e.getMessage());

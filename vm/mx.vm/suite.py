@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "bead9c5f15995969bbc1dbb3e4d877549bd84fcb",
+                "version": "3124e544986a4797a32213731634f3141189ca6f",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "bead9c5f15995969bbc1dbb3e4d877549bd84fcb",
+                "version": "3124e544986a4797a32213731634f3141189ca6f",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "fc85fe7888fbedc82aff0acb9f7bbbfb065a8c8a",
+                "version": "450c3d92168ad1bc7d7be73b035a63961bbbf5c3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "f87293aa383ae505d15a3f7e4b83ed55c9079ad3",
+                "version": "28636242f723ef98e5cc43321d6660c084ea5295",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "4b72be5f20e539b9138311b5e7873d0554a19feb",
+                "version": "4b8cfba88c784ef9c94cbcaab2c6161d10f20061",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},

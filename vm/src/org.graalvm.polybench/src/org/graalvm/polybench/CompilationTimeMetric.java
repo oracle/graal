@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.DoubleAdder;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
-final class CompilationTimeMetric implements Metric {
+final class CompilationTimeMetric extends Metric {
 
     enum MetricType {
         COMPILATION,

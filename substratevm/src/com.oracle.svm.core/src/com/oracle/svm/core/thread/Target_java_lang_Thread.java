@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,9 +82,6 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     volatile boolean interruptedJDK17OrLater;
 
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    boolean wasStartedByCurrentIsolate;
-
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long parentThreadId;
 
@@ -111,6 +108,9 @@ public final class Target_java_lang_Thread {
     /* The group of this thread */
     @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
     ThreadGroup group;
+
+    @Alias//
+    Target_java_lang_ThreadLocal_ThreadLocalMap inheritableThreadLocals = null;
 
     /*
      * The requested stack size for this thread, or 0 if the creator did not specify a stack size.
@@ -288,8 +288,8 @@ public final class Target_java_lang_Thread {
         this.blockerLock = new Object();
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
-        /* Initialize the rest of the Thread object, ignoring `inheritThreadLocals`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
+        /* Initialize the rest of the Thread object. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, inheritThreadLocals);
     }
 
     @Substitute
@@ -309,8 +309,10 @@ public final class Target_java_lang_Thread {
 
         checkCharacteristics(characteristics);
 
+        // TODO: derive from characteristics bitset
+        boolean inheritThreadLocals = false;
         /* Initialize the rest of the Thread object, ignoring `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, inheritThreadLocals);
     }
 
     /**
@@ -335,16 +337,12 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        wasStartedByCurrentIsolate = true;
         parentThreadId = Thread.currentThread().getId();
         long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this));
         try {
             PlatformThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
         } catch (Throwable t) {
-            // These should not be accessed if the thread could not start, but reset them anyway
-            wasStartedByCurrentIsolate = false;
-            parentThreadId = 0;
-
+            parentThreadId = 0; // should not be accessed if thread could not start, but reset still
             throw t;
         }
         /*

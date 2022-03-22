@@ -30,11 +30,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
+import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * A {@link BootClassRegistry} maps type names to resolved {@link Klass} instances loaded by the
@@ -44,6 +46,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
     static final DebugCounter loadKlassCount = DebugCounter.create("BCL loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("BCL loadKlassCacheHits");
+    private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
     @Override
     protected void loadKlassCountInc() {
@@ -62,13 +65,17 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
+    @SuppressWarnings("try")
     public Klass loadKlassImpl(Symbol<Type> type) {
         if (Types.isPrimitive(type)) {
             return null;
         }
-        ClasspathFile classpathFile = getContext().getBootClasspath().readClassFile(type);
-        if (classpathFile == null) {
-            return null;
+        ClasspathFile classpathFile;
+        try (DebugCloseable scope = BOOT_KLASS_READ.scope(getContext().getTimers())) {
+            classpathFile = getContext().getBootClasspath().readClassFile(type);
+            if (classpathFile == null) {
+                return null;
+            }
         }
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.

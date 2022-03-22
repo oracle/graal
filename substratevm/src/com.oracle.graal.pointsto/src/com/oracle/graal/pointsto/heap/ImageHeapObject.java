@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.heap;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -34,13 +36,15 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Model for snapshotted objects. It stores the replaced object, i.e., the result of applying object
- * replacers on the original object, and the instance field values of this object. The field values
- * are stored as JavaConstant to also encode primitive values. ImageHeapObject are created only
- * after an object is processed through the object replacers.
+ * It represents an object snapshot. It stores the replaced object, i.e., the result of applying
+ * object replacers on the original object, and the instance field values or array elements of this
+ * object. The field values are stored as JavaConstant to also encode primitive values.
+ * ImageHeapObject are created only after an object is processed through the object replacers.
  */
 public class ImageHeapObject {
-    /** Store the object, already processed by the object transformers. */
+    /**
+     * Store the object, already processed by the object transformers.
+     */
     private final JavaConstant object;
 
     ImageHeapObject(JavaConstant object) {
@@ -68,42 +72,64 @@ public class ImageHeapObject {
     }
 }
 
+/**
+ * This class implements an instance object snapshot. It stores the field values in an Object[],
+ * indexed by {@link AnalysisField#getPosition()}. Each array entry is either
+ * <li>a not-yet-executed {@link AnalysisFuture} of {@link JavaConstant} which captures the
+ * original, hosted field value and contains logic to transform and replace this value</li>, or
+ * <li>the result of executing the future, a replaced {@link JavaConstant}, i.e., the snapshot.</li>
+ *
+ * The future task is executed when the field is marked as read. Moreover, the future is
+ * self-replacing, i.e., when it is executed it also calls
+ * {@link #setFieldValue(AnalysisField, JavaConstant)} and updates the corresponding entry.
+ */
 final class ImageHeapInstance extends ImageHeapObject {
 
-    /** Store original field values of the object. */
-    private final AnalysisFuture<JavaConstant>[] objectFieldValues;
+    private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
 
-    ImageHeapInstance(JavaConstant object, AnalysisFuture<JavaConstant>[] objectFieldValues) {
+    /**
+     * Stores either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
+     * {@link JavaConstant}.
+     */
+    private final Object[] values;
+
+    ImageHeapInstance(JavaConstant object, int length) {
         super(object);
-        this.objectFieldValues = objectFieldValues;
-    }
-
-    public JavaConstant readFieldValue(AnalysisField field) {
-        return objectFieldValues[field.getPosition()].ensureDone();
+        this.values = new Object[length];
     }
 
     /**
-     * Return a task for transforming and snapshotting the field value, effectively a future for
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason, Consumer)}.
+     * Record the task computing the field value. It will be retrieved and executed when the field
+     * is marked as read.
      */
-    public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
-        return objectFieldValues[field.getPosition()];
-    }
-
-    /**
-     * Read the field value, executing the field task in this thread if not already executed.
-     */
-    public JavaConstant readField(AnalysisField field) {
-        return objectFieldValues[field.getPosition()].ensureDone();
-    }
-
     public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
-        objectFieldValues[field.getPosition()] = task;
+        arrayHandle.setVolatile(this.values, field.getPosition(), task);
+    }
+
+    /**
+     * Record the field value produced by the task set in
+     * {@link #setFieldTask(AnalysisField, AnalysisFuture)}, i.e., the snapshot, already transformed
+     * and replaced.
+     */
+    public void setFieldValue(AnalysisField field, JavaConstant value) {
+        arrayHandle.setVolatile(this.values, field.getPosition(), value);
+    }
+
+    /**
+     * Return either a task for transforming the field value, effectively a future for
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason, Consumer)},
+     * or the result of executing the task, i.e., a {@link JavaConstant}.
+     */
+    public Object getFieldValue(AnalysisField field) {
+        return arrayHandle.getVolatile(this.values, field.getPosition());
     }
 }
 
 final class ImageHeapArray extends ImageHeapObject {
-    /** Contains the already scanned array elements. */
+
+    /**
+     * Contains the already scanned array elements.
+     */
     private final JavaConstant[] arrayElementValues;
 
     ImageHeapArray(JavaConstant object, JavaConstant[] arrayElementValues) {

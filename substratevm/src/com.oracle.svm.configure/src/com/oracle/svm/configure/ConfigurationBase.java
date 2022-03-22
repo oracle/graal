@@ -24,10 +24,49 @@
  */
 package com.oracle.svm.configure;
 
+import java.util.function.Consumer;
+
 import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-public interface ConfigurationBase extends JsonPrintable {
+public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> implements JsonPrintable {
 
-    boolean isEmpty();
+    public abstract boolean isEmpty();
 
+    public abstract T copy();
+
+    protected abstract void merge(T other);
+
+    public abstract void mergeConditional(ConfigurationCondition condition, T other);
+
+    protected abstract void subtract(T other);
+
+    protected abstract void intersect(T other);
+
+    protected abstract void removeIf(P predicate);
+
+    protected T copyAnd(Consumer<T> consumer) {
+        T copy = copy();
+        consumer.accept(copy);
+        return copy;
+    }
+
+    public T copyAndMerge(T other) {
+        return copyAnd(copy -> copy.merge(other));
+    }
+
+    public T copyAndSubtract(T other) {
+        return copyAnd(copy -> copy.subtract(other));
+    }
+
+    public T copyAndIntersect(T other) {
+        return copyAnd(copy -> copy.intersect(other));
+    }
+
+    public T copyAndFilter(P predicate) {
+        return copyAnd(copy -> copy.removeIf(predicate));
+    }
+
+    public abstract ConfigurationParser createParser();
 }

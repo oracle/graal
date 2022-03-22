@@ -30,8 +30,6 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import java.io.PrintWriter;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -45,8 +43,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -77,6 +73,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -85,9 +82,11 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -415,41 +414,108 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method) {
-        AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
-        addRootMethod(aMethod);
-        return aMethod;
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
     }
 
+    /**
+     * Registers the method as root.
+     * 
+     * Static methods are immediately analyzed and marked as implementation-invoked which will also
+     * trigger their compilation.
+     * 
+     * Special and virtual invoked methods are conditionally linked. Only when the receiver type (or
+     * one of its subtypes) is marked as instantiated the resolved concrete method is analyzed and
+     * marked as implementation-invoked and later compiled. This also means that abstract methods
+     * can be marked as virtual invoked roots; only the implementation methods whose declaring class
+     * is instantiated will actually be linked. Trying to register an abstract method as a special
+     * invoked root will result in an error.
+     * 
+     * @param aMethod the method to register as root
+     * @param invokeSpecial if true only the target method is analyzed, even if it has overrides, or
+     *            it is itself an override. If the method is static this flag is ignored.
+     */
     @Override
     @SuppressWarnings("try")
-    public AnalysisMethod addRootMethod(AnalysisMethod aMethod) {
+    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
-        if (aMethod.isRootMethod()) {
-            return aMethod;
-        }
-        aMethod.registerAsRootMethod();
-
-        final MethodTypeFlow methodFlow = assertPointsToAnalysisMethod(aMethod).getTypeFlow();
         try (Indent indent = debug.logAndIndent("add root method %s", aMethod.getName())) {
-            boolean isStatic = Modifier.isStatic(aMethod.getModifiers());
+
+            AnalysisType declaringClass = aMethod.getDeclaringClass();
+            boolean isStatic = aMethod.isStatic();
             int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
+            PointsToAnalysisMethod pointsToMethod = assertPointsToAnalysisMethod(aMethod);
+            final MethodTypeFlow methodFlow = pointsToMethod.getTypeFlow();
+
+            /*
+             * Add the initial parameter flows as uses to the type flow of their respective types.
+             * The initial parameter flows will be linked to the concrete parameter flows after the
+             * method is parsed and the method type flow is linked. This code is shared between
+             * static and non-static methods and the differentiation is made below when the methods
+             * are linked.
+             * 
+             * The parameter iteration skips the primitive parameters, as these are not modeled, and
+             * the receiver for virtual invokes which will be linked below.
+             * 
+             * Note: the Signature doesn't count the receiver of a virtual invoke as a parameter
+             * whereas the MethodTypeFlow does, hence when accessing the parameter type below we use
+             * idx-offset but when setting the initial parameter flow we simply use idx.
+             */
             int offset = 0;
             if (!isStatic) {
                 methodFlow.setInitialReceiverFlow(this, aMethod.getDeclaringClass());
                 offset = 1;
             }
-            for (int i = offset; i < paramCount; i++) {
-                AnalysisType declaredParamType = (AnalysisType) aMethod.getSignature().getParameterType(i - offset, aMethod.getDeclaringClass());
+            for (int idx = offset; idx < paramCount; idx++) {
+                AnalysisType declaredParamType = (AnalysisType) aMethod.getSignature().getParameterType(idx - offset, declaringClass);
                 if (declaredParamType.getJavaKind() == JavaKind.Object) {
-                    methodFlow.setInitialParameterFlow(this, declaredParamType, i);
+                    methodFlow.setInitialParameterFlow(this, declaredParamType, idx);
                 }
             }
+
+            if (isStatic) {
+                /*
+                 * For static methods trigger analysis in the empty context. This will trigger
+                 * parsing and will add the actual parameter flows as uses to the initial parameter
+                 * flows initialized above.
+                 */
+                postTask(() -> {
+                    pointsToMethod.registerAsDirectRootMethod();
+                    pointsToMethod.registerAsImplementationInvoked(null);
+                    methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext());
+                });
+            } else {
+                if (invokeSpecial && pointsToMethod.isAbstract()) {
+                    throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry point.");
+                }
+                /*
+                 * For special invoked methods trigger method resolution by using the
+                 * context-insensitive special invoke type flow. This will resolve the method in its
+                 * declaring class when the declaring class is instantiated.
+                 *
+                 * For virtual methods trigger method resolution by using the context-insensitive
+                 * virtual invoke type flow. Since the virtual invoke observes the receiver flow
+                 * state it will get notified for any future reachable subtypes and will resolve the
+                 * method in each subtype.
+                 * 
+                 * In both cases when a callee is resolved the method is parsed and the
+                 * corresponding actual parameter flows are added as uses to the initial parameter
+                 * flows initialized above. Then the callee is linked and registered as
+                 * implementation-invoked.
+                 */
+                postTask(() -> {
+                    BytecodePosition location = new BytecodePosition(null, pointsToMethod, 0);
+                    if (invokeSpecial) {
+                        pointsToMethod.registerAsDirectRootMethod();
+                    } else {
+                        pointsToMethod.registerAsVirtualRootMethod();
+                    }
+                    pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, location, invokeSpecial);
+                });
+            }
         }
-
-        postTask(ignore -> methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext(), null));
-
         return aMethod;
+
     }
 
     public static PointsToAnalysisMethod assertPointsToAnalysisMethod(AnalysisMethod aMethod) {
@@ -528,16 +594,6 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
-        try {
-            Method method = clazz.getDeclaredMethod(methodName, parameterTypes);
-            return addRootMethod(method);
-        } catch (NoSuchMethodException ex) {
-            throw shouldNotReachHere(ex);
-        }
-    }
-
-    @Override
     public final SnippetReflectionProvider getSnippetReflectionProvider() {
         return providers.getSnippetReflection();
     }
@@ -589,6 +645,22 @@ public abstract class PointsToAnalysis implements BigBang {
 
     public void postTask(final DebugContextRunnable task) {
         executor.execute(task);
+    }
+
+    public void postTask(final Runnable task) {
+        executor.execute(new DebugContextRunnable() {
+            @Override
+            public void run(DebugContext ignore) {
+                task.run();
+            }
+
+            @Override
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
+            }
+        });
+
     }
 
     /**
@@ -725,7 +797,7 @@ public abstract class PointsToAnalysis implements BigBang {
         /* Register the type as instantiated with all its super types. */
 
         assert type.isAllocated() || type.isInHeap();
-        assert type.isArray() || (type.isInstanceClass() && !type.isAbstract()) : this;
+        AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
         universe.hostVM().checkForbidden(type, usageKind);
 
         TypeState typeState = TypeState.forExactType(this, type, true);

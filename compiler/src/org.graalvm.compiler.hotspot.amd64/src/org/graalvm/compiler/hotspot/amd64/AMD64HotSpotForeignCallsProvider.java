@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,9 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
@@ -80,7 +77,6 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     @Override
     public void initialize(HotSpotProviders providers, OptionValues options) {
-        GraalHotSpotVMConfig config = runtime.getVMConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
         PlatformKind word = target.arch.getWordKind();
 
@@ -92,14 +88,6 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
-
-        if (config.useCRC32Intrinsics) {
-            // This stub does callee saving
-            registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall);
-        }
-        if (config.useCRC32CIntrinsics) {
-            registerForeignCall(UPDATE_BYTES_CRC32C, config.updateBytesCRC32C, NativeCall);
-        }
 
         for (ForeignCallDescriptor descriptor : ArrayIndexOf.STUBS_AMD64) {
             link(new ArrayIndexOfStub(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));

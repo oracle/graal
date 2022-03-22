@@ -27,18 +27,21 @@ package org.graalvm.compiler.replacements.nodes.arithmetic;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
-public final class IntegerSubExactSplitNode extends IntegerExactArithmeticSplitNode {
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+
+@NodeInfo(cycles = CYCLES_2, cyclesRationale = "sub+cmp", size = SIZE_2)
+public final class IntegerSubExactSplitNode extends BinaryIntegerExactArithmeticSplitNode {
     public static final NodeClass<IntegerSubExactSplitNode> TYPE = NodeClass.create(IntegerSubExactSplitNode.class);
 
     public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {

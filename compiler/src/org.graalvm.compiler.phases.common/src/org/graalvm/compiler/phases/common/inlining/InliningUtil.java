@@ -105,6 +105,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -1031,8 +1032,9 @@ public class InliningUtil extends ValueMergeUtil {
         assert typeProfile.getNotRecordedProbability() == 0.0D;
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
+        ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        frameState.getCode().getProfilingInfo().getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 

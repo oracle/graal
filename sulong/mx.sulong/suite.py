@@ -690,9 +690,11 @@ suite = {
         "include/graalvm/llvm/handles.h",
         "include/graalvm/llvm/polyglot.h",
         "include/graalvm/llvm/polyglot-buffer.h",
+        "include/graalvm/llvm/polyglot-time.h",
         "include/graalvm/llvm/toolchain-api.h",
         "include/graalvm/llvm/internal/handles-impl.h",
         "include/graalvm/llvm/internal/polyglot-impl.h",
+        "include/graalvm/llvm/internal/polyglot-time-impl.h",
         # for source compatibility
         "include/polyglot.h",
         "include/llvm/api/toolchain.h",
@@ -1043,6 +1045,9 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
       "variants" : ["executable-O0", "executable-O1"],
+      "cmakeConfig" : {
+        "CMAKE_CXX_FLAGS" : "-pthread",
+      },
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -1249,6 +1254,27 @@ suite = {
       "results": [
         "valist",
         "va_arg"
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.sulongobjc.native" : {
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.sulongobjc.native>",
+      },
+      "buildDependencies" : [],
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
+        "objc",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1696,6 +1722,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.sulong.Os.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongavx.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.sulongobjc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
           "dependency:com.oracle.truffle.llvm.tests.va.native/*",

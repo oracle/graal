@@ -112,7 +112,7 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
 
     public Value emitRor(Value value, Value distance) {
         // (value >>> distance) | (value << -distance)
-        return emitOr(emitUShr(value, distance), emitShl(value, emitNegate(distance)));
+        return emitOr(emitUShr(value, distance), emitShl(value, emitNegate(distance, false)));
     }
 
 }

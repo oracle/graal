@@ -81,6 +81,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIFieldId javaUtilResourceBundleParentField;
     private JNIMethodId javaUtilResourceBundleGetLocale;
 
+    final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -113,6 +115,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangIllegalAccessError = newClassGlobalRef(env, "java/lang/IllegalAccessError");
         javaLangInvokeWrongMethodTypeException = newClassGlobalRef(env, "java/lang/invoke/WrongMethodTypeException");
         javaLangIllegalArgumentException = newClassGlobalRef(env, "java/lang/IllegalArgumentException");
+
+        JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
+        javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {

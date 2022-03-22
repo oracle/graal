@@ -34,7 +34,6 @@ import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -85,13 +84,13 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-import sun.misc.Unsafe;
 
 /**
  * Performs deoptimization. The method to deoptimize (= the source method) is either a specialized
@@ -148,8 +147,6 @@ import sun.misc.Unsafe;
  * </ol>
  */
 public final class Deoptimizer {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private static final RingBuffer<char[]> recentDeoptimizationEvents = new RingBuffer<>();
 
@@ -962,7 +959,7 @@ public final class Deoptimizer {
             curIdx = 2;
         } else {
             try {
-                obj = UNSAFE.allocateInstance(DynamicHub.toClass(hub));
+                obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }

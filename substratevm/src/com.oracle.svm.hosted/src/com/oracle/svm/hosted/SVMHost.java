@@ -81,6 +81,7 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.UnknownClass;
@@ -105,6 +106,7 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
+import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
@@ -123,6 +125,7 @@ public class SVMHost extends HostVM {
     private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
     private final Platform platform;
     private final ClassInitializationSupport classInitializationSupport;
+    private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
     private final SnippetReflectionProvider originalSnippetReflection;
@@ -151,6 +154,7 @@ public class SVMHost extends HostVM {
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
+        this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -289,7 +293,8 @@ public class SVMHost extends HostVM {
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        return config.withRetainLocalVariables(retainLocalVariables());
+        return config.withRetainLocalVariables(retainLocalVariables())
+                        .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()));
     }
 
     private boolean retainLocalVariables() {
@@ -304,7 +309,7 @@ public class SVMHost extends HostVM {
              * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
              * later.
              */
-            return SubstrateOptions.optimizationLevel() <= 0;
+            return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
 
         } else {
             /*
@@ -389,13 +394,13 @@ public class SVMHost extends HostVM {
         return dynamicHub;
     }
 
-    private static Object isLocalClass(Class<?> javaClass) {
+    private Object isLocalClass(Class<?> javaClass) {
         try {
             return javaClass.isLocalClass();
         } catch (InternalError e) {
             return e;
         } catch (LinkageError e) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
                 return e;
             } else {
                 return unsupportedMethod(javaClass, "isLocalClass");
@@ -407,13 +412,13 @@ public class SVMHost extends HostVM {
      * @return boolean if class is available or LinkageError if class' parents are not on the
      *         classpath or InternalError if the class is invalid.
      */
-    private static Object isAnonymousClass(Class<?> javaClass) {
+    private Object isAnonymousClass(Class<?> javaClass) {
         try {
             return javaClass.isAnonymousClass();
         } catch (InternalError e) {
             return e;
         } catch (LinkageError e) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
                 return e;
             } else {
                 return unsupportedMethod(javaClass, "isAnonymousClass");
@@ -421,11 +426,9 @@ public class SVMHost extends HostVM {
         }
     }
 
-    private static Object unsupportedMethod(Class<?> javaClass, String methodName) {
-        String message = "Discovered a type for which " + methodName + " can't be called: " + javaClass.getTypeName() +
-                        ". To avoid this issue at build time use the " +
-                        SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
-                        " option. The LinkageError will then be reported at run time when this method is called for the first time.";
+    private Object unsupportedMethod(Class<?> javaClass, String methodName) {
+        String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
+                        linkAtBuildTimeSupport.errorMessageFor(javaClass);
         throw new UnsupportedFeatureException(message);
     }
 
@@ -503,6 +506,9 @@ public class SVMHost extends HostVM {
             graph.setGuardsStage(StructuredGraph.GuardsStage.FIXED_DEOPTS);
 
             if (parseOnce) {
+                new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
+                UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+
                 optimizeAfterParsing(bb, graph);
                 /*
                  * Do a complete Canonicalizer run once before graph encoding, to clean up any
@@ -516,7 +522,6 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, StructuredGraph graph) {
-        new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
         new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
         new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
     }
@@ -656,12 +661,11 @@ public class SVMHost extends HostVM {
             return true;
         }
 
-        List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
-        if (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method))) {
-            return true;
+        if (!SubstrateOptions.NeverInline.hasBeenSet()) {
+            return false;
         }
 
-        return false;
+        return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
     }
 
     private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl();

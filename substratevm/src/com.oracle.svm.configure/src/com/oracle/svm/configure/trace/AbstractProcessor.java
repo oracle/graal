@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.configure.trace;
 
+import com.oracle.svm.configure.config.ConfigurationSet;
+
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
@@ -33,7 +35,7 @@ public abstract class AbstractProcessor {
     AbstractProcessor() {
     }
 
-    abstract void processEntry(Map<String, ?> entry);
+    abstract void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet);
 
     void setInLivePhase(@SuppressWarnings("unused") boolean live) {
     }

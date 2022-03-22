@@ -149,10 +149,6 @@ public final class JniEnv extends NativeEnv {
     // The maximum value supported by the native size_t e.g. SIZE_MAX.
     private long cachedSizeMax = 0;
 
-    Method getMethod(long handle) {
-        return methodIds.getObject(handle);
-    }
-
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
 
@@ -340,6 +336,11 @@ public final class JniEnv extends NativeEnv {
         this.handles = new JNIHandles();
 
         assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
+    }
+
+    @Override
+    protected String getName() {
+        return "JniEnv";
     }
 
     @Override
@@ -1433,7 +1434,7 @@ public final class JniEnv extends NativeEnv {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), true);
+        byte[] bytes = ModifiedUtf8.fromJavaString(getMeta().toHostString(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
         return NativeUtils.byteBufferPointer(region);
@@ -1552,7 +1553,7 @@ public final class JniEnv extends NativeEnv {
         if (start < 0 || start + (long) len > length) {
             throw meta.throwException(meta.java_lang_StringIndexOutOfBoundsException);
         }
-        byte[] bytes = ModifiedUtf8.asUtf(meta.toHostString(str), start, len, true); // always
+        byte[] bytes = ModifiedUtf8.fromJavaString(meta.toHostString(str), start, len, true); // always
         // 0
         // terminated.
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);

@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -82,6 +83,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
@@ -378,7 +380,8 @@ public abstract class Accessor {
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext, Runnable onCancelledRunnable,
+                        Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable);
 
         public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
@@ -976,7 +979,12 @@ public abstract class Accessor {
 
         public abstract SourceSection getSourceLocation(Object receiver);
 
+        public abstract int getStackTraceElementLimit(Object receiver);
+
+        public abstract Node getLocation(Object receiver);
+
         public abstract boolean assertGuestObject(Object guestObject);
+
     }
 
     public abstract static class IOSupport extends Support {
@@ -1076,6 +1084,8 @@ public abstract class Accessor {
         public abstract void initializeProfile(CallTarget target, Class<?>[] argumentTypes);
 
         public abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
+
+        public abstract Assumption createAlwaysValidAssumption();
 
         public abstract String getSavedProperty(String key);
 

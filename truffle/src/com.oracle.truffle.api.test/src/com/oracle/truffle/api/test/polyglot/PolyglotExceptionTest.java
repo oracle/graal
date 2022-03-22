@@ -247,11 +247,21 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             Object arg = arguments[0];
             try {
                 InteropLibrary.getFactory().getUncached().execute(arg);
-                Assert.fail();
+                fail();
             } catch (Throwable e) {
-                verifyError.accept(e);
+                consumeError(e);
             }
             return true;
+        }
+
+        @TruffleBoundary
+        private void consumeError(Throwable e) {
+            verifyError.accept(e);
+        }
+
+        @TruffleBoundary
+        private static void fail() {
+            Assert.fail();
         }
 
     }
@@ -546,6 +556,21 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 assertFalse(e.isGuestException());
                 assertTrue(e.isHostException());
                 Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
+                /*
+                 * In case of AOT, the first three frames are the following:
+                 *
+                 * com.oracle.svm.core.graal.snippets.StackOverflowCheckImpl.newStackOverflowError0
+                 * com.oracle.svm.core.graal.snippets.StackOverflowCheckImpl.newStackOverflowError
+                 * com.oracle.svm.core.graal.snippets.StackOverflowCheckImpl.
+                 * throwNewStackOverflowError
+                 *
+                 * That is why we skip them and check the subsequent frames.
+                 */
+                if (TruffleTestAssumptions.isAOT()) {
+                    iterator.next();
+                    iterator.next();
+                    iterator.next();
+                }
                 StackFrame frame = iterator.next();
                 assertTrue(frame.isHostFrame());
                 assertTrue(frame.getRootName(), frame.getRootName().endsWith("ThrowStackOverflow.run"));

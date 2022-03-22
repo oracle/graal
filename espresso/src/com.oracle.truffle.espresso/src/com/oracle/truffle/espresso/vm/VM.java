@@ -220,6 +220,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    public Management getManagement() {
+        return management;
+    }
+
     public static final class GlobalFrameIDs {
         private static final AtomicLong id = new AtomicLong();
 
@@ -372,6 +376,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     @Override
     public EspressoContext getContext() {
         return jniEnv.getContext();
+    }
+
+    @Override
+    protected String getName() {
+        return "VM";
     }
 
     public @Pointer TruffleObject getJavaVM() {

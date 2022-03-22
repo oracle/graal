@@ -133,8 +133,11 @@ public class GraalUtil {
     }
 
     public static StructuredGraph getGraph(GraalState graal, ResolvedJavaMethod javaMethod, boolean useProfilingInfo) {
-        StructuredGraph graph = new StructuredGraph.Builder(graal.options, graal.debug, AllowAssumptions.YES).useProfilingInfo(
-                        useProfilingInfo).method(javaMethod).build();
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(graal.options, graal.debug, AllowAssumptions.YES).method(javaMethod);
+        if (!useProfilingInfo) {
+            builder.profileProvider(null);
+        }
+        StructuredGraph graph = builder.build();
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins()))));
         graphBuilderSuite.apply(graph, new HighTierContext(graal.providers, graphBuilderSuite, OptimisticOptimizations.ALL));

@@ -34,24 +34,59 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * The heap snapshot. It stores all object snapshots and provides methods to access and update them.
+ */
 public class ImageHeap {
 
-    /** Map the original object *and* the replaced object to the HeapObject snapshot. */
-    protected ConcurrentHashMap<JavaConstant, AnalysisFuture<ImageHeapObject>> heapObjects;
-    /** Store a mapping from types to all scanned objects. */
-    protected Map<AnalysisType, Set<ImageHeapObject>> typesToObjects;
+    /**
+     * Map the original object *and* the replaced object to the same snapshot. The value is either a
+     * not-yet-executed {@link AnalysisFuture} of {@link ImageHeapObject} or its results, an
+     * {@link ImageHeapObject}.
+     */
+    private final ConcurrentHashMap<JavaConstant, /* ImageHeapObject */ Object> heapObjects;
+    /** Store a mapping from types to object snapshots. */
+    private final Map<AnalysisType, Set<ImageHeapObject>> typesToObjects;
+
+    /*
+     * Note on the idea of merging the heapObjects and typesToObjects maps:
+     * 
+     * - heapObjects maps both the original and the replaced JavaConstant objects to the
+     * corresponding ImageHeapObject (which also wraps the replaced JavaConstant).
+     * 
+     * - typesToObjects maps the AnalysisType of the replaced objects to the collection of
+     * corresponding ImageHeapObject
+     * 
+     * - If we were to combine the two into a Map<AnalysisType, Map<JavaConstant, Object>> which
+     * type do we use as a key? That would be the type of the JavaConstant object, but that doesn't
+     * always match with the type of the ImageHeapObject in case of object replacers that change
+     * type. This can lead to issues when trying to iterate objects of a specific type, e.g., to
+     * walk its fields. We could use the type of the replaced object wrapped in the ImageHeapObject,
+     * but then we wouldn't have a direct way to get from the original JavaConstant to the
+     * corresponding ImageHeapObject. Which means that we would need to run the replacers *before*
+     * checking if we already have a registered ImageHeapObject task (in
+     * ImageHeapScanner.getOrCreateConstantReachableTask()), so may end up running the replacers
+     * more often, otherwise we can end up with duplicated ImageHeapObject snapshots.
+     */
 
     public ImageHeap() {
         heapObjects = new ConcurrentHashMap<>();
         typesToObjects = new ConcurrentHashMap<>();
     }
 
-    public AnalysisFuture<ImageHeapObject> getTask(JavaConstant constant) {
+    /** Record the future computing the snapshot or its result. */
+    public Object getTask(JavaConstant constant) {
         return heapObjects.get(constant);
     }
 
-    public AnalysisFuture<ImageHeapObject> addTask(JavaConstant constant, AnalysisFuture<ImageHeapObject> object) {
-        return heapObjects.putIfAbsent(constant, object);
+    /** Record the future computing the snapshot in the heap. */
+    public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapObject> task) {
+        return heapObjects.putIfAbsent(constant, task);
+    }
+
+    /** Record the snapshot in the heap. */
+    public void setValue(JavaConstant constant, ImageHeapObject value) {
+        heapObjects.put(constant, value);
     }
 
     public Set<ImageHeapObject> getObjects(AnalysisType type) {

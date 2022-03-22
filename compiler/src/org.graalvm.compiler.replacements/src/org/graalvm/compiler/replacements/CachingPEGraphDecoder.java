@@ -122,7 +122,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution) {
         StructuredGraph graphToEncode;// @formatter:off
         graphToEncode = new StructuredGraph.Builder(options, debug, allowAssumptions).
-                useProfilingInfo(false).
+                profileProvider(null).
                 trackNodeSourcePosition(graphBuilderConfig.trackNodeSourcePosition()).
                 method(method).
                 setIsSubstitution(isSubstitution).

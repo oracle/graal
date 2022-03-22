@@ -949,7 +949,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         this.optimisticOpts = graphBuilderInstance.optimisticOpts;
         assert code.getCode() != null : method;
         this.stream = new BytecodeStream(code.getCode());
-        this.profilingInfo = graph.useProfilingInfo() ? code.getProfilingInfo() : null;
+        this.profilingInfo = graph.getProfilingInfo(method);
         this.constantPool = code.getConstantPool();
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
@@ -1515,7 +1515,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ValueNode exception = maybeEmitExplicitNullCheck(frameState.pop(JavaKind.Object));
         if (!StampTool.isPointerNonNull(exception.stamp(NodeView.DEFAULT))) {
             FixedGuardNode nullCheck = append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(exception)), NullCheckException, InvalidateReprofile, true));
-            exception = graph.maybeAddOrUnique(PiNode.create(exception, exception.stamp(NodeView.DEFAULT).join(objectNonNull()), nullCheck));
+            exception = graph.addOrUnique(PiNode.create(exception, exception.stamp(NodeView.DEFAULT).join(objectNonNull()), nullCheck));
         }
         lastInstr.setNext(handleException(exception, bci(), false));
     }
