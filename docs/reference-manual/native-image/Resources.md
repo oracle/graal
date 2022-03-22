@@ -6,8 +6,9 @@ permalink: /reference-manual/native-image/Resources/
 ---
 # Accessing Resources in Native Images
 
-By default, the native image builder will not integrate any of the resources which are on the classpath during the generation into the final image.
-To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or the corresponding ClassLoader methods) return specific resources (instead of null), the resources that should be accessible at image run time need to be explicitly specified. This can be done via a configuration file such as the following:
+By default, the `native-image` tool will not integrate any of the resources which are on the classpath during the generation into the final image.
+To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or the corresponding `ClassLoader` methods) return specific resources (instead of `null`), the resources that should be accessible at image run time need to be explicitly specified. 
+This can be done via a configuration file such as the following:
 
 ```json
 {
@@ -30,7 +31,7 @@ The configuration file's path must be provided to `native-image` with `-H:Resour
 Alternatively, individual resource paths can also be specified directly to `native-image`:
 
 ```shell
-native-image -H:IncludeResources=<Java regexp that matches resources to be included in the image> -H:ExcludeResources=<Java regexp that matches resources to be excluded from the image> ...
+native-image -H:IncludeResources="<Java regexp that matches resources to be included in the image>" -H:ExcludeResources="<Java regexp that matches resources to be excluded from the image>" ...
 ```
 The `-H:IncludeResources` and `-H:ExcludeResources` options can be passed several times to define more than one regexp to match or exclude resources, respectively.
 
@@ -52,11 +53,11 @@ my-app-root
 ```
 Then:
 
-*  All resources can be loaded with `.*/Resource.*txt$`, specified as `{"pattern":".*/Resource.*txt$"}` in a configuration file, or `-H:IncludeResources='.*/Resource.*txt$'` on the command line.
+*  All resources can be loaded with `".*/Resource.*txt$"`, specified as `{"pattern":".*/Resource.*txt$"}` in a configuration file, or `-H:IncludeResources=".*/Resource.*txt$"` on the command line.
 *  `Resource0.txt` can be loaded with `.*/Resource0.txt$`.
 *  `Resource0.txt` and `Resource1.txt` can be loaded with `.*/Resource0.txt$` and `.*/Resource1.txt$`
    (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
-*  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it with `-H:IncludeResources='.*/Resource.*txt$'` followed by `-H:ExcludeResources='.*/Resource2.txt$'`.
+*  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it with `-H:IncludeResources=".*/Resource.*txt$"` followed by `-H:ExcludeResources=".*/Resource2.txt$"`.
 
 See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
@@ -94,7 +95,7 @@ Alternatively, bundles can be specified directly as options to `native-image` as
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```
 By default, the requested bundles are included for all requested locales.
-In order to optimize this, it is possible to use ``IncludeResourceBundles`` with locale specific substring, for example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will include the bundle only in French.
+In order to optimize this, it is possible to use `IncludeResourceBundles` with locale specific substring, for example `-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR` will include the bundle only in French.
 
 ### Resources in Java modules
 
@@ -124,6 +125,6 @@ will always work as expected for resources registered as described above (even i
 ### JVM Mode of Localization
 
 Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM.
-As a result of that, it causes image size increase for smaller applications such as Hello World.
+As a result of that, it causes image size increase for smaller applications such as `HelloWorld`.
 Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all bundles are known ahead of time.
 In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option.
