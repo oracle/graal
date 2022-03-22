@@ -61,7 +61,7 @@ public class CxxMethodsTest extends InteropTestBase {
         freeXtendPoint = testLibrary.getMember("freeNativeXtendPoint");
         squaredEuclideanDistance = testLibrary.getMember("squaredEuclideanDistance");
         constructor = testLibrary.getMember("Point");
-        swap = testLibrary.getMember("swap");
+        swap = testLibrary.getMember("swapThePoints");
     }
 
     private static void checkPoint(Value point, int x, int y) {

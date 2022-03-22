@@ -121,7 +121,7 @@ void *allocNativeXtendPoint() {
     return polyglot_from_XtendPoint(ret);
 }
 
-void swap(Point *p, Point *q) {
+void swapThePoints(Point *p, Point *q) {
     Point tmp = *q;
     *q = *p;
     *p = tmp;
