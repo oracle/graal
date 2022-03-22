@@ -14,7 +14,7 @@ You do not have to configure anything specific besides launching your app in deb
 
 You can use your favorite IDE debugger to debug Java applications running in the Java on Truffle runtime.
 For example, starting a debugger session from IntelliJ IDEA is based on the Run Configurations.
-To ensure you attach the debugger to your Java application in the same environment, navigate in the main menu to Run -> Debug… -> Edit Configurations, expand Environment, check the JRE value and VM options values.
+To ensure you attach the debugger to your Java application in the same environment, navigate in the main menu to **Run**, **Debug…**, Edit Configurations, expand Environment, check the JRE value and VM options values.
 It should show GraalVM as project's JRE and VM options should include `-truffle -XX:+IgnoreUnrecognizedVMOptions`. It is necessary to specify `-XX:+IgnoreUnrecognizedVMOptions` because Intellij automatically adds a `-javaagent` argument which is not supported yet.
 Press Debug.
 
@@ -76,7 +76,7 @@ Feel free to try this out on your own applications or by following these instruc
 
     ![debug-6](/resources/img/java-on-truffle/debug-6.png)
 
-Watch  video version of the enhanced HotSwap capabilities with Java on Truffle demo.
+Watch video version of the enhanced HotSwap capabilities with Java on Truffle demo.
 
 <div class="row">
   <div class="col-sm-12">
@@ -126,7 +126,7 @@ As of GraalVM 22.1.0, the following limitations remain:
 
 ## HotSwap Plugin API
 
-As we've just seen above, with Java on Truffle you can benefit from enhanced HotSwap capabilities that allow the code to evolve naturally during development without the need for restarting a running application.
+With Java on Truffle you can benefit from enhanced HotSwap capabilities that allow the code to evolve naturally during development without the need for restarting a running application.
 While code reloading (HotSwap) is a powerful tool, it is not sufficient to reflect all kinds of changes, e.g., changes to annotations, framework-specific changes such as implemented services or beans.
 For these things the code often needs to be executed to reload configurations or contexts before the changes are fully reflected in the running instance.
 This is where the Truffle on Java HotSwap Plugin API comes in handy.
@@ -145,7 +145,7 @@ The Micronaut HotSwap plugin example implementation is hosted as a [fork](https:
 The following instructions are based on a macOS X setup and only minor variations are needed for Windows.
 To get started:
 
-1. clone the repository:
+1. Clone the repository:
   ```shell
   git clone git@github.com:javeleon/micronaut-core.git
   ```
