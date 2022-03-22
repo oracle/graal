@@ -477,6 +477,7 @@ public abstract class Shape {
          * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
          * @since 20.2.0
          */
+        @SuppressWarnings("deprecation")
         @Override
         public DerivedBuilder addConstantProperty(Object key, Object value, int flags) {
             CompilerAsserts.neverPartOfCompilation();
