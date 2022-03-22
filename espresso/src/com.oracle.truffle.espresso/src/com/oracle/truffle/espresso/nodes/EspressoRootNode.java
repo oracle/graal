@@ -65,7 +65,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
     EspressoRootNode(FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode, boolean usesMonitors) {
-        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
+        super(methodNode.getMethod().getLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? SLOT_UNINITIALIZED : SLOT_UNUSED;
         this.cookieSlot = SLOT_UNINITIALIZED;
@@ -73,7 +73,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     // Splitting constructor
     private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode) {
-        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
+        super(methodNode.getMethod().getLanguage(), frameDescriptor);
         this.methodNode = methodNode.split();
         this.monitorSlot = split.monitorSlot;
         this.cookieSlot = split.cookieSlot;

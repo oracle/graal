@@ -189,7 +189,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
         assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
-        StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
+        StaticObject newObj = klass.getLanguage().getArrayShape().getFactory().create(klass);
         EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
@@ -204,7 +204,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert meta.getContext().Polyglot;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
-        return createForeign(meta.getEspressoLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
+        return createForeign(meta.getLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
     }
 
     public static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject, InteropLibrary interopLibrary) {

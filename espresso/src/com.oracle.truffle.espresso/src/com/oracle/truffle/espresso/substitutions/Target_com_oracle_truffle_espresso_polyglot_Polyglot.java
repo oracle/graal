@@ -269,7 +269,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 Object foreignObject = value.rawForeignObject(language);
                 ToEspressoNode.checkHasAllFieldsOrThrow(foreignObject, targetObjectKlass, interop, meta);
                 initCheck.execute(targetObjectKlass);
-                return StaticObject.createForeign(meta.getEspressoLanguage(), targetKlass, foreignObject, interop);
+                return StaticObject.createForeign(meta.getLanguage(), targetKlass, foreignObject, interop);
             } catch (ClassCastException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, e.getMessage());
@@ -398,6 +398,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     protected static StaticObject createForeignObject(Object object, Meta meta, InteropLibrary interopLibrary) {
-        return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, object, interopLibrary);
+        return StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, object, interopLibrary);
     }
 }

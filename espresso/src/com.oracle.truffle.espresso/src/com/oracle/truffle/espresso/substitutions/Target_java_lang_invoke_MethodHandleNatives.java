@@ -493,7 +493,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             switch (flags & ALL_KINDS) {
                 case MN_IS_CONSTRUCTOR:
                     isConstructorProfile.enter();
-                    Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
+                    Symbol<Signature> constructorSignature = meta.getLanguage().getSignatures().lookupValidSignature(desc);
                     plantMethodMemberName(memberName, resolutionKlass, methodName, constructorSignature, refKind, callerKlass, doAccessChecks, doConstraintsChecks, meta);
                     meta.HIDDEN_VMINDEX.setHiddenObject(memberName, -3_000_000L);
                     break;
@@ -519,7 +519,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     break;
                 case MN_IS_FIELD:
                     isFieldProfile.enter();
-                    Symbol<Type> t = meta.getEspressoLanguage().getTypes().lookup(desc);
+                    Symbol<Type> t = meta.getLanguage().getTypes().lookup(desc);
                     plantFieldMemberName(memberName, resolutionKlass, methodName, t, refKind, callerKlass, doConstraintsChecks, meta);
                     break;
                 default:
