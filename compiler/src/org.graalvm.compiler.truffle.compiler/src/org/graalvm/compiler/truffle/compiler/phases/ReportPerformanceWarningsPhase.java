@@ -24,32 +24,16 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 
-/**
- * Compiler phase for verifying that the Truffle virtual frame does not escape and can therefore be
- * escape analyzed.
- */
-public class VerifyFrameDoesNotEscapePhase extends BasePhase<TruffleTierContext> {
+public final class ReportPerformanceWarningsPhase extends BasePhase<TruffleTierContext> {
+
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        graph.checkCancellation();
-        for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.TYPE)) {
-            for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
-                if (callTarget.invoke() != null) {
-                    String properties = callTarget.getDebugProperties().toString();
-                    String arguments = callTarget.arguments().toString();
-                    Throwable exception = new GraalGraphError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
-                    throw GraphUtil.approxSourceException(callTarget, exception);
-                }
-            }
+        if (context.handler != null) {
+            context.handler.reportPerformanceWarnings(context.compilable, graph);
         }
-
     }
 }

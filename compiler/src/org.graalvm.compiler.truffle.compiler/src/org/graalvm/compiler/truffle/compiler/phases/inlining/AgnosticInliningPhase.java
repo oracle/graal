@@ -29,13 +29,15 @@ import java.util.Collections;
 import java.util.Objects;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.SingleRunSubphase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders> {
+public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
 
     private static final ArrayList<InliningPolicyProvider> POLICY_PROVIDERS;
 
@@ -50,12 +52,11 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
     }
 
     private final PartialEvaluator partialEvaluator;
-    private final PartialEvaluator.Request request;
-    private boolean rootIsLeaf;
+    private final PostPartialEvaluationSuite postPartialEvaluationSuite;
 
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite) {
         this.partialEvaluator = partialEvaluator;
-        this.request = request;
+        this.postPartialEvaluationSuite = postPartialEvaluationSuite;
     }
 
     private static InliningPolicyProvider chosenProvider(String name) {
@@ -67,8 +68,9 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
         throw new IllegalStateException("No inlining policy provider with provided name: " + name);
     }
 
-    private InliningPolicyProvider getInliningPolicyProvider(boolean firstTier) {
-        final String policy = request.options.get(firstTier ? PolyglotCompilerOptions.FirstTierInliningPolicy : PolyglotCompilerOptions.InliningPolicy);
+    private static InliningPolicyProvider getInliningPolicyProvider(TruffleTierContext context) {
+        boolean firstTier = context.isFirstTier();
+        final String policy = context.options.get(firstTier ? PolyglotCompilerOptions.FirstTierInliningPolicy : PolyglotCompilerOptions.InliningPolicy);
         if (Objects.equals(policy, "")) {
             return POLICY_PROVIDERS.get(firstTier ? POLICY_PROVIDERS.size() - 1 : 0);
         } else {
@@ -77,32 +79,38 @@ public final class AgnosticInliningPhase extends SingleRunSubphase<CoreProviders
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        final InliningPolicy policy = getInliningPolicyProvider(request.isFirstTier()).get(request.options, coreProviders);
-        final CallTree tree = new CallTree(partialEvaluator, request, policy);
-        rootIsLeaf = tree.getRoot().getChildren().isEmpty();
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
+        final InliningPolicy policy = getInliningPolicyProvider(context).get(context.options, context);
+        final CallTree tree = new CallTree(partialEvaluator, postPartialEvaluationSuite, context, policy);
         tree.dumpBasic("Before Inline");
-        if (optionsAllowInlining()) {
+        if (optionsAllowInlining(context)) {
             policy.run(tree);
             tree.dumpBasic("After Inline");
-            tree.collectTargetsToDequeue(request.task.inliningData());
-            tree.updateTracingInfo(request.task.inliningData());
+            tree.collectTargetsToDequeue(context.task.inliningData());
+            tree.updateTracingInfo(context.task.inliningData());
+        }
+        if (!tree.getRoot().getChildren().isEmpty()) {
+            /*
+             * If we've seen a truffle call in the graph, even if we have not inlined any call
+             * target, we need to run the truffle tier phases again after the PE inlining phase has
+             * finalized the graph. On the other hand, if there are no calls (root is a leaf) we can
+             * skip the truffle tier because there are no finalization points.
+             */
+            postPartialEvaluationSuite.apply(graph, context);
         }
         tree.finalizeGraph();
         tree.trace();
+        graph.maybeCompress();
+        assert GraphOrder.assertSchedulableGraph(graph) : "PE result must be schedulable in order to apply subsequent phases";
     }
 
-    private boolean optionsAllowInlining() {
-        return request.options.get(PolyglotCompilerOptions.Inlining);
+    private static boolean optionsAllowInlining(TruffleTierContext context) {
+        return context.options.get(PolyglotCompilerOptions.Inlining);
     }
 
     @Override
     public boolean checkContract() {
         // inlining per definition increases graph size a lot
         return false;
-    }
-
-    public boolean rootIsLeaf() {
-        return rootIsLeaf;
     }
 }

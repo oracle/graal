@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,15 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 
-public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
+import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PartialEvaluator getPartialEvaluator();
+public class SubstratePostPartialEvaluationSuite extends PostPartialEvaluationSuite {
 
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    TruffleTier getTruffleTier();
-
-    /**
-     * Called on tear-down of the current isolate.
-     */
-    void teardown();
+    public SubstratePostPartialEvaluationSuite(boolean iterativePartialEscape) {
+        super(iterativePartialEscape);
+        appendPhase(new DeadStoreRemovalPhase());
+        appendPhase(new TruffleBoundaryPhase());
+    }
 }

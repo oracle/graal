@@ -24,32 +24,34 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.graph.GraalGraphError;
+import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
+import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 
-/**
- * Compiler phase for verifying that the Truffle virtual frame does not escape and can therefore be
- * escape analyzed.
- */
-public class VerifyFrameDoesNotEscapePhase extends BasePhase<TruffleTierContext> {
+public final class NeverPartOfCompilationPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.TYPE)) {
-            for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
-                if (callTarget.invoke() != null) {
-                    String properties = callTarget.getDebugProperties().toString();
-                    String arguments = callTarget.arguments().toString();
-                    Throwable exception = new GraalGraphError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
-                    throw GraphUtil.approxSourceException(callTarget, exception);
-                }
-            }
+        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
+            final NeverPartOfCompilationException neverPartOfCompilationException = new NeverPartOfCompilationException(neverPartOfCompilationNode.getMessage());
+            neverPartOfCompilationException.setStackTrace(GraphUtil.approxSourceStackTraceElement(neverPartOfCompilationNode));
+            throw neverPartOfCompilationException;
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static class NeverPartOfCompilationException extends GraalBailoutException {
+
+        NeverPartOfCompilationException(String message) {
+            super(null, message, new Object[]{});
         }
 
+        @Override
+        public boolean isCausedByCompilerAssert() {
+            return true;
+        }
     }
 }

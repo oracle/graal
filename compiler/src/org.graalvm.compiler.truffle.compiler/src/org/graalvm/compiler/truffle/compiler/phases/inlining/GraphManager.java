@@ -42,6 +42,8 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -52,11 +54,13 @@ final class GraphManager {
     private final PartialEvaluator partialEvaluator;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
-    private final PartialEvaluator.Request rootRequest;
+    private final TruffleTierContext rootContext;
+    private final PostPartialEvaluationSuite postPartialEvaluationSuite;
 
-    GraphManager(PartialEvaluator partialEvaluator, PartialEvaluator.Request rootRequest) {
+    GraphManager(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
         this.partialEvaluator = partialEvaluator;
-        this.rootRequest = rootRequest;
+        this.postPartialEvaluationSuite = postPartialEvaluationSuite;
+        this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
     }
 
@@ -64,38 +68,40 @@ final class GraphManager {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-            final PartialEvaluator.Request request = newRequest(truffleAST, false);
-            request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
-            partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            StructuredGraph graphAfterPE = copyGraphForDebugDump(request);
-            partialEvaluator.truffleTier(request);
-            entry = new Entry(request.graph, plugin, graphAfterPE);
+            final TruffleTierContext context = newContext(truffleAST, false);
+            context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
+            partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
+            StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
+            postPartialEvaluationSuite.apply(context.graph, context);
+            entry = new Entry(context.graph, plugin, graphAfterPE);
             irCache.put(truffleAST, entry);
         }
         return entry;
     }
 
-    private PartialEvaluator.Request newRequest(CompilableTruffleAST truffleAST, boolean finalize) {
-        return partialEvaluator.new Request(
-                        rootRequest.options,
-                        rootRequest.debug,
+    private TruffleTierContext newContext(CompilableTruffleAST truffleAST, boolean finalize) {
+        return new TruffleTierContext(
+                        partialEvaluator,
+                        rootContext.options,
+                        rootContext.debug,
                         truffleAST,
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        rootRequest.compilationId,
-                        rootRequest.log,
-                        rootRequest.task);
+                        rootContext.compilationId,
+                        rootContext.log,
+                        rootContext.task,
+                        rootContext.handler);
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {
-        return new PEAgnosticInlineInvokePlugin(rootRequest.task.inliningData(), partialEvaluator);
+        return new PEAgnosticInlineInvokePlugin(rootContext.task.inliningData(), partialEvaluator);
     }
 
     Entry peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
-        StructuredGraph graphAfterPE = copyGraphForDebugDump(rootRequest);
-        partialEvaluator.truffleTier(rootRequest);
-        return new Entry(rootRequest.graph, plugin, graphAfterPE);
+        partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
+        StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
+        postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
+        return new Entry(rootContext.graph, plugin, graphAfterPE);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
@@ -104,19 +110,19 @@ final class GraphManager {
     }
 
     void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {
-        final PartialEvaluator.Request request = newRequest(truffleAST, true);
-        partialEvaluator.doGraphPE(request, new InlineInvokePlugin() {
+        final TruffleTierContext context = newContext(truffleAST, true);
+        partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 return PartialEvaluator.asInlineInfo(method);
             }
         }, graphCacheForInlining);
-        InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
+        InliningUtil.inline(invoke, context.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
     }
 
-    private static StructuredGraph copyGraphForDebugDump(PartialEvaluator.Request request) {
-        if (request.debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
-            return (StructuredGraph) request.graph.copy(request.debug);
+    private static StructuredGraph copyGraphForDebugDump(TruffleTierContext context) {
+        if (context.debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+            return (StructuredGraph) context.graph.copy(context.debug);
         }
         return null;
     }

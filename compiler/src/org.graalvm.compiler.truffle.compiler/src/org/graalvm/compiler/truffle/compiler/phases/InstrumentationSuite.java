@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
+package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
-public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PartialEvaluator getPartialEvaluator();
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    TruffleTier getTruffleTier();
-
-    /**
-     * Called on tear-down of the current isolate.
-     */
-    void teardown();
+public class InstrumentationSuite extends PhaseSuite<TruffleTierContext> {
+    public InstrumentationSuite(InstrumentPhase.InstrumentationConfiguration instrumentationCfg, SnippetReflectionProvider snippetReflection, InstrumentPhase.Instrumentation instrumentation) {
+        if (instrumentationCfg.instrumentBranches) {
+            appendPhase(new InstrumentBranchesPhase(snippetReflection, instrumentation, instrumentationCfg.instrumentBranchesPerInlineSite));
+        }
+        if (instrumentationCfg.instrumentBoundaries) {
+            appendPhase(new InstrumentTruffleBoundariesPhase(snippetReflection, instrumentation, instrumentationCfg.instrumentBoundariesPerInlineSite));
+        }
+    }
 }

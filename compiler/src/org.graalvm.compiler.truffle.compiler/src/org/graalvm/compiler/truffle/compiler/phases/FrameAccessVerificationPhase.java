@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
@@ -57,6 +56,7 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessorNode;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * This analysis will insert {@link VirtualFrameSetNode}s to change the type of uninitialized slots
  * whenever this is necessary to produce matching types at merges.
  */
-public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
+public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierContext> {
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
@@ -107,8 +107,6 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
         return (byte) (tag & MODE_MASK);
     }
 
-    private final CompilableTruffleAST compilable;
-
     private abstract static class Effect {
         final NewFrameNode frame;
         final AbstractEndNode insertBefore;
@@ -125,8 +123,11 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
 
     private final class DeoptEffect extends Effect {
 
-        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index) {
+        private final CompilableTruffleAST compilable;
+
+        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, CompilableTruffleAST compilable) {
             super(frame, insertBefore, index);
+            this.compilable = compilable;
         }
 
         @SuppressWarnings("try")
@@ -188,36 +189,36 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
         }
     }
 
-    private final ArrayList<Effect> effects = new ArrayList<>();
-
-    public FrameAccessVerificationPhase(CompilableTruffleAST compilable) {
-        this.compilable = compilable;
-    }
-
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (graph.getNodes(NewFrameNode.TYPE).isNotEmpty()) {
-            ReentrantNodeIterator.apply(new ReentrantIterator(), graph.start(), new State());
+            ArrayList<Effect> effects = new ArrayList<>();
+            ReentrantNodeIterator.apply(new ReentrantIterator(context.compilable, effects), graph.start(), new State(effects));
             for (Effect effect : effects) {
                 effect.apply();
             }
         }
     }
 
-    private final class State implements Cloneable {
+    private static final class State implements Cloneable {
 
         private final HashMap<NewFrameNode, byte[]> states = new HashMap<>();
         private final HashMap<NewFrameNode, byte[]> indexedStates = new HashMap<>();
+        private final ArrayList<Effect> effects;
+
+        State(ArrayList<Effect> effects) {
+            this.effects = effects;
+        }
 
         @Override
         public State clone() {
-            State newState = new State();
+            State newState = new State(effects);
             copy(states, newState.states);
             copy(indexedStates, newState.indexedStates);
             return newState;
         }
 
-        private void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
+        private static void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
             for (Map.Entry<NewFrameNode, byte[]> entry : from.entrySet()) {
                 to.put(entry.getKey(), entry.getValue().clone());
             }
@@ -263,6 +264,14 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
     }
 
     private final class ReentrantIterator extends NodeIteratorClosure<State> {
+
+        private final CompilableTruffleAST compilable;
+        private final ArrayList<Effect> effects;
+
+        ReentrantIterator(CompilableTruffleAST compilable, ArrayList<Effect> effects) {
+            this.compilable = compilable;
+            this.effects = effects;
+        }
 
         @Override
         protected State processNode(FixedNode node, State currentState) {
@@ -372,7 +381,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                             // match
                         } else {
                             // different definitive types at merge
-                            (i == 0 ? firstEndEffects : effects).add(new DeoptEffect(frame, merge.phiPredecessorAt(i), entryIndex));
+                            (i == 0 ? firstEndEffects : effects).add(new DeoptEffect(frame, merge.phiPredecessorAt(i), entryIndex, compilable));
                             entries[i] = withValue(definitiveType);
                         }
                     }

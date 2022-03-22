@@ -80,7 +80,7 @@ public final class PerformanceInformationHandler implements Closeable {
         instance.remove();
     }
 
-    static PerformanceInformationHandler install(OptionValues options) {
+    public static PerformanceInformationHandler install(OptionValues options) {
         assert instance.get() == null : "PerformanceInformationHandler already installed";
         PerformanceInformationHandler handler = new PerformanceInformationHandler(options);
         instance.set(handler);
@@ -158,7 +158,7 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     @SuppressWarnings("try")
-    void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
+    public void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
         ArrayList<ValueNode> warnings = new ArrayList<>();
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL)) {

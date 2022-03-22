@@ -24,32 +24,28 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
-/**
- * Compiler phase for verifying that the Truffle virtual frame does not escape and can therefore be
- * escape analyzed.
- */
-public class VerifyFrameDoesNotEscapePhase extends BasePhase<TruffleTierContext> {
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
+
+public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.TYPE)) {
-            for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
-                if (callTarget.invoke() != null) {
-                    String properties = callTarget.getDebugProperties().toString();
-                    String arguments = callTarget.arguments().toString();
-                    Throwable exception = new GraalGraphError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
-                    throw GraphUtil.approxSourceException(callTarget, exception);
+        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+        for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
+            if (virtualObjectNode instanceof VirtualInstanceNode) {
+                VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
+                ResolvedJavaType type = virtualInstanceNode.type();
+                if (rt.isValueType(type)) {
+                    virtualInstanceNode.setIdentity(false);
                 }
             }
         }
-
     }
 }
