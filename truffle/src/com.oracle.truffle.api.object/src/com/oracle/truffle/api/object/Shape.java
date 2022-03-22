@@ -869,7 +869,9 @@ public abstract class Shape {
      *
      * @throws UnsupportedOperationException if this layout does not support construction
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @Deprecated(since = "22.2")
     public abstract DynamicObject newInstance();
 
     /**
@@ -877,7 +879,10 @@ public abstract class Shape {
      *
      * @throws UnsupportedOperationException if this layout does not support construction
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated(since = "22.2")
     public abstract DynamicObjectFactory createFactory();
 
     /**
