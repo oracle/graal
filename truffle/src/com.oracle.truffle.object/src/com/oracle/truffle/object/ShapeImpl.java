@@ -572,9 +572,6 @@ public abstract class ShapeImpl extends Shape {
                 propertyAssumptions.invalidatePropertyAssumption(propertyKey);
             }
         }
-        if (sharedData instanceof com.oracle.truffle.api.object.ShapeListener) {
-            ((com.oracle.truffle.api.object.ShapeListener) sharedData).onPropertyTransition(propertyKey);
-        }
     }
 
     /** @since 0.17 or earlier */
