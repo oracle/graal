@@ -1025,6 +1025,7 @@ public abstract class Shape {
          * @deprecated use {@link #locationForType(Class, EnumSet)} or
          *             {@link Shape#defineProperty(Object, Object, int)} instead
          */
+        @SuppressWarnings("deprecation")
         @Deprecated(since = "19.3")
         public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
             assert value != null || !modifiers.contains(LocationModifier.NonNull);
@@ -1053,6 +1054,7 @@ public abstract class Shape {
          * @param modifiers additional restrictions and semantics
          * @since 0.8 or earlier
          */
+        @SuppressWarnings("deprecation")
         @Deprecated(since = "22.2")
         public final Location locationForType(Class<?> type, EnumSet<LocationModifier> modifiers) {
             return locationForType(type, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
