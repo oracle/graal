@@ -533,7 +533,7 @@ public class AArch64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             int loadPosition = masm.position();
-            masm.ldr(64, zr, address.toAddress(), crb.getLastImplicitExceptionOffset() == loadPosition - 4);
+            masm.deadLoad(64, address.toAddress(), crb.getLastImplicitExceptionOffset() == loadPosition - 4);
             // Adjust implicit exception position if this ldr has been merged to ldp.
             if (loadPosition == masm.position()) {
                 /*
