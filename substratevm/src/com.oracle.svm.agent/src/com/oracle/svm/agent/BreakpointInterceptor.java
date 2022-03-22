@@ -352,15 +352,19 @@ final class BreakpointInterceptor {
         boolean validResult = !clearException(jni);
         InterceptedState state = interceptedStateSupplier.get();
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        if (clazz.notEqual(nullHandle())) {
-            if (!clearException(jni)) {
-                traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, "allocateInstance", validResult, state.getFullStackTraceOrNull());
-            }
-        }
+        traceAllocateInstance(jni, clazz, validResult, state, callerClass);
         if (!validResult) { // invoke again for exception--pure function.
             return original.invoke(jni, self, clazz);
         }
         return result;
+    }
+
+    private static void traceAllocateInstance(JNIEnvironment jni, JNIObjectHandle clazz, boolean validResult, InterceptedState state, JNIObjectHandle callerClass) {
+        if (clazz.notEqual(nullHandle())) {
+            if (validResult) {
+                traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, "allocateInstance", true, state.getFullStackTraceOrNull());
+            }
+        }
     }
 
     private static boolean objectFieldOffsetByName(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
@@ -1667,6 +1671,8 @@ final class BreakpointInterceptor {
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),
 
+                    brk("sun/misc/Unsafe", "allocateInstance", "(Ljava/lang/Class;)Ljava/lang/Object;", BreakpointInterceptor::allocateInstance),
+
                     optionalBrk("java/lang/invoke/MethodHandles$Lookup", "findStatic",
                                     "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
                                     BreakpointInterceptor::findMethodHandle),
@@ -1731,6 +1737,13 @@ final class BreakpointInterceptor {
                     optionalBrk("java/lang/Class", "getPermittedSubclasses", "()[Ljava/lang/Class;",
                                     BreakpointInterceptor::getPermittedSubclasses)
     };
+
+    private static boolean allocateInstance(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle clazz = getObjectArgument(1);
+        traceAllocateInstance(jni, clazz, !clearException(jni), state, callerClass);
+        return true;
+    }
 
     private static final BreakpointSpecification CLASSLOADER_LOAD_CLASS_BREAKPOINT_SPECIFICATION = optionalBrk("java/lang/ClassLoader", "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;", BreakpointInterceptor::loadClass);
