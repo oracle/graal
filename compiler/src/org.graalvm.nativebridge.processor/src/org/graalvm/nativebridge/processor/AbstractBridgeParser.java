@@ -160,7 +160,7 @@ abstract class AbstractBridgeParser {
         if (hasErrors) {
             return null;
         } else {
-            MarshallerData throwableMarshaller = MarshallerData.marshalled(typeCache.throwable, Collections.emptyList(), false);
+            MarshallerData throwableMarshaller = MarshallerData.marshalled(typeCache.throwable, Collections.emptyList());
             DefinitionData definitionData = createDefinitionData(annotatedType, handledAnnotation, serviceType, toGenerate, constructorParams, customDispatchAccessor,
                             customReceiverAccessor, endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
             assertNoExpectedErrors(definitionData);
@@ -630,7 +630,7 @@ abstract class AbstractBridgeParser {
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 annotations.stream().map(AnnotationMirror::getAnnotationType).forEach(marshallerAnnotations::add);
-                res = MarshallerData.marshalled(type, annotations, this instanceof NativeToHotSpotBridgeParser);
+                res = MarshallerData.marshalled(type, annotations);
             }
         }
         return res;
@@ -672,7 +672,7 @@ abstract class AbstractBridgeParser {
         return newModifiers;
     }
 
-    private static String marshallerName(TypeMirror type, List<? extends AnnotationMirror> annotations, boolean legacy) {
+    private static String marshallerName(TypeMirror type, List<? extends AnnotationMirror> annotations) {
         StringBuilder className = new StringBuilder();
         buildMarshallerNameFromType(className, type);
         if (!annotations.isEmpty()) {
@@ -680,9 +680,6 @@ abstract class AbstractBridgeParser {
             for (AnnotationMirror annotation : annotations) {
                 className.append(annotation.getAnnotationType().asElement().getSimpleName());
             }
-        }
-        if (legacy) {
-            className.append("Legacy");
         }
         className.append("Marshaller");
         className.setCharAt(0, Character.toLowerCase(className.charAt(0)));
@@ -997,26 +994,24 @@ abstract class AbstractBridgeParser {
             CUSTOM,
         }
 
-        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, false, true, null, null, null);
-        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, false, true, null, null, null);
+        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, true, null, null, null);
+        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, true, null, null, null);
 
         final Kind kind;
         final TypeMirror forType;
         final List<? extends AnnotationMirror> annotations;
         final String name;                              // only for CUSTOM
-        final boolean legacy;                           // only for CUSTOM
         final boolean useCustomReceiverAccessor;        // only for REFERENCE
         final boolean sameDirection;                    // only for REFERENCE
         final VariableElement nonDefaultReceiver;       // only for REFERENCE
         final ExecutableElement customDispatchFactory;  // only for REFERENCE
 
-        private MarshallerData(Kind kind, TypeMirror forType, String name, boolean legacy,
+        private MarshallerData(Kind kind, TypeMirror forType, String name,
                         boolean useCustomReceiverAccessor, boolean sameDirection,
                         List<? extends AnnotationMirror> annotations, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
             this.kind = kind;
             this.forType = forType;
             this.name = name;
-            this.legacy = legacy;
             this.useCustomReceiverAccessor = useCustomReceiverAccessor;
             this.sameDirection = sameDirection;
             this.annotations = annotations;
@@ -1047,18 +1042,18 @@ abstract class AbstractBridgeParser {
         }
 
         static MarshallerData annotatedArray(List<? extends AnnotationMirror> annotations) {
-            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, false, true, annotations, null, null);
+            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, true, annotations, null, null);
         }
 
-        static MarshallerData marshalled(TypeMirror forType, List<? extends AnnotationMirror> annotations, boolean legacy) {
-            String name = marshallerName(forType, annotations, legacy);
-            return new MarshallerData(Kind.CUSTOM, forType, name, legacy, false, true, annotations, null, null);
+        static MarshallerData marshalled(TypeMirror forType, List<? extends AnnotationMirror> annotations) {
+            String name = marshallerName(forType, annotations);
+            return new MarshallerData(Kind.CUSTOM, forType, name, false, true, annotations, null, null);
         }
 
         static MarshallerData reference(DeclaredType startPointType, AnnotationMirror annotation, boolean useCustomReceiverAccessor,
                         boolean sameDirection, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
             List<AnnotationMirror> annotations = annotation == null ? Collections.emptyList() : Collections.singletonList(annotation);
-            return new MarshallerData(Kind.REFERENCE, startPointType, null, false, useCustomReceiverAccessor, sameDirection, annotations, nonDefaultReceiver, customDispatchFactory);
+            return new MarshallerData(Kind.REFERENCE, startPointType, null, useCustomReceiverAccessor, sameDirection, annotations, nonDefaultReceiver, customDispatchFactory);
         }
     }
 
@@ -1152,7 +1147,7 @@ abstract class AbstractBridgeParser {
         }
 
         MarshallerData getCustomMarshaller(DeclaredType forType, DeclaredType annotationType, Types types) {
-            return getAllCustomMarshallers().stream().filter((m) -> !m.legacy).filter((m) -> types.isSameType(forType, m.forType)).filter((m) -> annotationType == null ? m.annotations.isEmpty()
+            return getAllCustomMarshallers().stream().filter((m) -> types.isSameType(forType, m.forType)).filter((m) -> annotationType == null ? m.annotations.isEmpty()
                             : Utilities.contains(m.annotations.stream().map(AnnotationMirror::getAnnotationType).collect(Collectors.toList()), annotationType, types)).findFirst().orElseThrow(
                                             () -> new IllegalStateException(String.format("No custom marshaller for type %s.", Utilities.getTypeName(forType))));
         }

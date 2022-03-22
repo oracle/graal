@@ -22,26 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge.processor.test;
 
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.Idempotent;
-import org.graalvm.nativebridge.NativeIsolate;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-
+import java.util.List;
 import java.util.Map;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
-abstract class NativeCustomMarshallerTest extends NativeObject implements CustomMarshallerService {
+public interface CustomMarshallerService {
 
-    NativeCustomMarshallerTest(NativeIsolate isolate, long handle) {
-        super(isolate, handle);
-    }
+    Map<String, String> createMap(List<String> keys, List<String> values);
 
-    @Idempotent
-    @Override
-    public abstract Map<String, String> getProperties();
+    Map<String, String> getProperties();
 }

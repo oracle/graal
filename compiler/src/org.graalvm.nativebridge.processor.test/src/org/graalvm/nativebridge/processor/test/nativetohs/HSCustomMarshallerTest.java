@@ -22,23 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge.processor.test.nativetohs;
 
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.Idempotent;
-import org.graalvm.nativebridge.NativeIsolate;
-import org.graalvm.nativebridge.NativeObject;
 import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import java.util.Map;
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
-abstract class NativeCustomMarshallerTest extends NativeObject implements CustomMarshallerService {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshallerService {
 
-    NativeCustomMarshallerTest(NativeIsolate isolate, long handle) {
-        super(isolate, handle);
+    HSCustomMarshallerTest(JNIEnv env, JObject handle) {
+        super(env, handle);
     }
 
     @Idempotent

@@ -65,7 +65,7 @@ import org.graalvm.nativebridge.processor.AbstractBridgeParser.MethodData;
 abstract class AbstractBridgeGenerator {
 
     static final String MARSHALLED_DATA_PARAMETER = "marshalledData";
-    static final int BYTES_PER_PARAMETER = 256;
+    private static final int BYTES_PER_PARAMETER = 256;
 
     final AbstractBridgeParser parser;
     final Types types;
@@ -84,6 +84,11 @@ abstract class AbstractBridgeGenerator {
     abstract void generate(DefinitionData data) throws IOException;
 
     abstract MarshallerSnippets marshallerSnippets(DefinitionData data, MarshallerData marshallerData);
+
+    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
+        int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
+        return slots * BYTES_PER_PARAMETER;
+    }
 
     final void writeSourceFile(DefinitionData data, String content) throws IOException {
         TypeElement originatingElement = (TypeElement) data.annotatedType.asElement();
@@ -153,9 +158,8 @@ abstract class AbstractBridgeGenerator {
     }
 
     final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data, CodeBuilder.Parameter jniConfigVariable,
-                    boolean staticFields, DeclaredType marshallerType) {
+                    boolean staticFields) {
         String prefix = staticFields ? "" : "this.";
-        String legacyLookupMethod = marshallerType.equals(typeCache.jniHotSpotMarshaller) ? "lookupHotSpotMarshaller" : "lookupNativeMarshaller";
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             List<CharSequence> params = new ArrayList<>();
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
@@ -168,8 +172,7 @@ abstract class AbstractBridgeGenerator {
             }
             builder.lineStart(prefix).write(marshaller.name).write(" = ");
             CharSequence jniConfigName = jniConfigVariable == null ? "config" : jniConfigVariable.name;
-            String useLookupMethod = marshaller.legacy ? legacyLookupMethod : "lookupMarshaller";
-            builder.invoke(jniConfigName, useLookupMethod, params.toArray(new CharSequence[params.size()])).lineEnd(";");
+            builder.invoke(jniConfigName, "lookupMarshaller", params.toArray(new CharSequence[params.size()])).lineEnd(";");
         }
     }
 
@@ -273,12 +276,11 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static void generateMarshallerFields(CodeBuilder builder, DefinitionData data, DeclaredType type, DeclaredType legacyType, Modifier... modifiers) {
+    void generateMarshallerFields(CodeBuilder builder, DefinitionData data, Modifier... modifiers) {
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             Set<Modifier> modSet = EnumSet.noneOf(Modifier.class);
             Collections.addAll(modSet, modifiers);
-            DeclaredType useType = marshaller.legacy ? legacyType : type;
-            builder.lineStart().writeModifiers(modSet).space().parameterizedType(useType, marshaller.forType).space().write(marshaller.name).lineEnd(";");
+            builder.lineStart().writeModifiers(modSet).space().parameterizedType(typeCache.binaryMarshaller, marshaller.forType).space().write(marshaller.name).lineEnd(";");
         }
     }
 
@@ -370,7 +372,8 @@ abstract class AbstractBridgeGenerator {
 
         abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName);
 
-        abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName);
+        abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                        CharSequence jniEnvFieldName);
 
         static CharSequence outArrayLocal(CharSequence parameterName) {
             return parameterName + "Out";

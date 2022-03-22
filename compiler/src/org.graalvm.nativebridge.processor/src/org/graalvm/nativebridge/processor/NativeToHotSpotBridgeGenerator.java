@@ -102,14 +102,14 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                         data.annotatedType, Collections.emptyList());
         builder.indent();
         builder.lineEnd("");
-        generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        generateMarshallerFields(builder, data, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
             builder.methodStart(EnumSet.of(Modifier.STATIC), null,
                             null, Collections.emptyList(), Collections.emptyList());
             builder.indent();
             builder.lineStart().write(typeCache.jniConfig).write(" config = ").invokeStatic(data.jniConfig, "getInstance").lineEnd(";");
-            generateMarshallerLookups(builder, data, null, true, typeCache.jniNativeMarshaller);
+            generateMarshallerLookups(builder, data, null, true);
             builder.dedent();
             builder.line("}");
             builder.line("");
@@ -203,10 +203,19 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             if (needsExplicitIsolateParameter(methodData)) {
                 signature.add(new CodeBuilder(builder).classLiteral(types.getPrimitiveType(TypeKind.LONG)).build());
             }
+            int marshalledParametersCount = 0;
             for (int i = 0; i < parameterTypes.size(); i++) {
-                TypeMirror parameterType = parameterTypes.get(i);
-                endPointParameterType = marshallerSnippets(data, methodData.getParameterMarshaller(i)).getEndPointMethodParameterType(parameterType);
-                signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
+                MarshallerData marshallerData = methodData.getParameterMarshaller(i);
+                if (marshallerData.isCustom()) {
+                    marshalledParametersCount++;
+                } else {
+                    TypeMirror parameterType = parameterTypes.get(i);
+                    endPointParameterType = marshallerSnippets(data, marshallerData).getEndPointMethodParameterType(parameterType);
+                    signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
+                }
+            }
+            if (marshalledParametersCount > 0) {
+                signature.add(new CodeBuilder(builder).classLiteral(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE))).build());
             }
             builder.lineStart("this." + fieldName).write(" = ").invokeStatic(typeCache.jNIMethod, "findMethod",
                             jniEnv.name, END_POINT_CLASS_FIELD, "true",
@@ -228,10 +237,19 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             receiver = data.endPointHandle != null ? data.endPointHandle.getSimpleName() : "this";
             nonReceiverParameterStart = 0;
         }
+        List<Integer> customParameters = new ArrayList<>();
+        for (int i = nonReceiverParameterStart; i < methodData.element.getParameters().size(); i++) {
+            MarshallerData marshallerData = methodData.getParameterMarshaller(i);
+            if (marshallerData.isCustom()) {
+                customParameters.add(i);
+            }
+        }
+        int staticBufferSize = getStaticBufferSize(customParameters.size(), methodData.getReturnTypeMarshaller().isCustom());
         AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
         CharSequence args;
         CharSequence env;
         TypeMirror returnType = methodData.type.getReturnType();
+        boolean voidMethod = returnType.getKind() == TypeKind.VOID;
         MarshallerSnippets resultMarshallerSnippets = marshallerSnippets(data, methodData.getReturnTypeMarshaller());
         if (cacheData != null) {
             String cacheFieldName = cacheData.cacheFieldName;
@@ -242,14 +260,21 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             builder.line("try {");
             builder.indent();
             env = generateLookupJNIEnv(builder);
+            CharSequence staticMarshallBufferVar = generateStaticBuffer(builder, staticBufferSize);
             Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
             boolean hasPostMarshall = generatePreMarshall(builder, data, methodData, nonReceiverParameterStart, env, parameterValueOverrides);
-            args = generatePushArgs(builder, data, methodData, nonReceiverParameterStart, env, receiver, parameterValueOverrides);
+            CharSequence marshalledParametersVar = generateCustomParameterWrite(builder, data, methodData, customParameters, staticMarshallBufferVar, staticBufferSize, env);
+            args = generatePushArgs(builder, data, methodData, nonReceiverParameterStart, env, receiver, parameterValueOverrides, customParameters, marshalledParametersVar);
             CharSequence jniCall = callHotSpot(builder, methodData, env, args, resultMarshallerSnippets);
             CharSequence endPointResultVariable = resultMarshallerSnippets.preUnmarshallResult(builder, returnType, jniCall, receiver, env);
-            builder.lineStart().write(resultVariable).write(" = ");
-            builder.write(resultMarshallerSnippets.unmarshallResult(builder, returnType, endPointResultVariable != null ? endPointResultVariable : jniCall, receiver, env));
-            builder.lineEnd(";");
+            if (methodData.getReturnTypeMarshaller().isCustom()) {
+                generateCustomResultRead(builder, endPointResultVariable != null ? endPointResultVariable : jniCall, resultVariable, resultMarshallerSnippets, returnType, receiver, env,
+                                staticMarshallBufferVar, staticBufferSize);
+            } else {
+                builder.lineStart().write(resultVariable).write(" = ");
+                builder.write(resultMarshallerSnippets.unmarshallResult(builder, returnType, endPointResultVariable != null ? endPointResultVariable : jniCall, receiver, null, env));
+                builder.lineEnd(";");
+            }
             if (hasPostMarshall) {
                 generatePostMarshall(builder, data, methodData, nonReceiverParameterStart, env, resultVariable);
             }
@@ -268,23 +293,30 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             builder.line("try {");
             builder.indent();
             env = generateLookupJNIEnv(builder);
+            CharSequence staticMarshallBufferVar = generateStaticBuffer(builder, staticBufferSize);
             Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
             boolean hasPostMarshall = generatePreMarshall(builder, data, methodData, nonReceiverParameterStart, env, parameterValueOverrides);
-            args = generatePushArgs(builder, data, methodData, nonReceiverParameterStart, env, receiver, parameterValueOverrides);
+            CharSequence marshalledParametersVar = generateCustomParameterWrite(builder, data, methodData, customParameters, staticMarshallBufferVar, staticBufferSize, env);
+            args = generatePushArgs(builder, data, methodData, nonReceiverParameterStart, env, receiver, parameterValueOverrides, customParameters, marshalledParametersVar);
             CharSequence jniCall = callHotSpot(builder, methodData, env, args, resultMarshallerSnippets);
             CharSequence endPointResultVariable = resultMarshallerSnippets.preUnmarshallResult(builder, returnType, jniCall, receiver, env);
-            builder.lineStart();
             CharSequence resultVariable = null;
-            if (returnType.getKind() != TypeKind.VOID) {
-                if (hasPostMarshall) {
-                    resultVariable = "result";
+            if (hasPostMarshall && !voidMethod) {
+                resultVariable = "result";
+            }
+            if (methodData.getReturnTypeMarshaller().isCustom()) {
+                generateCustomResultRead(builder, endPointResultVariable != null ? endPointResultVariable : jniCall, resultVariable, resultMarshallerSnippets, returnType, receiver, env,
+                                staticMarshallBufferVar, staticBufferSize);
+            } else {
+                builder.lineStart();
+                if (resultVariable != null) {
                     builder.write(returnType).space().write(resultVariable).write(" = ");
-                } else {
+                } else if (!voidMethod) {
                     builder.write("return ");
                 }
+                builder.write(resultMarshallerSnippets.unmarshallResult(builder, returnType, endPointResultVariable != null ? endPointResultVariable : jniCall, receiver, null, env));
+                builder.lineEnd(";");
             }
-            builder.write(resultMarshallerSnippets.unmarshallResult(builder, returnType, endPointResultVariable != null ? endPointResultVariable : jniCall, receiver, env));
-            builder.lineEnd(";");
             if (hasPostMarshall) {
                 generatePostMarshall(builder, data, methodData, nonReceiverParameterStart, env, resultVariable);
             }
@@ -309,6 +341,94 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         CharSequence res = "jniEnv";
         builder.lineStart().write(typeCache.jniEnv).space().write(res).write(" = ").invokeStatic(typeCache.jniMethodScope, "env").lineEnd(";");
         return res;
+    }
+
+    private CharSequence generateStaticBuffer(CodeBuilder builder, int staticBufferSize) {
+        if (staticBufferSize > 0) {
+            CharSequence staticMarshallBufferVar = "staticMarshallBuffer";
+            builder.lineStart().write(typeCache.cCharPointer).space().write(staticMarshallBufferVar).write(" = ").invokeStatic(typeCache.stackValue, "get", Integer.toString(staticBufferSize)).lineEnd(
+                            ";");
+            return staticMarshallBufferVar;
+        } else {
+            return null;
+        }
+    }
+
+    private CharSequence generateCustomParameterWrite(CodeBuilder builder, DefinitionData data, MethodData methodData, List<Integer> customParameters,
+                    CharSequence staticBufferVar, int staticBufferLength, CharSequence jniEnv) {
+        if (!customParameters.isEmpty()) {
+            CharSequence marshalledParametersVar = "marshalledParameters";
+            CharSequence marshalledParametersOutputVar = "marshalledParametersOutput";
+            builder.lineStart().write(typeCache.jByteArray).space().write(marshalledParametersVar).lineEnd(";");
+            builder.lineStart("try ").write("(").write(typeCache.cCharPointerBinaryOutput).space().write(marshalledParametersOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "create",
+                            staticBufferVar, Integer.toString(staticBufferLength), "false").lineEnd(") {");
+            builder.indent();
+            List<? extends VariableElement> formalParameters = methodData.element.getParameters();
+            List<? extends TypeMirror> formalParameterTypes = methodData.type.getParameterTypes();
+            for (int index : customParameters) {
+                CharSequence parameterName = formalParameters.get(index).getSimpleName();
+                MarshallerData marshaller = methodData.getParameterMarshaller(index);
+                MarshallerSnippets marshallerSnippets = marshallerSnippets(data, marshaller);
+                CharSequence marshallExpression = marshallerSnippets.marshallParameter(builder, formalParameterTypes.get(index), parameterName, marshalledParametersOutputVar, jniEnv);
+                builder.lineStart(marshallExpression).lineEnd(";");
+            }
+            CharSequence marshalledParametersPositionVar = "marshalledParametersPosition";
+            builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(marshalledParametersPositionVar).write(" = ").invoke(marshalledParametersOutputVar, "getPosition").lineEnd(
+                            ";");
+            builder.lineStart().write(marshalledParametersVar).write(" = ").invokeStatic(typeCache.jniUtil, "NewByteArray", jniEnv, marshalledParametersPositionVar).lineEnd(";");
+            CharSequence address = new CodeBuilder(builder).invoke(marshalledParametersOutputVar, "getAddress").build();
+            builder.lineStart().invokeStatic(typeCache.jniUtil, "SetByteArrayRegion", jniEnv, marshalledParametersVar, "0", marshalledParametersPositionVar, address).lineEnd(";");
+            builder.dedent();
+            CharSequence ioe = "marshallingException";
+            builder.lineStart("} catch (").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
+            builder.indent();
+            reThrowAsAssertionError(builder, ioe);
+            builder.dedent();
+            builder.line("}");
+            return marshalledParametersVar;
+        } else {
+            return null;
+        }
+    }
+
+    private void generateCustomResultRead(CodeBuilder builder, CharSequence result, CharSequence resultVar, MarshallerSnippets resultMarshallerSnippets,
+                    TypeMirror returnType, CharSequence receiver, CharSequence jniEnv, CharSequence staticMarshallBufferVar, int staticBufferSize) {
+        CharSequence marshalledDataLengthVar = "marshalledDataLength";
+        CharSequence marshallBufferVar = "marshallBuffer";
+        CharSequence marshalledResultInputVar = "marshalledResultInput";
+        builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(marshalledDataLengthVar).write(" = ").invokeStatic(typeCache.jniUtil, "GetArrayLength", jniEnv, result).lineEnd(
+                        ";");
+        builder.lineStart().write(typeCache.cCharPointer).space().write(marshallBufferVar).write(" = ").write(marshalledDataLengthVar).write(" <= ").write(Integer.toString(staticBufferSize)).write(
+                        " ? ").write(staticMarshallBufferVar).write(" : ").invokeStatic(typeCache.unmanagedMemory, "malloc", marshalledDataLengthVar).lineEnd(";");
+        builder.line("try {");
+        builder.indent();
+        builder.lineStart().invokeStatic(typeCache.jniUtil, "GetByteArrayRegion", jniEnv, result, "0", marshalledDataLengthVar, marshallBufferVar).lineEnd(";");
+        builder.lineStart().write("try (").write(typeCache.binaryInput).space().write(marshalledResultInputVar).write(" = ").invokeStatic(typeCache.binaryInput, "create", marshallBufferVar,
+                        marshalledDataLengthVar).lineEnd(") {");
+        builder.indent();
+        CharSequence unmarshall = resultMarshallerSnippets.unmarshallResult(builder, returnType, result, receiver, marshalledResultInputVar, jniEnv);
+        if (resultVar != null) {
+            builder.lineStart(resultVar).write(" = ").write(unmarshall).lineEnd(";");
+        } else {
+            builder.lineStart("return ").write(unmarshall).lineEnd(";");
+        }
+        builder.dedent();
+        CharSequence ioe = "marshallingException";
+        builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
+        builder.indent();
+        reThrowAsAssertionError(builder, ioe);
+        builder.dedent();
+        builder.line("}");
+        builder.dedent();
+        builder.line("} finally {");
+        builder.indent();
+        builder.lineStart("if (").write(marshallBufferVar).write(" != ").write(staticMarshallBufferVar).lineEnd(") {");
+        builder.indent();
+        builder.lineStart().invokeStatic(typeCache.unmanagedMemory, "free", marshallBufferVar).lineEnd(";");
+        builder.dedent();
+        builder.line("}");
+        builder.dedent();
+        builder.line("}");
     }
 
     private boolean generatePreMarshall(CodeBuilder builder, DefinitionData data, MethodData methodData, int nonReceiverParameterStart,
@@ -336,12 +456,13 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
     }
 
     private CharSequence generatePushArgs(CodeBuilder builder, DefinitionData data, MethodData methodData, int nonReceiverParameterStart,
-                    CharSequence jniEnv, CharSequence receiver, Map<String, CharSequence> parameterValueOverrides) {
+                    CharSequence jniEnv, CharSequence receiver, Map<String, CharSequence> parameterValueOverrides,
+                    Collection<Integer> customParameters, CharSequence marshalledParametersVar) {
         String jniArgs = "jniArgs";
         List<? extends VariableElement> parameters = methodData.element.getParameters();
         boolean hasExplicitReceiver = data.hasCustomDispatch();
         boolean hasExplicitIsolate = needsExplicitIsolateParameter(methodData);
-        int argumentCount = parameters.size() + (hasExplicitReceiver ? 0 : 1) + (hasExplicitIsolate ? 1 : 0);
+        int argumentCount = parameters.size() - customParameters.size() + (hasExplicitReceiver ? 0 : 1) + (hasExplicitIsolate ? 1 : 0) + (customParameters.isEmpty() ? 0 : 1);
         CodeBuilder jValueClassLiteral = new CodeBuilder(builder).classLiteral(typeCache.jValue);
         builder.lineStart().write(typeCache.jValue).space().write(jniArgs).write(" = ").invokeStatic(typeCache.stackValue, "get", Integer.toString(argumentCount),
                         jValueClassLiteral.build()).lineEnd(";");
@@ -354,21 +475,24 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         }
         CharSequence value = new CodeBuilder(builder).invoke(receiverHSObject, "getHandle").build();
         builder.lineStart().invoke(address, "setJObject", value).lineEnd(";");
-        int stackValueParameterStart;
+        int stackIndex;
         if (hasExplicitIsolate) {
             address = new CodeBuilder(builder).invoke(jniArgs, "addressOf", "1").build();
             CharSequence currentIsolate = new CodeBuilder(builder).invoke(
                             new CodeBuilder(builder).invokeStatic(typeCache.currentIsolate, "getIsolate").build(),
                             "rawValue").build();
             builder.lineStart().invoke(address, "setLong", currentIsolate).lineEnd(";");
-            stackValueParameterStart = 2;
+            stackIndex = 2;
         } else {
-            stackValueParameterStart = 1;
+            stackIndex = 1;
         }
         List<? extends VariableElement> formalParameters = methodData.element.getParameters();
         List<? extends TypeMirror> formalParameterTypes = methodData.type.getParameterTypes();
-        for (int i = nonReceiverParameterStart, j = stackValueParameterStart; i < formalParameters.size(); i++, j++) {
-            address = new CodeBuilder(builder).invoke(jniArgs, "addressOf", Integer.toString(j)).build();
+        for (int i = nonReceiverParameterStart; i < formalParameters.size(); i++) {
+            if (customParameters.contains(i)) {
+                continue;
+            }
+            address = new CodeBuilder(builder).invoke(jniArgs, "addressOf", Integer.toString(stackIndex++)).build();
             CharSequence parameterName = formalParameters.get(i).getSimpleName();
             CharSequence parameterValueOverride = parameterValueOverrides.get(parameterName.toString());
             MarshallerData marshaller = methodData.getParameterMarshaller(i);
@@ -379,6 +503,10 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                 value = marshallerSnippets.marshallParameter(builder, formalParameterTypes.get(i), parameterName, null, jniEnv);
             }
             builder.lineStart().invoke(address, jValueSetterName(marshallerSnippets.getEndPointMethodParameterType(formalParameterTypes.get(i))), value).lineEnd(";");
+        }
+        if (marshalledParametersVar != null) {
+            address = new CodeBuilder(builder).invoke(jniArgs, "addressOf", Integer.toString(stackIndex++)).build();
+            builder.lineStart().invoke(address, "setJObject", marshalledParametersVar).lineEnd(";");
         }
         return jniArgs;
     }
@@ -458,14 +586,14 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         builder.lineEnd("");
 
-        generateMarshallerFields(builder, data, typeCache.binaryMarshaller, typeCache.jniHotSpotMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        generateMarshallerFields(builder, data, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
             builder.methodStart(EnumSet.of(Modifier.STATIC), null,
                             null, Collections.emptyList(), Collections.emptyList());
             builder.indent();
             builder.lineStart().write(typeCache.jniConfig).write(" config = ").invokeStatic(data.jniConfig, "getInstance").lineEnd(";");
-            generateMarshallerLookups(builder, data, null, true, typeCache.jniHotSpotMarshaller);
+            generateMarshallerLookups(builder, data, null, true);
             builder.dedent();
             builder.line("}");
         }
@@ -495,9 +623,18 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         if (needsExplicitIsolateParameter(methodData)) {
             params.add(CodeBuilder.newParameter(types.getPrimitiveType(TypeKind.LONG), REFERENCE_ISOLATE_ADDRESS_NAME));
         }
+        int marshalledDataCount = 0;
         for (int i = 0; i < methodParameters.size(); i++) {
-            TypeMirror parameterType = marshallerSnippets(data, methodData.getParameterMarshaller(i)).getEndPointMethodParameterType(methodParameterTypes.get(i));
-            params.add(CodeBuilder.newParameter(parameterType, methodParameters.get(i).getSimpleName()));
+            MarshallerData marshallerData = methodData.getParameterMarshaller(i);
+            if (marshallerData.isCustom()) {
+                marshalledDataCount++;
+            } else {
+                TypeMirror parameterType = marshallerSnippets(data, marshallerData).getEndPointMethodParameterType(methodParameterTypes.get(i));
+                params.add(CodeBuilder.newParameter(parameterType, methodParameters.get(i).getSimpleName()));
+            }
+        }
+        if (marshalledDataCount > 0) {
+            params.add(CodeBuilder.newParameter(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE)), MARSHALLED_DATA_PARAMETER));
         }
         CharSequence methodName = methodData.element.getSimpleName();
         TypeMirror returnType = marshallerSnippets(data, methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
@@ -514,10 +651,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         } else {
             nonReceiverParameterStart = 0;
         }
-        for (int i = nonReceiverParameterStart; i < methodParameters.size(); i++) {
-            actualParameters[i] = marshallerSnippets(data, methodData.getParameterMarshaller(i)).unmarshallParameter(builder, methodParameterTypes.get(i), methodParameters.get(i).getSimpleName(),
-                            null, null);
-        }
+
         builder.line("try {");
         builder.indent();
         CharSequence resolvedDispatch;
@@ -536,14 +670,75 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         } else {
             resolvedDispatch = "receiverObject";
         }
+
+        Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
+        // Generate pre unmarshall statements
+        for (int i = nonReceiverParameterStart; i < methodParameters.size(); i++) {
+            marshallerSnippets(data, methodData.getParameterMarshaller(i)).preUnmarshallParameter(builder, methodParameterTypes.get(i), methodParameters.get(i).getSimpleName(),
+                            params.get(0).name, parameterValueOverrides);
+        }
+
+        // Create binary input for marshalled parameters
+        CharSequence marshalledParametersInputVar = "marshalledParametersInput";
+        if (marshalledDataCount > 0) {
+            builder.lineStart("try ").write("(").write(typeCache.binaryInput).space().write(marshalledParametersInputVar).write(" = ").invokeStatic(typeCache.binaryInput, "create",
+                            MARSHALLED_DATA_PARAMETER).lineEnd(") {");
+            builder.indent();
+        }
+        // Decode arguments.
+        for (int i = nonReceiverParameterStart; i < methodParameters.size(); i++) {
+            CharSequence parameterName = methodParameters.get(i).getSimpleName();
+            CharSequence parameterValueOverride = parameterValueOverrides.get(parameterName.toString());
+            MarshallerData marshallerData = methodData.getParameterMarshaller(i);
+            if (parameterValueOverride != null) {
+                actualParameters[i] = parameterValueOverride;
+            } else {
+                CharSequence unmarshallCall = marshallerSnippets(data, marshallerData).unmarshallParameter(builder, methodParameterTypes.get(i), parameterName,
+                                marshalledParametersInputVar, null);
+                if (marshallerData.isCustom()) {
+                    builder.lineStart().write(parameterName).write(" = ").write(unmarshallCall).lineEnd(";");
+                    actualParameters[i] = parameterName;
+                } else {
+                    actualParameters[i] = unmarshallCall;
+                }
+            }
+        }
+        // Handle decode arguments exception
+        if (marshalledDataCount > 0) {
+            builder.dedent();
+            CharSequence ioe = "marshallingException";
+            builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
+            builder.indent();
+            reThrowAsAssertionError(builder, ioe);
+            builder.dedent();
+            builder.line("}");
+        }
+        CharSequence marshalledResultOutputVar = "marshalledResultOutput";
         CharSequence resultSnippet = new CodeBuilder(builder).invoke(resolvedDispatch, methodData.receiverMethod != null ? methodData.receiverMethod : methodName, actualParameters).build();
         if (voidReturnType) {
             builder.lineStart().write(resultSnippet).lineEnd(";");
         } else {
-            MarshallerSnippets resultMarshallerSnippets = marshallerSnippets(data, methodData.getReturnTypeMarshaller());
+            MarshallerData marshallerData = methodData.getReturnTypeMarshaller();
+            MarshallerSnippets resultMarshallerSnippets = marshallerSnippets(data, marshallerData);
             CharSequence resultVariableName = resultMarshallerSnippets.preMarshallResult(builder, methodData.type.getReturnType(), resultSnippet, null);
-            resultSnippet = resultMarshallerSnippets.marshallResult(builder, methodData.type.getReturnType(), resultVariableName != null ? resultVariableName : resultSnippet, null, null);
-            builder.lineStart("return ").write(resultSnippet).lineEnd(";");
+            resultSnippet = resultMarshallerSnippets.marshallResult(builder, methodData.type.getReturnType(), resultVariableName != null ? resultVariableName : resultSnippet,
+                            marshalledResultOutputVar, null);
+            if (marshallerData.isCustom()) {
+                builder.lineStart("try ").write("(").write(typeCache.byteArrayBinaryOutput).space().write(marshalledResultOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "create",
+                                marshalledDataCount > 0 ? new CharSequence[]{MARSHALLED_DATA_PARAMETER} : new CharSequence[0]).lineEnd(") {");
+                builder.indent();
+                builder.lineStart().write(resultSnippet).lineEnd(";");
+                builder.lineStart("return ").invoke(marshalledResultOutputVar, "getArray").lineEnd(";");
+                builder.dedent();
+                CharSequence ioe = "marshallingException";
+                builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
+                builder.indent();
+                reThrowAsAssertionError(builder, ioe);
+                builder.dedent();
+                builder.line("}");
+            } else {
+                builder.lineStart("return ").write(resultSnippet).lineEnd(";");
+            }
         }
         builder.dedent();
         CharSequence e = "e";
@@ -613,7 +808,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             }
 
             @Override
-            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                            CharSequence jniEnvFieldName) {
                 if (types.isSameType(cache.string, resultType)) {
                     return new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "createString", jniEnvFieldName, invocationSnippet).build();
                 } else if (resultType.getKind() == TypeKind.ARRAY) {
@@ -773,7 +969,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             }
 
             @Override
-            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                            CharSequence jniEnvFieldName) {
                 if (marshallerData.sameDirection) {
                     return unmarshallNativeToHotSpotProxyInNative(currentBuilder, invocationSnippet, jniEnvFieldName);
                 } else {
@@ -840,7 +1037,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             }
 
             @Override
-            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                            CharSequence jniEnvFieldName) {
                 return new CodeBuilder(currentBuilder).invoke(invocationSnippet, "rawValue").build();
             }
         }
@@ -853,27 +1051,49 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
 
             @Override
             TypeMirror getEndPointMethodParameterType(TypeMirror type) {
-                return cache.object;
+                return types.getArrayType(types.getPrimitiveType(TypeKind.BYTE));
             }
 
             @Override
             CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence marshalledParametersOutput, CharSequence jniEnvFieldName) {
-                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "marshall", jniEnvFieldName, formalParameter).build();
+                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "write", marshalledParametersOutput, formalParameter).build();
             }
 
             @Override
-            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
-                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "unmarshall", jniEnvFieldName, invocationSnippet).build();
+            CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+                CharSequence resultVariable = "endPointResult";
+                currentBuilder.lineStart().write(cache.jByteArray).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
+                return resultVariable;
+            }
+
+            @Override
+            CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                            CharSequence jniEnvFieldName) {
+                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "read", marshalledResultInput).build();
+            }
+
+            @Override
+            CharSequence preMarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+                CharSequence resultVariable = "endPointResult";
+                currentBuilder.lineStart().write(resultType).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
+                return resultVariable;
             }
 
             @Override
             CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName) {
-                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "marshall", invocationSnippet).build();
+                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "write", marshalledResultOutput, invocationSnippet).build();
+            }
+
+            @Override
+            boolean preUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName,
+                            Map<String, CharSequence> parameterValueOverride) {
+                currentBuilder.lineStart().write(parameterType).space().write(parameterName).lineEnd(";");
+                return false;
             }
 
             @Override
             CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, CharSequence jniEnvFieldName) {
-                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "unmarshall", parameterName).build();
+                return new CodeBuilder(currentBuilder).invoke(marshallerData.name, "read", marshalledParametersInput).build();
             }
         }
     }
