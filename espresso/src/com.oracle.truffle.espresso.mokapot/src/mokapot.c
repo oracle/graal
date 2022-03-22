@@ -241,9 +241,9 @@ JNIEXPORT jint JNICALL JVM_ActiveProcessorCount(void) {
   return (*getEnv())->JVM_ActiveProcessorCount();
 }
 
-JNIEXPORT void* JNICALL JVM_LoadLibrary(const char *name) {
+JNIEXPORT void* JNICALL JVM_LoadLibrary(const char *name, jboolean throwException) {
   IMPLEMENTED(JVM_LoadLibrary);
-  return (*getEnv())->JVM_LoadLibrary(name);
+  return (*getEnv())->JVM_LoadLibrary(name, throwException);
 }
 
 JNIEXPORT void JNICALL JVM_UnloadLibrary(void *handle) {
