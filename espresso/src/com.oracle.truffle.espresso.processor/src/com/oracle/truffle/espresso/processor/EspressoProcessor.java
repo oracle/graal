@@ -214,6 +214,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
     TypeElement javaType;
     private static final String JAVA_TYPE = "com.oracle.truffle.espresso.substitutions.JavaType";
 
+    TypeElement espressoLanguage;
+    private static final String ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
+
     TypeElement meta;
     private static final String META = "com.oracle.truffle.espresso.meta.Meta";
 
@@ -235,19 +238,22 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
     static final String IMPORT_STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
+    static final String IMPORT_ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
     static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
     static final String IMPORT_ESPRESSO_CONTEXT = "com.oracle.truffle.espresso.runtime.EspressoContext";
     static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 
-    static final String CONTEXT = "EspressoContext.get(this)";
-    static final String CONTEXT_META = "EspressoContext.get(this).getMeta()";
-    static final String META_TYPE = "Meta";
+    static final String ESPRESSO_LANGUAGE_SIMPLE_NAME = "EspressoLanguage";
+    static final String ESPRESSO_CONTEX_SIMPLE_NAME = "EspressoContext";
+    static final String META_SIMPLE_NAME = "Meta";
+
+    static final String ESPRESSO_LANGUAGE_GETTER = "EspressoLanguage.get(this)";
+    static final String ESPRESSO_CONTEXT_GETTER = "EspressoContext.get(this)";
+    static final String META_GETTER = "EspressoContext.get(this).getMeta()";
 
     static final String PROFILE_CLASS = "SubstitutionProfiler";
     static final String PROFILE_ARG_CALL = "this";
-
-    static final String ESPRESSO_CONTEXT_CLASS = "EspressoContext ";
 
     static final String CREATE = "create";
 
@@ -315,6 +321,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         noSafepoint = getTypeElement(NO_SAFEPOINT);
         staticObject = getTypeElement(STATIC_OBJECT);
         javaType = getTypeElement(JAVA_TYPE);
+        espressoLanguage = getTypeElement(ESPRESSO_LANGUAGE);
         meta = getTypeElement(META);
         espressoContext = getTypeElement(ESPRESSO_CONTEXT);
         substitutionProfiler = getTypeElement(SUBSTITUTION_PROFILER);
@@ -394,6 +401,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     boolean hasProfileInjection(ExecutableElement method) {
         return hasInjectedParameter(method, substitutionProfiler.asType());
+    }
+
+    boolean hasLanguageInjection(ExecutableElement method) {
+        return hasInjectedParameter(method, espressoLanguage.asType());
     }
 
     boolean hasMetaInjection(ExecutableElement method) {
@@ -485,6 +496,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
      */
     static boolean appendInvocationMetaInformation(StringBuilder str, boolean first, SubstitutionHelper helper) {
         boolean f = first;
+        if (helper.hasLanguageInjection) {
+            f = injectLanguage(str, f);
+        }
         if (helper.hasMetaInjection) {
             f = injectMeta(str, f);
         }
@@ -523,14 +537,17 @@ public abstract class EspressoProcessor extends BaseProcessor {
         for (String param : parameterTypes) {
             linkSignature.addParam(param);
         }
+        if (helper.hasLanguageInjection) {
+            linkSignature.addParam(ESPRESSO_LANGUAGE_SIMPLE_NAME);
+        }
         if (helper.hasMetaInjection) {
-            linkSignature.addParam(META_TYPE);
+            linkSignature.addParam(META_SIMPLE_NAME);
         }
         if (helper.hasProfileInjection) {
             linkSignature.addParam(PROFILE_CLASS);
         }
         if (helper.hasContextInjection) {
-            linkSignature.addParam(ESPRESSO_CONTEXT_CLASS);
+            linkSignature.addParam(ESPRESSO_CONTEX_SIMPLE_NAME);
         }
 
         javadocBuilder.addGeneratedByLine(linkSignature);
@@ -629,9 +646,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return isTrivialMethod;
     }
 
+    static boolean injectLanguage(StringBuilder str, boolean first) {
+        checkFirst(str, first);
+        str.append(ESPRESSO_LANGUAGE_GETTER);
+        return false;
+    }
+
     static boolean injectMeta(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(CONTEXT_META);
+        str.append(META_GETTER);
         return false;
     }
 
@@ -643,7 +666,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectContext(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(CONTEXT);
+        str.append(ESPRESSO_CONTEXT_GETTER);
         return false;
     }
 
@@ -664,6 +687,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
 
+        if (helper.hasLanguageInjection) {
+            expectedImports.add(IMPORT_ESPRESSO_LANGUAGE);
+        }
         if (helper.hasMetaInjection || helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
@@ -686,7 +712,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
-        if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
+        if (helper.isNodeTarget() || helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
             generateChildInstanceField(substitutorClass, helper);
         }
 

@@ -34,6 +34,7 @@ import javax.lang.model.element.TypeElement;
  * @see com.oracle.truffle.espresso.processor.SubstitutionProcessor.SubstitutorHelper
  */
 public class SubstitutionHelper {
+    final boolean hasLanguageInjection;
     final boolean hasMetaInjection;
     final boolean hasProfileInjection;
     final boolean hasContextInjection;
@@ -59,6 +60,7 @@ public class SubstitutionHelper {
         ExecutableElement targetMethod = isNodeTarget()
                         ? processor.findNodeExecute(getNodeTarget())
                         : getMethodTarget();
+        this.hasLanguageInjection = processor.hasLanguageInjection(targetMethod);
         this.hasMetaInjection = processor.hasMetaInjection(targetMethod);
         this.hasProfileInjection = processor.hasProfileInjection(targetMethod);
         this.hasContextInjection = processor.hasContextInjection(targetMethod);
