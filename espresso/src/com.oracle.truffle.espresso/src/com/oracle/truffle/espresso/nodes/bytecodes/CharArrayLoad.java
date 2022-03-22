@@ -74,11 +74,11 @@ public abstract class CharArrayLoad extends Node {
 
         public abstract char execute(StaticObject array, int index);
 
-        protected EspressoContext getContext() {
+        protected final EspressoContext getContext() {
             return EspressoContext.get(this);
         }
 
-        protected EspressoLanguage getLanguage() {
+        protected final EspressoLanguage getLanguage() {
             return EspressoLanguage.get(this);
         }
 

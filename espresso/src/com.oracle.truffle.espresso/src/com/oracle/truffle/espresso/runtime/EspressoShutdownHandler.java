@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 
-class EspressoShutdownHandler implements ContextAccess {
+final class EspressoShutdownHandler implements ContextAccess {
 
     // region context
 

@@ -74,11 +74,11 @@ public abstract class FloatArrayLoad extends Node {
 
         public abstract float execute(StaticObject receiver, int index);
 
-        protected EspressoContext getContext() {
+        protected final EspressoContext getContext() {
             return EspressoContext.get(this);
         }
 
-        protected EspressoLanguage getLanguage() {
+        protected final EspressoLanguage getLanguage() {
             return EspressoLanguage.get(this);
         }
 

@@ -51,7 +51,7 @@ public abstract class MethodHandleIntrinsicNode extends Node implements ContextA
     }
 
     @Override
-    public EspressoContext getContext() {
+    public final EspressoContext getContext() {
         return method.getContext();
     }
 

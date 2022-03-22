@@ -76,11 +76,11 @@ public abstract class BooleanArrayLoad extends Node {
 
         public abstract boolean execute(StaticObject receiver, int index);
 
-        protected EspressoContext getContext() {
+        protected final EspressoContext getContext() {
             return EspressoContext.get(this);
         }
 
-        protected EspressoLanguage getLanguage() {
+        protected final EspressoLanguage getLanguage() {
             return EspressoLanguage.get(this);
         }
 

@@ -80,7 +80,7 @@ public abstract class ArrayLength {
 
         public abstract int execute(StaticObject array);
 
-        protected EspressoContext getContext() {
+        protected final EspressoContext getContext() {
             return EspressoContext.get(this);
         }
 

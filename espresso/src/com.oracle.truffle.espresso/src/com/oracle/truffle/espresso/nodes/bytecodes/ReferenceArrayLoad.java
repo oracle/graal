@@ -77,11 +77,11 @@ public abstract class ReferenceArrayLoad extends Node {
 
         public abstract StaticObject execute(StaticObject receiver, int index);
 
-        protected EspressoContext getContext() {
+        protected final EspressoContext getContext() {
             return EspressoContext.get(this);
         }
 
-        protected EspressoLanguage getLanguage() {
+        protected final EspressoLanguage getLanguage() {
             return EspressoLanguage.get(this);
         }
 

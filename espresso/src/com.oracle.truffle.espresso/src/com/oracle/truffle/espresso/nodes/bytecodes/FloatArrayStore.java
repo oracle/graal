@@ -73,11 +73,11 @@ public abstract class FloatArrayStore extends Node {
 
         public abstract void execute(StaticObject receiver, int index, float value);
 
-        protected EspressoContext getContext() {
+        protected final EspressoContext getContext() {
             return EspressoContext.get(this);
         }
 
-        protected EspressoLanguage getLanguage() {
+        protected final EspressoLanguage getLanguage() {
             return EspressoLanguage.get(this);
         }
 

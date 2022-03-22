@@ -54,12 +54,12 @@ public abstract class AbstractSetFieldNode extends Node implements ContextAccess
     }
 
     @Override
-    public EspressoContext getContext() {
+    public final EspressoContext getContext() {
         return EspressoContext.get(this);
     }
 
     @Override
-    public EspressoLanguage getLanguage() {
+    public final EspressoLanguage getLanguage() {
         return EspressoLanguage.get(this);
     }
 
