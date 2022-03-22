@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -112,7 +112,9 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
         if (nativeContextExtension != null) {
             NativeLookupResult result = nativeContextExtension.getNativeFunctionOrNull(name);
-            return result.getObject();
+            if (result != null) {
+                return result.getObject();
+            }
         }
         return null;
     }
