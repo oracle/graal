@@ -1213,9 +1213,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType jThrowable;
         final DeclaredType jniConfig;
         final DeclaredType jniEnv;
-        final DeclaredType jniHotSpotMarshaller;
         final DeclaredType jniMethodScope;
-        final DeclaredType jniNativeMarshaller;
         final DeclaredType jniUtil;
         final DeclaredType map;
         final DeclaredType marshallerAnnotation;
@@ -1274,9 +1272,7 @@ abstract class AbstractBridgeParser {
             this.jThrowable = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JThrowable");
             this.jniConfig = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIConfig");
             this.jniEnv = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JNIEnv");
-            this.jniHotSpotMarshaller = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIHotSpotMarshaller");
             this.jniMethodScope = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIMethodScope");
-            this.jniNativeMarshaller = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNINativeMarshaller");
             this.jniUtil = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIUtil");
             this.map = (DeclaredType) processor.getType("java.util.Map");
             this.marshallerAnnotation = (DeclaredType) processor.getType("org.graalvm.nativebridge.MarshallerAnnotation");
