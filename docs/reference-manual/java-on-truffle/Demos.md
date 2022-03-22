@@ -8,8 +8,8 @@ permalink: /reference-manual/java-on-truffle/demos/
 # Running Demo Applications
 
 Java on Truffle is an implementation of the Java Virtual Machine Specification, which offers some interesting capabilities in addition to being able to run applications in Java or other JVM languages.
-For example, the enhanced [HotSwap capabilities](HotSwap.md), boosts developer productivity by enabling unlimited hot code reloading.
-Moreover, to illustrate what Java on Truffle can do, please consider the following short examples.
+For example, the enhanced [HotSwap capabilities](HotSwap.md) boosts developer productivity by enabling unlimited hot code reloading.
+Moreover, to illustrate what Java on Truffle can do, consider the following short examples.
 
 ## Mixing AOT and JIT for Java
 
