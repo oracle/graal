@@ -75,7 +75,6 @@ import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
-import com.oracle.truffle.object.Transition.PropertyTransition;
 import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 import com.oracle.truffle.object.Transition.ShareShapeTransition;
 
@@ -1030,20 +1029,6 @@ public abstract class ShapeImpl extends Shape {
             return propertyAssumptions.getSingleContextAssumption();
         }
         return null;
-    }
-
-    /** @since 0.17 or earlier */
-    @TruffleBoundary
-    @Override
-    public final boolean hasTransitionWithKey(Object key) {
-        for (Transition transition : getTransitionMapForRead().keySet()) {
-            if (transition instanceof PropertyTransition) {
-                if (((PropertyTransition) transition).getPropertyKey().equals(key)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     /**

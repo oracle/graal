@@ -829,15 +829,6 @@ public abstract class Shape {
     public abstract Object getSharedData();
 
     /**
-     * Query whether the shape has a transition with the given key.
-     *
-     * @since 0.8 or earlier
-     * @deprecated the result of this method may change at any time
-     */
-    @Deprecated(since = "19.3")
-    public abstract boolean hasTransitionWithKey(Object key);
-
-    /**
      * Clone off a separate shape with new shared data.
      *
      * @since 0.8 or earlier
