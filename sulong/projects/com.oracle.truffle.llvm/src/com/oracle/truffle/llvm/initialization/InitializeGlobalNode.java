@@ -60,6 +60,8 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
+
 /**
  * {@link InitializeGlobalNode} initializes the value of all defined global symbols.
  *
@@ -93,12 +95,12 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             protectRoData.execute(roDataBase);
         }
         LLVMContext context = LLVMContext.get(this);
-        synchronized (context.threadInitLock) {
-            Thread[] threads = context.getAllRunningThreads();
+        try (TLSInitializerAccess access = context.getTLSInitializerAccess()) {
+            Thread[] threads = access.getAllRunningThreads();
             for (Thread thread : threads) {
                 threadGlobalVarInit.call(thread);
             }
-            context.addThreadLocalGlobalInitializer((AggregateTLGlobalInPlaceNode) threadGlobalVarInit.getCurrentRootNode());
+            access.addThreadLocalGlobalInitializer((AggregateTLGlobalInPlaceNode) threadGlobalVarInit.getCurrentRootNode());
         }
     }
 

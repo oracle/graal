@@ -44,8 +44,6 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
@@ -67,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
+
 import org.graalvm.collections.EconomicMap;
 
 import java.io.IOException;
@@ -81,8 +80,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 public final class LLVMContext {
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -115,9 +117,10 @@ public final class LLVMContext {
     protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
     public final Object atomicInstructionsLock = new Object();
-    public final Object threadInitLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
+
+    private final ReentrantLock threadInitLock = new ReentrantLock();
     private final List<Thread> allRunningThreads = new ArrayList<>();
     private final List<AggregateTLGlobalInPlaceNode> threadLocalGlobalInitializer = new ArrayList<>();
 
@@ -527,7 +530,12 @@ public final class LLVMContext {
             language.getFreeGlobalBlocks().call();
         }
 
-        for (Thread thread : allRunningThreads) {
+        Thread[] allThreads;
+        try (TLSInitializerAccess access = getTLSInitializerAccess()) {
+            allThreads = access.getAllRunningThreads();
+        }
+
+        for (Thread thread : allThreads) {
             LLVMThreadLocalValue value = language.contextThreadLocal.get(this.getEnv().getContext(), thread);
             if (value != null) {
                 language.freeThreadLocalGlobal(value);
@@ -1031,33 +1039,51 @@ public final class LLVMContext {
         assert !runningThreads.contains(thread);
     }
 
-    public synchronized void registerLiveThread(Thread thread) {
-        assert !allRunningThreads.contains(thread);
-        allRunningThreads.add(thread);
+    public final class TLSInitializerAccess implements AutoCloseable {
+
+        @TruffleBoundary
+        private TLSInitializerAccess() {
+            threadInitLock.lock();
+        }
+
+        @TruffleBoundary
+        @Override
+        public void close() {
+            threadInitLock.unlock();
+        }
+
+        public void registerLiveThread(Thread thread) {
+            assert !allRunningThreads.contains(thread);
+            allRunningThreads.add(thread);
+        }
+
+        public void unregisterLiveThread(Thread thread) {
+            allRunningThreads.remove(thread);
+            assert !allRunningThreads.contains(thread);
+        }
+
+        @TruffleBoundary
+        public Thread[] getAllRunningThreads() {
+            return allRunningThreads.toArray(Thread[]::new);
+        }
+
+        public void addThreadLocalGlobalInitializer(AggregateTLGlobalInPlaceNode inPlaceNode) {
+            assert !threadLocalGlobalInitializer.contains(inPlaceNode);
+            threadLocalGlobalInitializer.add(inPlaceNode);
+        }
+
+        public void removeThreadLocalGlobalInitializer(AggregateTLGlobalInPlaceNode inPlaceNode) {
+            threadLocalGlobalInitializer.remove(inPlaceNode);
+            assert !threadLocalGlobalInitializer.contains(inPlaceNode);
+        }
+
+        public List<AggregateTLGlobalInPlaceNode> getThreadLocalGlobalInitializer() {
+            return threadLocalGlobalInitializer;
+        }
     }
 
-    public synchronized void unregisterLiveThread(Thread thread) {
-        allRunningThreads.remove(thread);
-        assert !allRunningThreads.contains(thread);
-    }
-
-    @TruffleBoundary
-    public Thread[] getAllRunningThreads() {
-        return allRunningThreads.toArray(Thread[]::new);
-    }
-
-    public synchronized void addThreadLocalGlobalInitializer(AggregateTLGlobalInPlaceNode inPlaceNode) {
-        assert !threadLocalGlobalInitializer.contains(inPlaceNode);
-        threadLocalGlobalInitializer.add(inPlaceNode);
-    }
-
-    public synchronized List<AggregateTLGlobalInPlaceNode> getThreadLocalGlobalInitializer() {
-        return threadLocalGlobalInitializer;
-    }
-
-    public synchronized void removeThreadLocalGlobalInitializer(RootNode callTarget) {
-        threadLocalGlobalInitializer.remove(callTarget);
-        assert !threadLocalGlobalInitializer.contains(callTarget);
+    public TLSInitializerAccess getTLSInitializerAccess() {
+        return new TLSInitializerAccess();
     }
 
     @TruffleBoundary
