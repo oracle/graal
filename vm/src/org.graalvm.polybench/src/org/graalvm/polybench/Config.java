@@ -105,7 +105,7 @@ public class Config {
         String config = "execution-mode:    " + mode + "\n" +
                         "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
                         // This output is used by external tools to extract the metric name
-                        "metric Class:      " + metric.getClass().getSimpleName() + "\n" +
+                        "metric class:      " + metric.getClass().getSimpleName() + "\n" +
                         "warmup-iterations: " + (warmupIterations == UNINITIALIZED_ITERATIONS ? "default" : warmupIterations) + "\n" +
                         "iterations:        " + (iterations == UNINITIALIZED_ITERATIONS ? "default" : iterations + "\n");
         if (multiEngine != null) {

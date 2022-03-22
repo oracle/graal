@@ -1135,9 +1135,9 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return rules
 
     def _get_metric_name(self, bench_output):
-        match = re.search(r"metric Class:\s*(?P<metric_class_name>\w+)Metric", bench_output)
+        match = re.search(r"metric class:\s*(?P<metric_class_name>\w+)Metric", bench_output)
         if match is None:
-            match = re.search(r"metric Class:\s*(?P<metric_class_name>\w+)", bench_output)
+            match = re.search(r"metric class:\s*(?P<metric_class_name>\w+)", bench_output)
 
         metric_class_name = match.group("metric_class_name")
         metric_class_name = re.sub(r'(?<!^)(?=[A-Z])', '-', metric_class_name).lower()
