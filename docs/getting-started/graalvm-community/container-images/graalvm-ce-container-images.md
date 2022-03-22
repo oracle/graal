@@ -5,7 +5,7 @@ link_title: Container Images
 permalink: /docs/getting-started/container-images/
 ---
 
-## GraalVM Community Images
+# GraalVM Community Images
 
 To support container-based development, GraalVM Community container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 Learn here how to start using GraalVM Community images for Docker containers.

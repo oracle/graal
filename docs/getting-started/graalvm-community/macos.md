@@ -23,7 +23,10 @@ Follow these steps to install GraalVM Community on the macOS operating system:
    tar -xzf graalvm-ce-java<version>-darwin-amd64-<version>.tar.gz
   ```
   Alternatively, open the file in Finder.
-  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute. See [Installation Notes](#installation-notes) below.
+  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine /path/to/graalvm
+    ```
 
 3.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
   ```shell
@@ -47,14 +50,7 @@ For Oracle GraalVM Enterprise Edition users, find the installation instructions 
 
 ## Installation Notes
 
-#### On Software Notarization
-If you are using macOS Catalina and later you may need to remove the quarantine attribute from the bits before you can use them.
-To do this, run the following:
-```shell
-sudo xattr -r -d com.apple.quarantine /path/to/GRAALVM_HOME
-```
-
-#### On JAVA_HOME Command
+### On JAVA_HOME Command
 The information property file, _Info.plist_, is in the top level _Contents_ folder.
 This means that GraalVM Enterprise participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK 8 installation(s) available, it is now possible that `/usr/libexec/java_home -v1.8` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
 You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8 JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
