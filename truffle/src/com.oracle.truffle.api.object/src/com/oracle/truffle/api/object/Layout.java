@@ -234,7 +234,6 @@ public abstract class Layout {
     @Deprecated(since = "21.1")
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
-        private boolean polymorphicUnboxing;
         private Class<? extends DynamicObject> dynamicObjectClass;
 
         /**
@@ -279,18 +278,6 @@ public abstract class Layout {
         }
 
         /**
-         * If {@code true}, try to keep properties with polymorphic primitive types unboxed.
-         *
-         * @since 0.8 or earlier
-         * @deprecated unsupported, has no effect
-         */
-        @Deprecated(since = "20.2")
-        public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {
-            this.polymorphicUnboxing = polymorphicUnboxing;
-            return this;
-        }
-
-        /**
          * Set the {@link DynamicObject} layout class to use.
          *
          * Must be {@link DynamicObject} or a subclass thereof.
@@ -311,11 +298,6 @@ public abstract class Layout {
     /** @since 0.8 or earlier */
     protected static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
         return builder.allowedImplicitCasts;
-    }
-
-    /** @since 0.8 or earlier */
-    protected static boolean getPolymorphicUnboxing(Builder builder) {
-        return builder.polymorphicUnboxing;
     }
 
     /** @since 20.2.0 */
