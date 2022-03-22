@@ -105,7 +105,7 @@ The following demo shows how to include a resource into a native executable:
     }
   ```
 
-2. Open the _fortunes.u8_ resource file and save it in the same directory as _Fortune.java_.
+2. Open the [_fortunes.u8_](assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
 3. Compile:
 
