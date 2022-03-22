@@ -114,13 +114,13 @@ public abstract class InstanceOf extends Node {
             return new FinalClass(superType);
         }
 
-        if (superType.isInstanceClass()) {
-            return InstanceOfFactory.ConstantClassNodeGen.create((ObjectKlass) superType);
-        }
-
         // Prefer an inline cache for non-trivial checks.
         if (useInlineCache) {
             return InstanceOfFactory.InlineCacheNodeGen.create(superType);
+        }
+
+        if (superType.isInstanceClass()) {
+            return InstanceOfFactory.ConstantClassNodeGen.create((ObjectKlass) superType);
         }
 
         // Non-trivial checks.
