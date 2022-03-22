@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -81,10 +83,6 @@ public class LegacyImplicitCastTest {
         this.intVal = intVal;
         this.otherVal = otherVal;
         this.otherPrimClass = otherPrimClass;
-    }
-
-    private static Class<?> getLocationType(Location location) {
-        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
     }
 
     @Test

@@ -73,7 +73,7 @@ abstract class CoreLocations {
     static final int OBJECT_SLOT_SIZE = 1;
     static final int MAX_DYNAMIC_FIELDS = 1000;
 
-    public interface TypedLocation extends com.oracle.truffle.api.object.TypedLocation {
+    public interface TypedLocation {
         Class<?> getType();
     }
 

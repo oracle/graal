@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -67,11 +69,6 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
     final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-
-    @SuppressWarnings("deprecation")
-    static Class<?> getLocationType(Location location) {
-        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
-    }
 
     @Test
     public void testOnlyObjectLocationForObject() {

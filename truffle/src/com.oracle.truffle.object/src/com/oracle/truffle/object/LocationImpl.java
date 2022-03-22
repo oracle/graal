@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -258,7 +260,7 @@ public abstract class LocationImpl extends Location {
     @Override
     public String toString() {
         String finalString = isFinal() ? "f" : "";
-        String typeString = (this instanceof com.oracle.truffle.api.object.TypedLocation ? ((com.oracle.truffle.api.object.TypedLocation) this).getType().getSimpleName() : "Object");
+        String typeString = Objects.requireNonNullElse(getType(), Object.class).getSimpleName();
         return finalString + typeString + getWhereString();
     }
 

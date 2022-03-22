@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -53,10 +55,6 @@ public class LegacyLocationTest {
 
     final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
     final Shape rootShape = layout.createShape(new com.oracle.truffle.api.object.ObjectType());
-
-    static Class<?> getLocationType(Location location) {
-        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
-    }
 
     @Test
     public void testOnlyObjectLocationForObject() {

@@ -46,7 +46,7 @@ package com.oracle.truffle.api.object;
  * @since 0.8 or earlier
  */
 @SuppressWarnings("deprecation")
-public interface IntLocation extends TypedLocation {
+public interface IntLocation {
     /**
      * @see Location#get(DynamicObject, Shape)
      * @since 0.8 or earlier

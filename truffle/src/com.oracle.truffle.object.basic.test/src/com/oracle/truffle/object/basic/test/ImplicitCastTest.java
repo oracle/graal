@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -83,11 +85,6 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     @Parameter(2) public int intVal;
     @Parameter(3) public Object otherVal;
     @Parameter(4) public Class<?> otherPrimClass;
-
-    @SuppressWarnings("deprecation")
-    private static Class<?> getLocationType(Location location) {
-        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
-    }
 
     @Test
     public void testIntOther() {
