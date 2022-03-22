@@ -105,7 +105,7 @@ public abstract class LayoutStrategy {
             }
         } else {
             if (existing.getFlags() == propertyFlags) {
-                if (existing.getLocation().canSet(value)) {
+                if (existing.getLocation().canStore(value)) {
                     return oldShape;
                 } else {
                     return definePropertyGeneralize(oldShape, existing, value, locationFactory, putFlags);
@@ -160,7 +160,7 @@ public abstract class LayoutStrategy {
     protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Property existing, Object value, int propertyFlags, long putFlags) {
         assert existing.getFlags() != propertyFlags;
         oldShape.onPropertyTransition(existing);
-        if (existing.getLocation().canSet(value)) {
+        if (existing.getLocation().canStore(value)) {
             Property newProperty = Property.create(existing.getKey(), existing.getLocation(), propertyFlags);
             return replaceProperty(oldShape, existing, newProperty);
         } else {
@@ -193,7 +193,7 @@ public abstract class LayoutStrategy {
     }
 
     protected ShapeImpl generalizePropertyWithFlags(ShapeImpl currentShape, Property oldProperty, Object value, int propertyFlags, long putFlags) {
-        assert !oldProperty.getLocation().canSet(value);
+        assert !oldProperty.getLocation().canStore(value);
         Location newLocation = currentShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
         Property newProperty = Property.create(oldProperty.getKey(), newLocation, propertyFlags);
         return replaceProperty(currentShape, oldProperty, newProperty);

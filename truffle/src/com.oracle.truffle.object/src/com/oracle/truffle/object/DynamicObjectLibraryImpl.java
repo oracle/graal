@@ -308,7 +308,7 @@ abstract class DynamicObjectLibraryImpl {
         if (existingProperty == null && Flags.isSetExisting(putFlags)) {
             return false;
         }
-        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canSet(value)) {
+        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
             getLocation(existingProperty).setSafe(object, value, false, false);
             return true;
         } else {
@@ -339,7 +339,7 @@ abstract class DynamicObjectLibraryImpl {
                 newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
-                if (existingProperty.getLocation().canSet(value)) {
+                if (existingProperty.getLocation().canStore(value)) {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
@@ -1442,7 +1442,7 @@ abstract class DynamicObjectLibraryImpl {
                     newProperty = property;
                 } else {
                     newProperty = newShape.getProperty(cachedKey);
-                    assert newProperty.getLocation().canSet(value);
+                    assert newProperty.getLocation().canStore(value);
                 }
 
                 Assumption newShapeValid = getShapeValidAssumption(oldShape, newShape);
@@ -1473,7 +1473,7 @@ abstract class DynamicObjectLibraryImpl {
             }
 
             Location location = property.getLocation();
-            if (!location.isDeclared() && !location.canSet(value)) {
+            if (!location.isDeclared() && !location.canStore(value)) {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
                 LayoutStrategy strategy = oldShape.getLayoutStrategy();
@@ -1486,7 +1486,7 @@ abstract class DynamicObjectLibraryImpl {
                 return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), null, putFlags);
             } else {
                 // set existing
-                assert location.canSet(value);
+                assert location.canStore(value);
                 return oldShape;
             }
         }

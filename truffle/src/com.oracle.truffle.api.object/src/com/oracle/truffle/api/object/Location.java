@@ -175,7 +175,9 @@ public abstract class Location {
      * @param store the receiver object
      * @param value the value in question
      * @since 0.8 or earlier
+     * @deprecated Equivalent to {@link #canStore(Object)}.
      */
+    @Deprecated(since = "22.2")
     public boolean canSet(DynamicObject store, Object value) {
         return canStore(value);
     }
@@ -185,16 +187,15 @@ public abstract class Location {
      *
      * @param value the value in question
      * @since 0.8 or earlier
+     * @deprecated Equivalent to {@link #canStore(Object)}.
      */
+    @Deprecated(since = "22.2")
     public boolean canSet(Object value) {
         return canStore(value);
     }
 
     /**
      * Returns {@code true} if the location is compatible with the type of the value.
-     *
-     * The actual value may still be rejected if {@link #canSet(DynamicObject, Object)} returns
-     * false.
      *
      * @param value the value in question
      * @since 0.8 or earlier

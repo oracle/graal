@@ -1426,7 +1426,7 @@ public abstract class ShapeImpl extends Shape {
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;
-            if (oldLocation.canSet(value)) {
+            if (oldLocation.canStore(value)) {
                 newLocation = oldLocation;
             } else {
                 newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
