@@ -196,6 +196,8 @@ public final class EspressoContext {
 
     // Behavior control
     public final boolean EnableManagement;
+    public final boolean SoftExit;
+    public final boolean AllowHostExit;
     public final boolean Polyglot;
     public final boolean HotSwapAPI;
     public final boolean EnableSignals;
@@ -268,6 +270,7 @@ public final class EspressoContext {
         this.referenceDrainer = new EspressoReferenceDrainer(this);
 
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
+        this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
         this.allocationReporter = env.lookup(AllocationReporter.class);
