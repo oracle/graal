@@ -16,6 +16,7 @@ import org.junit.runners.JUnit4;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.operation.OperationsNode;
+import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -148,5 +149,27 @@ public class TestOperationsParserTest {
         } catch (IOException e) {
             Assert.fail();
         }
+    }
+
+    @Test
+    public void testTracing() {
+        //@formatter:off
+        String src = "(do"
+                   + "  (setlocal 0 0)"
+                   + "  (setlocal 2 0)"
+                   + "  (while"
+                   + "    (less (local 0) 100)"
+                   + "    (do"
+                   + "      (setlocal 1 0)"
+                   + "      (while"
+                   + "        (less (local 1) 100)"
+                   + "        (do"
+                   + "          (setlocal 2 (add (local 2) (local 1)))"
+                   + "          (setlocal 1 (add (local 1) 1))))"
+                   + "      (setlocal 0 (add (local 0) 1))))"
+                   + "  (return (local 2)))";
+        //@formatter:on
+        new Tester(src).test(495000L);
+        ExecutionTracer.get().dump();
     }
 }

@@ -234,6 +234,7 @@ public class TruffleTypes {
     public static final String OperationsNode_Name = "com.oracle.truffle.api.operation.OperationsNode";
     public static final String Special_Name = "com.oracle.truffle.api.operation.Special";
     public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
+    public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
     public static final String NodeTrace_Name = "com.oracle.truffle.api.operation.tracing.NodeTrace";
     public static final String InstructionTrace_Name = "com.oracle.truffle.api.operation.tracing.InstructionTrace";
 
@@ -248,6 +249,7 @@ public class TruffleTypes {
     public final DeclaredType OperationsNode = c.getDeclaredTypeOptional(OperationsNode_Name);
     public final DeclaredType Special = c.getDeclaredTypeOptional(Special_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
+    public final DeclaredType ExecutionTracer = c.getDeclaredTypeOptional(ExecutionTracer_Name);
     public final DeclaredType NodeTrace = c.getDeclaredTypeOptional(NodeTrace_Name);
     public final DeclaredType InstructionTrace = c.getDeclaredTypeOptional(InstructionTrace_Name);
 

@@ -61,33 +61,38 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createReadStack(ExecuteVariables vars, int offset) {
-        return CodeTreeBuilder.createBuilder() //
-                        .startCall(vars.frame, "getValue") //
-                        .startGroup().variable(vars.sp).string(" + " + (offset - 1)).end()//
-                        .end(2).build();
+        return createReadStack(vars, CodeTreeBuilder.singleString("" + offset));
     }
 
     public static CodeTree createReadStack(ExecuteVariables vars, CodeTree offset) {
-        return CodeTreeBuilder.createBuilder() //
-                        .startCall(vars.frame, "getValue") //
-                        .startGroup().variable(vars.sp).string(" - 1 + ").tree(offset).end()//
-                        .end(2).build();
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        if (vars.tracer != null) {
+            b.startCall(vars.tracer, "tracePop");
+        }
+        b.startCall(vars.frame, "getValue");
+        b.startGroup().variable(vars.sp).string(" - 1 + (").tree(offset).string(")").end();
+        if (vars.tracer != null) {
+            b.end();
+        }
+        return b.end(2).build();
     }
 
     public static CodeTree createWriteStackObject(ExecuteVariables vars, int offset, CodeTree value) {
-        return CodeTreeBuilder.createBuilder() //
-                        .startStatement().startCall(vars.frame, "setObject") //
-                        .startGroup().variable(vars.sp).string(" + " + (offset - 1)).end()//
-                        .tree(value) //
-                        .end(3).build();
+        return createWriteStackObject(vars, "" + offset, value);
     }
 
     public static CodeTree createWriteStackObject(ExecuteVariables vars, String offset, CodeTree value) {
-        return CodeTreeBuilder.createBuilder() //
-                        .startStatement().startCall(vars.frame, "setObject") //
-                        .startGroup().variable(vars.sp).string(" - 1 + (" + offset + ")").end()//
-                        .tree(value) //
-                        .end(3).build();
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startStatement().startCall(vars.frame, "setObject");
+        b.startGroup().variable(vars.sp).string(" - 1 + (" + offset + ")").end();
+        if (vars.tracer != null) {
+            b.startCall(vars.tracer, "tracePush");
+        }
+        b.tree(value);
+        if (vars.tracer != null) {
+            b.end();
+        }
+        return b.end(2).build();
     }
 
     public static CodeTree createReadLocal(ExecuteVariables vars, CodeTree offset) {

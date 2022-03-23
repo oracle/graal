@@ -743,10 +743,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
         builderBytecodeNodeType.add(ctor);
 
+        CodeVariableElement fldTracer = null;
         CodeVariableElement fldHitCount = null;
         if (m.isTracing()) {
             fldHitCount = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(int.class)), "hitCount");
             builderBytecodeNodeType.add(fldHitCount);
+
+            fldTracer = new CodeVariableElement(types.ExecutionTracer, "tracer");
+            builderBytecodeNodeType.add(fldTracer);
         }
 
         {
@@ -757,6 +761,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                                 (ArrayType) fldHitCount.getType(),
                                 CodeTreeBuilder.createBuilder().variable(fldBc).string(".length").build());
                 b.end(2);
+
+                b.startAssign(fldTracer).startStaticCall(types.ExecutionTracer, "get").end(2);
             }
         }
 
@@ -766,6 +772,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.consts = fldConsts;
         vars.maxStack = new CodeVariableElement(context.getType(int.class), "maxStack");
         vars.handlers = fldHandlers;
+        vars.tracer = fldTracer;
 
         {
             CodeExecutableElement mExecute = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(Object.class), "execute", new CodeVariableElement(types.VirtualFrame, "frame"));
@@ -806,6 +813,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.declaration("int", varSp.getName(), "maxLocals + VALUES_OFFSET");
             b.declaration("int", varBci.getName(), "0");
 
+            if (m.isTracing()) {
+                b.startStatement().startCall(fldTracer, "startFunction").string("this").end(2);
+            }
+
             CodeVariableElement varReturnValue = new CodeVariableElement(context.getType(Object.class), "returnValue");
             b.statement("Object " + varReturnValue.getName());
 
@@ -845,6 +856,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
+                if (m.isTracing()) {
+                    b.startStatement().startCall(fldTracer, "traceInstruction");
+                    b.variable(varBci);
+                    b.variable(op.opcodeIdField);
+
+                    int ofs = 1;
+                    for (Argument arg : op.arguments) {
+                        b.tree(arg.createReadCode(vars, ofs));
+                        ofs += arg.length;
+                    }
+
+                    b.end(2);
+                }
+
                 b.tree(op.createExecuteCode(vars));
                 b.tree(op.createExecuteEpilogue(vars));
 
@@ -856,6 +881,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.end(); // switch block
 
             b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
+
+            if (m.isTracing()) {
+                b.startStatement().startCall(fldTracer, "traceException");
+                b.string("ex");
+                b.end(2);
+
+            }
 
             b.startFor().string("int handlerIndex = 0; handlerIndex < " + vars.handlers.getName() + ".length; handlerIndex++").end();
             b.startBlock();
@@ -882,6 +914,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.statement("bci = nextBci");
             b.end(); // while block
+
+            if (m.isTracing()) {
+                b.startStatement().startCall(fldTracer, "endFunction").end(2);
+            }
 
             b.startReturn().string("returnValue").end();
 

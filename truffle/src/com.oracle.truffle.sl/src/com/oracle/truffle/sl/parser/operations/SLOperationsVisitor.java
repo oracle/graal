@@ -139,7 +139,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.endSource();
 
         OperationsNode node = b.build();
-        System.out.println(node.dump());
         functions.put(name, node.getCallTarget());
 
         return null;

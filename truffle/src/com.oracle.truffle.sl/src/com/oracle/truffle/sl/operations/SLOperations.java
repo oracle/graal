@@ -47,7 +47,6 @@ public class SLOperations {
 
     public static void parse(SLLanguage language, Source source, SLOperationsBuilder builder) {
         Map<TruffleString, RootCallTarget> targets = SLOperationsVisitor.parseSL(language, source, builder);
-        RootCallTarget main = targets.get(SLStrings.MAIN);
 
         // create the RootNode
 

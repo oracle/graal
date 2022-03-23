@@ -91,6 +91,10 @@ public abstract class Operation {
         return null;
     }
 
+    public CodeTree createLeaveCode(BuilderVariables vars) {
+        return null;
+    }
+
     public abstract CodeTree createPushCountCode(BuilderVariables vars);
 
     public static class Custom extends Operation {
@@ -508,6 +512,12 @@ public abstract class Operation {
             b.tree(createEmitLabel(vars, CodeTreeBuilder.singleVariable(varEndLabel)));
 
             return b.build();
+        }
+    }
+
+    public static class Instrumentation extends Block {
+        public Instrumentation(OperationsContext builder, int id) {
+            super(builder, "Instrumentation", id);
         }
     }
 

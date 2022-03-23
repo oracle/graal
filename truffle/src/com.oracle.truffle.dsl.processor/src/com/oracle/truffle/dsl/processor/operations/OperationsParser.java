@@ -35,7 +35,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             ExecutableElement parseMethod = ElementUtils.findExecutableElement(typeElement, "parse");
             if (parseMethod == null) {
                 data.addError(typeElement,
-                                "Parse method not found. You must provide a method named 'parse' with following signature: void parse({Context}, %sBuilder)",
+                                "Parse method not found. You must provide a method named 'parse' with following signature: void parse({Language}, {Context}, %sBuilder)",
                                 typeElement.getSimpleName());
                 return data;
             }
@@ -66,7 +66,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             SingleOperationData opData = new SingleOperationParser(data).parse(inner, false);
 
             if (opData != null) {
-// opData.redirectMessages(data);
                 data.addOperationData(opData);
             } else {
                 data.addError("Could not generate operation: " + inner.getSimpleName());

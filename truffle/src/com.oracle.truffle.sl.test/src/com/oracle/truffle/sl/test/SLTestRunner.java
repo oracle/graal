@@ -82,6 +82,7 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
@@ -348,6 +349,7 @@ public class SLTestRunner extends ParentRunner<TestCase> {
             suite.filter(new NameFilter(args[0]));
         }
         Result r = core.run(suite);
+        ExecutionTracer.get().dump();
         if (!r.wasSuccessful()) {
             System.exit(1);
         }

@@ -49,6 +49,8 @@ public abstract class Instruction {
         CodeVariableElement consts;
         CodeVariableElement maxStack;
         CodeVariableElement handlers;
+
+        CodeVariableElement tracer;
     }
 
     public Instruction(String name, int id, Argument... arguments) {
