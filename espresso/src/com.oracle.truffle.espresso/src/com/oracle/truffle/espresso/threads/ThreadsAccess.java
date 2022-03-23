@@ -34,6 +34,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterrupter;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -274,9 +275,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
         Thread host = context.getEnv().createThread(new GuestRunnable(context, guest, exit, dispatch));
-        // Link guest to host
-        meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
-        meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, true, true);
+        initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
         host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
@@ -289,6 +288,12 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
         context.registerThread(host, guest);
         meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
         return host;
+    }
+
+    public void initializeHiddenFields(StaticObject guest, Thread host, boolean isManaged) {
+        meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
+        meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, isManaged);
+        meta.HIDDEN_THREAD_PARK_LOCK.setHiddenObject(guest, EspressoLock.create(context.getBlockingSupport()));
     }
 
     // endregion thread control

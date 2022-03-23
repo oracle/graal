@@ -27,17 +27,19 @@ import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
@@ -1376,7 +1378,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unused"})
     public static void park(@JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
@@ -1387,10 +1389,10 @@ public final class Target_sun_misc_Unsafe {
         EspressoContext context = meta.getContext();
         StaticObject thread = context.getCurrentThread();
 
-        if (meta.getThreadAccess().isInterrupted(thread, false)) {
+        // Check return condition beforehand
+        if (parkReturnCondition(thread, meta)) {
             return;
         }
-
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
@@ -1402,28 +1404,45 @@ public final class Target_sun_misc_Unsafe {
             if (!StaticObject.isNull(guestBlocker)) {
                 unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
             }
-            parkImpl(unsafe, isAbsolute, time, thread, meta, profiler);
+            parkImpl(isAbsolute, time, thread, meta);
         }
         unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
-    private static void parkImpl(Unsafe theUnsafe, boolean isAbsolute, long time, StaticObject thread, Meta meta, Node location) {
-        long start = System.nanoTime();
-        while (true) {
-            long actualTime = isAbsolute ? (time - (System.nanoTime() - start)) : time;
-            parkBoundary(thread, isAbsolute, actualTime, theUnsafe);
-            TruffleSafepoint.poll(location);
-            // check return conditions
-            if (consumeUnparkSignal(thread, meta) || // balancing unpark
-                            meta.getThreadAccess().isGuestInterrupted(Thread.currentThread(), thread) /*- Guest interruption */) {
-                return;
+    private static void parkImpl(boolean isAbsolute, long time, StaticObject thread, Meta meta) {
+        EspressoLock parkLock = getParkLock(thread, meta);
+        parkLock.lock();
+        try {
+            while (true) {
+                if (parkReturnCondition(thread, meta)) {
+                    return;
+                }
+                boolean elapsed;
+                if (isAbsolute) {
+                    elapsed = !parkLock.awaitUntil(new Date(time));
+                } else {
+                    elapsed = !parkLock.await(time, TimeUnit.NANOSECONDS);
+                }
+                if (elapsed) {
+                    return;
+                }
+                // Signals will wake us up. Loop back to check return conditions.
             }
+        } catch (GuestInterruptedException e) {
+            // Interruptions do not throw, nor do they clear interrupted status.
+            return;
+        } finally {
+            parkLock.unlock();
         }
     }
 
-    @TruffleBoundary(allowInlining = true)
-    public static void parkBoundary(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time, Unsafe unsafe) {
-        unsafe.park(isAbsolute, time);
+    private static EspressoLock getParkLock(StaticObject thread, Meta meta) {
+        return (EspressoLock) meta.HIDDEN_THREAD_PARK_LOCK.getHiddenObject(thread);
+    }
+
+    private static boolean parkReturnCondition(StaticObject thread, Meta meta) {
+        return consumeUnparkSignal(thread, meta) || // balancing unpark
+                        meta.getThreadAccess().isInterrupted(thread, false);
     }
 
     private static boolean consumeUnparkSignal(StaticObject self, Meta meta) {
@@ -1446,9 +1465,14 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject thread,
                     @Inject Meta meta) {
-        Thread hostThread = meta.getThreadAccess().getHost(thread);
-        meta.HIDDEN_THREAD_UNPARK_SIGNALS.setInt(thread, 1);
-        UnsafeAccess.getIfAllowed(meta).unpark(hostThread);
+        EspressoLock parkLock = getParkLock(thread, meta);
+        parkLock.lock();
+        try {
+            meta.HIDDEN_THREAD_UNPARK_SIGNALS.setInt(thread, 1, true);
+            parkLock.signal();
+        } finally {
+            parkLock.unlock();
+        }
     }
 
     /**

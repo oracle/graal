@@ -268,8 +268,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
             // Allow guest Thread.currentThread() to work.
             meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
-            meta.HIDDEN_HOST_THREAD.setHiddenObject(guestThread, Thread.currentThread());
-            meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guestThread, managedByEspresso, true);
+            getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
@@ -307,7 +306,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
         meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
-        meta.HIDDEN_HOST_THREAD.setHiddenObject(mainThread, hostThread);
+        getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
 
         registerMainThread(hostThread, mainThread);

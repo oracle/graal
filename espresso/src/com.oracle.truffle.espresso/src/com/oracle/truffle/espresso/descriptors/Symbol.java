@@ -506,6 +506,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> HIDDEN_DEPRECATION_SUPPORT = StaticSymbols.putName("0HIDDEN_DEPRECATION_SUPPORT");
         public static final Symbol<Name> HIDDEN_THREAD_UNPARK_SIGNALS = StaticSymbols.putName("0HIDDEN_THREAD_UNPARK_SIGNALS");
+        public static final Symbol<Name> HIDDEN_THREAD_PARK_LOCK = StaticSymbols.putName("0HIDDEN_THREAD_PARK_LOCK");
         public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_ESPRESSO_MANAGED = StaticSymbols.putName("0HIDDEN_ESPRESSO_MANAGED");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
