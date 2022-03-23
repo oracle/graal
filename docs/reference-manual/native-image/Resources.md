@@ -62,7 +62,7 @@ Then:
 See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
 
-The following demo shows how to include a resource into a native executable:
+The following demo illustrates how to include a resource into a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix)).
 
 1.Save the following Java code into the _Fortune.java_ file:
 
