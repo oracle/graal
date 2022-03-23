@@ -57,7 +57,9 @@ public final class RuntimeCPUFeatureCheck {
      * {@link #getDefaultDisabledFeatures}.
      * <p>
      * Keep this set in sync with the default values listed in the documentation for the
-     * RuntimeCheckedCPUFeatures option.
+     * RuntimeCheckedCPUFeatures option, i.e., that the default values are
+     * {@link #getSupportedFeatures(Architecture)} -
+     * {@link #getDefaultDisabledFeatures(Architecture)}.
      *
      * @see #getDefaultDisabledFeatures(Architecture)
      */
@@ -79,7 +81,9 @@ public final class RuntimeCPUFeatureCheck {
      * The return value must be a subset of {@link #getSupportedFeatures}.
      * <p>
      * Keep this set in sync with the default values listed in the documentation for the
-     * RuntimeCheckedCPUFeatures option.
+     * RuntimeCheckedCPUFeatures option, i.e., that the default values are
+     * {@link #getSupportedFeatures(Architecture)} -
+     * {@link #getDefaultDisabledFeatures(Architecture)}.
      *
      * @see #getSupportedFeatures(Architecture)
      */
