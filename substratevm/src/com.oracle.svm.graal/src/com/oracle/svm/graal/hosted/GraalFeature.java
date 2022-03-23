@@ -534,7 +534,10 @@ public final class GraalFeature implements Feature {
                     return;
                 }
                 parse = true;
-                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES).method(method).build();
+                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
+                                .method(method)
+                                .recordInlinedMethods(false)
+                                .build();
             }
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
