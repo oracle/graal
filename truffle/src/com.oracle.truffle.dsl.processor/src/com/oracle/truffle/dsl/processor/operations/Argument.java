@@ -18,7 +18,7 @@ public abstract class Argument {
         this.length = length;
     }
 
-    public abstract CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement value);
+    public abstract CodeTree createBuildCode(BuilderVariables vars, CodeTree value);
 
     public abstract CodeTree createReadCode(ExecuteVariables vars, CodeTree offset);
 
@@ -41,20 +41,20 @@ public abstract class Argument {
         }
 
         @Override
-        public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement value) {
+        public CodeTree createBuildCode(BuilderVariables vars, CodeTree value) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.startStatement();
             if (length == 1) {
                 b.variable(vars.bc).string("[").variable(vars.bci).string("] = ");
                 b.cast(ProcessorContext.getInstance().getType(byte.class));
-                b.variable(value);
+                b.tree(value);
             } else {
                 b.startCall("LE_BYTES", "putShort");
                 b.variable(vars.bc);
                 b.variable(vars.bci);
                 b.startGroup();
                 b.cast(ProcessorContext.getInstance().getType(byte.class));
-                b.variable(value);
+                b.tree(value);
                 b.end(2);
             }
             b.end();
@@ -97,7 +97,7 @@ public abstract class Argument {
         }
 
         @Override
-        public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement value) {
+        public CodeTree createBuildCode(BuilderVariables vars, CodeTree value) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.startStatement();
             b.variable(vars.bc).string("[").variable(vars.bci).string("] = ");
@@ -121,15 +121,12 @@ public abstract class Argument {
         }
 
         @Override
-        public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement value) {
+        public CodeTree createBuildCode(BuilderVariables vars, CodeTree value) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.startStatement();
-            if (((DeclaredType) value.getType()).asElement().getSimpleName().toString().equals("BuilderOperationLabel")) {
-                b.startCall(value.getName(), "putValue");
-            } else {
-                b.startCall("((BuilderOperationLabel) " + value.getName() + ")", "putValue");
 
-            }
+            b.startCall(CodeTreeBuilder.createBuilder().string("((BuilderOperationLabel) ").tree(value).string(")").build(), "putValue");
+
             b.variable(vars.bc);
             b.variable(vars.bci);
             b.end(2);
@@ -166,7 +163,7 @@ public abstract class Argument {
         }
 
         @Override
-        public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement value) {
+        public CodeTree createBuildCode(BuilderVariables vars, CodeTree value) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.startStatement();
             b.startCall("LE_BYTES", "putShort");
@@ -174,7 +171,7 @@ public abstract class Argument {
             b.variable(vars.bci);
             b.startGroup().string("(short) ");
             b.startCall(vars.consts, "add");
-            b.variable(value);
+            b.tree(value);
             b.end(4);
             return b.build();
         }

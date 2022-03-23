@@ -9,6 +9,7 @@ import java.util.function.Supplier;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -195,17 +196,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement builderBytecodeNodeType = createBuilderBytecodeNode(typBuilderImpl, simpleName + "BytecodeNode");
         typBuilderImpl.add(builderBytecodeNodeType);
 
-        CodeVariableElement fldChildIndexStack = createStackField("childIndex", context.getType(Integer.class));
-        typBuilderImpl.add(fldChildIndexStack);
-
-        CodeVariableElement fldArgumentStack = createStackField("argument", new ArrayCodeTypeMirror(context.getType(Object.class)));
-        typBuilderImpl.add(fldArgumentStack);
-
-        CodeVariableElement fldTypeStack = createStackField("type", context.getType(Integer.class));
-        typBuilderImpl.add(fldTypeStack);
-
-        CodeVariableElement fldUtilityStack = createStackField("utility", context.getType(Object.class));
-        typBuilderImpl.add(fldUtilityStack);
+        CodeVariableElement fldOperationData = new CodeVariableElement(types.BuilderOperationData, "operationData");
+        typBuilderImpl.add(fldOperationData);
 
         CodeVariableElement fldBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
         typBuilderImpl.add(fldBc);
@@ -283,7 +275,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.bc = fldBc;
         vars.bci = fldBci;
         vars.lastChildPushCount = fldLastPush;
-        vars.stackUtility = fldUtilityStack;
+        vars.operationData = fldOperationData;
         vars.consts = fldConstPool;
         vars.maxStack = fldMaxStack;
         vars.curStack = fldCurStack;
@@ -304,11 +296,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             if (FLAG_NODE_AST_PRINTING) {
                 b.startAssign(fldIndent).string("0").end();
             }
-            b.startStatement().startCall(fldChildIndexStack.getName(), "clear").end(2);
-            b.startStatement().startCall(fldChildIndexStack.getName(), "add").string("0").end(2);
-            b.startStatement().startCall(fldArgumentStack.getName(), "clear").end(2);
-            b.startStatement().startCall(fldTypeStack.getName(), "clear").end(2);
-            b.startStatement().startCall(fldTypeStack.getName(), "add").string("0").end(2);
+            b.startAssign(fldOperationData).startNew(types.BuilderOperationData).string("null").string("0").string("0").end(2);
             b.startStatement().startCall(fldExceptionHandlers.getName(), "clear").end(2);
             b.startStatement().startCall(fldConstPool.getName(), "reset").end(2);
             b.startAssign("nodeName").string("null").end();
@@ -328,7 +316,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mBuild.getBuilder();
 
-            b.startIf().string(fldChildIndexStack.getName() + ".size() != 1").end();
+            b.startIf().string(fldOperationData.getName() + ".depth != 0").end();
             b.startBlock();
             b.startThrow().startNew(context.getType(IllegalStateException.class)).doubleQuote("Not all operations ended").end(2);
             b.end();
@@ -477,11 +465,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             GeneratorUtils.addSuppressWarnings(context, mBeforeChild, "unused");
 
             CodeVariableElement varChildIndex = new CodeVariableElement(context.getType(int.class), "childIndex");
-            b.declaration("int", varChildIndex.getName(), "childIndexStack.peek()");
+            b.declaration("int", varChildIndex.getName(), "operationData.numChildren");
 
             vars.childIndex = varChildIndex;
 
-            b.startSwitch().startCall(fldTypeStack, "peek").end(2);
+            b.startSwitch().variable(fldOperationData).string(".operationId").end(2);
             b.startBlock();
 
             for (Operation parentOp : m.getOperations()) {
@@ -492,8 +480,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 b.startCase().variable(parentOp.idConstantField).end();
                 b.startBlock();
-
-// b.statement("System.out.println(\"\\n## beforechild " + parentOp.name + " \" + childIndex)");
 
                 b.tree(afterChild);
 
@@ -513,12 +499,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             GeneratorUtils.addSuppressWarnings(context, mAfterChild, "unused");
 
             CodeVariableElement varChildIndex = new CodeVariableElement(context.getType(int.class), "childIndex");
-            b.declaration("int", varChildIndex.getName(), "childIndexStack.pop()");
-            b.startStatement().startCall(fldChildIndexStack, "push").string(varChildIndex.getName() + " + 1").end(2);
+            b.declaration("int", varChildIndex.getName(), "operationData.numChildren++");
 
             vars.childIndex = varChildIndex;
 
-            b.startSwitch().startCall(fldTypeStack, "peek").end(2);
+            b.startSwitch().variable(fldOperationData).string(".operationId").end(2);
             b.startBlock();
 
             for (Operation parentOp : m.getOperations()) {
@@ -529,8 +514,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 b.startCase().variable(parentOp.idConstantField).end();
                 b.startBlock();
-
-// b.statement("System.out.println(\"\\n## afterchild " + parentOp.name + " \" + childIndex)");
 
                 b.tree(afterChild);
 
@@ -565,12 +548,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 {
                     // doBeforeChild();
 
-                    // typeStack.push(ID);
-                    // childIndexStack.push(0);
-
-                    // Object[] args = new Object[...];
-                    // args[x] = arg_x;...
-                    // argumentStack.push(args);
+                    // operationData = new ...(operationData, ID, <x>, args...);
 
                     // << begin >>
 
@@ -583,32 +561,26 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     b.statement("doBeforeChild()");
 
-                    b.startStatement().startCall(fldTypeStack, "push").variable(op.idConstantField).end(2);
-                    b.startStatement().startCall(fldChildIndexStack, "push").string("0").end(2);
+                    b.startAssign(fldOperationData).startNew(types.BuilderOperationData);
 
-                    vars.arguments = metBegin.getParameters().toArray(new CodeVariableElement[0]);
+                    b.variable(fldOperationData);
+                    b.variable(op.idConstantField);
+                    b.string("" + op.getNumAuxValues());
 
-                    if (vars.arguments.length > 0) {
-                        b.declaration("Object[]", "args", "new Object[" + vars.arguments.length + "]");
-                        for (int i = 0; i < vars.arguments.length; i++) {
-                            b.statement("args[" + i + "] = " + vars.arguments[i].getName());
-                        }
-
-                        b.startStatement().startCall(fldArgumentStack, "push").string("args").end(2);
+                    for (VariableElement el : metBegin.getParameters()) {
+                        b.variable(el);
                     }
 
+                    b.end(2);
+
                     b.tree(op.createBeginCode(vars));
-
-                    vars.arguments = null;
-
                 }
 
                 {
-                    // assert typeStack.pop() == ID;
-                    // int numChildren = childIndexStack.pop();
-                    // Object[] args = argumentsStack.pop();
-                    // Object arg_x = (...) args[x]; ...
+                    // if (operationData.id != ID) throw;
                     // << end >>
+
+                    // operationData = operationData.parent;
 
                     // doAfterChild();
                     CodeTreeBuilder b = metEnd.getBuilder();
@@ -618,18 +590,16 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         b.statement("indent--");
                     }
 
-                    b.declaration("int", "typePop", CodeTreeBuilder.createBuilder().startCall(fldTypeStack, "pop").end().build());
-
-                    b.startIf().string("typePop != ").variable(op.idConstantField).end();
+                    b.startIf().string("operationData.operationId != ").variable(op.idConstantField).end();
                     b.startBlock();
                     b.startThrow().startNew(context.getType(IllegalStateException.class))//
                                     .startGroup()//
                                     .doubleQuote("Mismatched begin/end, expected ")//
-                                    .string(" + typePop").end(3);
+                                    .string(" + operationData.operationId").end(3);
                     b.end();
 
                     vars.numChildren = new CodeVariableElement(context.getType(int.class), "numChildren");
-                    b.declaration("int", "numChildren", "childIndexStack.pop()");
+                    b.declaration("int", "numChildren", "operationData.numChildren");
 
                     if (!op.isVariableChildren()) {
                         b.startIf().string("numChildren != " + op.children).end();
@@ -651,42 +621,17 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         b.end();
                     }
 
-                    List<Argument> argInfo = op.getArguments();
-
-                    if (argInfo.size() > 0) {
-                        if (metBegin.getParameters().size() > 0) {
-                            // some non-implicit parameters
-                            b.declaration("Object[]", "args", fldArgumentStack.getName() + ".pop()");
-                        }
-
-                        CodeVariableElement[] varArgs = new CodeVariableElement[argInfo.size()];
-                        for (int i = 0; i < argInfo.size(); i++) {
-                            if (argInfo.get(i).isImplicit())
-                                continue;
-
-                            // TODO: this does not work with mixing implicit and real args
-
-                            varArgs[i] = new CodeVariableElement(argInfo.get(i).toBuilderArgumentType(), "arg_" + i);
-
-                            CodeTreeBuilder b2 = CodeTreeBuilder.createBuilder();
-                            b2.maybeCast(context.getType(Object.class), argInfo.get(i).toBuilderArgumentType());
-                            b2.string("args[" + i + "]");
-
-                            b.declaration(argInfo.get(i).toBuilderArgumentType(), "arg_" + i, b2.build());
-                        }
-
-                        vars.arguments = varArgs;
-                    }
-
                     b.tree(op.createEndCode(vars));
+
                     CodeTree lastPush = op.createPushCountCode(vars);
                     if (lastPush != null) {
                         b.startAssign(fldLastPush).tree(lastPush).end();
                     }
 
+                    b.startAssign(fldOperationData).variable(fldOperationData).string(".parent").end();
+
                     b.statement("doAfterChild()");
 
-                    vars.arguments = null;
                     vars.numChildren = null;
 
                 }
@@ -699,15 +644,26 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
                     }
 
-                    vars.arguments = metEmit.getParameters().toArray(new CodeVariableElement[0]);
+                    CodeTreeBuilder b2 = CodeTreeBuilder.createBuilder();
+                    b2.startNew(types.BuilderOperationData);
+
+                    b2.variable(fldOperationData);
+                    b2.variable(op.idConstantField);
+                    b2.string("" + op.getNumAuxValues());
+                    for (VariableElement v : metEmit.getParameters()) {
+                        b2.variable(v);
+                    }
+
+                    b2.end();
+
+                    CodeVariableElement opData = new CodeVariableElement(types.BuilderOperationData, "opData");
+                    b.declaration(types.BuilderOperationData, "opData", b2.build());
 
                     b.statement("doBeforeChild()");
                     b.tree(op.createBeginCode(vars));
                     b.tree(op.createEndCode(vars));
                     b.startAssign(fldLastPush).tree(op.createPushCountCode(vars)).end();
                     b.statement("doAfterChild()");
-
-                    vars.arguments = null;
                 }
                 typBuilderImpl.add(metEmit);
             }

@@ -224,6 +224,7 @@ public class TruffleTypes {
 
     // Operations DSL API
     public static final String BuilderExceptionHandler_Name = "com.oracle.truffle.api.operation.BuilderExceptionHandler";
+    public static final String BuilderOperationData_Name = "com.oracle.truffle.api.operation.BuilderOperationData";
     public static final String BuilderOperationLabel_Name = "com.oracle.truffle.api.operation.BuilderOperationLabel";
     public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
@@ -239,6 +240,7 @@ public class TruffleTypes {
     public static final String InstructionTrace_Name = "com.oracle.truffle.api.operation.tracing.InstructionTrace";
 
     public final DeclaredType BuilderExceptionHandler = c.getDeclaredTypeOptional(BuilderExceptionHandler_Name);
+    public final DeclaredType BuilderOperationData = c.getDeclaredTypeOptional(BuilderOperationData_Name);
     public final DeclaredType BuilderOperationLabel = c.getDeclaredTypeOptional(BuilderOperationLabel_Name);
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);

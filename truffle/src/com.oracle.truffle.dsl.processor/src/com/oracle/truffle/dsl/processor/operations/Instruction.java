@@ -77,7 +77,7 @@ public abstract class Instruction {
 
     public abstract CodeTree createPushCountCode(BuilderVariables vars);
 
-    protected abstract CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2);
+    protected abstract CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2);
 
     public abstract CodeTree createExecuteCode(ExecuteVariables vars);
 
@@ -102,7 +102,7 @@ public abstract class Instruction {
         return true;
     }
 
-    public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement[] argValues) {
+    public CodeTree createBuildCode(BuilderVariables vars, CodeTree[] argValues) {
 
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
@@ -162,7 +162,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("-1");
         }
     }
@@ -193,7 +193,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("-1");
         }
     }
@@ -225,7 +225,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("0");
         }
     }
@@ -245,7 +245,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("1");
         }
     }
@@ -275,7 +275,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("0");
         }
     }
@@ -301,7 +301,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("1");
         }
     }
@@ -325,7 +325,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("1");
         }
     }
@@ -349,16 +349,16 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             return CodeTreeBuilder.singleString("-1");
         }
 
         @Override
-        public CodeTree createBuildCode(BuilderVariables vars, CodeVariableElement[] argValues) {
+        public CodeTree createBuildCode(BuilderVariables vars, CodeTree[] argValues) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.startIf().variable(vars.maxLocal).string(" < ").variable(argValues[0]).end();
-            b.startAssign(vars.maxLocal).variable(argValues[0]).end();
+            b.startIf().variable(vars.maxLocal).string(" < ").tree(argValues[0]).end();
+            b.startAssign(vars.maxLocal).tree(argValues[0]).end();
             b.tree(super.createBuildCode(vars, argValues));
 
             return b.build();
@@ -542,7 +542,7 @@ public abstract class Instruction {
         }
 
         @Override
-        protected CodeTree createStackEffect(BuilderVariables vars, CodeVariableElement[] arguments2) {
+        protected CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments2) {
             if (this.isVarArgs) {
                 return CodeTreeBuilder.singleString("(" + this.stackPushes + " - " + vars.numChildren.getName() + ")");
             } else {

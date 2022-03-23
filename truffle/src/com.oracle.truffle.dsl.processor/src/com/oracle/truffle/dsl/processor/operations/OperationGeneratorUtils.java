@@ -3,6 +3,7 @@ package com.oracle.truffle.dsl.processor.operations;
 import java.util.List;
 
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
@@ -24,7 +25,32 @@ public class OperationGeneratorUtils {
         return s.replaceAll("([a-z])([A-Z])", "$1_$2").replace('.', '_').toUpperCase();
     }
 
+    public static CodeTree createEmitInstructionFromOperation(BuilderVariables vars, Instruction instr) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        CodeVariableElement[] args = new CodeVariableElement[instr.arguments.length];
+        for (int i = 0; i < instr.arguments.length; i++) {
+            TypeMirror tgtType = instr.arguments[i].toBuilderArgumentType();
+            b.declaration(tgtType, "arg_" + i, CodeTreeBuilder.createBuilder()//
+                            .maybeCast(ProcessorContext.getInstance().getType(Object.class), tgtType)//
+                            .string("operationData.arguments[" + i + "]").build());
+            args[i] = new CodeVariableElement(ProcessorContext.getInstance().getType(Object.class), "arg_" + i);
+        }
+
+        b.tree(createEmitInstruction(vars, instr, args));
+        return b.build();
+    }
+
     public static CodeTree createEmitInstruction(BuilderVariables vars, Instruction instr, CodeVariableElement... arguments) {
+        CodeTree[] trees = new CodeTree[arguments.length];
+        for (int i = 0; i < trees.length; i++) {
+            trees[i] = CodeTreeBuilder.singleVariable(arguments[i]);
+        }
+
+        return createEmitInstruction(vars, instr, trees);
+    }
+
+    public static CodeTree createEmitInstruction(BuilderVariables vars, Instruction instr, CodeTree... arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startAssign(vars.curStack).variable(vars.curStack).string(" + ").tree(instr.createStackEffect(vars, arguments)).end();
         b.startIf().variable(vars.maxStack).string(" < ").variable(vars.curStack).end();
