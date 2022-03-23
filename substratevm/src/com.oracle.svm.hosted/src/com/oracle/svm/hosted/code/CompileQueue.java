@@ -1087,7 +1087,10 @@ public class CompileQueue {
             }
             if (graph == null) {
                 needParsing = true;
-                graph = new StructuredGraph.Builder(getCustomizedOptions(debug), debug).method(method).build();
+                graph = new StructuredGraph.Builder(getCustomizedOptions(debug), debug)
+                                .method(method)
+                                .recordInlinedMethods(false)
+                                .build();
             }
         }
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {

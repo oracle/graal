@@ -324,7 +324,13 @@ public class GraalSupport {
         }
 
         boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
-        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).name(name).method(method).compilationId(compilationId).setIsSubstitution(isSubstitution).build();
+        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
+                        .name(name)
+                        .method(method)
+                        .recordInlinedMethods(false)
+                        .compilationId(compilationId)
+                        .setIsSubstitution(isSubstitution)
+                        .build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);
         return graph;
