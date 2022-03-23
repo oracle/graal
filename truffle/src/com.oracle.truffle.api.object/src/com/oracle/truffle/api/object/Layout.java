@@ -47,7 +47,6 @@ import java.util.EnumSet;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 
@@ -57,8 +56,6 @@ import com.oracle.truffle.api.Truffle;
  * An object may change its shape but only to shapes of the same layout.
  *
  * NB: Instances of this class should be created only in static initializers.
- *
- * Planned to be deprecated.
  *
  * @since 0.8 or earlier
  * @deprecated since 21.1. Use {@link Shape.Builder} instead.
@@ -103,31 +100,6 @@ public abstract class Layout {
          * @since 0.8 or earlier
          */
         IntToLong
-    }
-
-    /**
-     * Creates a new {@link Builder}.
-     *
-     * @see Layout.Builder
-     * @since 0.8 or earlier
-     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
-     */
-    @Deprecated(since = "21.1")
-    public static Builder newLayout() {
-        CompilerAsserts.neverPartOfCompilation();
-        return new Builder();
-    }
-
-    /**
-     * Equivalent to {@code Layout.newLayout().build()}.
-     *
-     * @see Layout.Builder#build()
-     * @since 0.8 or earlier
-     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
-     */
-    @Deprecated(since = "21.1")
-    public static Layout createLayout() {
-        return newLayout().build();
     }
 
     /**
