@@ -145,9 +145,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
                 // sanity checks
                 assert intfMethod.getDeclaringKlassRef() == currInterface;
                 assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
-                if (isLeafMethod(intfMethod).isValid()) {
-                    isLeafMethod(intfMethod).invalidate();
-                }
+                isLeafMethod(intfMethod).invalidate();
             }
         }
     }
