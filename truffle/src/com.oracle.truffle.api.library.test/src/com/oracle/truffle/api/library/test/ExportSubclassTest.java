@@ -337,8 +337,8 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     }
 
     @ExpectError("Class declares @ExportMessage annotations but does not export any libraries. "//
-                    + "Exported messages cannot be resoved without exported library. "//
-                    + "Add @ExportLibrary(MyLibrary.class) to the class ot resolve this.")
+                    + "Exported messages cannot be resolved without exported library. "//
+                    + "Add @ExportLibrary(MyLibrary.class) to the class to resolve this.")
     static class MissingExportLibraryError {
 
         @ExportMessage
