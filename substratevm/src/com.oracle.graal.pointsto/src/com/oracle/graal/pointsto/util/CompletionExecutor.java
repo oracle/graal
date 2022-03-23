@@ -60,7 +60,7 @@ public class CompletionExecutor {
     private final AtomicReference<State> state;
     private final LongAdder postedOperations;
     private final LongAdder completedOperations;
-    private final List<DebugContextRunnable> postedBeforeStart;
+    private List<DebugContextRunnable> postedBeforeStart;
     private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
     private ExecutorService executorService;
@@ -90,7 +90,6 @@ public class CompletionExecutor {
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
         completedOperations = new LongAdder();
-        postedBeforeStart = new ArrayList<>();
         startingThread = Thread.currentThread();
     }
 
@@ -103,7 +102,7 @@ public class CompletionExecutor {
         setState(State.BEFORE_START);
         postedOperations.reset();
         completedOperations.reset();
-        postedBeforeStart.clear();
+        postedBeforeStart = new ArrayList<>();
         vmConfig = bb.getHostVM().getConfiguration();
     }
 
@@ -213,7 +212,7 @@ public class CompletionExecutor {
 
         setState(State.STARTED);
         postedBeforeStart.forEach(this::execute);
-        postedBeforeStart.clear();
+        postedBeforeStart = null;
     }
 
     private void setState(State newState) {
@@ -271,7 +270,7 @@ public class CompletionExecutor {
     }
 
     public long getPostedOperations() {
-        return postedOperations.sum() + postedBeforeStart.size();
+        return postedOperations.sum() + (postedBeforeStart == null ? 0 : postedBeforeStart.size());
     }
 
     public boolean isSequential() {
