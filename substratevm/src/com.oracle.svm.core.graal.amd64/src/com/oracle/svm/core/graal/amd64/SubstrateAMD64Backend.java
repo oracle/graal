@@ -40,6 +40,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 
+import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -187,6 +188,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     public static boolean runtimeToAOTIsAvxSseTransition(TargetDescription target) {
         if (SubstrateUtil.HOSTED) {
             // hosted does not need to care about this
+            return false;
+        }
+        if (!AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+            // same CPU features as hosted
             return false;
         }
         var arch = (AMD64) target.arch;
@@ -367,15 +372,15 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    private void vzeroupper(LIRGeneratorTool gen, Value[] arguments, LIRFrameState callState) {
+    private void vzeroupperBeforeCall(LIRGeneratorTool gen, Value[] arguments, LIRFrameState callState) {
         if (!SubstrateUtil.HOSTED) {
-            // TODO we might want to avoid vzeroupper if the target does not use SSE (cf.
+            // TODO we might want to avoid vzeroupper if the callee does not use SSE (cf.
             // hsLinkage.mayContainFP())
             boolean mayContainFP = true;
             if (runtimeToAOTIsAvxSseTransition(gen.target()) && mayContainFP && !isRuntimeToRuntimeCall(callState)) {
                 /*
-                 * If the target may contain FP ops, and it is not compiled by us, we may have an
-                 * AVX-SSE transition.
+                 * If the callee may contain SSE ops, and it AOT compiled, we may have an AVX-SSE
+                 * transition.
                  *
                  * We exclude the argument registers from the zeroing LIR instruction since it
                  * violates the LIR semantics of @Temp that values must not be live. Note that the
@@ -457,7 +462,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-            vzeroupper(this, arguments, info);
+            vzeroupperBeforeCall(this, arguments, info);
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
@@ -738,7 +743,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            vzeroupper(getLIRGeneratorTool(), parameters, callState);
+            vzeroupperBeforeCall(getLIRGeneratorTool(), parameters, callState);
             append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
@@ -756,7 +761,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             // TODO(je) vzeroupper
-            vzeroupper(getLIRGeneratorTool(), parameters, callState);
+            vzeroupperBeforeCall(getLIRGeneratorTool(), parameters, callState);
             append(new SubstrateAMD64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));

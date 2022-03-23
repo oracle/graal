@@ -98,10 +98,14 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         for (Register register : calleeSavedRegisters) {
             calleeSavedRegisterOffsets.put(register, offset);
             RegisterCategory category = register.getRegisterCategory();
-            if (category.equals(AMD64.XMM)) {
+            boolean isXMM = category.equals(AMD64.XMM);
+            if (isXMM) {
+                // XMM registers are handled separately
+                calleeSavedXMMRegisters.add(register);
+            }
+            if (isXMM && needDynamicFeatureCheck()) {
                 // we might need to safe the full 512 bit vector register
                 offset += AMD64Kind.V512_QWORD.getSizeInBytes();
-                calleeSavedXMMRegisters.add(register);
             } else {
                 offset += target.arch.getLargestStorableKind(category).getSizeInBytes();
             }
@@ -115,6 +119,14 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         ImageSingletons.add(CalleeSavedRegisters.class,
                         new AMD64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedXMMRegisters, calleeSavedRegisterOffsets, calleeSavedRegistersSizeInBytes,
                                         saveAreaOffsetInFrame));
+    }
+
+    /**
+     * Returns {@code true} if the size of {@link AMD64#XMM} registers is not known at compile time,
+     * so dynamic CPU feature checks need to be emitted for storing the XMM register sizes.
+     */
+    private static boolean needDynamicFeatureCheck() {
+        return AMD64CPUFeatureAccess.canUpdateCPUFeatures();
     }
 
     private final List<Register> calleeSavedXMMRegister;
@@ -150,7 +162,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 throw VMError.shouldNotReachHere();
             }
         }
-        emitXMM(asm, crb, frameSize, null, Mode.SAVE);
+        emitXMM(asm, crb, frameSize, Mode.SAVE);
     }
 
     public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister, CompilationResultBuilder crb) {
@@ -172,11 +184,11 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 throw VMError.shouldNotReachHere();
             }
         }
-        emitXMM(asm, crb, frameSize, excludedRegister, Mode.RESTORE);
+        emitXMM(asm, crb, frameSize, Mode.RESTORE);
     }
 
-    private void emitXMM(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Register excludedRegister, Mode mode) {
-        new XMMSaverRestorer(asm, crb, frameSize, excludedRegister, mode).emit();
+    private void emitXMM(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Mode mode) {
+        new XMMSaverRestorer(asm, crb, frameSize, mode).emit();
     }
 
     private AMD64Address calleeSaveAddress(AMD64MacroAssembler asm, int frameSize, Register register) {
@@ -193,35 +205,45 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         private final AMD64MacroAssembler asm;
         private final CompilationResultBuilder crb;
         private final int frameSize;
-        private final Register excludedRegister;
-        private Register constantRegister = null;
         private final Mode mode;
 
-        XMMSaverRestorer(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Register excludeRegister, Mode mode) {
+        XMMSaverRestorer(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Mode mode) {
             this.asm = asm;
             this.crb = crb;
             this.frameSize = frameSize;
-            this.excludedRegister = excludeRegister;
             this.mode = mode;
         }
 
         public void emit() {
-            Label end = new Label();
-            try {
-                // AVX512
-                if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX512F)) {
-                    // AVX512 statically available, no further checks needed
-                    return;
+            if (needDynamicFeatureCheck()) {
+                Label end = new Label();
+                try {
+                    // AVX512
+                    if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX512F)) {
+                        // AVX512 statically available, no further checks needed
+                        return;
+                    }
+                    // AVX
+                    if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX)) {
+                        // AVX statically available, no further checks needed
+                        return;
+                    }
+                    // SSE
+                    emitSaveRestore(null);
+                } finally {
+                    asm.bind(end);
                 }
-                // AVX
-                if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX)) {
-                    // AVX statically available, no further checks needed
-                    return;
+            } else {
+                var features = ((AMD64) ConfigurationValues.getTarget().arch).getFeatures();
+                final AMD64.CPUFeature avxVersion;
+                if (features.contains(AMD64.CPUFeature.AVX512F)) {
+                    avxVersion = AMD64.CPUFeature.AVX512F;
+                } else if (features.contains(AMD64.CPUFeature.AVX)) {
+                    avxVersion = AMD64.CPUFeature.AVX;
+                } else {
+                    avxVersion = null;
                 }
-                // SSE
-                emitSaveRestore(null);
-            } finally {
-                asm.bind(end);
+                emitSaveRestore(avxVersion);
             }
         }
 
@@ -308,36 +330,11 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         private AMD64Address getFeatureMapAddress() {
             SubstrateObjectConstant object = (SubstrateObjectConstant) SubstrateObjectConstant.forObject(RuntimeCPUFeatureCheckImpl.instance());
             int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.providers.getMetaAccess()));
-            if (ConfigurationValues.getTarget().inlineObjects) {
-                Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
-                GraalError.guarantee(heapBase != null, "Heap base register must not be null");
-                return new AMD64Address(heapBase, Register.None, AMD64Address.Scale.Times1,
-                                displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
-                                displacementAnnotation(object));
-            } else {
-                Register tempReg = loadConstantRegister(object);
-                return new AMD64Address(tempReg, Register.None, AMD64Address.Scale.Times1, fieldOffset);
-            }
-        }
-
-        /**
-         * Loads the given {@code constant} into a register. The register is cached and thus
-         * expected to be persistent throughout the lifetime of this object.
-         */
-        private Register loadConstantRegister(SubstrateObjectConstant constant) {
-            if (constantRegister == null) {
-                Register tempReg = null;
-                for (Register reg : calleeSavedRegisters) {
-                    if (AMD64.CPU.equals(reg.getRegisterCategory()) && !reg.equals(excludedRegister)) {
-                        tempReg = reg;
-                        break;
-                    }
-                }
-                GraalError.guarantee(tempReg != null, "No temporary register available");
-                asm.movq(tempReg, (AMD64Address) crb.recordDataReferenceInCode(constant, 0));
-                this.constantRegister = tempReg;
-            }
-            return this.constantRegister;
+            GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
+            Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
+            GraalError.guarantee(heapBase != null, "Heap base register must not be null");
+            return new AMD64Address(heapBase, Register.None, AMD64Address.Scale.Times1, displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
+                            displacementAnnotation(object));
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)

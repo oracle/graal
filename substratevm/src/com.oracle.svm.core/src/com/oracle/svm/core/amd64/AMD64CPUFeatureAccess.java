@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -217,8 +219,26 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         }
     }
 
+    /**
+     * Returns {@code true} if the CPU feature set will be updated for JIT compilations. As a
+     * consequence, the size of {@link AMD64#XMM} registers is different AOT vs JIT.
+     *
+     * Updating CPU features in only enabled if {@linkplain SubstrateOptions#SpawnIsolates isolates
+     * are enabled}. There is not a fundamental problem. The only reason for this restriction is
+     * that with isolates we have a {@linkplain ReservedRegisters#getHeapBaseRegister() heap base
+     * register} which makes dynamic CPU feature checks simple because they do not require an
+     * intermediate register for testing the
+     * {@linkplain com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl cpu feature mask}.
+     */
+    public static boolean canUpdateCPUFeatures() {
+        return SubstrateOptions.SpawnIsolates.getValue();
+    }
+
     @Override
     public void enableFeatures(Architecture runtimeArchitecture) {
+        if (!canUpdateCPUFeatures()) {
+            return;
+        }
         // update cpu features
         AMD64 architecture = (AMD64) runtimeArchitecture;
         EnumSet<AMD64.CPUFeature> features = determineHostCPUFeatures();
