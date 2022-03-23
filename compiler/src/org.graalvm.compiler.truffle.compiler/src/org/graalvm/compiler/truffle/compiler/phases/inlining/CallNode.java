@@ -82,6 +82,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     // Effectively final, populated only as part of expanded (unless root, root does not have
     // invoke)
     private Invoke invoke;
+    private int graphSize;
 
     // Needs to be protected because of the @NodeInfo annotation
     protected CallNode(TruffleCallNode truffleCaller, CompilableTruffleAST directCallTarget, double rootRelativeFrequency, int depth, int id) {
@@ -110,6 +111,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         root.policyData = callTree.getPolicy().newCallNodeData(root);
         final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
         root.irAfterPE = entry.graphAfterPEForDebugDump;
+        root.graphSize = entry.graphSize;
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -151,6 +153,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         properties.put("Frequency", rootRelativeFrequency);
         properties.put("Recursion Depth", getRecursionDepth());
         properties.put("IR Nodes", ir == null ? 0 : ir.getNodeCount());
+        properties.put("Graph Size", graphSize);
         properties.put("Truffle Callees", truffleCallees.length);
         properties.put("Explore/inline ratio", exploreInlineRatio());
         properties.put("Depth", depth);
@@ -235,6 +238,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
         verifyTrivial(entry);
         ir = copyGraphAndAddChildren(entry);
+        graphSize = entry.graphSize;
         irAfterPE = entry.graphAfterPEForDebugDump;
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
@@ -368,6 +372,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return trivial;
     }
 
+    public int getGraphSize() {
+        return graphSize;
+    }
+
     public Object getPolicyData() {
         return policyData;
     }
@@ -424,6 +432,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                 child.collectInlinedTargets(inliningPlan);
             }
         }
+    }
+
+    public void setGraphSize(int computeGraphSize) {
+        graphSize = computeGraphSize;
     }
 
     public enum State {

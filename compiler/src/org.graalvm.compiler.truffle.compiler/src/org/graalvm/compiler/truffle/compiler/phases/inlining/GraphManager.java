@@ -70,10 +70,10 @@ final class GraphManager {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
             final TruffleTierContext context = newContext(truffleAST, false);
             context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
-            partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
+            int graphSize = partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
             StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
             postPartialEvaluationSuite.apply(context.graph, context);
-            entry = new Entry(context.graph, plugin, graphAfterPE);
+            entry = new Entry(context.graph, plugin, graphAfterPE, graphSize);
             irCache.put(truffleAST, entry);
         }
         return entry;
@@ -98,10 +98,10 @@ final class GraphManager {
 
     Entry peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
+        int graphSize = partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
         postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
-        return new Entry(rootContext.graph, plugin, graphAfterPE);
+        return new Entry(rootContext.graph, plugin, graphAfterPE, graphSize);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
@@ -134,8 +134,9 @@ final class GraphManager {
         final boolean trivial;
         // Populated only when debug dump is enabled with debug dump level >= info.
         final StructuredGraph graphAfterPEForDebugDump;
+        final int graphSize;
 
-        Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump) {
+        Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump, int graphSize) {
             this.graph = graph;
             this.invokeToTruffleCallNode = plugin.getInvokeToTruffleCallNode();
             this.indirectInvokes = plugin.getIndirectInvokes();
@@ -144,6 +145,7 @@ final class GraphManager {
                             graph.getNodes(LoopBeginNode.TYPE).count() == 0 &&
                             graph.getNodeCount() < TRIVIAL_NODE_COUNT_LIMIT;
             this.graphAfterPEForDebugDump = graphAfterPEForDebugDump;
+            this.graphSize = graphSize;
         }
     }
 
