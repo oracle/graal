@@ -180,7 +180,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         super(providers);
     }
 
-    public static boolean buildtimeToRuntimeIsAvxSseTransition(TargetDescription target) {
+    /**
+     * Returns {@code true} if a call from run-time compiled code to AOT compiled code is an AVX-SSE
+     * transition. For AOT compilations, this always returns {@code false}.
+     */
+    public static boolean runtimeToAOTIsAvxSseTransition(TargetDescription target) {
         if (SubstrateUtil.HOSTED) {
             // hosted does not need to care about this
             return false;
@@ -368,7 +372,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             // TODO we might want to avoid vzeroupper if the target does not use SSE (cf.
             // hsLinkage.mayContainFP())
             boolean mayContainFP = true;
-            if (buildtimeToRuntimeIsAvxSseTransition(gen.target()) && mayContainFP && !isRuntimeToRuntimeCall(callState)) {
+            if (runtimeToAOTIsAvxSseTransition(gen.target()) && mayContainFP && !isRuntimeToRuntimeCall(callState)) {
                 /*
                  * If the target may contain FP ops, and it is not compiled by us, we may have an
                  * AVX-SSE transition.

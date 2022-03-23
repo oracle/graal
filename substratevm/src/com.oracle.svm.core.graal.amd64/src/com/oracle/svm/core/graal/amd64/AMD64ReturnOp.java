@@ -49,7 +49,7 @@ public final class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.B
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         crb.frameContext.leave(crb);
-        if (SubstrateAMD64Backend.buildtimeToRuntimeIsAvxSseTransition(crb.target)) {
+        if (SubstrateAMD64Backend.runtimeToAOTIsAvxSseTransition(crb.target)) {
             /*
              * We potentially return to hosted code, and that's an AVX-SSE transition. The only live
              * value at this point should be the return value in either rax, or in xmm0 with the
