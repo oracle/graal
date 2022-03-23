@@ -118,7 +118,7 @@ public abstract class Layout {
      * @param objectType that describes the object instance with this shape.
      * @since 0.8 or earlier
      */
-    @Deprecated(since = "22.2")
+    @Deprecated(since = "21.1")
     public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType);
 
     /**
@@ -128,7 +128,7 @@ public abstract class Layout {
      * @param sharedData for language-specific use
      * @since 0.8 or earlier
      */
-    @Deprecated(since = "22.2")
+    @Deprecated(since = "21.1")
     public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType, Object sharedData);
 
     /**
@@ -140,7 +140,7 @@ public abstract class Layout {
      * @return new instance of a shape
      * @since 0.8 or earlier
      */
-    @Deprecated(since = "22.2")
+    @Deprecated(since = "21.1")
     public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType, Object sharedData, int flags);
 
     /**
@@ -158,7 +158,7 @@ public abstract class Layout {
      *
      * @since 0.8 or earlier
      */
-    @Deprecated(since = "22.2")
+    @Deprecated(since = "21.1")
     @SuppressWarnings("deprecation")
     public abstract Shape.Allocator createAllocator();
 
