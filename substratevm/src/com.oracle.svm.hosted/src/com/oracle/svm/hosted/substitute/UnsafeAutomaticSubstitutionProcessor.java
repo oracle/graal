@@ -900,7 +900,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 if (substitutionField instanceof ComputedValueField) {
                     ComputedValueField computedSubstitutionField = (ComputedValueField) substitutionField;
                     if (computedSubstitutionField.getRecomputeValueKind().equals(kind)) {
-                        reportUnnecessarySubstitution(substitutionField, computedSubstitutionField);
+                        if (computedSubstitutionField.getTargetField().equals(computedSubstitutionField.getJavaField())) {
+                            reportUnnecessarySubstitution(substitutionField, computedSubstitutionField);
+                        }
                         return false;
                     } else if (computedSubstitutionField.getRecomputeValueKind().equals(Kind.None)) {
                         /*

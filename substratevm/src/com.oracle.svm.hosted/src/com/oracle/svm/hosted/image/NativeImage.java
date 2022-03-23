@@ -50,7 +50,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.code.CompilationResult;
@@ -65,6 +64,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -992,6 +992,6 @@ final class MethodPointerInvalidHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
     }
 }

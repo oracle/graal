@@ -56,6 +56,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -134,7 +135,7 @@ public abstract class VMThreads {
      * already finished execution on the Java-level. However, without checking explicitly, we can't
      * say for sure if a thread has exited on the operating system level as well.
      */
-    private static AtomicWord<OSThreadHandle> detachedOsThreadToCleanup = new AtomicWord<>();
+    private static final AtomicWord<OSThreadHandle> detachedOsThreadToCleanup = new AtomicWord<>();
 
     /**
      * The next element in the linked list of {@link IsolateThread}s. A thread points to itself with
@@ -151,6 +152,7 @@ public abstract class VMThreads {
      * used for the stack overflow check.
      */
     public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord("VMThreads.StackEnd");
+    private static final FastThreadLocalBytes<Pointer> StartedByCurrentIsolate = FastThreadLocalFactory.createBytes(() -> 1, "VMThreads.StartedByCurrentIsolate");
 
     private static final int STATE_UNINITIALIZED = 1;
     private static final int STATE_INITIALIZING = 2;
@@ -291,7 +293,13 @@ public abstract class VMThreads {
      * must be the first method called in every thread.
      */
     @Uninterruptible(reason = "Thread is not attached yet.")
-    public int attachThread(IsolateThread thread) {
+    public int attachThread(IsolateThread thread, boolean startedByCurrentIsolate) {
+        StartedByCurrentIsolate.getAddress().writeByte(0, (byte) (startedByCurrentIsolate ? 1 : 0));
+        return attachThread(thread);
+    }
+
+    @Uninterruptible(reason = "Thread is not attached yet.")
+    protected int attachThread(IsolateThread thread) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
         OSThreadIdTL.set(thread, getCurrentOSThreadId());
         OSThreadHandleTL.set(thread, getCurrentOSThreadHandle());
@@ -325,7 +333,7 @@ public abstract class VMThreads {
 
         // read thread local data (can't be accessed further below as the IsolateThread is freed)
         OSThreadHandle nextOsThreadToCleanup = WordFactory.nullPointer();
-        if (PlatformThreads.wasStartedByCurrentIsolate(thread)) {
+        if (wasStartedByCurrentIsolate(thread)) {
             nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
         }
 
@@ -358,6 +366,11 @@ public abstract class VMThreads {
         }
 
         cleanupExitedOsThread(threadToCleanup);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
+        return StartedByCurrentIsolate.getAddress(thread).readByte(0) != 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -483,10 +496,9 @@ public abstract class VMThreads {
 
     /**
      * Returns a platform-specific handle to the current thread. This handle can for example be used
-     * for joining a thread. Depending on the specific platform, it can be necessary to explicitly
-     * free the handle when it is no longer used. To avoid leaking operating system resources, this
-     * method should therefore only be called in {@link #attachThread(IsolateThread)}, when
-     * {@link #OSThreadHandleTL} is not set yet.
+     * for joining a thread. Depending on the platform, it can be necessary to explicitly free the
+     * handle when it is no longer used. To avoid leaking resources, this method should therefore
+     * only be called by {@link #attachThread}, when {@link #OSThreadHandleTL} is not set yet.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadHandle getCurrentOSThreadHandle();
@@ -607,12 +619,9 @@ public abstract class VMThreads {
             IsolateThread thread = firstThread();
             while (thread.isNonNull()) {
                 IsolateThread next = nextThread(thread);
-                if (thread.notEqual(currentThread)) {
-                    Thread javaThread = PlatformThreads.fromVMThread(thread);
-                    if (!PlatformThreads.wasStartedByCurrentIsolate(javaThread)) {
-                        detachThreadInSafeContext(thread);
-                        releaseThread(thread);
-                    }
+                if (thread.notEqual(currentThread) && !wasStartedByCurrentIsolate(thread)) {
+                    detachThreadInSafeContext(thread);
+                    releaseThread(thread);
                 }
                 thread = next;
             }

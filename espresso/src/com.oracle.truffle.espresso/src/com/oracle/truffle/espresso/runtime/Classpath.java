@@ -26,21 +26,22 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class Classpath {
     public static final String JAVA_BASE = "java.base";
+    private static final byte[] CLASS_SUFFIX = ".class".getBytes(StandardCharsets.UTF_8);
 
     /**
      * Creates a classpath {@link Entry} from a given file system path.
@@ -51,48 +52,23 @@ public final class Classpath {
         final File pathFile = new File(name);
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
-        } else {
+        } else if (pathFile.isFile()) {
             // regular file.
-
             EspressoContext context = EspressoContext.get(null);
             if (context.getJavaVersion().modulesEnabled()) {
-                JImageLibrary library = context.jimageLibrary();
-                TruffleObject image = library.open(name);
-                if (!InteropLibrary.getUncached().isNull(image)) {
-                    return new Modules(pathFile, library, image);
+                JImageHelper helper = context.createJImageHelper(name);
+                if (helper != null) {
+                    return new Modules(pathFile, helper);
                 }
             }
-            if (name.endsWith(".zip") || name.endsWith(".jar")) {
-                if (pathFile.exists() && pathFile.isFile()) {
-                    return new Archive(pathFile);
-                }
+            try {
+                ZipFile zipFile = new ZipFile(pathFile);
+                return new Archive(pathFile, zipFile);
+            } catch (IOException e) {
             }
         }
         return new PlainFile(pathFile);
     }
-
-    /**
-     * Creates a classpath {@link Entry} from a given file system path, but forces it to never be a
-     * modules entry. Useful if trying to obtain a classpath {@link Entry} when there is no
-     * {@link EspressoContext} available.
-     *
-     * @param name a file system path denoting a classpath entry
-     */
-    public static Entry createNonModuleEntry(String name) {
-        final File pathFile = new File(name);
-        if (pathFile.isDirectory()) {
-            return new Directory(pathFile);
-        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
-            if (pathFile.exists() && pathFile.isFile()) {
-                return new Archive(pathFile);
-            }
-        }
-        return new PlainFile(pathFile);
-    }
-
-    private static final List<Entry> EMPTY_LIST = Collections.emptyList();
-
-    public static final Classpath EMPTY = new Classpath(EMPTY_LIST);
 
     private final List<Entry> entries;
 
@@ -116,24 +92,13 @@ public final class Classpath {
         public abstract File file();
 
         /**
-         * Determines if a given resource can be found under this entry.
-         *
-         * @param path a file path relative to this classpath entry. This values uses the '/'
-         *            character as the path separator regardless of the
-         *            {@linkplain File#separatorChar default} for the underlying platform.
-         */
-        public abstract boolean contains(String path);
-
-        /**
          * Gets the contents of a file denoted by a given path that is relative to this classpath
          * entry. If the denoted file does not exist under this classpath entry then {@code null} is
          * returned. Any IO exception that occurs when reading is silently ignored.
          *
          * @param archiveName name of the file in an archive with {@code '/'} as the separator
-         * @param fsPath a path relative to this entry with {@link File#separatorChar} as the
-         *            separator
          */
-        abstract ClasspathFile readFile(String archiveName, String fsPath);
+        abstract ClasspathFile readFile(ByteSequence archiveName);
 
         public boolean isDirectory() {
             return false;
@@ -143,17 +108,9 @@ public final class Classpath {
             return false;
         }
 
-        public boolean isPlainFile() {
-            return false;
-        }
-
         @Override
         public String toString() {
             return path();
-        }
-
-        public ZipFile zipFile() {
-            return null;
         }
 
     }
@@ -163,7 +120,6 @@ public final class Classpath {
      * archive file.
      */
     static final class PlainFile extends Entry {
-
         private final File file;
 
         PlainFile(File file) {
@@ -171,7 +127,7 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
             return null;
         }
 
@@ -179,33 +135,27 @@ public final class Classpath {
         public File file() {
             return file;
         }
-
-        @Override
-        public boolean isPlainFile() {
-            return true;
-        }
-
-        @Override
-        public boolean contains(String path) {
-            return false;
-        }
-
     }
 
     /**
      * Represents a classpath entry that is a path to an existing directory.
      */
     public static final class Directory extends Entry {
+        private static final boolean REPLACE_SEPARATOR = File.separatorChar != '/';
 
         private final File directory;
 
         public Directory(File directory) {
-            this.directory = directory.getAbsoluteFile();  // makes getParent work as expected with
-                                                           // relative pathnames
+            // makes getParent work as expected with relative pathnames
+            this.directory = directory.getAbsoluteFile();
         }
 
         @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
+            String fsPath = archiveName.toString();
+            if (REPLACE_SEPARATOR) {
+                fsPath = fsPath.replace('/', File.separatorChar);
+            }
             final File file = new File(directory, fsPath);
             if (file.exists()) {
                 try {
@@ -226,57 +176,26 @@ public final class Classpath {
         public boolean isDirectory() {
             return true;
         }
-
-        @Override
-        public boolean contains(String path) {
-            return new File(directory, File.separatorChar == '/' ? path : path.replace('/', File.separatorChar)).exists();
-        }
-
     }
 
     /**
      * Represents a classpath entry that is a path to an existing zip/jar archive file.
      */
     static final class Archive extends Entry {
-
         private final File file;
+        private final ZipFile zipFile;
 
-        private ZipFile zipFile;
-
-        Archive(File file) {
+        Archive(File file, ZipFile zipFile) {
             this.file = file;
+            this.zipFile = zipFile;
         }
 
         @Override
-        public ZipFile zipFile() {
-            if (zipFile == null && file != null) {
-                try {
-                    zipFile = new ZipFile(file);
-                } catch (IOException e) {
-                }
-            }
-            return zipFile;
-        }
-
-        @Override
-        public boolean contains(String path) {
-            final ZipFile zf = zipFile();
-            if (zf == null) {
-                return false;
-            }
-            return zf.getEntry(path) != null;
-        }
-
-        @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
-            final ZipFile zf = zipFile();
-            if (zf == null) {
-                return null;
-            }
+        ClasspathFile readFile(ByteSequence archiveName) {
             try {
-                final ZipEntry zipEntry = zf.getEntry(archiveName);
+                ZipEntry zipEntry = zipFile.getEntry(archiveName.toString());
                 if (zipEntry != null) {
-                    return new ClasspathFile(readZipEntry(zf, zipEntry), this, fsPath);
+                    return new ClasspathFile(readZipEntry(zipFile, zipEntry), this, archiveName);
                 }
             } catch (IOException ioException) {
             }
@@ -299,13 +218,12 @@ public final class Classpath {
      * Represents a classpath entry that is a path to a jimage modules file.
      */
     static final class Modules extends Entry {
-        private File file;
+        private final File file;
+        private final JImageHelper helper;
 
-        private JImageHelper helper;
-
-        Modules(File file, JImageLibrary library, TruffleObject jimage) {
+        Modules(File file, JImageHelper helper) {
             this.file = file;
-            this.helper = new JImageHelper(library, jimage);
+            this.helper = helper;
         }
 
         @Override
@@ -314,18 +232,12 @@ public final class Classpath {
         }
 
         @Override
-        public boolean contains(String path) {
-            byte[] classBytes = helper.getClassBytes(path);
-            return classBytes != null;
-        }
-
-        @Override
-        ClasspathFile readFile(String archiveName, String fsPath) {
+        ClasspathFile readFile(ByteSequence archiveName) {
             byte[] classBytes = helper.getClassBytes(archiveName);
             if (classBytes == null) {
                 return null;
             }
-            return new ClasspathFile(classBytes, this, fsPath);
+            return new ClasspathFile(classBytes, this, archiveName);
         }
 
     }
@@ -373,100 +285,6 @@ public final class Classpath {
     }
 
     /**
-     * Gets the classpath derived from the value of the {@code "java.ext.dirs"} system property.
-     *
-     * @see "http://java.sun.com/javase/6/docs/technotes/guides/extensions/extensions.html"
-     */
-    private static String extensionClasspath() {
-        final String extDirs = System.getProperty("java.ext.dirs");
-        if (extDirs != null) {
-            final StringBuilder buf = new StringBuilder();
-            for (String extDirPath : extDirs.split(File.pathSeparator)) {
-                final File extDir = new File(extDirPath);
-                if (extDir.isDirectory()) {
-                    File[] contents = extDir.listFiles();
-                    if (contents != null) {
-                        for (File file : contents) {
-                            if (file.isDirectory() ||
-                                            (file.isFile() && (file.getName().endsWith(".jar") || file.getName().endsWith(".zip")))) {
-                                if (buf.length() != 0) {
-                                    buf.append(File.pathSeparatorChar);
-                                }
-                                buf.append(file.getAbsolutePath());
-                            }
-                        }
-                    }
-                } else {
-                    // Ignore non-directory
-                }
-            }
-            if (buf.length() != 0) {
-                buf.append(File.pathSeparatorChar);
-                return buf.toString();
-            }
-        }
-        return "";
-    }
-
-    /**
-     * Gets a classpath corresponding to the class search order used by the application class
-     * loader.
-     */
-    public static Classpath fromSystem() {
-        final String value = System.getProperty("sun.boot.class.path") + File.pathSeparator + extensionClasspath() + System.getProperty("java.class.path");
-        return new Classpath(value.split(File.pathSeparator));
-    }
-
-    /**
-     * Gets a classpath corresponding to the class search order used by the boot class loader.
-     */
-    public static Classpath bootClassPath() {
-        return bootClassPath(null);
-    }
-
-    /**
-     * Gets a classpath corresponding to the class search order used by the boot class loader.
-     *
-     * @param extraPath an additional path to append to the system property or null if none
-     */
-    public static Classpath bootClassPath(String extraPath) {
-        String value = System.getProperty("sun.boot.class.path");
-        if (value == null) {
-            return EMPTY;
-        }
-        if (extraPath != null) {
-            value = value + File.pathSeparator + extraPath;
-        }
-        return new Classpath(value.split(File.pathSeparator));
-    }
-
-    /**
-     * Gets a new classpath obtained by prepending a given classpath to this class classpath.
-     *
-     * @param classpath the classpath to prepend to this classpath
-     * @return the result of prepending {@code classpath} to this classpath
-     */
-    public Classpath prepend(Classpath classpath) {
-        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size() + classpath.entries.size());
-        newEntries.addAll(classpath.entries);
-        newEntries.addAll(this.entries);
-        return new Classpath(newEntries);
-    }
-
-    /**
-     * Gets a new classpath obtained by prepending a given entry to this class classpath.
-     *
-     * @param entry the entry to prepend to this classpath
-     * @return the result of prepending {@code classpath} to this classpath
-     */
-    public Classpath prepend(String entry) {
-        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
-        newEntries.add(createEntry(entry));
-        newEntries.addAll(this.entries);
-        return new Classpath(newEntries);
-    }
-
-    /**
      * Gets a new classpath obtained by prepending a given entry to this class classpath.
      *
      * @param entry the entry to prepend to this classpath
@@ -484,69 +302,27 @@ public final class Classpath {
      * contents in a byte array if found. Any IO exception that occurs when reading is silently
      * ignored.
      *
-     * @param className a fully qualified class name (e.g. "java.lang.Class")
-     * @return the contents of the file available on the classpath whose name is computed as
-     *         {@code className.replace('.', '/')}. If no such file is available on this class path
-     *         or if reading the file produces an IO exception, then null is returned.
-     */
-    public ClasspathFile readClassFile(String className) {
-        return readFile(className, ".class");
-    }
-
-    /**
-     * Searches for a class file denoted by a given class name on this classpath and returns its
-     * contents in a byte array if found. Any IO exception that occurs when reading is silently
-     * ignored.
-     *
      * @param type an internal class name (e.g. "Ljava/lang/Class;")
      * @return the contents of the file available on the classpath whose name is computed as
-     *         {@code className.replace('.', '/')}. If no such file is available on this class path
-     *         or if reading the file produces an IO exception, then null is returned.
-     */
-    public ClasspathFile readClassFile(Symbol<Type> type) {
-        String rawType = type.toString();
-        rawType = rawType.substring(1, rawType.length() - 1);
-        return readFile(rawType, ".class");
-    }
-
-    /**
-     * Searches for a file denoted by a given class name on this classpath and returns its contents
-     * in a byte array if found. Any IO exception that occurs when reading is silently ignored.
-     *
-     * @param className a fully qualified class name (e.g. "java.lang.Class")
-     * @param extension a file extension
-     * @return the contents of the file available on the classpath whose name is computed as
-     *         {@code className.replace('.', '/') + extension}. If no such file is available on this
+     *         {@code className.replace('.', '/') + ".class}. If no such file is available on this
      *         class path or if reading the file produces an IO exception, then null is returned.
      */
-    public ClasspathFile readFile(String className, String extension) {
-        final String archiveName = className.replace('.', '/') + extension;
-        final String fsPath = File.separatorChar == '/' ? archiveName : className.replace('.', File.separatorChar) + extension;
-        for (Entry entry : entries()) {
-            ClasspathFile classpathFile = entry.readFile(archiveName, fsPath);
-            if (classpathFile != null) {
-                return classpathFile;
+    public ClasspathFile readClassFile(Symbol<Type> type) {
+        byte[] archiveNameBytes = new byte[type.length() - 2 + CLASS_SUFFIX.length];
+        for (int i = 1; i < type.length() - 1; i++) {
+            byte b = type.byteAt(i);
+            if (b == '.') {
+                archiveNameBytes[i - 1] = '/';
+            } else {
+                archiveNameBytes[i - 1] = b;
             }
         }
-        return null;
-    }
-
-    /**
-     * Searches for an existing file corresponding to a directory entry in this classpath composed
-     * with a given path suffix.
-     *
-     * @param suffix a file path relative to a directory entry of this classpath
-     * @return a file corresponding to the {@linkplain File#File(File, String) composition} of the
-     *         first directory entry of this classpath with {@code suffix} that denotes an existing
-     *         file or null if so such file exists
-     */
-    public File findFile(String suffix) {
+        System.arraycopy(CLASS_SUFFIX, 0, archiveNameBytes, type.length() - 2, CLASS_SUFFIX.length);
+        ByteSequence archiveName = ByteSequence.wrap(archiveNameBytes);
         for (Entry entry : entries()) {
-            if (entry instanceof Directory) {
-                final File file = new File(((Directory) entry).directory, suffix);
-                if (file.exists()) {
-                    return file;
-                }
+            ClasspathFile classpathFile = entry.readFile(archiveName);
+            if (classpathFile != null) {
+                return classpathFile;
             }
         }
         return null;
@@ -559,7 +335,7 @@ public final class Classpath {
             while (offset < bytes.length) {
                 final int n = zipStream.read(bytes, offset, bytes.length - offset);
                 if (n <= 0) {
-                    // ProgramWarning.message("truncated ZIP file: " + zipFile);
+                    throw EspressoError.shouldNotReachHere();
                 }
                 offset += n;
             }
@@ -574,20 +350,5 @@ public final class Classpath {
         }
         String s = entries.toString().replace(", ", File.pathSeparator);
         return s.substring(1, s.length() - 1);
-    }
-
-    /**
-     * Converts this object to a String array with one array element for each classpath entry.
-     *
-     * @return the newly created String array with one element per classpath entry
-     */
-    public String[] toStringArray() {
-        final String[] result = new String[entries().size()];
-        int z = 0;
-        for (Classpath.Entry e : entries()) {
-            result[z] = e.path();
-            z++;
-        }
-        return result;
     }
 }

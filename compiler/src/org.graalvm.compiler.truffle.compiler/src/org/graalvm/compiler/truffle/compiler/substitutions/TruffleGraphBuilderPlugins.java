@@ -528,7 +528,7 @@ public class TruffleGraphBuilderPlugins {
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithoutBoxingType));
         registerFrameMethods(r, constantReflection, types);
         registerUnsafeCast(r, canDelayIntrinsification, primitiveBoxingTypes);
-        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
+        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Long, JavaKind.Object);
         registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
         registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
         registerFrameAccessors(r, JavaKind.Int, constantReflection, types);

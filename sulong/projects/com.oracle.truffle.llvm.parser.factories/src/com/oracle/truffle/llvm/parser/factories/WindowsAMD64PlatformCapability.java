@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,4 +82,8 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
         throw CompilerDirectives.shouldNotReachHere("not yet implemented");
     }
 
+    @Override
+    public OS getOS() {
+        return OS.Windows;
+    }
 }

@@ -67,6 +67,13 @@ public class TruffleSupport {
         return ImageSingletons.lookup(TruffleSupport.class);
     }
 
+    /**
+     * @return the concrete subclass of {@link OptimizedCallTarget}.
+     */
+    public Class<?> getOptimizedCallTargetClass() {
+        return SubstrateOptimizedCallTarget.class;
+    }
+
     public SubstrateOptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         return new SubstrateOptimizedCallTarget(sourceCallTarget, rootNode);
     }
@@ -80,14 +87,14 @@ public class TruffleSupport {
     }
 
     public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
-        SubstrateTruffleCompiler compiler = createSubstrateTruffleCompilerImpl(runtime, "community");
+        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, "community"));
         if (SubstrateOptions.supportCompileInIsolates()) {
             compiler = new IsolateAwareTruffleCompiler(compiler);
         }
         return compiler;
     }
 
-    protected static SubstrateTruffleCompiler createSubstrateTruffleCompilerImpl(SubstrateTruffleRuntime runtime, String compilerConfigurationName) {
+    protected static TruffleCompilerConfiguration createSubstrateTruffleCompilerConfig(SubstrateTruffleRuntime runtime, String compilerConfigurationName) {
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
         final GraphBuilderConfiguration.Plugins graphBuilderPlugins = graalFeature.getHostedProviders().getGraphBuilderPlugins();
@@ -97,9 +104,7 @@ public class TruffleSupport {
         PartialEvaluatorConfiguration peConfig = TruffleCompilerImpl.createPartialEvaluatorConfiguration(compilerConfigurationName);
         final TruffleTierConfiguration lastTier = new TruffleTierConfiguration(peConfig, GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
                         GraalSupport.getRuntimeConfig().getProviders(), GraalSupport.getSuites(), GraalSupport.getLIRSuites());
-        final TruffleCompilerConfiguration truffleCompilerConfig = new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, snippetReflectionProvider, firstTier, lastTier);
-
-        return new SubstrateTruffleCompilerImpl(truffleCompilerConfig);
+        return new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, snippetReflectionProvider, firstTier, lastTier);
     }
 
     public static boolean isIsolatedCompilation() {

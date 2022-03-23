@@ -507,6 +507,13 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             classBuilder.withMethod(invokeDirect);
         }
 
+        MethodBuilder generatedBy = new MethodBuilder("generatedBy") //
+                        .withOverrideAnnotation() //
+                        .withReturnType("String") //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .addBodyLine("return \"", helper.getImplAnnotation().getSimpleName(), "\";");
+        classBuilder.withMethod(generatedBy);
+
         return classBuilder;
     }
 }

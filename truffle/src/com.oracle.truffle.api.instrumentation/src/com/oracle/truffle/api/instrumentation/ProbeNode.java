@@ -472,7 +472,6 @@ public final class ProbeNode extends Node {
         return new InputValueChainNode(binding, probe, context, index);
     }
 
-    @SuppressWarnings("deprecation")
     private static boolean throwIllegalASTAssertion(EventProviderWithInputChainNode parentChain, EventContext parentContext, EventBinding.Source<?> binding, RootNode rootNode,
                     Set<Class<?>> providedTags, int index) {
         StringBuilder msg = new StringBuilder();
@@ -514,7 +513,7 @@ public final class ProbeNode extends Node {
                     if (node.getParent() == null) {
                         msg.append("null parent = ");
                     } else {
-                        String fieldName = NodeUtil.findChildField(node.getParent(), node).getName();
+                        String fieldName = NodeUtil.findChildFieldName(node.getParent(), node);
                         msg.append(node.getParent().getClass().getSimpleName() + "." + fieldName + " = ");
                     }
 

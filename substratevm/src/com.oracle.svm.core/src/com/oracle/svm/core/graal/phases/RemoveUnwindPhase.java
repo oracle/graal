@@ -141,6 +141,12 @@ public class RemoveUnwindPhase extends Phase {
         ThrowBytecodeExceptionNode throwNode = graph.add(new ThrowBytecodeExceptionNode(bytecodeExceptionNode.getExceptionKind(), bytecodeExceptionNode.getArguments()));
         throwNode.setStateBefore(bytecodeExceptionNode.createStateDuring());
 
+        /*
+         * BytecodeExceptionNode instance is replaced with ThrowBytecodeExceptionNode instance, so
+         * we copy its node source position to not lose information.
+         */
+        throwNode.setNodeSourcePosition(bytecodeExceptionNode.getNodeSourcePosition());
+
         FixedWithNextNode predecessor = (FixedWithNextNode) bytecodeExceptionNode.predecessor();
         GraphUtil.killCFG(bytecodeExceptionNode);
         assert predecessor.next() == null : "must be killed now";

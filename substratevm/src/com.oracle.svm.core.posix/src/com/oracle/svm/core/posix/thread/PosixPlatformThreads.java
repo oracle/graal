@@ -186,7 +186,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
         @SuppressWarnings("unused")
         @Uninterruptible(reason = "prologue")
         static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

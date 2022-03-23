@@ -130,7 +130,6 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -328,9 +327,7 @@ public class MethodTypeFlowBuilder {
 
     private static void registerForeignCall(PointsToAnalysis bb, ForeignCallDescriptor foreignCallDescriptor) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, bb.getProviders().getForeignCalls());
-        targetMethod.ifPresent(analysisMethod -> {
-            bb.addRootMethod(analysisMethod);
-        });
+        targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
     protected void apply() {
@@ -806,8 +803,6 @@ public class MethodTypeFlowBuilder {
                 DynamicNewInstanceNode node = (DynamicNewInstanceNode) n;
                 ValueNode instanceTypeNode = node.getInstanceType();
 
-                JVMCIError.guarantee(!instanceTypeNode.isConstant(), "DynamicNewInstanceNode.instanceType is constant, should have been canonicalized to NewInstanceNode.");
-
                 TypeFlowBuilder<?> instanceTypeBuilder;
                 AnalysisType instanceType;
                 if (instanceTypeNode instanceof GetClassNode) {
@@ -850,9 +845,6 @@ public class MethodTypeFlowBuilder {
                 processNewArray((NewArrayNode) n, state);
             } else if (n instanceof DynamicNewArrayNode) {
                 DynamicNewArrayNode node = (DynamicNewArrayNode) n;
-                ValueNode elementType = node.getElementType();
-
-                JVMCIError.guarantee(!elementType.isConstant(), "DynamicNewArrayNode.element is constant, should have been canonicalized to NewArrayNode.");
 
                 /*
                  * Without precise type information the dynamic new array node has to generate a

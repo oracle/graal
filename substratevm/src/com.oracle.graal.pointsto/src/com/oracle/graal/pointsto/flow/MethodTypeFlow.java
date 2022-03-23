@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -51,6 +50,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -100,6 +100,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     /**
      * Add the context, if not already added, and return the method flows clone from that context.
      */
+    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext) {
+        return addContext(bb, calleeContext, null);
+    }
+
     public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
 
         // make sure that the method is parsed before attempting to clone it;

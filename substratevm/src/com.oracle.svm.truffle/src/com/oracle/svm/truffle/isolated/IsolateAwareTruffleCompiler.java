@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.svm.core.heap.Heap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
@@ -41,6 +40,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
@@ -58,6 +58,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
@@ -280,6 +281,12 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     @Override
     public PartialEvaluator getPartialEvaluator() {
         return delegate.getPartialEvaluator();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @Override
+    public TruffleTier getTruffleTier() {
+        return delegate.getTruffleTier();
     }
 
     @Override

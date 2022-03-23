@@ -52,7 +52,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
@@ -125,6 +124,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -514,7 +514,17 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
         Set<AnalysisMethod> seen = new HashSet<>();
-        universe.getMethods().stream().filter(AnalysisMethod::isRootMethod).forEach(seen::add);
+        for (AnalysisMethod analysisMethod : universe.getMethods()) {
+            if (analysisMethod.isDirectRootMethod() && analysisMethod.isImplementationInvoked()) {
+                seen.add(analysisMethod);
+            }
+            if (analysisMethod.isVirtualRootMethod()) {
+                for (AnalysisMethod impl : analysisMethod.getImplementations()) {
+                    VMError.guarantee(impl.isImplementationInvoked());
+                    seen.add(analysisMethod);
+                }
+            }
+        }
         Deque<AnalysisMethod> todo = new ArrayDeque<>(seen);
         SortedSet<String> disallowedTypes = new TreeSet<>();
         while (!todo.isEmpty()) {

@@ -50,7 +50,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -177,40 +177,40 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             Unsafe.getUnsafe().ensureClassInitialized(clazz);
             return InitKind.BUILD_TIME;
         } catch (NoClassDefFoundError ex) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                if (!allowErrors) {
-                    System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
-                                    ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time because option " +
-                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " is used for image building. " +
-                                    instructionsToInitializeAtRuntime(clazz));
-                }
+            if (allowErrors) {
+                return InitKind.RUN_TIME;
+            } else if (!LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
+                System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
+                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time. " +
+                                instructionsToInitializeAtRuntime(clazz));
                 return InitKind.RUN_TIME;
             } else {
-                return reportInitializationError(allowErrors, clazz, ex);
-
+                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(clazz) + " " +
+                                instructionsToInitializeAtRuntime(clazz), clazz, ex);
             }
         } catch (Throwable t) {
-            return reportInitializationError(allowErrors, clazz, t);
+            if (allowErrors) {
+                return InitKind.RUN_TIME;
+            } else {
+                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
+                                instructionsToInitializeAtRuntime(clazz), clazz, t);
+            }
         }
     }
 
-    private InitKind reportInitializationError(boolean allowErrors, Class<?> clazz, Throwable t) {
-        if (allowErrors) {
+    private InitKind reportInitializationError(String msg, Class<?> clazz, Throwable t) {
+        if (unsupportedFeatures != null) {
+            /*
+             * Report an unsupported feature during static analysis, so that we can collect multiple
+             * error messages without aborting analysis immediately. Returning InitKind.RUN_TIME
+             * ensures that analysis can continue, even though eventually an error is reported (so
+             * no image will be created).
+             */
+            unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
             return InitKind.RUN_TIME;
         } else {
-            String msg = String.format("Class initialization of %s failed. %s", clazz.getTypeName(), instructionsToInitializeAtRuntime(clazz));
-            if (unsupportedFeatures != null) {
-                /*
-                 * Report an unsupported feature during static analysis, so that we can collect
-                 * multiple error messages without aborting analysis immediately. Returning
-                 * InitKind.RUN_TIME ensures that analysis can continue, even though eventually an
-                 * error is reported (so no image will be created).
-                 */
-                unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
-                return InitKind.RUN_TIME;
-            } else {
-                throw UserError.abort(t, "%s", msg);
-            }
+            throw UserError.abort(t, "%s", msg);
         }
     }
 

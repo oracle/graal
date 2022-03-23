@@ -49,9 +49,10 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     private int sequenceCounter = 0x1000;
 
     /* A sequential map of type records, starting at 1000 */
-    private Map<CVTypeRecord, CVTypeRecord> typeMap = new LinkedHashMap<>(CV_RECORD_INITIAL_CAPACITY);
+    private final Map<CVTypeRecord, CVTypeRecord> typeMap = new LinkedHashMap<>(CV_RECORD_INITIAL_CAPACITY);
 
-    CVTypeSectionImpl() {
+    CVTypeSectionImpl(CVDebugInfo cvDebugInfo) {
+        super(cvDebugInfo);
     }
 
     @Override
@@ -63,31 +64,31 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     public void createContent(DebugContext debugContext) {
         int pos = 0;
         enableLog(debugContext);
-        log(debugContext, "CVTypeSectionImpl.createContent() adding records");
+        log("CVTypeSectionImpl.createContent() adding records");
         addRecords();
-        log(debugContext, "CVTypeSectionImpl.createContent() start");
+        log("CVTypeSectionImpl.createContent() start");
         pos = CVUtil.putInt(CV_SIGNATURE_C13, null, pos);
         for (CVTypeRecord record : typeMap.values()) {
             pos = record.computeFullSize(pos);
         }
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
-        log(debugContext, "CVTypeSectionImpl.createContent() end");
+        log("CVTypeSectionImpl.createContent() end");
     }
 
     @Override
     public void writeContent(DebugContext debugContext) {
         int pos = 0;
         enableLog(debugContext);
-        log(debugContext, "CVTypeSectionImpl.writeContent() start");
+        log("CVTypeSectionImpl.writeContent() start");
         byte[] buffer = getContent();
-        verboseLog(debugContext, "  [0x%08x] CV_SIGNATURE_C13", pos);
+        verboseLog("  [0x%08x] CV_SIGNATURE_C13", pos);
         pos = CVUtil.putInt(CV_SIGNATURE_C13, buffer, pos);
         for (CVTypeRecord record : typeMap.values()) {
-            verboseLog(debugContext, "  [0x%08x] 0x%06x %s", pos, record.getSequenceNumber(), record.toString());
+            verboseLog("  [0x%08x] 0x%06x %s", pos, record.getSequenceNumber(), record.toString());
             pos = record.computeFullContents(buffer, pos);
         }
-        verboseLog(debugContext, "CVTypeSectionImpl.writeContent() end");
+        verboseLog("CVTypeSectionImpl.writeContent() end");
     }
 
     /**

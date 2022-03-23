@@ -148,7 +148,7 @@ public class CodeInfoTable {
         if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
             throw reportNoReferenceMap(sp, ip, info);
         }
-        return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor);
+        return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
     }
 
     public static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {

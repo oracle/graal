@@ -151,8 +151,11 @@ public class ObjectScanner {
     protected final void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
+            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
+                /* The value is not available yet. */
+                return;
+            }
             JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
-
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);

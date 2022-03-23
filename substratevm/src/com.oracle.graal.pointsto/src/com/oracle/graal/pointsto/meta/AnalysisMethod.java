@@ -82,7 +82,10 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     private final AnalysisType declaringClass;
 
-    private final AtomicBoolean isRootMethod = new AtomicBoolean();
+    /** Virtually invoked method registered as root. */
+    private final AtomicBoolean isVirtualRootMethod = new AtomicBoolean();
+    /** Direct (special or static) invoked method registered as root. */
+    private final AtomicBoolean isDirectRootMethod = new AtomicBoolean();
     private boolean isIntrinsicMethod;
     private Object entryPointData;
     private final AtomicBoolean isInvoked = new AtomicBoolean();
@@ -256,7 +259,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     /**
-     * Registers this method as a root for the analysis.
+     * Registers this method as a virtual root for the analysis.
      *
      * The class constant of the declaring class is used for exception metadata, so marking a method
      * as invoked also makes the declaring class reachable.
@@ -264,13 +267,36 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
      * as in {@link AnalysisMethod#registerAsImplementationInvoked()}.
      */
-    public boolean registerAsRootMethod() {
+    public boolean registerAsVirtualRootMethod() {
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMark(isRootMethod);
+        return AtomicUtils.atomicMark(isVirtualRootMethod);
     }
 
-    public boolean isRootMethod() {
-        return isRootMethod.get();
+    /**
+     * Registers this method as a direct (special or static) root for the analysis.
+     */
+    public boolean registerAsDirectRootMethod() {
+        getDeclaringClass().registerAsReachable();
+        return AtomicUtils.atomicMark(isDirectRootMethod);
+    }
+
+    /**
+     * Returns true if the method is marked as virtual root. This doesn't necessarily mean that the
+     * method is implementation-invoked, that depends on the instantiation state of the respective
+     * receiver types.
+     */
+    public boolean isVirtualRootMethod() {
+        return isVirtualRootMethod.get();
+    }
+
+    /**
+     * Returns true if the method is marked as direct root. For special invoked methods this doesn't
+     * necessarily mean that the method is implementation-invoked, that depends on the instantiation
+     * state of the respective receiver types. Static root methods are immediately registered as
+     * implementation-invoked too.
+     */
+    public boolean isDirectRootMethod() {
+        return isDirectRootMethod.get();
     }
 
     public boolean isSimplyInvoked() {
@@ -285,14 +311,15 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * Returns true if this method is ever used as the target of a call site.
      */
     public boolean isInvoked() {
-        return isIntrinsicMethod || isRootMethod() || isInvoked.get();
+        return isIntrinsicMethod || isVirtualRootMethod() || isDirectRootMethod() || isInvoked.get();
     }
 
     /**
-     * Returns true if the method body can ever be executed.
+     * Returns true if the method body can ever be executed. Methods registered as root are also
+     * registered as implementation invoked when they are linked.
      */
     public boolean isImplementationInvoked() {
-        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isRootMethod() || isImplementationInvoked.get());
+        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isImplementationInvoked.get());
     }
 
     public boolean isReachable() {

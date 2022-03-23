@@ -61,6 +61,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     public final AArch64ASIMDMacroAssembler neon;
 
+    // preferred byte alignment for the start of a loop
+    public static final int PREFERRED_LOOP_ALIGNMENT = 16;
+
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);
@@ -1314,6 +1317,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * C.6.2.179 Logical Shift Left (immediate).
+     * <p>
      * dst = src << (shiftAmt & (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
@@ -1324,12 +1329,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void lsl(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
         if (clampedShift != 0 || !dst.equals(src)) {
-            int remainingBits = size - clampedShift;
-            super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
+            int immr = (-clampedShift) & (size - 1);
+            int imms = size - 1 - clampedShift;
+            super.ubfm(size, dst, src, immr, imms);
         }
     }
 
     /**
+     * C.6.2.182 Logical Shift Right (immediate).
+     * <p>
      * dst = src >>> (shiftAmt & (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.

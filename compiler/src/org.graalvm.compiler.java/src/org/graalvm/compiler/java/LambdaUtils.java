@@ -51,6 +51,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LambdaUtils {
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/\\.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
+    public static final String LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda\\$";
+    public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda$";
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -118,7 +120,7 @@ public final class LambdaUtils {
 
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
-        return type.isFinalFlagSet() && typeName.contains("/") && typeName.contains("$$Lambda$") && lambdaMatcher(type.getName()).find();
+        return type.isFinalFlagSet() && typeName.contains("/") && typeName.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(type.getName()).find();
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {

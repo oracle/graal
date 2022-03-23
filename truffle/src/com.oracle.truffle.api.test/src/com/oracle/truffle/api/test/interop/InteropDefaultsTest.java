@@ -58,10 +58,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-@SuppressWarnings("deprecation")
 public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
     public static class TestInterop1 {
@@ -416,45 +414,6 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertFalse(exceptionLib.isExceptionIncompleteSource(exception));
         assertFails(() -> exceptionLib.getExceptionExitStatus(exception), UnsupportedMessageException.class);
         exceptionLib.getExceptionStackTrace(exception);
-
-        LegacyCatchableException legacyCatchableException = new LegacyCatchableException(message);
-        InteropLibrary legacyCatchableExceptionLib = createLibrary(InteropLibrary.class, legacyCatchableException);
-        assertTrue(legacyCatchableExceptionLib.isException(legacyCatchableException));
-        assertFalse(legacyCatchableExceptionLib.hasExceptionCause(legacyCatchableException));
-        assertTrue(legacyCatchableExceptionLib.hasExceptionMessage(legacyCatchableException));
-        assertTrue(legacyCatchableExceptionLib.hasExceptionStackTrace(legacyCatchableException));
-        assertFails(() -> legacyCatchableExceptionLib.getExceptionCause(legacyCatchableException), UnsupportedMessageException.class);
-        assertEquals(message, legacyCatchableExceptionLib.getExceptionMessage(legacyCatchableException));
-        assertEquals(ExceptionType.RUNTIME_ERROR, legacyCatchableExceptionLib.getExceptionType(legacyCatchableException));
-        assertFails(() -> legacyCatchableExceptionLib.getExceptionExitStatus(legacyCatchableException), UnsupportedMessageException.class);
-        assertFalse(legacyCatchableExceptionLib.isExceptionIncompleteSource(legacyCatchableException));
-        legacyCatchableExceptionLib.getExceptionStackTrace(legacyCatchableException);
-
-        LegacyUncatchableException legacyUncatchableException = new LegacyUncatchableException();
-        InteropLibrary legacyUncatchableExceptionLib = createLibrary(InteropLibrary.class, legacyUncatchableException);
-        assertFalse(legacyUncatchableExceptionLib.isException(legacyUncatchableException));
-        assertFalse(legacyUncatchableExceptionLib.hasExceptionCause(legacyUncatchableException));
-        assertFalse(legacyUncatchableExceptionLib.hasExceptionMessage(legacyUncatchableException));
-        assertFalse(legacyUncatchableExceptionLib.hasExceptionStackTrace(legacyUncatchableException));
-        assertFails(() -> legacyUncatchableExceptionLib.getExceptionCause(legacyUncatchableException), UnsupportedMessageException.class);
-        assertFails(() -> legacyUncatchableExceptionLib.getExceptionMessage(legacyUncatchableException), UnsupportedMessageException.class);
-        assertFails(() -> legacyUncatchableExceptionLib.getExceptionType(legacyUncatchableException), UnsupportedMessageException.class);
-        assertFails(() -> legacyUncatchableExceptionLib.getExceptionExitStatus(legacyUncatchableException), UnsupportedMessageException.class);
-        assertFails(() -> legacyUncatchableExceptionLib.isExceptionIncompleteSource(legacyUncatchableException), UnsupportedMessageException.class);
-        assertFails(() -> legacyUncatchableExceptionLib.getExceptionStackTrace(legacyUncatchableException), UnsupportedMessageException.class);
-
-        LegacyInternalError legacyInternalError = new LegacyInternalError(message);
-        InteropLibrary legacyInternalErrorLib = createLibrary(InteropLibrary.class, legacyInternalError);
-        assertFalse(legacyInternalErrorLib.isException(legacyInternalError));
-        assertFalse(legacyInternalErrorLib.hasExceptionCause(legacyInternalError));
-        assertFalse(legacyInternalErrorLib.hasExceptionMessage(legacyInternalError));
-        assertFalse(legacyInternalErrorLib.hasExceptionStackTrace(legacyInternalError));
-        assertFails(() -> legacyInternalErrorLib.getExceptionCause(legacyInternalError), UnsupportedMessageException.class);
-        assertFails(() -> legacyInternalErrorLib.getExceptionMessage(legacyInternalError), UnsupportedMessageException.class);
-        assertFails(() -> legacyInternalErrorLib.getExceptionType(legacyInternalError), UnsupportedMessageException.class);
-        assertFails(() -> legacyInternalErrorLib.getExceptionExitStatus(legacyInternalError), UnsupportedMessageException.class);
-        assertFails(() -> legacyInternalErrorLib.isExceptionIncompleteSource(legacyInternalError), UnsupportedMessageException.class);
-        assertFails(() -> legacyInternalErrorLib.getExceptionStackTrace(legacyInternalError), UnsupportedMessageException.class);
     }
 
     @SuppressWarnings("serial")
@@ -466,49 +425,6 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
         Exception(String message, Throwable cause) {
             super(message, cause, UNLIMITED_STACK_TRACE, null);
-        }
-    }
-
-    @SuppressWarnings({"serial", "deprecation"})
-    private static final class LegacyCatchableException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
-
-        LegacyCatchableException(String message) {
-            super(message);
-        }
-
-        @Override
-        public Node getLocation() {
-            return null;
-        }
-    }
-
-    @SuppressWarnings({"serial", "deprecation"})
-    private static final class LegacyUncatchableException extends ThreadDeath implements com.oracle.truffle.api.TruffleException {
-
-        LegacyUncatchableException() {
-        }
-
-        @Override
-        public Node getLocation() {
-            return null;
-        }
-    }
-
-    @SuppressWarnings({"serial", "deprecation"})
-    private static final class LegacyInternalError extends RuntimeException implements com.oracle.truffle.api.TruffleException {
-
-        LegacyInternalError(String message) {
-            super(message);
-        }
-
-        @Override
-        public Node getLocation() {
-            return null;
-        }
-
-        @Override
-        public boolean isInternalError() {
-            return true;
         }
     }
 

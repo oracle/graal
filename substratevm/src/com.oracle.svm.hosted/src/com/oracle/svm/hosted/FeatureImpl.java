@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -75,13 +76,14 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
-import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
@@ -408,20 +410,24 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(aField);
         }
 
-        public void registerAsInvoked(Executable method) {
-            registerAsInvoked(getMetaAccess().lookupJavaMethod(method));
+        public void registerAsInvoked(Executable method, boolean invokeSpecial) {
+            registerAsInvoked(getMetaAccess().lookupJavaMethod(method), invokeSpecial);
         }
 
-        public void registerAsInvoked(AnalysisMethod aMethod) {
-            bb.addRootMethod(aMethod).registerAsImplementationInvoked();
+        public void registerAsInvoked(AnalysisMethod aMethod, boolean invokeSpecial) {
+            bb.addRootMethod(aMethod, invokeSpecial).registerAsImplementationInvoked();
         }
 
-        public void registerAsCompiled(Executable method) {
-            registerAsCompiled(getMetaAccess().lookupJavaMethod(method));
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial) {
+            bb.addRootMethod(aMethod, invokeSpecial);
         }
 
-        public void registerAsCompiled(AnalysisMethod aMethod) {
-            registerAsInvoked(aMethod);
+        public void registerAsCompiled(Executable method, boolean invokeSpecial) {
+            registerAsCompiled(getMetaAccess().lookupJavaMethod(method), invokeSpecial);
+        }
+
+        public void registerAsCompiled(AnalysisMethod aMethod, boolean invokeSpecial) {
+            registerAsInvoked(aMethod, invokeSpecial);
             CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
         }
 
@@ -618,16 +624,20 @@ public class FeatureImpl {
     }
 
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
-        private Collection<CompileQueue.CompileTask> compilationTasks;
+        private final Map<HostedMethod, CompileTask> compilations;
 
         public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
-                        Collection<CompileQueue.CompileTask> compilationTasks, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
+                        Map<HostedMethod, CompileTask> compilations, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
-            this.compilationTasks = compilationTasks;
+            this.compilations = compilations;
         }
 
-        public Collection<CompileQueue.CompileTask> getCompilationTasks() {
-            return compilationTasks;
+        public Collection<CompileTask> getCompilationTasks() {
+            return compilations.values();
+        }
+
+        public Map<HostedMethod, CompileTask> getCompilations() {
+            return compilations;
         }
     }
 

@@ -26,7 +26,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -142,7 +141,7 @@ public interface FieldRefConstant extends MemberRefConstant {
                     if (classRedefinition != null) {
                         missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
                     } else {
-                        missingFieldAssumption = AlwaysValidAssumption.INSTANCE;
+                        missingFieldAssumption = Assumption.ALWAYS_VALID;
                     }
                     return new Missing(failure, missingFieldAssumption);
                 }

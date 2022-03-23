@@ -158,6 +158,10 @@ public final class Support {
         return CTypeConversion.toCString(s);
     }
 
+    public static boolean isSerializable(JNIEnvironment env, JNIObjectHandle serializeTargetClass) {
+        return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, JvmtiAgentBase.singleton().handles().javaIoSerializable);
+    }
+
     public static JNIObjectHandle getCallerClass(int depth) {
         return getMethodDeclaringClass(getCallerMethod(depth));
     }
@@ -425,10 +429,21 @@ public final class Support {
         guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with " + resultCode.name());
     }
 
+    public static void checkPhase(JvmtiError resultCode) throws WrongPhaseException {
+        if (resultCode == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
+            throw new WrongPhaseException();
+        }
+        check(resultCode);
+    }
+
     public static void checkJni(int resultCode) {
         guarantee(resultCode == JNIErrors.JNI_OK());
     }
 
     private Support() {
+    }
+
+    public static class WrongPhaseException extends Exception {
+        private static final long serialVersionUID = 8503239518909756105L;
     }
 }

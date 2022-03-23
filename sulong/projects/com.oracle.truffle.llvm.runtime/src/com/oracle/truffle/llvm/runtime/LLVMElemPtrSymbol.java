@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -90,4 +90,13 @@ public final class LLVMElemPtrSymbol extends LLVMSymbol {
         return this;
     }
 
+    @Override
+    public boolean isThreadLocalSymbol() {
+        return false;
+    }
+
+    @Override
+    public LLVMThreadLocalSymbol asThreadLocalSymbol() {
+        throw new IllegalStateException("GetElementPointerConstant " + getName() + " has to be resolved and might not be a thread local global variable.");
+    }
 }

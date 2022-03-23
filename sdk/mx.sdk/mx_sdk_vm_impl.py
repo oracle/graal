@@ -837,14 +837,23 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)
         if _suite.is_release():
             catalog = _release_catalog()
+            gds_product_id = _release_product_id()
         else:
             snapshot_catalog = _snapshot_catalog()
+            gds_product_id = _snapshot_product_id()
+            gds_snapshot_catalog = _gds_snapshot_catalog()
             if snapshot_catalog and _suite.vc:
                 catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+                if gds_snapshot_catalog:
+                    catalog += "|" + gds_snapshot_catalog
+            elif gds_snapshot_catalog:
+                catalog = gds_snapshot_catalog
             else:
                 catalog = None
         if catalog:
             _metadata_dict['component_catalog'] = catalog
+        if gds_product_id:
+            _metadata_dict['GDS_PRODUCT_ID'] = gds_product_id
 
         # COMMIT_INFO is unquoted to simplify JSON parsing
         return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})
@@ -1102,7 +1111,7 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('svm', stage1=True)
-        self._debug_supported = self._svm_supported and has_component('svmee', stage1=True)
+        self._debug_supported = self._svm_supported and has_component('svmee', stage1=True) and not mx.is_darwin()  # GR-37542
         self._pgo_supported = self._svm_supported and has_component('svmee', stage1=True)
 
     def is_supported(self):
@@ -1253,9 +1262,11 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ]
             if _debug_images():
-                build_args += ['-ea', '-H:-AOTInline', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
+                build_args += ['-ea', '-O0', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
             if _get_svm_support().is_debug_supported():
                 build_args += ['-g']
+            if getattr(image_config, 'link_at_build_time', True):
+                build_args += ['--link-at-build-time']
 
             graalvm_dist = get_final_graalvm_distribution()
             graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:' + self.subject.name))
@@ -3301,7 +3312,7 @@ mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the 
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
-mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-H:-AOTInline\' and with \'-ea\'.')
+mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-O0\' and with \'-ea\'.')
 mx.add_argument('--native-images', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) to build with Native Image.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
@@ -3310,7 +3321,10 @@ mx.add_argument('--skip-libraries', action='store', help='Do not build native im
 mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included (all by default).', default=None)
 mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
+mx.add_argument('--gds-snapshot-catalog', action='store', help='Change the default appended URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
+mx.add_argument('--snapshot-product-id', action='store', help='Change the default ID of the GDS product ID for snapshots.', default=None)
+mx.add_argument('--release-product-id', action='store', help='Change the default ID of the GDS product ID for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
@@ -3540,9 +3554,18 @@ def _with_debuginfo():
 def _snapshot_catalog():
     return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
 
+def _gds_snapshot_catalog():
+    return mx.get_opts().gds_snapshot_catalog or mx.get_env('GDS_SNAPSHOT_CATALOG')
+
+def _snapshot_product_id():
+    return mx.get_opts().snapshot_product_id or mx.get_env('SNAPSHOT_PRODUCT_ID')
+
 
 def _release_catalog():
     return mx.get_opts().release_catalog or mx.get_env('RELEASE_CATALOG')
+
+def _release_product_id():
+    return mx.get_opts().release_product_id or mx.get_env('RELEASE_PRODUCT_ID')
 
 
 def _base_jdk_info():

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.PolyglotException;
@@ -74,7 +75,7 @@ import com.oracle.truffle.api.source.Source;
  * {@link #close() closed} when it is no longer needed. If the context is not closed explicitly,
  * then it is automatically closed together with the parent context.
  * <p>
- * Example usage: {@link TruffleContextSnippets#executeInContext}
+ * Example usage: {@link TruffleContextSnippets.MyNode#executeInContext}
  *
  * @since 0.27
  */
@@ -154,7 +155,7 @@ public final class TruffleContext implements AutoCloseable {
      * @since 0.27
      * @deprecated use {@link #enter(Node)} instead and pass in the node context is possible.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
     public Object enter() {
         return enter(null);
     }
@@ -182,7 +183,7 @@ public final class TruffleContext implements AutoCloseable {
      * {@link TruffleContext context} instance is compilation final.
      *
      * <p>
-     * Example usage: {@link TruffleContextSnippets#executeInContext}
+     * Example usage: {@link TruffleContextSnippets.MyNode#executeInContext}
      *
      * @see #leave(Node, Object)
      * @since 20.3
@@ -392,7 +393,7 @@ public final class TruffleContext implements AutoCloseable {
      * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
      *             possible.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
     public void leave(Object prev) {
         leave(null, prev);
     }
@@ -646,6 +647,9 @@ public final class TruffleContext implements AutoCloseable {
         private final Env sourceEnvironment;
         private Map<String, Object> config;
         private boolean initializeCreatorContext = true;
+        private Runnable onCancelledRunnable;
+        private Consumer<Integer> onExitedRunnable;
+        private Runnable onClosedRunnable;
 
         Builder(Env env) {
             this.sourceEnvironment = env;
@@ -678,6 +682,65 @@ public final class TruffleContext implements AutoCloseable {
         }
 
         /**
+         * Specifies a {@link Runnable} that will be executed when the new context is
+         * {@link TruffleContext#closeCancelled(Node, String) cancelled} and the cancel exception is
+         * about to reach the outer context, or when some operation on the new context is attempted
+         * while the context is already cancelled. However, the runnable will only be executed if
+         * the outer context is not cancelled.
+         * 
+         * The purpose of the runnable is to allow throwing a custom guest exception before the
+         * cancel exception reaches the outer context, so that the outer context can properly handle
+         * the exception. In case the runnable does not throw any exception, an internal error is
+         * thrown (should not be caught).
+         *
+         * @since 22.1
+         */
+        public Builder onCancelled(Runnable r) {
+            this.onCancelledRunnable = r;
+            return this;
+        }
+
+        /**
+         * Specifies a {@link Consumer} that will be executed when the new context is
+         * {@link TruffleContext#closeExited(Node, int) hard-exited} and the exit exception is about
+         * to reach the outer context, or when some operation on the new context is attempted while
+         * the context is already hard-exited. However, the consumer will only be executed if the
+         * outer context is not hard-exited.
+         *
+         * The purpose of the consumer is to allow throwing a custom guest exception before the exit
+         * exception reaches the outer context, so that the outer context can properly handle the
+         * exception. In case the consumer does not throw any exception, an internal error is thrown
+         * (should not be caught).
+         *
+         * The single input argument to the {@link Consumer} is the exit code.
+         *
+         * @since 22.1
+         * @see <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context
+         *      Exit</a>
+         */
+        public Builder onExited(Consumer<Integer> r) {
+            this.onExitedRunnable = r;
+            return this;
+        }
+
+        /**
+         * Specifies a {@link Runnable} that will be executed when some operation on the new context
+         * attenmpted while the context is already {@link TruffleContext#close()} closed}. However,
+         * the runnable will only be executed if the outer context is not closed.
+         *
+         * The purpose of the runnable is to allow throwing a custom guest exception before the
+         * close exception reaches the outer context, so that the outer context can properly handle
+         * the exception. In case the runnable does not throw any exception, an internal error is
+         * thrown (should not be caught).
+         * 
+         * @since 22.1
+         */
+        public Builder onClosed(Runnable r) {
+            this.onClosedRunnable = r;
+            return this;
+        }
+
+        /**
          * Builds the new context instance.
          *
          * @since 0.27
@@ -685,7 +748,8 @@ public final class TruffleContext implements AutoCloseable {
         @TruffleBoundary
         public TruffleContext build() {
             try {
-                return LanguageAccessor.engineAccess().createInternalContext(sourceEnvironment.getPolyglotLanguageContext(), config, initializeCreatorContext);
+                return LanguageAccessor.engineAccess().createInternalContext(sourceEnvironment.getPolyglotLanguageContext(), config, initializeCreatorContext, onCancelledRunnable, onExitedRunnable,
+                                onClosedRunnable);
             } catch (Throwable t) {
                 throw Env.engineToLanguageException(t);
             }
@@ -701,7 +765,7 @@ class TruffleContextSnippets {
     abstract class MyLanguage extends TruffleLanguage<MyContext> {
     }
     static
-    // BEGIN: TruffleContextSnippets#executeInContext
+    // BEGIN: TruffleContextSnippets.MyNode#executeInContext
     final class MyNode extends Node {
         void executeInContext(Env env) {
             MyContext outerLangContext = getContext(this);
@@ -729,7 +793,7 @@ class TruffleContextSnippets {
     private static MyContext getContext(Node node) {
         return REFERENCE.get(node);
     }
-    // END: TruffleContextSnippets#executeInContext
+    // END: TruffleContextSnippets.MyNode#executeInContext
     // @formatter:on
 
 }

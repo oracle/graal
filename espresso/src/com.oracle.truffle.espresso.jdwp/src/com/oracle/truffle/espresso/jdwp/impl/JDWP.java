@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2853,7 +2854,10 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                Object thisValue = frame.getThisValue();
+                Object thisValue = null;
+                if (!Modifier.isStatic(frame.getMethod().getModifiers())) {
+                    thisValue = frame.getThisValue();
+                }
 
                 if (thisValue == CallFrame.INVALID_VALUE) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);

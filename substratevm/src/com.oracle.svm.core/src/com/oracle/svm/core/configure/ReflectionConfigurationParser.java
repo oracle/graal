@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.io.IOException;
-import java.io.Reader;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,7 +35,6 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 /**
@@ -47,26 +45,22 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private static final String CONSTRUCTOR_NAME = "<init>";
 
     private final ReflectionConfigurationParserDelegate<T> delegate;
-    private final boolean allowIncompleteClasspath;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
-                    "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods");
+                    "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
-        this(delegate, false, true);
+        this(delegate, true);
     }
 
-    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean allowIncompleteClasspath, boolean strictConfiguration) {
+    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean strictConfiguration) {
         super(strictConfiguration);
         this.delegate = delegate;
-        this.allowIncompleteClasspath = allowIncompleteClasspath;
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
+    public void parseAndRegister(Object json, URI origin) {
         parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
     }
 
@@ -165,6 +159,11 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     case "queryAllPublicMethods":
                         if (asBoolean(value, "queryAllPublicMethods")) {
                             delegate.registerPublicMethods(true, clazz);
+                        }
+                        break;
+                    case "unsafeAllocated":
+                        if (asBoolean(value, "unsafeAllocated")) {
+                            delegate.registerUnsafeAllocated(clazz);
                         }
                         break;
                     case "methods":
@@ -282,19 +281,15 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         return delegate.getTypeName(clazz) + '.' + methodName + '(' + parameterTypeNames + ')';
     }
 
-    private void handleError(String message) {
+    private static void handleError(String message) {
         handleError(message, null);
     }
 
-    private void handleError(String msg, Throwable cause) {
+    private static void handleError(String msg, Throwable cause) {
         String message = msg;
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        if (allowIncompleteClasspath) {
-            System.err.println("Warning: " + message);
-        } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option --allow-incomplete-classpath");
-        }
+        System.err.println("Warning: " + message);
     }
 }

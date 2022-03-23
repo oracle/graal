@@ -84,9 +84,12 @@ class ArtifactParser {
         getId();
         getChecksum();
         getMetadata();
-        getDisplayName();
+        abreviatedDisplayName();
         getLicenseId();
         getLicenseName();
+        if (getLabel() == null) {
+            throw new IllegalArgumentException(JSON_META + "." + META_SYMBOLIC_NAME + ": Cannot be null.");
+        }
     }
 
     public String getVersion() {
@@ -122,7 +125,7 @@ class ArtifactParser {
     }
 
     private String getLabel() {
-        return isCore() ? CommonConstants.GRAALVM_CORE_PREFIX : getMetadata(META_SYMBOLIC_NAME, () -> getDisplayName());
+        return isCore() ? CommonConstants.GRAALVM_CORE_PREFIX : getMetadata(META_SYMBOLIC_NAME);
     }
 
     private boolean isCore() {
@@ -230,7 +233,7 @@ class ArtifactParser {
         if (dir == null || dir.isBlank()) {
             return Collections.emptyList();
         }
-        return Collections.singletonList(dir);
+        return Collections.singleton(dir);
     }
 
     private StabilityLevel translateStability() {

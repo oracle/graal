@@ -60,7 +60,7 @@ public class ExpectError {
 
     public static void assertNoErrorExpected(ProcessingEnvironment processingEnv, Element element) {
         for (String errorType : EXPECT_ERROR_TYPES) {
-            assertNoErrorExpectedImpl(processingEnv, element, ElementUtils.getTypeElement(processingEnv, errorType));
+            assertNoErrorExpectedImpl(processingEnv, element, ElementUtils.getTypeElement(errorType));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 final class HotSwapHandler {
 
@@ -61,10 +59,8 @@ final class HotSwapHandler {
     private final Map<Class<?>, Boolean> staticInitializerHotSwap = new HashMap<>();
     private final Map<Class<?>, List<HotSwapAction>> staticReInitCallBacks = new HashMap<>();
     private final ServiceWatcher serviceWatcher = new ServiceWatcher();
-    private final ExecutorService hotSwapExecutor;
 
     private HotSwapHandler() {
-        hotSwapExecutor = Executors.newSingleThreadExecutor();
     }
 
     static HotSwapHandler create() {
@@ -119,7 +115,18 @@ final class HotSwapHandler {
     public synchronized void postHotSwap(Class<?>[] changedClasses) {
         // use a dedicated thread to fire all post hotswap actions
         // to allow the calling thread to complete the HotSwap operation
-        hotSwapExecutor.execute(() -> {
+        new Thread(() -> {
+            // fire a generic HotSwap plugin listener
+            for (HotSwapPlugin plugin : plugins) {
+                try {
+                    plugin.postHotSwap(changedClasses);
+                } catch (Throwable t) {
+                    // don't let reload failures block all
+                    // other plugins
+                    t.printStackTrace();
+                }
+            }
+
             // fire all registered specific HotSwap actions
             for (Class<?> klass : changedClasses) {
                 Set<HotSwapAction> actions = hotSwapActions.getOrDefault(klass, Collections.emptySet());
@@ -133,17 +140,6 @@ final class HotSwapHandler {
                     }
                 }
             }
-            // fire a generic HotSwap plugin listener
-            for (HotSwapPlugin plugin : plugins) {
-                try {
-                    plugin.postHotSwap(changedClasses);
-                } catch (Throwable t) {
-                    // don't let reload failures block all
-                    // other plugins
-                    t.printStackTrace();
-                }
-
-            }
             // fire all registered generic post HotSwap actions
             for (HotSwapAction postHotSwapAction : postHotSwapActions) {
                 try {
@@ -154,7 +150,7 @@ final class HotSwapHandler {
                     t.printStackTrace();
                 }
             }
-        });
+        }).start();
     }
 
     @SuppressWarnings("unused")

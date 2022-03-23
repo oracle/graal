@@ -64,7 +64,7 @@ class ArrayIndexOfForeignCallsFeature implements GraalFeature {
         AnalysisMetaAccess metaAccess = impl.getMetaAccess();
         for (SubstrateForeignCallDescriptor descriptor : ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
             AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
-            impl.registerAsCompiled(method);
+            impl.registerAsCompiled(method, true);
         }
     }
 

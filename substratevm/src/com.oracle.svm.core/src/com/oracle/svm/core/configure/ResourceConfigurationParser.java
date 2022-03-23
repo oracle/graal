@@ -24,20 +24,18 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Collections;
+import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
@@ -49,9 +47,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
+    public void parseAndRegister(Object json, URI origin) {
         parseTopLevelObject(asMap(json, "first level of document must be an object"));
     }
 

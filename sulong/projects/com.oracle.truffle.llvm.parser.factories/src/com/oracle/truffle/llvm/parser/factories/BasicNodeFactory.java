@@ -147,7 +147,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMLifetimeStartNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemCopyNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemMoveFactory.LLVMMemMoveI64NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemSetNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMPrefetchNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMReturnAddressNodeGen;
@@ -1982,7 +1982,16 @@ public class BasicNodeFactory implements NodeFactory {
         if (readOnly) {
             return FreeReadOnlyGlobalsBlockNodeGen.create();
         } else {
-            return LLVMFreeNodeGen.create(null);
+            return LLVMFreeOpNodeGen.create();
+        }
+    }
+
+    @Override
+    public LLVMMemoryOpNode getFreeGlobalsBlockUncached(boolean readOnly) {
+        if (readOnly) {
+            return FreeReadOnlyGlobalsBlockNodeGen.getUncached();
+        } else {
+            return LLVMFreeOpNodeGen.getUncached();
         }
     }
 

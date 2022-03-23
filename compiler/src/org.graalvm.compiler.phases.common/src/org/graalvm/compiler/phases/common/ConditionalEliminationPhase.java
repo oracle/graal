@@ -714,7 +714,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                     if (input == null) {
                                         input = valueAt;
                                     }
-                                    valueAt = graph.maybeAddOrUnique(PiNode.create(input, curBestStamp, (ValueNode) infoElement.getGuard()));
+                                    valueAt = graph.addOrUnique(PiNode.create(input, curBestStamp, (ValueNode) infoElement.getGuard()));
                                 }
                                 newPhi.addInput(valueAt);
                             }

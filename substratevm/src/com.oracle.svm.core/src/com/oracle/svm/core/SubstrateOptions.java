@@ -151,42 +151,64 @@ public class SubstrateOptions {
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String WATCHPID_PREFIX = "-watchpid";
-    private static ValueUpdateHandler optimizeValueUpdateHandler;
-    private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
+    private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
+    private static ValueUpdateHandler<Integer> debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
+
+    /**
+     * The currently supported optimization levels. See the option description of {@link #Optimize}
+     * for a description of the levels.
+     */
+    public enum OptimizationLevel {
+        O0,
+        O1,
+        O2,
+        BUILD_TIME
+    }
 
     @Option(help = "Control native-image code optimizations: b - optimize for shortest build time, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            Integer oldLevel = parseOptimizationLevel(oldValue);
-            Integer newLevel = parseOptimizationLevel(newValue);
-            SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel < 1);
-            SubstrateOptions.AOTInline.update(values, newLevel > 0);
-            SubstrateOptions.AOTTrivialInline.update(values, newLevel > 0);
+            OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+            SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
+            SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
             if (optimizeValueUpdateHandler != null) {
-                optimizeValueUpdateHandler.onValueUpdate(values, oldLevel, newLevel);
+                optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
         }
     };
 
-    private static Integer parseOptimizationLevel(String value) {
-        if (value == null) {
-            return null;
-        }
-        // Only allow 'b' or numeric optimization levels,
-        // throw a user error otherwise.
+    /**
+     * Only allows 'b' or positive numeric optimization levels, throws a user error otherwise.
+     */
+    private static OptimizationLevel parseOptimizationLevel(String value) {
         if (value.equals("b")) {
-            return 0;
+            return OptimizationLevel.BUILD_TIME;
         }
+
+        int intLevel;
         try {
-            return Integer.parseInt(value);
+            intLevel = Integer.parseInt(value);
         } catch (NumberFormatException nfe) {
-            throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value)", value);
+            intLevel = -1;
+        }
+
+        if (intLevel == 0) {
+            return OptimizationLevel.O0;
+        } else if (intLevel == 1) {
+            return OptimizationLevel.O1;
+        } else if (intLevel >= 2) {
+            /*
+             * We allow all positive numbers, and treat that as our current highest supported level.
+             */
+            return OptimizationLevel.O2;
+        } else {
+            throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
         }
     }
 
     @Fold
-    public static Integer optimizationLevel() {
+    public static OptimizationLevel optimizationLevel() {
         return parseOptimizationLevel(Optimize.getValue());
     }
 
@@ -199,15 +221,15 @@ public class SubstrateOptions {
         return useEconomyCompilerConfig(HostedOptionValues.singleton());
     }
 
-    public interface ValueUpdateHandler {
-        void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue);
+    public interface ValueUpdateHandler<T> {
+        void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T newValue);
     }
 
-    public static void setOptimizeValueUpdateHandler(ValueUpdateHandler updateHandler) {
+    public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
     }
 
-    public static void setDebugInfoValueUpdateHandler(ValueUpdateHandler updateHandler) {
+    public static void setDebugInfoValueUpdateHandler(ValueUpdateHandler<Integer> updateHandler) {
         SubstrateOptions.debugInfoValueUpdateHandler = updateHandler;
     }
 
@@ -409,8 +431,8 @@ public class SubstrateOptions {
     @Option(help = "Enable wildcard expansion in command line arguments on Windows.")//
     public static final HostedOptionKey<Boolean> EnableWildcardExpansion = new HostedOptionKey<>(true);
 
-    @Option(help = "Perform method inlining in the AOT compiled native image")//
-    public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
+    @Option(help = "Deprecated", deprecated = true)//
+    static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
@@ -537,11 +559,11 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            debugInfoValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
+            debugInfoValueUpdateHandler.onValueUpdate(values, newValue);
         }
     };
 
-    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
+    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, Integer newValue) {
         /* Force update of TrackNodeSourcePosition */
         TrackNodeSourcePosition.update(values, newValue > 0);
         if (OS.WINDOWS.isCurrent()) {
@@ -720,8 +742,9 @@ public class SubstrateOptions {
         }
     };
 
+    @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
-    @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert)//
+    @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
 
     @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//

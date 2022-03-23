@@ -1,0 +1,1093 @@
+{
+    "items": [
+        {
+            "id": "D540A9EA0F406A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "isBase",
+                    "value": "True",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "supported",
+                    "value": "True",
+                    "description": "Latest version"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "GraalVM Enterprise Edition 21.3.0 on jdk11 linux amd64",
+            "checksum": "78e1ee14861eb6a58fd0d7f64878d544ad11515c237a6557452f4d3a63a070fc",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:48.405Z"
+        },
+        {
+            "id": "D540A9EA0F1C6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "experimental",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "requireBundle",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Require bundle"
+                },
+                {
+                    "key": "stability",
+                    "value": "experimental",
+                    "description": "Stability"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/wasm",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.wasm",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "GraalWasm linux amd64 21.3.0 jdk11 ee",
+            "checksum": "9275dc25a4848ffeb5b3f4f03523d539800d06d988a776d79648639a2b88f555",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:45.552Z"
+        },
+        {
+            "id": "D540A9EA0EF26A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "experimental",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "requireBundle",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Require bundle"
+                },
+                {
+                    "key": "stability",
+                    "value": "experimental",
+                    "description": "Stability"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/ruby",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.ruby",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "TruffleRuby linux amd64 21.3.0 jdk11 ee",
+            "checksum": "6e06b1c389db23bfcfc25f43538984dc0017086b200af02fe5ee1183e9fcc8ca",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:42.730Z"
+        },
+        {
+            "id": "D540A9EA0EC86A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "experimental",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "requireBundle",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Require bundle"
+                },
+                {
+                    "key": "stability",
+                    "value": "experimental",
+                    "description": "Stability"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/python",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.python",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Graal.Python linux amd64 21.3.0 jdk11 ee",
+            "checksum": "2c086dcea4388dffff7a59f7e39e6317385105878efc41cbd6a25307d79e302a",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:36.798Z"
+        },
+        {
+            "id": "D540A9EA0E9E6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "supported",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "requireBundle",
+                    "value": "org.graalvm.js",
+                    "description": "Require bundle"
+                },
+                {
+                    "key": "stability",
+                    "value": "supported",
+                    "description": "Stability"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/nodejs",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.nodejs",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Graal.nodejs linux amd64 21.3.0 jdk11 ee",
+            "checksum": "59437e2b282fdfbbff39bb13504f0e12ba063e4645f4e6cf66ada9fa0687acb8",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:30.391Z"
+        },
+        {
+            "id": "D540A9EA0E6A6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12827B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Native Image",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "earlyadopter",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "stability",
+                    "value": "earlyadopter",
+                    "description": "Stability"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.native-image",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "False",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Native Image linux amd64 21.3.0 jdk11 ee",
+            "checksum": "a31b499157c424bf54ffe55f72be3b4e0a44f56d4349d24fe0320f6151638a4e",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:22.879Z"
+        },
+        {
+            "id": "D540A9EA0E466A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "supported",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "stability",
+                    "value": "supported",
+                    "description": "Stability"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "False",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "LLVM.org toolchain linux amd64 21.3.0 jdk11 ee",
+            "checksum": "00311dd40f72002182d5cfcb4072f57f45e37503ada68372e52ddbe26dcdd2d4",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:19.908Z"
+        },
+        {
+            "id": "D540A9EA0E146A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "experimental",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "stability",
+                    "value": "experimental",
+                    "description": "Stability"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/java",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=21.3.0)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.espresso",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Java on Truffle linux amd64 21.3.0 jdk11 ee",
+            "checksum": "6cf39532444c980dadc2db03760d2e3027d882e1baeaf23a38f96f3ddd80d049",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:12.685Z"
+        },
+        {
+            "id": "D540A9EA0DE86A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "21.3.0",
+                    "description": "Release version"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "GraalVM Core linux amd64 21.3.0 jdk11 ee",
+            "checksum": "31dc8afe2b518fa08f57ea07344c5a904c8a8eb70b21b9805c22d21373e3e888",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:08.736Z"
+        },
+        {
+            "id": "D540A9EA0DBE6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "20.3.4",
+                    "description": "Release version"
+                },
+                {
+                    "key": "isBase",
+                    "value": "True",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "supported",
+                    "value": "True",
+                    "description": "Latest version"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "GraalVM Enterprise Edition 20.3.4 on jdk11 linux amd64",
+            "checksum": "eab42a5ecc236251d7020dc815e31340a15e842398269f8904f2bc6214cf60d6",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:04.690Z"
+        },
+        {
+            "id": "D540A9EA0DA66A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12827B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Native Image",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "20.3.4",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "earlyadopter",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "stability",
+                    "value": "earlyadopter",
+                    "description": "Stability"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=20.3.4)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.native-image",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "False",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Native Image linux amd64 20.3.4 jdk11 ee",
+            "checksum": "035b22a3b0116d091e8a3d6bbc3f3c69e36d5ae6dc6644e747b594d8ad0b61c4",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:02.542Z"
+        },
+        {
+            "id": "D540A9EA0D8E6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "20.3.4",
+                    "description": "Release version"
+                },
+                {
+                    "key": "stabilityLevel",
+                    "value": "supported",
+                    "description": "Stability Level"
+                },
+                {
+                    "key": "stability",
+                    "value": "supported",
+                    "description": "Stability"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=20.3.4)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "False",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "LLVM.org toolchain linux amd64 20.3.4 jdk11 ee",
+            "checksum": "bfb5b0bd18c327cc63ba1163a8bfd7abf01b3bf9301b1db6b7846b0169b5a40a",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:19:00.592Z"
+        },
+        {
+            "id": "D540A9EA0D6A6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "19.3.6",
+                    "description": "Release version"
+                },
+                {
+                    "key": "isBase",
+                    "value": "True",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "supported",
+                    "value": "False",
+                    "description": "Latest version"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "GraalVM Enterprise Edition 19.3.6 on jdk11 linux amd64",
+            "checksum": "6ab3cf6639c150f13438b36aa3f2ca3acd3a5fd47f812a5be8afcf77b2851d44",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T20:18:57.572Z"
+        },
+        {
+            "id": "D540A9EA0D5E6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "19.3.6",
+                    "description": "Release version"
+                },
+                {
+                    "key": "requireBundle",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Require bundle"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/ruby",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=19.3.6)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.ruby",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "TruffleRuby linux amd64 19.3.6 jdk11 ee",
+            "checksum": "a4548bec19bcc0171c3c56daeca79aa05534e5d5803151a160553ece419ae5eb",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T19:51:41.004Z"
+        },
+        {
+            "id": "D540A9EA0D466A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "19.3.6",
+                    "description": "Release version"
+                },
+                {
+                    "key": "requireBundle",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Require bundle"
+                },
+                {
+                    "key": "workingDirectories",
+                    "value": "languages/python",
+                    "description": "Working Directory"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=19.3.6)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.python",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "True",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Graal.Python EE linux amd64 19.3.6 jdk11 ee",
+            "checksum": "8049125ee598e3c32a238479796367f6beb14b0e42a538e4a6eb99e0d2683226",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T19:51:39.437Z"
+        },
+        {
+            "id": "D540A9EA0D306A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12827B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Native Image",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "19.3.6",
+                    "description": "Release version"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=19.3.6)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.native-image",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "False",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                }
+            ],
+            "displayName": "Native Image linux amd64 19.3.6 jdk11 ee",
+            "checksum": "6f203acda7b52433e808302de53b17cd38b97e98a099131878ccd761614d9257",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T19:51:37.777Z"
+        },
+        {
+            "id": "D540A9EA0D1C6A12E0530F15000A38C7",
+            "licenseId": "D53FA58D12817B3CE0530F15000A74CA",
+            "licenseName": "Oracle Technology Network License Agreement | GraalVM Enterprise Edition",
+            "productId": "D53FAE8052773FFAE0530F15000AA6C6",
+            "metadata": [
+                {
+                    "key": "version",
+                    "value": "19.3.6",
+                    "description": "Release version"
+                },
+                {
+                    "key": "os",
+                    "value": "linux",
+                    "description": "Operating System"
+                },
+                {
+                    "key": "arch",
+                    "value": "amd64",
+                    "description": "Architecture"
+                },
+                {
+                    "key": "java",
+                    "value": "jdk11",
+                    "description": "Java version"
+                },
+                {
+                    "key": "edition",
+                    "value": "ee",
+                    "description": "Edition"
+                },
+                {
+                    "key": "polyglot",
+                    "value": "False",
+                    "description": "Polyglot part"
+                },
+                {
+                    "key": "isBase",
+                    "value": "False",
+                    "description": "Artifact type"
+                },
+                {
+                    "key": "symbolicName",
+                    "value": "org.graalvm.llvm-toolchain",
+                    "description": "Symbolic name"
+                },
+                {
+                    "key": "requiredCapabilities",
+                    "value": "org.graalvm; filter:=\"(&(graalvm_version=19.3.6)(os_name=linux)(os_arch=amd64)(java_version=11))\"",
+                    "description": "Required Capabilities"
+                }
+            ],
+            "displayName": "LLVM.org toolchain linux amd64 19.3.6 jdk11 ee",
+            "checksum": "51f05d0b6436d2b263cac8dbd1fc71099291b05d34c8d56433026d71f2d2804f",
+            "status": "PUBLISHED",
+            "timeCreated": "2022-01-10T19:51:36.170Z"
+        }
+    ]
+}

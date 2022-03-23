@@ -39,7 +39,7 @@ import org.openjdk.jmh.annotations.State;
 
 // Copied from jdk/test/micro/org/openjdk/bench/java/nio/CharsetEncodeDecode.java
 @State(Scope.Thread)
-public class CharsetEncodeDecodeBenchmark {
+public class CharsetEncodeDecodeBenchmark extends BenchmarkBase {
 
     private byte[] bytes;
     private char[] chars;

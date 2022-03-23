@@ -81,7 +81,7 @@ public abstract class InvokeVirtual extends Node {
         return (StaticObject) args[0];
     }
 
-    @ImportStatic(InvokeVirtual.class)
+    @ImportStatic({InvokeVirtual.class, Utils.class})
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
@@ -95,6 +95,7 @@ public abstract class InvokeVirtual extends Node {
 
         public abstract Object execute(Object[] args);
 
+        @ImportStatic(Utils.class)
         abstract static class LazyDirectCallNode extends Node {
 
             final Method.MethodVersion resolvedMethod;
@@ -106,7 +107,7 @@ public abstract class InvokeVirtual extends Node {
             public abstract Object execute(Object[] args);
 
             @Specialization
-            Object doCached(Object[] args, @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+            Object doCached(Object[] args, @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
                 return directCallNode.call(args);
             }
         }
@@ -154,7 +155,7 @@ public abstract class InvokeVirtual extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             return directCallNode.call(args);

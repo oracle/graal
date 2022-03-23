@@ -30,6 +30,10 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import java.nio.ByteOrder;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -64,6 +68,10 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsDateNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsInstantNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsTimeNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsTimeZoneNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotNativeBufferInfo;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferByteNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferDoubleNode;
@@ -172,6 +180,45 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     static void writePointer(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") LLVMPointer value) {
         throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Pointer directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static boolean isDate(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof LLVMInteropType.Instant || receiver.getExportType() instanceof LLVMInteropType.TimeInfo;
+    }
+
+    @ExportMessage
+    static LocalDate asDate(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsDateNode asDate) throws UnsupportedMessageException {
+        return asDate.execute(receiver);
+    }
+
+    @ExportMessage
+    static boolean isTime(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof LLVMInteropType.Instant || receiver.getExportType() instanceof LLVMInteropType.TimeInfo;
+    }
+
+    @ExportMessage
+    static LocalTime asTime(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsTimeNode asTime) throws UnsupportedMessageException {
+        return asTime.execute(receiver);
+    }
+
+    @ExportMessage
+    static boolean isTimeZone(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof LLVMInteropType.Instant;
+    }
+
+    @ExportMessage
+    static ZoneId asTimeZone(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsTimeZoneNode asTimeZone) throws UnsupportedMessageException {
+        return asTimeZone.execute(receiver);
+    }
+
+    @ExportMessage
+    static Instant asInstant(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsInstantNode inst) throws UnsupportedMessageException {
+        return inst.execute(receiver);
     }
 
     @ExportMessage

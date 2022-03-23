@@ -31,6 +31,8 @@ package org.graalvm.component.installer.gds;
 public final class GdsCommands {
     public static final String OPTION_EMAIL_ADDRESS = "^";
     public static final String LONG_OPTION_EMAIL_ADDRESS = "email";
-    public static final String OPTION_DOWNLOAD_TOKEN = ";";
-    public static final String LONG_OPTION_DOWNLOAD_TOKEN = "token";
+    public static final String OPTION_GDS_CONFIG = ";";
+    public static final String LONG_OPTION_GDS_CONFIG = "config";
+    public static final String OPTION_SHOW_TOKEN = "}";
+    public static final String LONG_OPTION_SHOW_TOKEN = "show-ee-token";
 }

@@ -126,7 +126,7 @@ public final class OptionType<T> {
      * @deprecated Use {@link #OptionType(String, Function, Consumer)}
      * @since 19.0
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     @SuppressWarnings("unused")
     public OptionType(String name, T defaultValue, Function<String, T> stringConverter, Consumer<T> validator) {
         this(name, stringConverter, validator);
@@ -136,7 +136,7 @@ public final class OptionType<T> {
      * @deprecated Use {@link #OptionType(String, Function)}
      * @since 19.0
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     @SuppressWarnings("unused")
     public OptionType(String name, T defaultValue, Function<String, T> stringConverter) {
         this(name, stringConverter);
@@ -146,7 +146,7 @@ public final class OptionType<T> {
      * @deprecated
      * @since 19.0
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public T getDefaultValue() {
         return null;
     }

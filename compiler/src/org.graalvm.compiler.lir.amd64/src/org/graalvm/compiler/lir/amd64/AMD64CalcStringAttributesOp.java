@@ -278,7 +278,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         RegisterValue regArray = REG_ARRAY.asValue(array.getValueKind());
         RegisterValue regOffset = REG_OFFSET.asValue(byteOffset.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
-        tool.emitMove(regArray, array);
+        tool.emitConvertNullToZero(regArray, array);
         tool.emitMove(regOffset, byteOffset);
         tool.emitMove(regLength, length);
         return new AMD64CalcStringAttributesOp(tool, op, regArray, regOffset, regLength, result, maxVectorSize, assumeValid);

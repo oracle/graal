@@ -50,7 +50,7 @@ public class NativeImageClassLoaderOptions {
 
     public static class ApplyNativeImageClassLoaderOptions implements NativeImageClassLoaderPostProcessing {
         @Override
-        public void apply(AbstractNativeImageClassLoaderSupport support) {
+        public void apply(NativeImageClassLoaderSupport support) {
             support.processClassLoaderOptions();
         }
     }

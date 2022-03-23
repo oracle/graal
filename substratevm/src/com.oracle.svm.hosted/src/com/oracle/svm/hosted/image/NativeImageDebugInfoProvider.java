@@ -34,7 +34,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
@@ -98,6 +101,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     int referenceAlignment;
     int primitiveStartOffset;
     int referenceStartOffset;
+    private final Set<HostedMethod> allOverrides;
 
     NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap) {
         super();
@@ -122,6 +126,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
         primitiveStartOffset = (int) primitiveFields.getAddress();
         referenceStartOffset = (int) objectFields.getAddress();
+        /* Calculate the set of all HostedMethods that are overrides. */
+        allOverrides = heap.getUniverse().getMethods().stream()
+                        .filter(HostedMethod::hasVTableIndex)
+                        .flatMap(m -> Arrays.stream(m.getImplementations())
+                                        .filter(Predicate.not(m::equals)))
+                        .collect(Collectors.toSet());
     }
 
     @Override
@@ -698,8 +708,37 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
+            public boolean isConstructor() {
+                return hostedMethod.isConstructor();
+            }
+
+            @Override
             public int modifiers() {
                 return getOriginalModifiers(hostedMethod);
+            }
+
+            @Override
+            public boolean isVirtual() {
+                return hostedMethod.hasVTableIndex();
+            }
+
+            @Override
+            public int vtableOffset() {
+                /*
+                 * TODO - provide correct offset, not index. In Graal, the vtable is appended after
+                 * the dynamicHub object, so can't just multiply by sizeof(pointer).
+                 */
+                return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
+            }
+
+            /**
+             * Returns true if this is an override virtual method. Used in Windows CodeView output.
+             *
+             * @return true if this is a virtual method and overrides an existing method.
+             */
+            @Override
+            public boolean isOverride() {
+                return allOverrides.contains(hostedMethod);
             }
         }
     }
@@ -981,6 +1020,35 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int modifiers() {
             return getOriginalModifiers(hostedMethod);
         }
+
+        @Override
+        public boolean isConstructor() {
+            return hostedMethod.isConstructor();
+        }
+
+        @Override
+        public boolean isVirtual() {
+            return hostedMethod.hasVTableIndex();
+        }
+
+        @Override
+        public int vtableOffset() {
+            /*
+             * TODO - provide correct offset, not index. In Graal, the vtable is appended after the
+             * dynamicHub object.
+             */
+            return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
+        }
+
+        /**
+         * Returns true if this is an override virtual method. Used in Windows CodeView output.
+         *
+         * @return true if this is a virtual method and overrides an existing method.
+         */
+        @Override
+        public boolean isOverride() {
+            return allOverrides.contains(hostedMethod);
+        }
     }
 
     private static boolean filterLineInfoSourceMapping(SourceMapping sourceMapping) {
@@ -1197,6 +1265,26 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
+        @Override
+        public boolean isConstructor() {
+            return method.isConstructor();
+        }
+
+        @Override
+        public boolean isVirtual() {
+            return method instanceof HostedMethod && ((HostedMethod) method).hasVTableIndex();
+        }
+
+        @Override
+        public boolean isOverride() {
+            return method instanceof HostedMethod && allOverrides.contains(method);
+        }
+
+        @Override
+        public int vtableOffset() {
+            /* TODO - convert index to offset (+ sizeof DynamicHub) */
+            return isVirtual() ? ((HostedMethod) method).getVTableIndex() : -1;
+        }
     }
 
     /**

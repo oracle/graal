@@ -82,7 +82,7 @@ public abstract class InvokeInterface extends Node {
         return (StaticObject) args[0];
     }
 
-    @ImportStatic(InvokeInterface.class)
+    @ImportStatic({InvokeInterface.class, Utils.class})
     @NodeInfo(shortName = "INVOKEINTERFACE !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
@@ -124,7 +124,7 @@ public abstract class InvokeInterface extends Node {
                         @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
                         @Cached("maybeSingleImplementor.get()") ObjectKlass implementor,
                         @SuppressWarnings("unused") @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode,
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode,
                         @Cached BranchProfile notAnImplementorProfile) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
@@ -145,7 +145,7 @@ public abstract class InvokeInterface extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
             return directCallNode.call(args);
         }

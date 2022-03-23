@@ -51,7 +51,7 @@ import java.lang.invoke.VarHandle;
  * @since 21.2
  * @deprecated Please use {@link VarHandle} directly.
  */
-@Deprecated(since = "22.1.0", forRemoval = true)
+@Deprecated(since = "22.1.0")
 public final class MemoryFence {
 
     private MemoryFence() {

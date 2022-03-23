@@ -204,12 +204,12 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
                 masm.jcc(ConditionFlag.NotZero, labelTrue);
                 masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCompareWideVectors, false);
 
-                masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, true);
+                masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, false);
 
                 masm.vmovdqu(vec1, new AMD64Address(ary1, result, Scale.Times1, -32));
                 masm.vptest(vec1, vec2);
                 masm.jccb(ConditionFlag.NotZero, labelTrue);
-                masm.jmpb(labelFalse);
+                masm.jmp(labelFalse);
 
                 masm.bind(labelCompareTail); // len is zero
                 masm.movl(len, result);
@@ -243,7 +243,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
                 masm.movdqu(vec1, new AMD64Address(ary1, result, Scale.Times1, -16));
                 masm.ptest(vec1, vec2);
                 masm.jccb(ConditionFlag.NotZero, labelTrue);
-                masm.jmpb(labelFalse);
+                masm.jmp(labelFalse);
 
                 masm.bind(labelCompareTail); // len is zero
                 masm.movl(len, result);
