@@ -252,7 +252,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
+    protected NodeSize dynamicNodeSizeEstimate() {
         return InvokeNode.estimatedNodeSize(callTarget);
     }
 }

@@ -239,7 +239,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
+    protected NodeSize dynamicNodeSizeEstimate() {
         return estimatedNodeSize(callTarget);
     }
 
