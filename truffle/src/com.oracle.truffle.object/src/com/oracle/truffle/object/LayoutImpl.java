@@ -158,6 +158,16 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         ((CoreLayoutFactory) getFactory()).resetNativeImageState();
     }
 
+    /**
+     * Preinitializes DynamicObject layouts for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class));
+    }
+
     @SuppressWarnings("static-method")
     protected abstract static class Support extends Access {
         protected Support() {

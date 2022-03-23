@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.object;
 
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -64,5 +65,9 @@ public class CoreLayoutFactory implements LayoutFactory {
 
     protected void resetNativeImageState() {
         DefaultLayout.resetNativeImageState();
+    }
+
+    protected void registerLayoutClass(Class<? extends DynamicObject> subclass) {
+        DefaultLayout.registerLayoutClass(subclass);
     }
 }

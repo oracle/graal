@@ -111,6 +111,10 @@ class DefaultLayout extends LayoutImpl {
         return layout == null ? newLayout : layout;
     }
 
+    static void registerLayoutClass(Class<? extends DynamicObject> type) {
+        getOrCreateLayout(type, 0);
+    }
+
     @Override
     public DynamicObject newInstance(Shape shape) {
         throw unsupported();
