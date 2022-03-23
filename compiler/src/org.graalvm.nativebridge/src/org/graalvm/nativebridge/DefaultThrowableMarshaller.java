@@ -24,14 +24,12 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
-
 final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
 
     private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
 
     @Override
-    public Throwable read(BinaryInput in) throws IOException {
+    public Throwable read(BinaryInput in) {
         String foreignExceptionClassName = in.readUTF();
         String foreignExceptionMessage = (String) in.readTypedValue();
         StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
@@ -39,7 +37,7 @@ final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
     }
 
     @Override
-    public void write(BinaryOutput out, Throwable object) throws IOException {
+    public void write(BinaryOutput out, Throwable object) {
         out.writeUTF(object instanceof MarshalledException ? ((MarshalledException) object).getForeignExceptionClassName() : object.getClass().getName());
         out.writeTypedValue(object.getMessage());
         stackTraceMarshaller.write(out, object.getStackTrace());

@@ -24,7 +24,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -39,12 +38,12 @@ public interface BinaryMarshaller<T> {
     /**
      * Reads the object value from the {@code input} and returns the recreated object.
      */
-    T read(BinaryInput input) throws IOException;
+    T read(BinaryInput input);
 
     /**
      * Writes the {@code object}'s value into the {@code output}.
      */
-    void write(BinaryOutput output, T object) throws IOException;
+    void write(BinaryOutput output, T object);
 
     /**
      * Decorates {@code forMarshaller} by a {@link BinaryMarshaller} handling {@code null} values.

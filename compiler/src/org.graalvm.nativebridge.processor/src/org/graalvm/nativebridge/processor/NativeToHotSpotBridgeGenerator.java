@@ -379,11 +379,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             CharSequence address = new CodeBuilder(builder).invoke(marshalledParametersOutputVar, "getAddress").build();
             builder.lineStart().invokeStatic(typeCache.jniUtil, "SetByteArrayRegion", jniEnv, marshalledParametersVar, "0", marshalledParametersPositionVar, address).lineEnd(";");
             builder.dedent();
-            CharSequence ioe = "marshallingException";
-            builder.lineStart("} catch (").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
-            builder.indent();
-            reThrowAsAssertionError(builder, ioe);
-            builder.dedent();
             builder.line("}");
             return marshalledParametersVar;
         } else {
@@ -412,11 +407,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         } else {
             builder.lineStart("return ").write(unmarshall).lineEnd(";");
         }
-        builder.dedent();
-        CharSequence ioe = "marshallingException";
-        builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
-        builder.indent();
-        reThrowAsAssertionError(builder, ioe);
         builder.dedent();
         builder.line("}");
         builder.dedent();
@@ -706,11 +696,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         // Handle decode arguments exception
         if (marshalledDataCount > 0) {
             builder.dedent();
-            CharSequence ioe = "marshallingException";
-            builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
-            builder.indent();
-            reThrowAsAssertionError(builder, ioe);
-            builder.dedent();
             builder.line("}");
         }
         CharSequence marshalledResultOutputVar = "marshalledResultOutput";
@@ -729,11 +714,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                 builder.indent();
                 builder.lineStart().write(resultSnippet).lineEnd(";");
                 builder.lineStart("return ").invoke(marshalledResultOutputVar, "getArray").lineEnd(";");
-                builder.dedent();
-                CharSequence ioe = "marshallingException";
-                builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
-                builder.indent();
-                reThrowAsAssertionError(builder, ioe);
                 builder.dedent();
                 builder.line("}");
             } else {

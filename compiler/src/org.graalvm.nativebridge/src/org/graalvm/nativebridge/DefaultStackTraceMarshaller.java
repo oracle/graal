@@ -24,8 +24,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
-
 final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceElement[]> {
 
     static final DefaultStackTraceMarshaller INSTANCE = new DefaultStackTraceMarshaller();
@@ -34,7 +32,7 @@ final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceEl
     }
 
     @Override
-    public StackTraceElement[] read(BinaryInput in) throws IOException {
+    public StackTraceElement[] read(BinaryInput in) {
         int len = in.readInt();
         StackTraceElement[] res = new StackTraceElement[len];
         for (int i = 0; i < len; i++) {
@@ -49,7 +47,7 @@ final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceEl
     }
 
     @Override
-    public void write(BinaryOutput out, StackTraceElement[] stack) throws IOException {
+    public void write(BinaryOutput out, StackTraceElement[] stack) {
         out.writeInt(stack.length);
         for (StackTraceElement stackTraceElement : stack) {
             out.writeUTF(stackTraceElement.getClassName());

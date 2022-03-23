@@ -74,7 +74,7 @@ abstract class AbstractBridgeParser {
     final AbstractTypeCache typeCache;
     private final Configuration myConfiguration;
     private final Configuration otherConfiguration;
-    private Set<DeclaredType> ignoreAnnotations;
+    private final Set<DeclaredType> ignoreAnnotations;
     private Set<DeclaredType> marshallerAnnotations;
     private boolean hasErrors;
 
@@ -1198,7 +1198,6 @@ abstract class AbstractBridgeParser {
         final DeclaredType hSObject;
         final DeclaredType idempotent;
         final DeclaredType in;
-        final DeclaredType iOException;
         final DeclaredType jBooleanArray;
         final DeclaredType jByteArray;
         final DeclaredType jCharArray;
@@ -1257,7 +1256,6 @@ abstract class AbstractBridgeParser {
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.idempotent = (DeclaredType) processor.getType("org.graalvm.nativebridge.Idempotent");
             this.in = (DeclaredType) processor.getType("org.graalvm.nativebridge.In");
-            this.iOException = (DeclaredType) processor.getType("java.io.IOException");
             this.jBooleanArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JBooleanArray");
             this.jByteArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JByteArray");
             this.jCharArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JCharArray");

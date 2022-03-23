@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
 import java.io.Closeable;
-import java.io.UTFDataFormatException;
 import java.util.Arrays;
 
 /**
@@ -168,8 +167,11 @@ public abstract class BinaryOutput implements Closeable {
 
     /**
      * Writes a string using a modified UTF-8 encoding in a machine-independent manner.
+     *
+     * @throws IllegalArgumentException if the {@code string} cannot be encoded using modified UTF-8
+     *             encoding.
      */
-    public final void writeUTF(String string) throws UTFDataFormatException {
+    public final void writeUTF(String string) throws IllegalArgumentException {
         int len = string.length();
         int utfLen = 0;
         int c;
@@ -187,7 +189,7 @@ public abstract class BinaryOutput implements Closeable {
         }
 
         if (utfLen > MAX_LENGTH) {
-            throw new UTFDataFormatException("String too long to encode, " + utfLen + " bytes");
+            throw new IllegalArgumentException("String too long to encode, " + utfLen + " bytes");
         }
         int headerSize;
         if (utfLen > MAX_SHORT_LENGTH) {
@@ -246,9 +248,10 @@ public abstract class BinaryOutput implements Closeable {
      * value's data type. Supported types are boxed Java primitive types, {@link String},
      * {@code null}, and arrays of these types.
      *
-     * @throws IllegalArgumentException when the {@code value} type is not supported.
+     * @throws IllegalArgumentException when the {@code value} type is not supported or the
+     *             {@code value} is a string which cannot be encoded using modified UTF-8 encoding.
      */
-    public final void writeTypedValue(Object value) throws UTFDataFormatException {
+    public final void writeTypedValue(Object value) throws IllegalArgumentException {
         if (value instanceof Object[]) {
             Object[] arr = (Object[]) value;
             writeByte(ARRAY);

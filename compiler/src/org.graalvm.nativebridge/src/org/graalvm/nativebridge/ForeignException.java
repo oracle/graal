@@ -37,8 +37,6 @@ import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
-import java.io.IOException;
-
 import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
 import static org.graalvm.jniutils.JNIUtil.encodeMethodSignature;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
@@ -82,12 +80,7 @@ public final class ForeignException extends RuntimeException {
      */
     public RuntimeException throwOriginalException(BinaryMarshaller<? extends Throwable> marshaller) {
         try (BinaryInput in = BinaryInput.create(rawData)) {
-            Throwable t;
-            try {
-                t = marshaller.read(in);
-            } catch (IOException ioe) {
-                throw new AssertionError(ioe.getMessage(), ioe);
-            }
+            Throwable t = marshaller.read(in);
             throw ForeignException.silenceException(RuntimeException.class, t);
         } finally {
             clearPendingException();
@@ -104,7 +97,7 @@ public final class ForeignException extends RuntimeException {
      *     private final BinaryMarshaller&lt;StackTraceElement[]&gt; stackTraceMarshaller = MyJNIConfig.getDefault().lookupMarshaller(StackTraceElement[].class);
      *
      *     &#64;Override
-     *     public Throwable read(BinaryInput in) throws IOException {
+     *     public Throwable read(BinaryInput in) {
      *         String foreignExceptionClassName = in.readUTF();
      *         String foreignExceptionMessage = in.readUTF();
      *         StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
@@ -114,7 +107,7 @@ public final class ForeignException extends RuntimeException {
      *     }
      *
      *     &#64;Override
-     *     public void write(BinaryOutput out, Throwable object) throws IOException {
+     *     public void write(BinaryOutput out, Throwable object) {
      *         out.writeUTF(object.getClass().getName());
      *         out.writeUTF(object.getMessage());
      *         stackTraceMarshaller.write(out, object.getStackTrace());
@@ -156,8 +149,6 @@ public final class ForeignException extends RuntimeException {
         try (BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create()) {
             marshaller.write(out, exception);
             return new ForeignException(out.getArray(), UNDEFINED, false);
-        } catch (IOException ioe) {
-            throw new AssertionError(ioe.getMessage(), ioe);
         }
     }
 

@@ -24,8 +24,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
-
 final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
 
     private static final byte NULL = 0;
@@ -38,7 +36,7 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
     }
 
     @Override
-    public T read(BinaryInput input) throws IOException {
+    public T read(BinaryInput input) {
         byte nullStatus = input.readByte();
         switch (nullStatus) {
             case NULL:
@@ -46,12 +44,12 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
             case NON_NULL:
                 return delegate.read(input);
             default:
-                throw new IOException("Unexpected input " + nullStatus);
+                throw new IllegalArgumentException("Unexpected input " + nullStatus);
         }
     }
 
     @Override
-    public void write(BinaryOutput output, T object) throws IOException {
+    public void write(BinaryOutput output, T object) {
         if (object != null) {
             output.writeByte(NON_NULL);
             delegate.write(output, object);

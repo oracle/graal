@@ -27,8 +27,6 @@ package org.graalvm.nativebridge;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import java.io.Closeable;
-import java.io.EOFException;
-import java.io.UTFDataFormatException;
 
 import static org.graalvm.nativebridge.BinaryOutput.LARGE_STRING_TAG;
 import static org.graalvm.nativebridge.BinaryOutput.NULL;
@@ -68,68 +66,80 @@ public abstract class BinaryInput implements Closeable {
     /**
      * Reads a single byte and returns {@code true} if that byte is non-zero, {@code false} if that
      * byte is zero.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final boolean readBoolean() throws EOFException {
+    public final boolean readBoolean() throws IndexOutOfBoundsException {
         int b = read();
         if (b < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         return b != 0;
     }
 
     /**
      * Reads and returns a single byte.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final byte readByte() throws EOFException {
+    public final byte readByte() throws IndexOutOfBoundsException {
         int b = read();
         if (b < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         return (byte) b;
     }
 
     /**
      * Reads two bytes and returns a {@code short} value.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final short readShort() throws EOFException {
+    public final short readShort() throws IndexOutOfBoundsException {
         int b1 = read();
         int b2 = read();
         if ((b1 | b2) < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         return (short) ((b1 << 8) + b2);
     }
 
     /**
      * Reads two bytes and returns a {@code char} value.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final char readChar() throws EOFException {
+    public final char readChar() throws IndexOutOfBoundsException {
         int b1 = read();
         int b2 = read();
         if ((b1 | b2) < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         return (char) ((b1 << 8) + b2);
     }
 
     /**
      * Reads four bytes and returns an {@code int} value.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final int readInt() throws EOFException {
+    public final int readInt() throws IndexOutOfBoundsException {
         int b1 = read();
         int b2 = read();
         int b3 = read();
         int b4 = read();
         if ((b1 | b2 | b3 | b4) < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         return (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
     }
 
     /**
      * Reads eight bytes and returns a {@code long} value.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final long readLong() throws EOFException {
+    public final long readLong() throws IndexOutOfBoundsException {
         int b1 = read();
         int b2 = read();
         int b3 = read();
@@ -139,7 +149,7 @@ public abstract class BinaryInput implements Closeable {
         int b7 = read();
         int b8 = read();
         if ((b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8) < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         return ((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
                         ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8;
@@ -149,8 +159,10 @@ public abstract class BinaryInput implements Closeable {
      * Reads four bytes and returns a {@code float} value. It does this by reading an {@code int}
      * value and converting the {@code int} value to a {@code float} using
      * {@link Float#intBitsToFloat(int)}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final float readFloat() throws EOFException {
+    public final float readFloat() throws IndexOutOfBoundsException {
         return Float.intBitsToFloat(readInt());
     }
 
@@ -158,8 +170,10 @@ public abstract class BinaryInput implements Closeable {
      * Reads eight bytes and returns a {@code double} value. It does this by reading a {@code long}
      * value and converting the {@code long} value to a {@code double} using
      * {@link Double#longBitsToDouble(long)}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
      */
-    public final double readDouble() throws EOFException {
+    public final double readDouble() throws IndexOutOfBoundsException {
         return Double.longBitsToDouble(readLong());
     }
 
@@ -178,9 +192,9 @@ public abstract class BinaryInput implements Closeable {
     /**
      * Reads {@code len} bytes into a byte array starting at offset {@code off}.
      *
-     * @throws EOFException if there are not enough bytes to read
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(byte[] b, int off, int len) throws EOFException {
+    public final void readFully(byte[] b, int off, int len) throws IndexOutOfBoundsException {
         if (len < 0) {
             throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
         }
@@ -188,7 +202,7 @@ public abstract class BinaryInput implements Closeable {
         while (n < len) {
             int count = read(b, off + n, len - n);
             if (count < 0) {
-                throw new EOFException();
+                throw new IndexOutOfBoundsException();
             }
             n += count;
         }
@@ -196,19 +210,23 @@ public abstract class BinaryInput implements Closeable {
 
     /**
      * Reads a string using a modified UTF-8 encoding in a machine-independent manner.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
+     * @throws IllegalArgumentException if the bytes do not represent a valid modified UTF-8
+     *             encoding of a string.
      */
-    public final String readUTF() throws EOFException, UTFDataFormatException {
+    public final String readUTF() throws IndexOutOfBoundsException, IllegalArgumentException {
         int len;
         int b1 = read();
         int b2 = read();
         if ((b1 | b2) < 0) {
-            throw new EOFException();
+            throw new IndexOutOfBoundsException();
         }
         if ((b1 & LARGE_STRING_TAG) == LARGE_STRING_TAG) {
             int b3 = read();
             int b4 = read();
             if ((b3 | b4) < 0) {
-                throw new EOFException();
+                throw new IndexOutOfBoundsException();
             }
             len = ((b1 & ~LARGE_STRING_TAG) << 24) + (b2 << 16) + (b3 << 8) + b4;
         } else {
@@ -257,11 +275,11 @@ public abstract class BinaryInput implements Closeable {
                     /* 110x xxxx 10xx xxxx */
                     byteCount += 2;
                     if (byteCount > len) {
-                        throw new UTFDataFormatException("Partial character at end");
+                        throw new IllegalArgumentException("Partial character at end");
                     }
                     c2 = byteBuffer[byteCount - 1];
                     if ((c2 & 0xC0) != 0x80) {
-                        throw new UTFDataFormatException("malformed input around byte " + byteCount);
+                        throw new IllegalArgumentException("malformed input around byte " + byteCount);
                     }
                     charBuffer[charCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
                     break;
@@ -269,18 +287,18 @@ public abstract class BinaryInput implements Closeable {
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
                     byteCount += 3;
                     if (byteCount > len) {
-                        throw new UTFDataFormatException("malformed input: partial character at end");
+                        throw new IllegalArgumentException("malformed input: partial character at end");
                     }
                     c2 = byteBuffer[byteCount - 2];
                     c3 = byteBuffer[byteCount - 1];
                     if (((c2 & 0xC0) != 0x80) || ((c3 & 0xC0) != 0x80)) {
-                        throw new UTFDataFormatException("malformed input around byte " + (byteCount - 1));
+                        throw new IllegalArgumentException("malformed input around byte " + (byteCount - 1));
                     }
                     charBuffer[charCount++] = (char) (((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F));
                     break;
                 default:
                     /* 10xx xxxx, 1111 xxxx */
-                    throw new UTFDataFormatException("malformed input around byte " + byteCount);
+                    throw new IllegalArgumentException("malformed input around byte " + byteCount);
             }
         }
         // The number of chars produced may be less than len
@@ -299,9 +317,11 @@ public abstract class BinaryInput implements Closeable {
      *
      * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null}, or
      *         an array of these types.
-     * @throws IllegalArgumentException when the marshaled type is not supported.
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
+     * @throws IllegalArgumentException when the marshaled type is not supported or if the bytes do
+     *             not represent a valid modified UTF-8 encoding of a string.
      */
-    public final Object readTypedValue() throws EOFException, UTFDataFormatException {
+    public final Object readTypedValue() throws IndexOutOfBoundsException, IllegalArgumentException {
         byte tag = readByte();
         switch (tag) {
             case ARRAY:

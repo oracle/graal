@@ -218,7 +218,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             builder.lineStart().write(resFieldName).write(" = ").write(value).lineEnd(";");
             builder.lineStart().write(cacheSnippets.writeCache(builder, cacheFieldName, receiver, resFieldName)).lineEnd(";");
             builder.dedent();
-            generateHSToNativeStartPointExceptionHandlers(builder, data, scopeVarName, marshalledParametersOutput != null || methodData.getReturnTypeMarshaller().isCustom());
+            generateHSToNativeStartPointExceptionHandlers(builder, data, scopeVarName);
             builder.dedent();
             builder.line("}");
             builder.lineStart("return ").write(resFieldName).lineEnd(";");
@@ -241,13 +241,13 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             builder.write(value);
             builder.lineEnd(";");
             builder.dedent();
-            generateHSToNativeStartPointExceptionHandlers(builder, data, scopeVarName, marshalledParametersOutput != null || methodData.getReturnTypeMarshaller().isCustom());
+            generateHSToNativeStartPointExceptionHandlers(builder, data, scopeVarName);
         }
         builder.dedent();
         builder.line("}");
     }
 
-    private void generateHSToNativeStartPointExceptionHandlers(CodeBuilder builder, DefinitionData data, CharSequence scopeVarName, boolean hasCustomMarshaller) {
+    private void generateHSToNativeStartPointExceptionHandlers(CodeBuilder builder, DefinitionData data, CharSequence scopeVarName) {
         CharSequence foreignException = "foreignException";
         CharSequence throwUnboxedException = new CodeBuilder(builder).write("throw").space().invoke(foreignException, "throwOriginalException",
                         data.getCustomMarshaller(typeCache.throwable, null, types).name).write(";").build();
@@ -255,13 +255,6 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         builder.line(throwUnboxedException);
         builder.dedent();
-        if (hasCustomMarshaller) {
-            CharSequence ioe = "marshallingException";
-            builder.lineStart("} catch (").write(typeCache.iOException).space().write(ioe).write(") ").lineEnd("{");
-            builder.indent();
-            reThrowAsAssertionError(builder, ioe);
-            builder.dedent();
-        }
         builder.line("} finally {");
         builder.indent();
         builder.lineStart().invoke(scopeVarName, "leave").lineEnd(";");
@@ -478,11 +471,6 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         // Handle decode arguments exception
         if (marshalledDataCount > 0) {
             builder.dedent();
-            CharSequence ioe = "marshallingException";
-            builder.lineStart("} catch(").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
-            builder.indent();
-            reThrowAsAssertionError(builder, ioe);
-            builder.dedent();
             builder.line("}");
         }
 
@@ -539,11 +527,6 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
             // Clean up binary output for result marshalling
             if (methodData.getReturnTypeMarshaller().isCustom()) {
-                builder.dedent();
-                CharSequence ioe = "marshallingException";
-                builder.lineStart("} catch (").write(typeCache.iOException).space().write(ioe).lineEnd(") {");
-                builder.indent();
-                reThrowAsAssertionError(builder, ioe);
                 builder.dedent();
                 builder.line("}");
             }
