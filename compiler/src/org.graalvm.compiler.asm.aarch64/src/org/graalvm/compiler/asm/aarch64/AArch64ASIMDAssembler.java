@@ -865,7 +865,6 @@ public abstract class AArch64ASIMDAssembler {
     private void threeSameEncoding(ASIMDInstruction instr, ASIMDSize size, int eSizeEncoding, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b0_0_0_01110_00_1_00000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
-
     }
 
     private void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
@@ -2934,7 +2933,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.363 Unsigned minimum across vector.<br>
+     * C7.2.365 Unsigned minimum across vector.<br>
      *
      * <code>dst = uint_min(src[0], ..., src[n]).</code>
      *
@@ -3059,6 +3058,33 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = srcESize.nbits + shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.USHLL, false, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.391 Unsigned shift left long (immediate).<br>
+     * <p>
+     * From the manual: " This instruction reads each vector element in the upper half of the source
+     * SIMD&FP register, shifts the unsigned integer value left by the specified number of bits ...
+     * The destination vector elements are twice as long as the source vector elements."
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift left amount.
+     */
+    public void ushll2VVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        /* Accepted shift range */
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+
+        /* shift = imm7 - srcESize.nbits */
+        int imm7 = srcESize.nbits + shiftAmt;
+
+        shiftByImmEncoding(ASIMDInstruction.USHLL, true, imm7, dst, src);
     }
 
     /**

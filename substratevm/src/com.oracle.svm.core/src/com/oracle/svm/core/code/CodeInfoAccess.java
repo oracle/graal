@@ -301,6 +301,7 @@ public final class CodeInfoAccess {
         return CodeInfoQueryResult.getTotalFrameSize(codeInfoQueryResult.getEncodedFrameSize());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getStackReferenceMapEncoding(CodeInfo info) {
         return cast(info).getStackReferenceMapEncoding();
     }

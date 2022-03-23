@@ -406,6 +406,7 @@ public class LanguageSPITest {
         }
 
         @ExportMessage(name = "getSourceLocation")
+        @TruffleBoundary
         SourceSection getSourceSection() throws UnsupportedMessageException {
             if (source == null) {
                 throw UnsupportedMessageException.create();
@@ -2109,6 +2110,12 @@ public class LanguageSPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         Env env = LanguageContext.get(this).getEnv();
+                        boundary(env);
+                        return true;
+                    }
+
+                    @TruffleBoundary
+                    private void boundary(Env env) {
                         LanguageInfo languageToInitialize = languageResolver.apply(env);
                         assertNotNull(languageToInitialize);
                         try {
@@ -2116,7 +2123,6 @@ public class LanguageSPITest {
                         } catch (SecurityException se) {
                             exception.set(se);
                         }
-                        return true;
                     }
                 }.getCallTarget();
             }
@@ -2147,6 +2153,12 @@ public class LanguageSPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         Env env = LanguageContext.get(this).getEnv();
+                        boundary(env);
+                        return true;
+                    }
+
+                    @TruffleBoundary
+                    private void boundary(Env env) {
                         LanguageInfo languageProvidingService = languageResolver.apply(env);
                         assertNotNull(languageProvidingService);
                         InitializeTestBaseLanguage.Service service = env.lookup(languageProvidingService, InitializeTestBaseLanguage.Service.class);
@@ -2155,7 +2167,6 @@ public class LanguageSPITest {
                         assertFalse(verifier.get());
                         service.doesInitialize();
                         assertTrue(verifier.get());
-                        return true;
                     }
                 }.getCallTarget();
             }

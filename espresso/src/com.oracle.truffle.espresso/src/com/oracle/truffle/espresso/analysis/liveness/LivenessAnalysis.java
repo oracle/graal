@@ -67,26 +67,32 @@ public final class LivenessAnalysis {
     private final EdgeAction[] edge;
     private final LocalVariableAction onStart;
 
-    public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
+    public void performOnEdge(VirtualFrame frame, int bci, int nextBci, boolean disable) {
         if (CompilerDirectives.inCompiledCode()) {
-            if (edge != null && edge[nextBci] != null) {
-                edge[nextBci].onEdge(frame, bci);
+            if (!disable) {
+                if (edge != null && edge[nextBci] != null) {
+                    edge[nextBci].onEdge(frame, bci);
+                }
             }
         }
     }
 
-    public void onStart(VirtualFrame frame) {
+    public void onStart(VirtualFrame frame, boolean disable) {
         if (CompilerDirectives.inCompiledCode()) {
-            if (onStart != null) {
-                onStart.execute(frame);
+            if (!disable) {
+                if (onStart != null) {
+                    onStart.execute(frame);
+                }
             }
         }
     }
 
-    public void performPostBCI(VirtualFrame frame, int bci) {
+    public void performPostBCI(VirtualFrame frame, int bci, boolean disable) {
         if (CompilerDirectives.inCompiledCode()) {
-            if (result != null && result[bci] != null) {
-                result[bci].execute(frame);
+            if (!disable) {
+                if (result != null && result[bci] != null) {
+                    result[bci].execute(frame);
+                }
             }
         }
     }

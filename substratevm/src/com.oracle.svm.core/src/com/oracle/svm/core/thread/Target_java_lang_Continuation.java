@@ -159,7 +159,6 @@ public final class Target_java_lang_Continuation {
     @Substitute
     private void finish() {
         done = true;
-        internal.finish();
         assert isEmpty();
     }
 

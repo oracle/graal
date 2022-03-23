@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -1673,6 +1674,28 @@ public final class ObjectKlass extends Klass {
             }
 
             Method.MethodVersion[] methods = newDeclaredMethods.toArray(new Method.MethodVersion[0]);
+            // first replace existing method versions with new versions
+            // to ensure new declared methods are up-to-date
+            Map<Method, ParserMethod> changedMethodBodies = change.getChangedMethodBodies();
+            Map<Method, Method.SharedRedefinitionContent> copyCheckMap = new HashMap<>();
+            for (int i = 0; i < methods.length; i++) {
+                Method declMethod = methods[i].getMethod();
+                if (changedMethodBodies.containsKey(declMethod)) {
+                    ParserMethod newMethod = changedMethodBodies.get(declMethod);
+                    Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
+                    JDWP.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
+                    methods[i] = redefineContent.getMethodVersion();
+
+                    int flags = newMethod.getFlags();
+                    if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
+                        copyCheckMap.put(declMethod, redefineContent);
+                    }
+                }
+                if (change.getUnchangedMethods().contains(declMethod)) {
+                    methods[i] = declMethod.swapMethodVersion(this, ids);
+                }
+            }
+            // create new tables
             if (isInterface()) {
                 InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, superInterfaces, methods);
                 vtable = icr.methodtable;
@@ -1687,6 +1710,16 @@ public final class ObjectKlass extends Klass {
                 itable = InterfaceTables.fixTables(this, vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
             }
 
+            // check and replace copied methods too
+            for (Map.Entry<Method, Method.SharedRedefinitionContent> entry : copyCheckMap.entrySet()) {
+                Method key = entry.getKey();
+                Method.SharedRedefinitionContent value = entry.getValue();
+
+                checkCopyMethods(this, key, itable, value, ids);
+                checkCopyMethods(this, key, vtable, value, ids);
+                checkCopyMethods(this, key, mirandaMethods, value, ids);
+            }
+
             // only update subtype lists if class hierarchy changed
             if (packet.classChange == ClassRedefinition.ClassChange.CLASS_HIERARCHY_CHANGED) {
                 if (superKlass != null) {
@@ -1695,27 +1728,6 @@ public final class ObjectKlass extends Klass {
                 for (ObjectKlass superInterface : superInterfaces) {
                     superInterface.addSubType(getKlass());
                 }
-            }
-
-            // changed methods
-            Map<Method, ParserMethod> changedMethodBodies = change.getChangedMethodBodies();
-            for (Map.Entry<Method, ParserMethod> entry : changedMethodBodies.entrySet()) {
-                Method method = entry.getKey();
-                ParserMethod newMethod = entry.getValue();
-                Method.SharedRedefinitionContent redefineContent = method.redefine(this, newMethod, packet.parserKlass, ids);
-                JDWP.LOGGER.fine(() -> "Redefining method " + method.getDeclaringKlass().getName() + "." + method.getName());
-
-                // look in tables for copied methods that also needs to be invalidated
-                int flags = newMethod.getFlags();
-                if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
-                    checkCopyMethods(this, method, itable, redefineContent, ids);
-                    checkCopyMethods(this, method, vtable, redefineContent, ids);
-                    checkCopyMethods(this, method, mirandaMethods, redefineContent, ids);
-                }
-            }
-
-            for (Method unchangedMethod : change.getUnchangedMethods()) {
-                unchangedMethod.swapMethodVersion(this, ids);
             }
 
             this.declaredMethods = methods;

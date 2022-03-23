@@ -24,6 +24,14 @@
     targets: ["weekly"],
   },
 
+  local regex_downstream_js = regex_common + {
+    name: 'gate-regex-downstream-js-oraclejdk' + self.jdk_version,
+    run: [
+      ["mx", "testdownstream", "-R", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-tests.git'], "--mx-command", "--strict-compliance gate --strict-mode --all-suites --tags build,Test262-default,TestV8-default,regex"]
+    ],
+    targets: ["gate"],
+  },
+
   local regex_unittest = {
     environment+: {
         "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
@@ -34,6 +42,7 @@
   builds: std.flattenArrays([
     [
       common.linux_amd64  + jdk + regex_gate + regex_unittest,
+      common.linux_amd64  + jdk + regex_downstream_js,
       common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [
       common.oraclejdk11,

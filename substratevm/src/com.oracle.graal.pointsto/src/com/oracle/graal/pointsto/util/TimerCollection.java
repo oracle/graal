@@ -44,7 +44,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
      * A registry of well-known timers used when building images.
      */
     public enum Registry {
-        TOTAL("[total]", false),
+        TOTAL("total", false),
         SETUP("setup", true),
         CLASSLIST("classlist", false),
         CLINIT("(clinit)", true),

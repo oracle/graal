@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.core.util.json.JSONParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -67,7 +68,7 @@ public abstract class ConfigurationParser {
 
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
-            parseAndRegister(reader);
+            parseAndRegister(new JSONParser(reader).parse(), uri);
         }
     }
 
@@ -75,10 +76,14 @@ public abstract class ConfigurationParser {
         return new BufferedReader(new InputStreamReader(openStream(uri)));
     }
 
-    public abstract void parseAndRegister(Reader reader) throws IOException;
+    public void parseAndRegister(Reader reader) throws IOException {
+        parseAndRegister(new JSONParser(reader).parse(), null);
+    }
+
+    public abstract void parseAndRegister(Object json, URI origin) throws IOException;
 
     @SuppressWarnings("unchecked")
-    protected static List<Object> asList(Object data, String errorMessage) {
+    public static List<Object> asList(Object data, String errorMessage) {
         if (data instanceof List) {
             return (List<Object>) data;
         }
@@ -86,7 +91,7 @@ public abstract class ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Map<String, Object> asMap(Object data, String errorMessage) {
+    public static Map<String, Object> asMap(Object data, String errorMessage) {
         if (data instanceof Map) {
             return (Map<String, Object>) data;
         }
@@ -127,7 +132,7 @@ public abstract class ConfigurationParser {
         checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
-    protected static String asString(Object value) {
+    public static String asString(Object value) {
         if (value instanceof String) {
             return (String) value;
         }

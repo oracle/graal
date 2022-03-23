@@ -61,7 +61,16 @@ import com.oracle.truffle.api.nodes.Node;
  * @see BranchProfile#enter()
  * @since 0.10
  */
-public abstract class BranchProfile extends Profile {
+public final class BranchProfile extends Profile {
+
+    private static final BranchProfile DISABLED;
+    static {
+        BranchProfile profile = new BranchProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
+
+    @CompilationFinal private boolean visited;
 
     BranchProfile() {
     }
@@ -71,7 +80,12 @@ public abstract class BranchProfile extends Profile {
      *
      * @since 0.10
      */
-    public abstract void enter();
+    public void enter() {
+        if (!visited) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            visited = true;
+        }
+    }
 
     /**
      * Call to create a new instance of a branch profile.
@@ -80,9 +94,48 @@ public abstract class BranchProfile extends Profile {
      */
     public static BranchProfile create() {
         if (Profile.isProfilingEnabled()) {
-            return Enabled.create0();
+            return new BranchProfile();
         } else {
-            return Disabled.INSTANCE;
+            return getUncached();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        visited = true;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        /*
+         * Make sure disabled branch profile can never be reenabled.
+         */
+        if (this != DISABLED) {
+            visited = false;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled(BranchProfile.class);
+        } else {
+            return toString(BranchProfile.class, !visited, false, "VISITED");
         }
     }
 
@@ -92,60 +145,7 @@ public abstract class BranchProfile extends Profile {
      * @since 19.0
      */
     public static BranchProfile getUncached() {
-        return Disabled.INSTANCE;
-    }
-
-    static final class Enabled extends BranchProfile {
-
-        @CompilationFinal private boolean visited;
-
-        @Override
-        public void enter() {
-            if (!visited) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                visited = true;
-            }
-        }
-
-        @Override
-        public void disable() {
-            visited = true;
-        }
-
-        @Override
-        public void reset() {
-            visited = false;
-        }
-
-        @Override
-        public String toString() {
-            return toString(BranchProfile.class, !visited, false, "VISITED");
-        }
-
-        /* Needed for lazy class loading. */
-        static BranchProfile create0() {
-            return new Enabled();
-        }
-    }
-
-    static final class Disabled extends BranchProfile {
-
-        static final BranchProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public void enter() {
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(BranchProfile.class);
-        }
-
+        return DISABLED;
     }
 
 }

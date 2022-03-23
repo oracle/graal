@@ -400,7 +400,7 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    void onObjectReachable(ImageHeapObject imageHeapObject) {
+    protected void onObjectReachable(ImageHeapObject imageHeapObject) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapObject.getObject());
         imageHeap.add(objectType, imageHeapObject);
 

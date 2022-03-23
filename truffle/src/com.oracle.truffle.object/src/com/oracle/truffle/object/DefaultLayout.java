@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,6 @@ import sun.misc.Unsafe;
 class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
     private final LongLocation[] primitiveFields;
-    private final CoreLocation objectArrayLocation;
-    private final CoreLocation primitiveArrayLocation;
 
     static final ObjectLocation[] NO_OBJECT_FIELDS = new ObjectLocation[0];
     static final LongLocation[] NO_LONG_FIELDS = new LongLocation[0];
@@ -77,16 +75,12 @@ class DefaultLayout extends LayoutImpl {
 
     DefaultLayout(Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy, int implicitCastFlags, ObjectLocation[] objectFields, LongLocation[] primitiveFields) {
         super(dynamicObjectClass, strategy, implicitCastFlags);
-        this.primitiveArrayLocation = CoreLocations.PRIMITIVE_ARRAY_LOCATION;
-        this.objectArrayLocation = CoreLocations.OBJECT_ARRAY_LOCATION;
         this.objectFields = objectFields;
         this.primitiveFields = primitiveFields;
     }
 
     DefaultLayout(Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy, int implicitCastFlags) {
         super(dynamicObjectClass, strategy, implicitCastFlags);
-        this.primitiveArrayLocation = CoreLocations.PRIMITIVE_ARRAY_LOCATION;
-        this.objectArrayLocation = CoreLocations.OBJECT_ARRAY_LOCATION;
         if (DynamicObject.class == dynamicObjectClass) {
             this.objectFields = NO_OBJECT_FIELDS;
             this.primitiveFields = NO_LONG_FIELDS;
@@ -160,16 +154,6 @@ class DefaultLayout extends LayoutImpl {
     @Override
     protected int getPrimitiveFieldCount() {
         return primitiveFields.length;
-    }
-
-    @Override
-    protected CoreLocation getObjectArrayLocation() {
-        return objectArrayLocation;
-    }
-
-    @Override
-    protected CoreLocation getPrimitiveArrayLocation() {
-        return primitiveArrayLocation;
     }
 
     protected ObjectLocation getObjectFieldLocation(int index) {

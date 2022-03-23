@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.heap.StoredContinuation;
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -33,21 +31,25 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
+import com.oracle.svm.core.heap.StoredContinuation;
+
+import jdk.vm.ci.meta.JavaKind;
+
 @NodeInfo
 public class NewStoredContinuationNode extends AbstractNewObjectNode implements Lowerable {
 
     public static final NodeClass<NewStoredContinuationNode> TYPE = NodeClass.create(NewStoredContinuationNode.class);
-    @Input private ValueNode size;
+    @Input private ValueNode payloadSize;
 
-    public NewStoredContinuationNode(ValueNode size) {
+    public NewStoredContinuationNode(ValueNode payloadSize) {
         super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(StoredContinuation.class)), false, null);
-        this.size = size;
+        this.payloadSize = payloadSize;
     }
 
-    public ValueNode getSize() {
-        return size;
+    public ValueNode getPayloadSize() {
+        return payloadSize;
     }
 
     @NodeIntrinsic
-    public static native StoredContinuation allocate(int size);
+    public static native StoredContinuation allocate(int payloadSize);
 }

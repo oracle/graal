@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
@@ -55,8 +56,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -502,6 +501,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isCallerSensitive() {
         return (getModifiers() & ACC_CALLER_SENSITIVE) != 0;
+    }
+
+    /**
+     * The {@code @ForceInline} annotation only takes effect for methods or constructors of classes
+     * loaded by the boot loader. Annotations on methods or constructors of classes loaded outside
+     * of the boot loader are ignored.
+     */
+    public boolean isForceInline() {
+        return (getModifiers() & ACC_FORCE_INLINE) != 0 && StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader());
     }
 
     public boolean isHidden() {
@@ -992,7 +1000,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion oldVersion = methodVersion;
         methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
-        return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
+        return new SharedRedefinitionContent(methodVersion, newLinkedMethod, runtimePool, newCodeAttribute);
     }
 
     public void redefine(ObjectKlass.KlassVersion klassVersion, SharedRedefinitionContent content, Ids<Object> ids) {
@@ -1002,7 +1010,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         ids.replaceObject(oldVersion, methodVersion);
     }
 
-    public void swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
+    public MethodVersion swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
         // create a copy of the code attribute using the original
@@ -1012,6 +1020,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         CodeAttribute newCodeAttribute = codeAttribute != null ? new CodeAttribute(codeAttribute) : null;
         methodVersion = oldVersion.replace(klassVersion, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
+        return methodVersion;
     }
 
     public MethodVersion getMethodVersion() {
@@ -1148,10 +1157,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 int flags = linkedMethod.getFlags();
                 if (Modifier.isAbstract(flags)) {
                     // Disabled for abstract methods to reduce footprint.
-                    this.isLeaf = NeverValidAssumption.INSTANCE;
+                    this.isLeaf = Assumption.NEVER_VALID;
                 } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
                     // Nothing to assume, spare an assumption.
-                    this.isLeaf = AlwaysValidAssumption.INSTANCE;
+                    this.isLeaf = Assumption.ALWAYS_VALID;
                 } else {
                     this.isLeaf = Truffle.getRuntime().createAssumption();
                 }
@@ -1639,14 +1648,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     static class SharedRedefinitionContent {
 
+        private final MethodVersion version;
         private final LinkedMethod linkedMethod;
         private final RuntimeConstantPool pool;
         private final CodeAttribute codeAttribute;
 
-        SharedRedefinitionContent(LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+        SharedRedefinitionContent(MethodVersion version, LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+            this.version = version;
             this.linkedMethod = linkedMethod;
             this.pool = pool;
             this.codeAttribute = codeAttribute;
+        }
+
+        public MethodVersion getMethodVersion() {
+            return version;
         }
 
         public LinkedMethod getLinkedMethod() {

@@ -765,14 +765,15 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean startSkipEntryInstrumentation) {
+    Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
         int curBCI = startBCI;
         int top = startTop;
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
-        boolean skipEntryInstrumentation = startSkipEntryInstrumentation;
+        boolean skipEntryInstrumentation = isOSR;
+        boolean skipLivenessActions = isOSR;
 
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
@@ -790,7 +791,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         // startBCI is not 0 when we executeBodyFromBCI during OSR; in that case we don't execute
         // the method from the beginning hence onStart is not applicable
         if (startBCI == 0) {
-            livenessAnalysis.onStart(frame);
+            livenessAnalysis.onStart(frame, skipLivenessActions);
         }
 
         loop: while (true) {
@@ -851,23 +852,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case ILOAD:
                         putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case LLOAD:
                         putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case FLOAD:
                         putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case DLOAD:
                         putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ALOAD:
                         putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI)));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
                     case ILOAD_0: // fall through
@@ -875,38 +876,38 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case ILOAD_2: // fall through
                     case ILOAD_3:
                         putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case LLOAD_0: // fall through
                     case LLOAD_1: // fall through
                     case LLOAD_2: // fall through
                     case LLOAD_3:
                         putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case FLOAD_0: // fall through
                     case FLOAD_1: // fall through
                     case FLOAD_2: // fall through
                     case FLOAD_3:
                         putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case DLOAD_0: // fall through
                     case DLOAD_1: // fall through
                     case DLOAD_2: // fall through
                     case DLOAD_3:
                         putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ALOAD_0:
                         putObject(frame, top, getLocalObject(frame, 0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ALOAD_1: // fall through
                     case ALOAD_2: // fall through
                     case ALOAD_3:
                         putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
                     case IALOAD: // fall through
@@ -923,23 +924,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case ISTORE:
                         setLocalInt(frame, bs.readLocalIndex(curBCI), popInt(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case LSTORE:
                         setLocalLong(frame, bs.readLocalIndex(curBCI), popLong(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case FSTORE:
                         setLocalFloat(frame, bs.readLocalIndex(curBCI), popFloat(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case DSTORE:
                         setLocalDouble(frame, bs.readLocalIndex(curBCI), popDouble(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ASTORE:
                         setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
                     case ISTORE_0: // fall through
@@ -947,35 +948,35 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case ISTORE_2: // fall through
                     case ISTORE_3:
                         setLocalInt(frame, curOpcode - ISTORE_0, popInt(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case LSTORE_0: // fall through
                     case LSTORE_1: // fall through
                     case LSTORE_2: // fall through
                     case LSTORE_3:
                         setLocalLong(frame, curOpcode - LSTORE_0, popLong(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case FSTORE_0: // fall through
                     case FSTORE_1: // fall through
                     case FSTORE_2: // fall through
                     case FSTORE_3:
                         setLocalFloat(frame, curOpcode - FSTORE_0, popFloat(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case DSTORE_0: // fall through
                     case DSTORE_1: // fall through
                     case DSTORE_2: // fall through
                     case DSTORE_3:
                         setLocalDouble(frame, curOpcode - DSTORE_0, popDouble(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
                     case ASTORE_3:
                         setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, popReturnAddressOrObject(frame, top - 1));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
                     case IASTORE: // fall through
@@ -1052,7 +1053,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case IINC:
                         setLocalInt(frame, bs.readLocalIndex1(curBCI), getLocalInt(frame, bs.readLocalIndex1(curBCI)) + bs.readIncrement1(curBCI));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
                     case I2L: putLong(frame, top - 1, popInt(frame, top - 1)); break;
@@ -1090,7 +1091,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         if (takeBranchPrimitive1(popInt(frame, top - 1), curOpcode)) {
                             int targetBCI = bs.readBranchDest2(curBCI);
                             top += Bytecodes.stackEffectOf(IFLE);
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -1104,7 +1105,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case IF_ICMPLE:
                         if (takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode)) {
                             top += Bytecodes.stackEffectOf(IF_ICMPLE);
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, bs.readBranchDest2(curBCI), top, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, bs.readBranchDest2(curBCI), top, statementIndex, instrument, loopCount, skipLivenessActions);
                             curBCI = bs.readBranchDest2(curBCI);
                             continue loop;
                         }
@@ -1115,7 +1116,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         if (takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode)) {
                             int targetBCI = bs.readBranchDest2(curBCI);
                             top += Bytecodes.stackEffectOf(IF_ACMPNE);
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -1126,7 +1127,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         if (takeBranchRef1(popObject(frame, top - 1), curOpcode)) {
                             int targetBCI = bs.readBranchDest2(curBCI);
                             top += Bytecodes.stackEffectOf(IFNONNULL);
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -1134,13 +1135,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case GOTO: {
                         int targetBCI = bs.readBranchDest2(curBCI);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case GOTO_W: {
                         int targetBCI = bs.readBranchDest4(curBCI);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1148,7 +1149,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         putReturnAddress(frame, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest2(curBCI);
                         top += Bytecodes.stackEffectOf(JSR);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1156,13 +1157,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         putReturnAddress(frame, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest4(curBCI);
                         top += Bytecodes.stackEffectOf(JSR_W);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case RET: {
                         int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         if (jsrBci == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             jsrBci = new int[bs.endBCI()][];
@@ -1176,7 +1177,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 CompilerAsserts.partialEvaluationConstant(jsr);
                                 targetBCI = jsr;
                                 top += Bytecodes.stackEffectOf(RET);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -1185,7 +1186,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                         jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
                         top += Bytecodes.stackEffectOf(RET);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1206,7 +1207,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
                             top += Bytecodes.stackEffectOf(TABLESWITCH);
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -1218,7 +1219,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 // Key found.
                                 int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
                                 top += Bytecodes.stackEffectOf(TABLESWITCH);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -1227,7 +1228,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         top += Bytecodes.stackEffectOf(TABLESWITCH);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1247,7 +1248,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 // Key found.
                                 int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
                                 top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -1256,7 +1257,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1326,7 +1327,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             case IINC: setLocalInt(frame, bs.readLocalIndex2(curBCI), getLocalInt(frame, bs.readLocalIndex2(curBCI)) + bs.readIncrement2(curBCI)); break;
                             case RET: {
                                 int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
-                                livenessAnalysis.performPostBCI(frame, curBCI);
+                                livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                                 if (jsrBci == null) {
                                     CompilerDirectives.transferToInterpreterAndInvalidate();
                                     jsrBci = new int[bs.endBCI()][];
@@ -1340,7 +1341,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                         CompilerAsserts.partialEvaluationConstant(jsr);
                                         targetBCI = jsr;
                                         top += Bytecodes.stackEffectOf(RET);
-                                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                         curBCI = targetBCI;
                                         continue loop;
                                     }
@@ -1349,7 +1350,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                                 jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
                                 top += Bytecodes.stackEffectOf(RET);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -1357,9 +1358,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 CompilerDirectives.transferToInterpreter();
                                 throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                         }
-                        livenessAnalysis.performPostBCI(frame, curBCI);
+                        livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         int targetBCI = bs.nextBCI(curBCI);
-                        livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+                        livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);
                         top += Bytecodes.stackEffectOf(wideOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -1429,7 +1430,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 putObject(frame, top, wrappedStackOverflowError.getGuestException());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
                                 continue loop; // skip bs.next()
                             }
@@ -1490,7 +1491,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         putObject(frame, top, wrappedException.getGuestException());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop; // skip bs.next()
                     } else {
@@ -1512,7 +1513,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
             int targetBCI = curBCI + Bytecodes.lengthOf(curOpcode);
-            livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+            livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);
             if (instrument != null) {
                 nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
             }
@@ -1755,7 +1756,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         refArrayStoreNode.arrayStore(getContext(), popObject(frame, top - 1), index, array);
     }
 
-    private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount) {
+    private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount, boolean skipLivenessActions) {
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = (instrument == null) ? 0 : instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
         if (targetBCI <= curBCI) {
@@ -1786,7 +1787,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 }
             }
         }
-        livenessAnalysis.performOnEdge(frame, curBCI, targetBCI);
+        livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);
         return nextStatementIndex;
     }
 

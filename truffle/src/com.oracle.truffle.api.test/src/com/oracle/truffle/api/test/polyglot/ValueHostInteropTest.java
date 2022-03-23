@@ -78,7 +78,6 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.hamcrest.CoreMatchers;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -87,7 +86,6 @@ import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -133,9 +131,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testAccessInvisibleAPIVirtualCall() {
-        if (TruffleOptions.AOT) {
-            return;
-        }
+        TruffleTestAssumptions.assumeNotAOT();
         Value imageClass = context.asValue(java.awt.image.BufferedImage.class);
         Value image = imageClass.newInstance(450, 450, BufferedImage.TYPE_INT_RGB);
         Value graphics = image.invokeMember("getGraphics");
@@ -144,9 +140,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testAccessInvisibleAPIDirect() {
-        if (TruffleOptions.AOT) {
-            return;
-        }
+        TruffleTestAssumptions.assumeNotAOT();
         try {
             languageEnv.lookupHostSymbol("sun.awt.image.OffScreenImage");
             if (Java9OrLater) {
@@ -192,16 +186,24 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals("Assume delegated", 42.1d, xyp.plus(xyp.x(), xyp.y()), 0.05);
     }
 
+    public static class DataWithCallDetector extends Data {
+        final AtomicReference<Boolean> thisCalled;
+
+        public DataWithCallDetector(AtomicReference<Boolean> thisCalled) {
+            this.thisCalled = thisCalled;
+        }
+
+        @Override
+        public Object assertThis(Object param) {
+            thisCalled.set(true);
+            return super.assertThis(param);
+        }
+    }
+
     @Test
     public void assertThisIsSame() {
         AtomicReference<Boolean> thisCalled = new AtomicReference<>(false);
-        Data data = new Data() {
-            @Override
-            public Object assertThis(Object param) {
-                thisCalled.set(true);
-                return super.assertThis(param);
-            }
-        };
+        Data data = new DataWithCallDetector(thisCalled);
         XYPlus xyp = context.asValue(data).as(XYPlus.class);
 
         XYPlus anotherThis = xyp.assertThis(data);
@@ -459,6 +461,9 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(String.class, stringStatic.getMember("class").asHostObject());
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface FunctionalWithDefaults {
         Object call(Object... args);
@@ -470,12 +475,14 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
-        Assume.assumeFalse("Cannot get reflection data for a lambda", TruffleOptions.AOT);
         Value object = context.asValue((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
         assertArrayEquals(new Object[]{"call"}, object.getMemberKeys().toArray());
         assertEquals(42, object.execute(42).asInt());
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface FunctionalWithObjectMethodOverrides {
         @Override
@@ -863,6 +870,9 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     public interface XYPlus {
         List<String> arr();
 
@@ -924,6 +934,39 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     }
 
+    public static class CustomList extends AbstractList<String> {
+        final Set<String> keys;
+
+        public CustomList(Set<String> keys) {
+            this.keys = keys;
+        }
+
+        @Override
+        public String get(int index) {
+            Iterator<String> iterator = keys.iterator();
+            for (int i = 0; i < index; i++) {
+                iterator.next();
+            }
+            return iterator.next();
+        }
+
+        @Override
+        public int size() {
+            return keys.size();
+        }
+
+        @Override
+        public String remove(int index) {
+            Iterator<String> iterator = keys.iterator();
+            for (int i = 0; i < index; i++) {
+                iterator.next();
+            }
+            String removed = iterator.next();
+            iterator.remove();
+            return removed;
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings({"static-method", "unused"})
     static final class RemoveKeysObject implements TruffleObject {
@@ -941,34 +984,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         @ExportMessage
         @TruffleBoundary
         Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            List<String> list = new AbstractList<String>() {
-                final Set<String> keys = RemoveKeysObject.this.keys.keySet();
-
-                @Override
-                public String get(int index) {
-                    Iterator<String> iterator = keys.iterator();
-                    for (int i = 0; i < index; i++) {
-                        iterator.next();
-                    }
-                    return iterator.next();
-                }
-
-                @Override
-                public int size() {
-                    return keys.size();
-                }
-
-                @Override
-                public String remove(int index) {
-                    Iterator<String> iterator = keys.iterator();
-                    for (int i = 0; i < index; i++) {
-                        iterator.next();
-                    }
-                    String removed = iterator.next();
-                    iterator.remove();
-                    return removed;
-                }
-            };
+            List<String> list = new CustomList(RemoveKeysObject.this.keys.keySet());
             return new ListArray(list);
         }
 

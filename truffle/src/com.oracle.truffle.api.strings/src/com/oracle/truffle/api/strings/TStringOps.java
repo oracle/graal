@@ -847,8 +847,8 @@ final class TStringOps {
                         stubArrayB, stubOffsetB, strideB, isNativeB, lengthCPY);
     }
 
-    private static Object arraycopyWithStrideIntl(
-                    Node location, Object stubArrayA, long stubOffsetA, int strideA, boolean isNativeA,
+    private static Object arraycopyWithStrideIntl(Node location,
+                    Object stubArrayA, long stubOffsetA, int strideA, boolean isNativeA,
                     Object stubArrayB, long stubOffsetB, int strideB, boolean isNativeB, int lengthCPY) {
         if (strideA == strideB) {
             int byteLength = lengthCPY << strideA;

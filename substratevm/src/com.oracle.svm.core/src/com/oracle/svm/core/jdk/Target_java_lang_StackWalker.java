@@ -150,7 +150,7 @@ final class Target_java_lang_StackWalker {
                 Target_java_lang_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
                 Target_java_lang_Continuation topContinuation = Target_java_lang_Continuation.getCurrentContinuation(delimitationScope);
                 if (topContinuation != null) {
-                    JavaStackWalker.initWalk(walk, sp, LoomSupport.getSP(topContinuation));
+                    JavaStackWalker.initWalk(walk, sp, LoomSupport.getBottomSP(topContinuation));
                 } else {
                     // the delimitation scope is not present in current continuation chain or null
                     JavaStackWalker.initWalk(walk, sp);

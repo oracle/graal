@@ -1627,7 +1627,7 @@ public final class TruffleFile {
      * @deprecated use {@link #detectMimeType()}
      */
     @TruffleBoundary
-    @Deprecated
+    @Deprecated(since = "20.2")
     public String getMimeType() throws IOException {
         return detectMimeType(null);
     }

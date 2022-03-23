@@ -54,7 +54,6 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.jdk.ClassLoaderSupportFeatureJDK11OrLater;
 
 @AutomaticFeature
 public final class LinkAtBuildTimeFeature implements Feature {
@@ -84,7 +83,7 @@ public final class LinkAtBuildTimeFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ClassLoaderSupportFeatureJDK11OrLater.class);
+        return Collections.singletonList(ClassLoaderSupportFeature.class);
     }
 
     @Override

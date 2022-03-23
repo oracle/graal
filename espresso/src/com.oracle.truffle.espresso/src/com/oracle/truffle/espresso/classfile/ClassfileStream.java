@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -170,6 +171,9 @@ public final class ClassfileStream {
 
     public ClassFormatError classFormatError(String format, Object... args) {
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_ClassFormatError == null) {
+            throw EspressoError.fatal("ClassFormatError during early startup: " + String.format(format, args) + " in classfile " + classfile);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, String.format(format, args) + " in classfile " + classfile);
     }
 

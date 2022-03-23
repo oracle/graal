@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -40,7 +42,8 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 
-public class SerializationConfiguration implements ConfigurationBase, RuntimeSerializationSupport {
+public final class SerializationConfiguration extends ConfigurationBase<SerializationConfiguration, SerializationConfiguration.Predicate>
+                implements RuntimeSerializationSupport {
 
     private final Set<SerializationConfigurationType> serializations = ConcurrentHashMap.newKeySet();
     private final Set<SerializationConfigurationLambdaCapturingType> lambdaSerializationCapturingTypes = ConcurrentHashMap.newKeySet();
@@ -53,9 +56,40 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         lambdaSerializationCapturingTypes.addAll(other.lambdaSerializationCapturingTypes);
     }
 
-    public void removeAll(SerializationConfiguration other) {
+    @Override
+    public SerializationConfiguration copy() {
+        return new SerializationConfiguration(this);
+    }
+
+    @Override
+    protected void merge(SerializationConfiguration other) {
+        serializations.addAll(other.serializations);
+        lambdaSerializationCapturingTypes.addAll(other.lambdaSerializationCapturingTypes);
+    }
+
+    @Override
+    public void subtract(SerializationConfiguration other) {
         serializations.removeAll(other.serializations);
         lambdaSerializationCapturingTypes.removeAll(other.lambdaSerializationCapturingTypes);
+    }
+
+    @Override
+    protected void intersect(SerializationConfiguration other) {
+        serializations.retainAll(other.serializations);
+        lambdaSerializationCapturingTypes.retainAll(other.lambdaSerializationCapturingTypes);
+    }
+
+    @Override
+    protected void removeIf(Predicate predicate) {
+        serializations.removeIf(predicate::testSerializationType);
+        lambdaSerializationCapturingTypes.removeIf(predicate::testLambdaSerializationType);
+    }
+
+    @Override
+    public void mergeConditional(ConfigurationCondition condition, SerializationConfiguration other) {
+        for (SerializationConfigurationType type : other.serializations) {
+            serializations.add(new SerializationConfigurationType(condition, type.getQualifiedJavaName(), type.getQualifiedCustomTargetConstructorJavaName()));
+        }
     }
 
     public boolean contains(ConfigurationCondition condition, String serializationTargetClass, String customTargetConstructorClass) {
@@ -75,6 +109,11 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         printSerializationClasses(writer, "lambdaCapturingTypes", listOfCapturingClasses);
         writer.unindent().newline();
         writer.append('}');
+    }
+
+    @Override
+    public ConfigurationParser createParser() {
+        return new SerializationConfigurationParser(this, true);
     }
 
     private static void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
@@ -139,5 +178,12 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     private static SerializationConfigurationLambdaCapturingType createLambdaCapturingClassConfigurationType(ConfigurationCondition condition, String className) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
         return new SerializationConfigurationLambdaCapturingType(condition, convertedClassName);
+    }
+
+    public interface Predicate {
+
+        boolean testSerializationType(SerializationConfigurationType type);
+
+        boolean testLambdaSerializationType(SerializationConfigurationLambdaCapturingType type);
     }
 }

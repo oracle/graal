@@ -347,13 +347,13 @@ def test():
             r"%sjava\.lang\.Object \* clone\(void\);"%(spaces_pattern),
             r"%spublic:"%(spaces_pattern),
             r"%sboolean equals\(java\.lang\.Object \*\);"%(spaces_pattern),
+            r"%sjava\.lang\.Class \* getClass\(void\);"%(spaces_pattern),
             r"%sint hashCode\(void\);"%(spaces_pattern),
             r"%svoid notify\(void\);"%(spaces_pattern),
             r"%svoid notifyAll\(void\);"%(spaces_pattern),
             r"%sjava\.lang\.String \* toString\(void\);"%(spaces_pattern),
             r"%svoid wait\(void\);"%(spaces_pattern),
             r"%svoid wait\(long\);"%(spaces_pattern),
-            r"%svoid wait\(long, int\);"%(spaces_pattern),
             r"}"]
     
     checker = Checker('ptype Object', rexp)

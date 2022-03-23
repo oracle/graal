@@ -25,304 +25,55 @@
 package com.oracle.svm.reflect.target;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
+import java.lang.reflect.Parameter;
 import java.util.Map;
-import java.util.function.Supplier;
+
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
-import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.reflect.hosted.ReflectionMetadataComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import sun.reflect.annotation.TypeAnnotation;
 
 @TargetClass(value = Executable.class)
 public final class Target_java_lang_reflect_Executable {
 
-    /**
-     * The parameters field doesn't need a value recomputation. Its value is pre-loaded in the
-     * {@link ReflectionObjectReplacer}.
-     */
-    @Alias //
-    Target_java_lang_reflect_Parameter[] parameters;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    Parameter[] parameters;
 
-    @Alias //
-    boolean hasRealParameterData;
-
-    /**
-     * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
-     * the {@link ReflectionObjectReplacer}.
-     */
-    @Alias //
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Reset) //
-    byte[] typeAnnotations;
-
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class) //
-    Annotation[][] parameterAnnotations;
-
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedReceiverTypeComputer.class) //
-    Object annotatedReceiverType;
-
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedParameterTypesComputer.class) //
-    Object[] annotatedParameterTypes;
-
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedReturnTypeComputer.class) //
-    Object annotatedReturnType;
-
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedExceptionTypesComputer.class) //
-    Object[] annotatedExceptionTypes;
-
-    @Alias //
-    public native int getModifiers();
-
-    @Alias //
-    native byte[] getAnnotationBytes();
-
-    @Alias //
-    public native Class<?> getDeclaringClass();
-
-    @Alias //
-    native Type[] getAllGenericParameterTypes();
-
-    @Alias //
-    public native Type[] getGenericExceptionTypes();
-
-    @Alias //
-    private native Target_java_lang_reflect_Parameter[] synthesizeAllParams();
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = RawParametersComputer.class)//
+    byte[] rawParameters;
 
     @Substitute
-    private Target_java_lang_reflect_Parameter[] privateGetParameters() {
-        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
-        if (holder.parameters != null) {
-            return holder.parameters;
-        } else if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            assert !hasRealParameterData;
-            holder.parameters = synthesizeAllParams();
-            return holder.parameters;
-        }
-        throw VMError.shouldNotReachHere();
-    }
-
-    @Substitute
-    Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Map<Class<? extends Annotation>, Annotation> declAnnos;
-        if ((declAnnos = declaredAnnotations) == null) {
-            if (!MethodMetadataDecoderImpl.hasQueriedMethods()) {
-                throw VMError.shouldNotReachHere();
-            }
-            synchronized (this) {
-                if ((declAnnos = declaredAnnotations) == null) {
-                    Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
-                    declAnnos = Target_sun_reflect_annotation_AnnotationParser.parseAnnotations(
-                                    holder.getAnnotationBytes(),
-                                    new Target_jdk_internal_reflect_ConstantPool(),
-                                    holder.getDeclaringClass());
-                    declaredAnnotations = declAnnos;
-                }
-            }
-        }
-        return declAnnos;
-    }
-
-    @Alias
-    native Annotation[][] sharedGetParameterAnnotations(Class<?>[] parameterTypes, byte[] annotations);
-
-    @Substitute
-    @SuppressWarnings({"unused", "hiding", "static-method"})
-    Annotation[][] parseParameterAnnotations(byte[] parameterAnnotations) {
-        if (!MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            throw VMError.shouldNotReachHere();
-        }
-        return Target_sun_reflect_annotation_AnnotationParser.parseParameterAnnotations(
-                        parameterAnnotations,
-                        new Target_jdk_internal_reflect_ConstantPool(),
-                        getDeclaringClass());
-    }
-
-    @Substitute
-    public AnnotatedType getAnnotatedReceiverType() {
-        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
-        if (holder.annotatedReceiverType != null) {
-            return (AnnotatedType) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedReceiverType);
-        }
-        if (Modifier.isStatic(this.getModifiers())) {
+    private Parameter[] getParameters0() {
+        if (rawParameters == null) {
             return null;
         }
-        if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            AnnotatedType annotatedRecvType = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(typeAnnotations,
-                            new Target_jdk_internal_reflect_ConstantPool(),
-                            SubstrateUtil.cast(this, AnnotatedElement.class),
-                            getDeclaringClass(),
-                            getDeclaringClass(),
-                            TypeAnnotation.TypeAnnotationTarget.METHOD_RECEIVER);
-            holder.annotatedReceiverType = annotatedRecvType;
-            return annotatedRecvType;
-        }
-        throw VMError.shouldNotReachHere();
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
     }
 
     @Substitute
-    public AnnotatedType[] getAnnotatedParameterTypes() {
-        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
-        if (holder.annotatedParameterTypes != null) {
-            return (AnnotatedType[]) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedParameterTypes);
-        } else if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            AnnotatedType[] annotatedParamTypes = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedTypes(typeAnnotations,
-                            new Target_jdk_internal_reflect_ConstantPool(),
-                            SubstrateUtil.cast(this, AnnotatedElement.class),
-                            getDeclaringClass(),
-                            getAllGenericParameterTypes(),
-                            TypeAnnotation.TypeAnnotationTarget.METHOD_FORMAL_PARAMETER);
-            holder.annotatedParameterTypes = annotatedParamTypes;
-            return annotatedParamTypes;
-        }
-        throw VMError.shouldNotReachHere();
+    byte[] getTypeAnnotationBytes0() {
+        return SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations;
     }
 
-    @Substitute
-    public AnnotatedType getAnnotatedReturnType0(@SuppressWarnings("unused") Type returnType) {
-        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
-        if (holder.annotatedReturnType != null) {
-            return (AnnotatedType) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedReturnType);
-        } else if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            AnnotatedType annotatedRetType = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(typeAnnotations,
-                            new Target_jdk_internal_reflect_ConstantPool(),
-                            SubstrateUtil.cast(this, AnnotatedElement.class),
-                            getDeclaringClass(),
-                            returnType,
-                            TypeAnnotation.TypeAnnotationTarget.METHOD_RETURN);
-            holder.annotatedReturnType = annotatedRetType;
-            return annotatedRetType;
-        }
-        throw VMError.shouldNotReachHere();
-    }
-
-    @Substitute
-    public AnnotatedType[] getAnnotatedExceptionTypes() {
-        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
-        if (holder.annotatedExceptionTypes != null) {
-            return (AnnotatedType[]) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedExceptionTypes);
-        } else if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
-            AnnotatedType[] annotatedExcTypes = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedTypes(typeAnnotations,
-                            new Target_jdk_internal_reflect_ConstantPool(),
-                            SubstrateUtil.cast(this, AnnotatedElement.class),
-                            getDeclaringClass(),
-                            getGenericExceptionTypes(),
-                            TypeAnnotation.TypeAnnotationTarget.THROWS);
-            holder.annotatedExceptionTypes = annotatedExcTypes;
-            return annotatedExcTypes;
-        }
-        throw VMError.shouldNotReachHere();
-    }
-
-    public static final class ParameterAnnotationsComputer implements CustomFieldValueComputer {
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
+    static class RawParametersComputer extends ReflectionMetadataComputer {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Executable executable = (Executable) receiver;
-            return executable.getParameterAnnotations();
-        }
-    }
-
-    public static final class AnnotatedReceiverTypeComputer implements CustomFieldValueComputer {
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedReceiverType, executable);
-        }
-    }
-
-    public static final class AnnotatedParameterTypesComputer implements CustomFieldValueComputer {
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedParameterTypes, executable);
-        }
-    }
-
-    public static final class AnnotatedReturnTypeComputer implements CustomFieldValueComputer {
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedReturnType, executable);
-        }
-    }
-
-    public static final class AnnotatedExceptionTypesComputer implements CustomFieldValueComputer {
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Executable executable = (Executable) receiver;
-            return AnnotatedTypeEncoder.encodeAnnotationTypes(executable::getAnnotatedExceptionTypes, executable);
-        }
-    }
-
-    private static final class AnnotatedTypeEncoder {
-        static Object encodeAnnotationTypes(Supplier<Object> supplier, Executable executable) {
-            try {
-                return supplier.get();
-            } catch (InternalError e) {
-                return e;
-            } catch (LinkageError e) {
-                if (!LinkAtBuildTimeSupport.singleton().linkAtBuildTime(executable.getDeclaringClass())) {
-                    return e;
-                }
-                String message = "Encountered an error while processing annotated types for type: " + executable.getDeclaringClass().getName() + ", executable: " + executable.getName() + ". " +
-                                LinkAtBuildTimeSupport.singleton().errorMessageFor(executable.getDeclaringClass());
-                throw new UnsupportedOperationException(message, e);
-            }
-        }
-
-        static Object decodeAnnotationTypes(Object value) {
-            if (value == null) {
-                return null;
-            } else if (value instanceof AnnotatedType || value instanceof AnnotatedType[]) {
-                return value;
-            } else if (value instanceof LinkageError) {
-                throw (LinkageError) value;
-            } else if (value instanceof InternalError) {
-                throw (InternalError) value;
-            } else {
-                throw VMError.shouldNotReachHere("Unexpected value while decoding annotation types: " + value.toString());
-            }
+            return ImageSingletons.lookup(NativeImageCodeCache.ReflectionMetadataEncoder.class).getReflectParametersEncoding((Executable) receiver);
         }
     }
 }

@@ -477,7 +477,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * important to allow the index to be used as an int in the address mode.
      */
     protected ValueNode createPositiveIndex(StructuredGraph graph, ValueNode index, GuardingNode boundsCheck) {
-        return graph.maybeAddOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
+        return graph.addOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
     }
 
     public AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck) {
@@ -645,7 +645,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
              */
             ValueNode synonym = LoadHubNode.findSynonym(object, loadHubOrNullNode.stamp(NodeView.DEFAULT), tool.getMetaAccess(), tool.getConstantReflection());
             if (synonym != null) {
-                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.maybeAddOrUnique(synonym));
+                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.addOrUnique(synonym));
                 return;
             }
         }
@@ -1280,7 +1280,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (nullCheck == null) {
             return object;
         }
-        return before.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        return before.graph().addOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,14 +54,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -70,7 +67,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * <ul>
  * <li>synthesizes the runtime boot module layer</li>
  * <li>replicates build-time module relations at runtime</li>
- * <li>patches dynamic hubs of every class with new module instances</li>
+ * <li>replaces references to hosted modules with runtime modules</li>
  * </ul>
  * <p>
  * This feature synthesizes the runtime boot module layer by using type reachability information. If
@@ -91,7 +88,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * </p>
  * <p>
  * Because the result of this feature is dependant on the analysis results, and because this feature
- * will add reachable object(s) as it's result, it is necessary to perform the logic during the
+ * will add reachable object(s) as its result, it is necessary to perform the logic during the
  * analysis, for lack of a better option (even though only the last analysis cycle is sufficient,
  * but that cannot be known in advance).
  * </p>
@@ -105,23 +102,32 @@ public final class ModuleLayerFeature implements Feature {
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
+    public void duringSetup(DuringSetupAccess access) {
+        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
         moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
         moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
-        moduleLayerFeatureUtils = new ModuleLayerFeatureUtils();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
         Set<String> baseModules = ModuleLayer.boot().modules()
                         .stream()
                         .map(Module::getName)
                         .collect(Collectors.toSet());
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules, Set.of());
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+        access.registerObjectReplacer(this::replaceHostedModules);
+    }
+
+    private Object replaceHostedModules(Object source) {
+        if (source instanceof Module) {
+            Module module = (Module) source;
+            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module, module.getDescriptor());
+        }
+        return source;
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
     }
 
     @Override
@@ -170,29 +176,6 @@ public final class ModuleLayerFeature implements Feature {
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
-        patchDynamicHubs(universe.getTypes(), accessImpl.bb.getHostVM(), runtimeBootLayer);
-    }
-
-    /*
-     * Updates module fields of all DynamicHubs with appropriate synthesized module instances
-     */
-    private static void patchDynamicHubs(List<AnalysisType> types, SVMHost host, ModuleLayer runtimeBootLayer) {
-        for (AnalysisType type : types) {
-            if (!type.isReachable() || type.isArray()) {
-                continue;
-            }
-            Class<?> clazz = type.getJavaClass();
-            if (!clazz.getModule().isNamed()) {
-                continue;
-            }
-            DynamicHub hub = host.dynamicHub(type);
-            String moduleName = clazz.getModule().getName();
-            Optional<Module> module = runtimeBootLayer.findModule(moduleName);
-            if (module.isEmpty()) {
-                throw VMError.shouldNotReachHere("Runtime boot module layer failed to include reachable module: " + moduleName);
-            }
-            hub.setModule(module.get());
-        }
     }
 
     /*
@@ -206,18 +189,19 @@ public final class ModuleLayerFeature implements Feature {
     private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
-         * {@link NativeImageClassLoaderSupportJDK11OrLater}.
+         * {@link NativeImageClassLoaderSupport}.
          */
-        NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport = (NativeImageClassLoaderSupportJDK11OrLater) cl.classLoaderSupport;
+        NativeImageClassLoaderSupport classLoaderSupport = cl.classLoaderSupport;
         ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
-            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer);
             for (Module syntheticModule : syntheticModules) {
-                nameToModule.putIfAbsent(syntheticModule.getName(), syntheticModule);
-                moduleLayerFeatureUtils.patchModuleLayerField(syntheticModule, runtimeBootLayer);
+                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule.getName(), syntheticModule.getDescriptor());
+                nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
+                moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeBootLayer);
             }
             patchRuntimeBootLayer(runtimeBootLayer, nameToModule);
             return runtimeBootLayer;
@@ -226,10 +210,10 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableModules) {
+    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
 
-        Map<String, HostedRuntimeModulePair> moduleLookupMap = analysisReachableModules
+        Map<String, HostedRuntimeModulePair> moduleLookupMap = analysisReachableNamedModules
                         .stream()
                         .collect(Collectors.toMap(Module::getName, m -> new HostedRuntimeModulePair(m, runtimeBootLayer)));
         moduleLookupMap.putIfAbsent("ALL-UNNAMED", HostedRuntimeModulePair.withReplicatedHostedModule(moduleLayerFeatureUtils.allUnnamedModule));
@@ -338,7 +322,7 @@ public final class ModuleLayerFeature implements Feature {
             for (Module m : runtimeBootLayer.modules()) {
                 Optional<Module> hostedModule = ModuleLayer.boot().findModule(m.getName());
                 if (hostedModule.isPresent() && hostedModule.get().getClassLoader() == null) {
-                    moduleLayerFeatureUtils.patchModuleLoaderField(m);
+                    moduleLayerFeatureUtils.patchModuleLoaderField(m, null);
                 }
             }
         } catch (IllegalAccessException ex) {
@@ -373,11 +357,15 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private static final class ModuleLayerFeatureUtils {
+        private final Map<String, Module> nameToModuleLookup;
+        private final ImageClassLoader imageClassLoader;
+
         private final Module allUnnamedModule;
         private final Set<Module> allUnnamedModuleSet;
         private final Module everyoneModule;
         private final Set<Module> everyoneSet;
         private final Constructor<Module> moduleConstructor;
+        private final Field moduleDescriptorField;
         private final Field moduleLayerField;
         private final Field moduleLoaderField;
         private final Field moduleReadsField;
@@ -385,7 +373,9 @@ public final class ModuleLayerFeature implements Feature {
         private final Field moduleExportedPackagesField;
         private final Method moduleFindModuleMethod;
 
-        ModuleLayerFeatureUtils() {
+        ModuleLayerFeatureUtils(ImageClassLoader cl) {
+            nameToModuleLookup = new HashMap<>();
+            imageClassLoader = cl;
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
                 ModuleSupport.openModuleByClass(Module.class, ModuleLayerFeature.class);
@@ -399,29 +389,78 @@ public final class ModuleLayerFeature implements Feature {
                 allUnnamedModuleField.setAccessible(true);
                 allUnnamedModule = (Module) allUnnamedModuleField.get(null);
 
+                moduleDescriptorField = findFieldByName(moduleClassFields, "descriptor");
                 moduleLayerField = findFieldByName(moduleClassFields, "layer");
                 moduleLoaderField = findFieldByName(moduleClassFields, "loader");
                 moduleReadsField = findFieldByName(moduleClassFields, "reads");
                 moduleOpenPackagesField = findFieldByName(moduleClassFields, "openPackages");
                 moduleExportedPackagesField = findFieldByName(moduleClassFields, "exportedPackages");
+                moduleDescriptorField.setAccessible(true);
                 moduleLayerField.setAccessible(true);
                 moduleLoaderField.setAccessible(true);
                 moduleReadsField.setAccessible(true);
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
+
+                allUnnamedModuleSet = new HashSet<>();
+                allUnnamedModuleSet.add(allUnnamedModule);
+                patchModuleLoaderField(allUnnamedModule, imageClassLoader.getClassLoader());
+                everyoneSet = new HashSet<>();
+                everyoneSet.add(everyoneModule);
+
+                moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
+                moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module class.", ex);
             }
-            allUnnamedModuleSet = new HashSet<>();
-            allUnnamedModuleSet.add(allUnnamedModule);
-            everyoneSet = new HashSet<>();
-            everyoneSet.add(everyoneModule);
-            moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
-            moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
         }
 
+        /**
+         * A manual field lookup is necessary due to reflection filters present in newer JDK
+         * versions. This method should be removed once {@link ReflectionUtil} becomes immune to
+         * reflection filters.
+         */
         private static Field findFieldByName(Field[] fields, String name) {
             return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().orElseThrow(VMError::shouldNotReachHere);
+        }
+
+        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
+            if (hostedModule.isNamed()) {
+                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getName(), runtimeModuleDescriptor);
+            }
+
+            /*
+             * EVERYONE and ALL_UNNAMED modules are unnamed module instances that are used as
+             * markers throughout the JDK and therefore we need them in the image heap.
+             *
+             * We make an optimization that all hosted unnamed modules except EVERYONE module have
+             * the same runtime unnamed module. This does not break the module visibility semantics
+             * as unnamed modules can access all named modules, and visibility modifications that
+             * include unnamed modules do not depend on the actual instance, but only on the fact
+             * that the module is unnamed e.g., calling addExports from/to an unnamed module will do
+             * nothing.
+             */
+
+            if (hostedModule == everyoneModule) {
+                return everyoneModule;
+            }
+
+            return allUnnamedModule;
+        }
+
+        public Module getOrCreateRuntimeModuleForHostedModule(String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
+            if (nameToModuleLookup.containsKey(hostedModuleName)) {
+                return nameToModuleLookup.get(hostedModuleName);
+            } else {
+                Module runtimeModule;
+                try {
+                    runtimeModule = moduleConstructor.newInstance(imageClassLoader.getClassLoader(), runtimeModuleDescriptor);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+                    throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
+                }
+                nameToModuleLookup.put(hostedModuleName, runtimeModule);
+                return runtimeModule;
+            }
         }
 
         /**
@@ -431,8 +470,8 @@ public final class ModuleLayerFeature implements Feature {
          * and removal of VM state updates (otherwise we would be re-defining modules to the host
          * VM).
          */
-        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer, ClassLoader cl)
-                        throws IllegalAccessException, InvocationTargetException, InstantiationException {
+        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer)
+                        throws IllegalAccessException, InvocationTargetException {
             Configuration cf = runtimeBootLayer.configuration();
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
@@ -446,7 +485,10 @@ public final class ModuleLayerFeature implements Feature {
                 ModuleReference mref = resolvedModule.reference();
                 ModuleDescriptor descriptor = mref.descriptor();
                 String name = descriptor.name();
-                Module m = moduleConstructor.newInstance(cl, descriptor);
+                Module m = getOrCreateRuntimeModuleForHostedModule(name, descriptor);
+                if (!descriptor.equals(m.getDescriptor())) {
+                    moduleDescriptorField.set(m, descriptor);
+                }
                 patchModuleLayerField(m, runtimeBootLayer);
                 nameToModule.put(name, m);
             }
@@ -616,8 +658,8 @@ public final class ModuleLayerFeature implements Feature {
             moduleLayerField.set(module, runtimeBootLayer);
         }
 
-        void patchModuleLoaderField(Module module) throws IllegalAccessException {
-            moduleLoaderField.set(module, null);
+        void patchModuleLoaderField(Module module, ClassLoader loader) throws IllegalAccessException {
+            moduleLoaderField.set(module, loader);
         }
     }
 }

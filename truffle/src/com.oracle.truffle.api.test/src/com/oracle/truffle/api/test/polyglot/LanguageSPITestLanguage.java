@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static org.junit.Assert.assertSame;
 
 import java.util.Map;
@@ -88,7 +89,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
                 Object result = "null result";
                 if (runinside != null) {
                     try {
-                        result = runinside.apply(getContext().env);
+                        result = runCustomCode();
                     } finally {
                         runinside = null;
                     }
@@ -97,6 +98,11 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
                     result = "null result";
                 }
                 return result;
+            }
+
+            @TruffleBoundary
+            private Object runCustomCode() {
+                return runinside.apply(getContext().env);
             }
         }.getCallTarget();
     }

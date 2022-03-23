@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -67,4 +68,6 @@ public interface VirtualThreads {
     void pinCurrent();
 
     void unpinCurrent();
+
+    Executor getScheduler(Thread thread);
 }

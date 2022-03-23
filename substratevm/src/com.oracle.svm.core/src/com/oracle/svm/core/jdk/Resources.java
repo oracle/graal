@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -42,6 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -83,16 +85,12 @@ public final class Resources {
         }
     }
 
-    private static String getResourceWithoutTrailingSlash(String name) {
-        return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
-    }
-
-    private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data) {
+    private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
         Resources support = singleton();
-        Pair<String, String> key = Pair.create(moduleName, getResourceWithoutTrailingSlash(resourceName));
+        Pair<String, String> key = Pair.create(moduleName, resourceName);
         ResourceStorageEntry entry = support.resources.get(key);
         if (entry == null) {
-            entry = new ResourceStorageEntry(isDirectory);
+            entry = new ResourceStorageEntry(isDirectory, fromJar);
             support.resources.put(key, entry);
         }
         entry.getData().add(data);
@@ -100,27 +98,68 @@ public final class Resources {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String resourceName, InputStream is) {
-        registerResource(null, resourceName, is);
+        registerResource(null, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String resourceName, InputStream is, boolean fromJar) {
+        registerResource(null, resourceName, is, fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String moduleName, String resourceName, InputStream is) {
-        addEntry(moduleName, resourceName, false, inputStreamToByteArray(is));
+        registerResource(moduleName, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, InputStream is, boolean fromJar) {
+        addEntry(moduleName, resourceName, false, inputStreamToByteArray(is), fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerDirectoryResource(String resourceDirName, String content) {
-        registerDirectoryResource(null, resourceDirName, content);
+        registerDirectoryResource(null, resourceDirName, content, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String resourceDirName, String content, boolean fromJar) {
+        registerDirectoryResource(null, resourceDirName, content, fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerDirectoryResource(String moduleName, String resourceDirName, String content) {
+        registerDirectoryResource(moduleName, resourceDirName, content, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content, boolean fromJar) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        addEntry(moduleName, resourceDirName, true, content.getBytes());
+        addEntry(moduleName, resourceDirName, true, content.getBytes(), fromJar);
+    }
+
+    /**
+     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
+     * convert <code>resourceName</code> to canonical variant.
+     */
+    public static String toCanonicalForm(String resourceName) {
+        NativeImageResourcePath path = new NativeImageResourcePath(null, removeTrailingSlash(resourceName).getBytes(StandardCharsets.UTF_8), true);
+        return new String(NativeImageResourcePath.getResolved(path));
+    }
+
+    private static boolean hasTrailingSlash(String resourceName) {
+        return resourceName.endsWith("/");
+    }
+
+    private static String removeTrailingSlash(String resourceName) {
+        return hasTrailingSlash(resourceName) ? resourceName.substring(0, resourceName.length() - 1) : resourceName;
+    }
+
+    private static boolean wasAlreadyInCanonicalForm(String resourceName, String canonicalResourceName) {
+        return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
     }
 
     public static ResourceStorageEntry get(String name) {
@@ -128,12 +167,26 @@ public final class Resources {
     }
 
     public static ResourceStorageEntry get(String moduleName, String resourceName) {
-        ResourceStorageEntry resourceStorageEntry = singleton().resources.get(Pair.create(moduleName, getResourceWithoutTrailingSlash(resourceName)));
-        if (resourceStorageEntry != null && (resourceStorageEntry.isDirectory() || !resourceName.endsWith("/"))) {
-            return resourceStorageEntry;
-        } else {
+        String canonicalResourceName = toCanonicalForm(resourceName);
+        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
+        if (entry == null) {
             return null;
         }
+        if (entry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
+            /*
+             * The resource originally came from a jar file, thus behave like ZipFileSystem behaves
+             * for non-canonical paths.
+             */
+            return null;
+        }
+        if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
+            /*
+             * It this an actual resource file (not a directory) we do not tolerate a trailing
+             * slash.
+             */
+            return null;
+        }
+        return entry;
     }
 
     private static URL createURL(String moduleName, String resourceName, int index) {
@@ -186,16 +239,17 @@ public final class Resources {
         }
 
         List<URL> resourcesURLs = new ArrayList<>();
-
+        String canonicalResourceName = toCanonicalForm(resourceName);
+        boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName == null) {
             for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
                 ResourceStorageEntry entry = Resources.get(module.getName(), resourceName);
-                addURLEntries(resourcesURLs, entry, module.getName(), resourceName);
+                addURLEntries(resourcesURLs, entry, module.getName(), shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
         ResourceStorageEntry explicitEntry = Resources.get(moduleName, resourceName);
-        addURLEntries(resourcesURLs, explicitEntry, moduleName, resourceName);
+        addURLEntries(resourcesURLs, explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
 
         if (resourcesURLs.isEmpty()) {
             return Collections.emptyEnumeration();
@@ -203,13 +257,13 @@ public final class Resources {
         return Collections.enumeration(resourcesURLs);
     }
 
-    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String resourceName) {
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
         if (entry == null) {
             return;
         }
         int numberOfResources = entry.getData().size();
         for (int index = 0; index < numberOfResources; index++) {
-            resourcesURLs.add(createURL(moduleName, resourceName, index));
+            resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
         }
     }
 }

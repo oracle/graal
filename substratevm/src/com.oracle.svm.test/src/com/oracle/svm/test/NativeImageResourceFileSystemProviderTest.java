@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,18 @@
 
 package com.oracle.svm.test;
 
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
+import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToPath;
+import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURI;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
@@ -42,7 +47,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -59,83 +63,18 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
-
-import com.oracle.svm.core.configure.ResourcesRegistry;
 
 @AddExports("java.base/java.lang")
 public class NativeImageResourceFileSystemProviderTest {
 
-    private static final String RESOURCE_DIR = "/resources";
-    private static final String RESOURCE_FILE_1 = RESOURCE_DIR + "/resource-test1.txt";
-    private static final String RESOURCE_FILE_2 = RESOURCE_DIR + "/resource-test2.txt";
     private static final String NEW_DIRECTORY = RESOURCE_DIR + "/tmp";
 
     private static final int TIME_SPAN = 1_000_000;
 
-    // Register resources.
-    public static final class TestFeature implements Feature {
-        @Override
-        public void beforeAnalysis(BeforeAnalysisAccess access) {
-            ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
-            // Remove leading / for the resource patterns
-            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_1.substring(1));
-            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_2.substring(1));
-            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_DIR.substring(1));
-
-            /** Needed for {@link #testURLExternalFormEquivalence()} */
-            for (Module module : ModuleLayer.boot().modules()) {
-                registry.addResources(ConfigurationCondition.alwaysTrue(), module.getName() + ":" + "module-info.class");
-            }
-        }
-    }
-
-    private static URL resourceNameToURL(String resourceName) {
-        URL resource = NativeImageResourceFileSystemProviderTest.class.getResource(resourceName);
-        Assert.assertNotNull("Resource " + resourceName + " is not found!", resource);
-        return resource;
-    }
-
-    private static URI resourceNameToURI(String resourceName) {
-        try {
-            return resourceNameToURL(resourceName).toURI();
-        } catch (URISyntaxException e) {
-            Assert.fail("Bad URI syntax!");
-        }
-        return null;
-    }
-
-    private static Path resourceNameToPath(String resourceName) {
-        return Paths.get(resourceNameToURI(resourceName));
-    }
-
-    private static boolean compareTwoURLs(URL url1, URL url2) throws IOException {
-        URLConnection url1Connection = url1.openConnection();
-        URLConnection url2Connection = url2.openConnection();
-
-        try (InputStream is1 = url1Connection.getInputStream(); InputStream is2 = url2Connection.getInputStream()) {
-            Assert.assertNotNull("First input stream is null!", is1);
-            Assert.assertNotNull("Second input stream is null!", is2);
-            int nextByte1 = is1.read();
-            int nextByte2 = is2.read();
-            while (nextByte1 != -1 && nextByte2 != -1) {
-                if (nextByte1 != nextByte2) {
-                    return false;
-                }
-
-                nextByte1 = is1.read();
-                nextByte2 = is2.read();
-            }
-            return nextByte1 == -1 && nextByte2 == -1;
-        }
-    }
-
     private static FileSystem createNewFileSystem() {
-        URI resource = resourceNameToURI(RESOURCE_FILE_1);
+        URI resource = resourceNameToURI(RESOURCE_FILE_1, true);
 
         Map<String, String> env = new HashMap<>();
         env.put("create", "true");
@@ -171,31 +110,6 @@ public class NativeImageResourceFileSystemProviderTest {
 
     /**
      * <p>
-     * Combining URL and resource operations.
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> Test inspired by issues: </br>
-     * <ol>
-     * <li><a href="https://github.com/oracle/graal/issues/1349">1349</a></li>
-     * <li><a href="https://github.com/oracle/graal/issues/2291">2291</a></li>
-     * </ol>
-     * </p>
-     */
-    @Test
-    public void githubIssues() {
-        try {
-            URL url1 = resourceNameToURL(RESOURCE_FILE_1);
-            URL url2 = new URL(url1, RESOURCE_FILE_2);
-            Assert.assertNotNull("Second URL is null!", url2);
-            Assert.assertFalse("Two URLs are same!", compareTwoURLs(url1, url2));
-        } catch (IOException e) {
-            Assert.fail("Exception occurs during URL operations!");
-        }
-    }
-
-    /**
-     * <p>
      * Reading from file using {@link java.nio.channels.ByteChannel}.
      * </p>
      *
@@ -214,7 +128,7 @@ public class NativeImageResourceFileSystemProviderTest {
         FileSystem fileSystem = createNewFileSystem();
 
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         // 2. Reading from file.
         try (SeekableByteChannel channel = Files.newByteChannel(resourceDirectory, StandardOpenOption.READ)) {
@@ -257,7 +171,7 @@ public class NativeImageResourceFileSystemProviderTest {
         FileSystem fileSystem = createNewFileSystem();
 
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         // 2. Writing into file.
         try {
@@ -309,7 +223,7 @@ public class NativeImageResourceFileSystemProviderTest {
         FileSystem fileSystem = createNewFileSystem();
 
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         // 2. Reading from file.
         Set<StandardOpenOption> permissions = Collections.singleton(StandardOpenOption.READ);
@@ -354,7 +268,7 @@ public class NativeImageResourceFileSystemProviderTest {
         FileSystemProvider provider = fileSystem.provider();
 
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         Set<StandardOpenOption> readPermissions = Collections.singleton(StandardOpenOption.READ);
         Set<StandardOpenOption> writePermissions = Collections.singleton(StandardOpenOption.WRITE);
@@ -415,8 +329,8 @@ public class NativeImageResourceFileSystemProviderTest {
         // 1. Creating new file system.
         FileSystem fileSystem = createNewFileSystem();
 
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
-        Path resourceFile2 = resourceNameToPath(RESOURCE_FILE_2);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
+        Path resourceFile2 = resourceNameToPath(RESOURCE_FILE_2, true);
 
         // 2. Creating new directory.
         Path newDirectory = fileSystem.getPath(NEW_DIRECTORY);
@@ -515,7 +429,7 @@ public class NativeImageResourceFileSystemProviderTest {
         FileSystem fileSystem = createNewFileSystem();
 
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         try {
             // 2. Reading file attributes.
@@ -567,7 +481,7 @@ public class NativeImageResourceFileSystemProviderTest {
     public void writingFileAttributes() {
         // 1. Creating new file system.
         FileSystem fileSystem = createNewFileSystem();
-        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1);
+        Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         try {
             // 2. Writing file attributes.
@@ -625,29 +539,7 @@ public class NativeImageResourceFileSystemProviderTest {
             Assert.fail("Creating a new URL from the ExternalForm of another has to work: " + e.getMessage());
         }
 
-        try {
-            boolean compareResult = compareTwoURLs(thirdEntry, thirdEntryFromExternalForm);
-            Assert.assertTrue("Contents of original URL and one created from originals ExternalForm must be the same", compareResult);
-        } catch (IOException e) {
-            Assert.fail("Contents of original URL and one created from originals ExternalForm must be the same: " + e);
-        }
+        boolean compareResult = compareTwoURLs(thirdEntry, thirdEntryFromExternalForm);
+        Assert.assertTrue("Contents of original URL and one created from originals ExternalForm must be the same", compareResult);
     }
-
-    @Test
-    public void noCanonicalizationInGetResource() {
-        Class<?> klass = NativeImageResourceFileSystemProviderTest.class;
-        URL url = klass.getResource(RESOURCE_DIR + "/");
-        Assert.assertNotNull(url);
-        Assert.assertTrue(url.toString().endsWith("/"));
-        url = klass.getResource(RESOURCE_DIR);
-        Assert.assertNotNull(url);
-        Assert.assertFalse(url.toString().endsWith("/"));
-        url = klass.getResource(RESOURCE_DIR + "/./");
-        Assert.assertNull(url);
-        url = klass.getResource(RESOURCE_FILE_1);
-        Assert.assertNotNull(url);
-        url = klass.getResource(RESOURCE_FILE_1 + "/");
-        Assert.assertNull(url);
-    }
-
 }

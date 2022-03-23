@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -93,4 +93,8 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
         return cached ? X86_64VAListPointerWrapperFactoryNodeGen.create() : X86_64VAListPointerWrapperFactoryNodeGen.getUncached();
     }
 
+    @Override
+    public OS getOS() {
+        return OS.Darwin;
+    }
 }

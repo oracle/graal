@@ -96,4 +96,14 @@ public class LLVMAlias extends LLVMSymbol {
     public LLVMElemPtrSymbol asElemPtrExpression() {
         return target.asElemPtrExpression();
     }
+
+    @Override
+    public LLVMThreadLocalSymbol asThreadLocalSymbol() {
+        return target.asThreadLocalSymbol();
+    }
+
+    @Override
+    public boolean isThreadLocalSymbol() {
+        return target.isThreadLocalSymbol();
+    }
 }

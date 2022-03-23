@@ -7,8 +7,7 @@ permalink: /docs/getting-started/container-images/
 
 ## GraalVM Community Images
 
-Containers can simplify application deployment and development.
-To support container-based development, GraalVM Community container images for each release are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
+To support container-based development, GraalVM Community container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 Learn here how to start using GraalVM Community images for Docker containers.
 
 You can pull a package by name or by name and version tag. To install GraalVM JDK from the command line, use:
@@ -21,7 +20,7 @@ Alternatively, use GraalVM JDK as base image in [Dockerfile](https://docs.docker
 FROM ghcr.io/graalvm/jdk:java17-<version>
 ```
 
-There are different GraalVM Community container images provided depending on the architecture and the Java version.
+There are different images provided depending on the  platforms, the architecture and the Java version.
 GraalVM binaries are built for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit systems.
 The images are multi-arch (`aarch64` or `amd64` will be pulled depending on Docker host architecture), and tagged with the format `ghcr.io/graalvm/IMAGE_NAME:version`.
 The version tag defines the level of specificity.

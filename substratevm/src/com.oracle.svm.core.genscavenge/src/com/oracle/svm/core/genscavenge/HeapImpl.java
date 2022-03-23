@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -56,6 +57,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
@@ -682,6 +684,14 @@ public final class HeapImpl extends Heap {
             }
         }
         return allocatedBytes.rawValue();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
+    public void dirtyAllReferencesOf(Object obj) {
+        if (obj != null) {
+            ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
+        }
     }
 
     static Pointer getImageHeapStart() {

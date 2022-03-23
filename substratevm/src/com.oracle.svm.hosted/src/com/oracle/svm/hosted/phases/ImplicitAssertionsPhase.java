@@ -185,6 +185,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
         } else {
             invokeNode = (InvokeNode) constructorInvoke;
         }
+        replacement.setNodeSourcePosition(invokeNode.getNodeSourcePosition());
         graph.replaceFixedWithFixed(invokeNode, replacement);
         graph.replaceFixedWithFloating(exceptionAllocation, replacement);
     }

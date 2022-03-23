@@ -134,6 +134,7 @@ import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
@@ -222,6 +223,7 @@ public class CompileQueue {
     private volatile boolean inliningProgress;
 
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
+    private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
 
     public abstract static class CompileReason {
         /**
@@ -408,10 +410,8 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
-            // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
-            // Checking @RestrictHeapAccess annotations does not take long enough to justify a
-            // timer.
+            // Checking annotations does not take long enough to justify a timer.
+            UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
             /*
@@ -423,12 +423,8 @@ public class CompileQueue {
                 method.wrapped.setAnalyzedGraph(null);
             }
 
-            if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
-                    inlineTrivialMethods(debug);
-                }
-            } else {
-                reporter.printInliningSkipped();
+            try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
+                inlineTrivialMethods(debug);
             }
 
             assert suitesNotCreated();
@@ -625,7 +621,6 @@ public class CompileQueue {
     protected void checkTrivial(HostedMethod method) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
             method.compilationInfo.setTrivialMethod(true);
-            inliningProgress = true;
         }
     }
 
@@ -710,7 +705,7 @@ public class CompileQueue {
         }
     }
 
-    private static boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
+    private boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
         if (invoke.getInvokeKind().isDirect()) {
             HostedMethod singleCallee = (HostedMethod) invoke.callTarget().targetMethod();
             if (makeInlineDecision(invoke, singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
@@ -726,14 +721,14 @@ public class CompileQueue {
         return false;
     }
 
-    private static boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
+    private boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
         if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
             return false;
         }
         if (callee.shouldBeInlined() || callerAnnotatedWith(invoke, AlwaysInlineAllCallees.class)) {
             return true;
         }
-        if (callee.compilationInfo.isTrivialMethod()) {
+        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
             return true;
         }
         AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
@@ -1113,6 +1108,9 @@ public class CompileQueue {
                 assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
+                if (!parseOnce) {
+                    UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+                }
 
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
@@ -1179,7 +1177,7 @@ public class CompileQueue {
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
 
-        if (SubstrateOptions.optimizationLevel() <= 0 && !method.isDeoptTarget()) {
+        if (SubstrateOptions.optimizationLevel() == OptimizationLevel.O0 && !method.isDeoptTarget()) {
             /*
              * Disabling liveness analysis preserves the values of local variables beyond the
              * bytecode-liveness. This greatly helps debugging. When local variable numbers are

@@ -32,6 +32,7 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
@@ -45,6 +46,7 @@ import jdk.vm.ci.meta.JavaKind.FormatWithToString;
  * {@linkplain #registerDependency() registered} dependencies to be invalidated.
  */
 public final class OptimizedAssumption extends AbstractAssumption implements FormatWithToString {
+
     /**
      * Reference to machine code that is dependent on an assumption.
      */
@@ -137,6 +139,14 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         super(name);
     }
 
+    private OptimizedAssumption(Object name) {
+        super(name);
+    }
+
+    static Assumption createAlwaysValid() {
+        return new OptimizedAssumption(Lazy.ALWAYS_VALID_NAME);
+    }
+
     @Override
     public void check() throws InvalidAssumptionException {
         if (!this.isValid()) {
@@ -169,6 +179,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return;
         }
 
+        if (this.name == Lazy.ALWAYS_VALID_NAME) {
+            throw new UnsupportedOperationException("Cannot invalidate this assumption - it is always valid");
+        }
+
         OptionValues engineOptions = null;
         TruffleLogger logger = null;
         boolean logStackTrace = false;
@@ -179,7 +193,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             OptimizedAssumptionDependency dependency = e.awaitDependency();
             if (dependency != null) {
                 if (reason == null) {
-                    String useName = name != null ? name : "";
+                    String useName = name != null ? name.toString() : "";
                     String useMessage = message != null ? message : "";
                     if (useName.isEmpty() && useMessage.isEmpty()) {
                         reason = "assumption invalidated";
@@ -259,6 +273,9 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         return size;
     }
 
+    private static final Consumer<OptimizedAssumptionDependency> DISCARD_DEPENDENCY = (e) -> {
+    };
+
     /**
      * Registers some dependent code with this assumption.
      *
@@ -272,6 +289,14 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
         if (isValid) {
+            if (this.name == Lazy.ALWAYS_VALID_NAME) {
+                /*
+                 * An ALWAYS_VALID assumption does not need registration, as they are by definition
+                 * always valid. If they attempted to get invalidated an error is thrown, so we can
+                 * just discard the dependency.
+                 */
+                return DISCARD_DEPENDENCY;
+            }
             if (size >= 2 * sizeAfterLastRemove) {
                 removeInvalidEntries();
             }
@@ -349,4 +374,21 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return strValue;
         }
     }
+
+    /*
+     * We use a lazy class as this is already needed when the assumption is initialized.
+     */
+    static class Lazy {
+        /*
+         * We use an Object instead of a String here to avoid accidently handing out the always
+         * valid string object in getName().
+         */
+        static final Object ALWAYS_VALID_NAME = new Object() {
+            @Override
+            public String toString() {
+                return "<always valid>";
+            }
+        };
+    }
+
 }

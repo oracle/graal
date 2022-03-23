@@ -148,12 +148,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (addModulesArgs == null) {
                     NativeImage.showError(headArg + addModulesErrorMessage);
                 }
-                if (nativeImage.config.useJavaModules()) {
-                    nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
-                    nativeImage.addAddedModules(addModulesArgs);
-                } else {
-                    NativeImage.showWarning("Ignoring unsupported module option: " + addModulesOption + " " + addModulesArgs);
-                }
+                nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
+                nativeImage.addAddedModules(addModulesArgs);
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -315,12 +311,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (addModulesArgs.isEmpty()) {
                 NativeImage.showError(headArg + addModulesErrorMessage);
             }
-            if (nativeImage.config.useJavaModules()) {
-                nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
-                nativeImage.addAddedModules(addModulesArgs);
-            } else {
-                NativeImage.showWarning("Ignoring unsupported module option: " + addModulesOption + " " + addModulesArgs);
-            }
+            nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
+            nativeImage.addAddedModules(addModulesArgs);
             return true;
         }
         if (headArg.startsWith("@") && !disableAtFiles) {

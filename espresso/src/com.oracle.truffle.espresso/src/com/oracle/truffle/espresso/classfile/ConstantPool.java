@@ -65,6 +65,7 @@ import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -77,27 +78,47 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  */
 public abstract class ConstantPool {
 
+    // @formatter:off
+    public static final byte CONSTANT_Utf8               = 1;
+    public static final byte CONSTANT_Integer            = 3;
+    public static final byte CONSTANT_Float              = 4;
+    public static final byte CONSTANT_Long               = 5;
+    public static final byte CONSTANT_Double             = 6;
+    public static final byte CONSTANT_Class              = 7;
+    public static final byte CONSTANT_String             = 8;
+    public static final byte CONSTANT_Fieldref           = 9;
+    public static final byte CONSTANT_Methodref          = 10;
+    public static final byte CONSTANT_InterfaceMethodref = 11;
+    public static final byte CONSTANT_NameAndType        = 12;
+    public static final byte CONSTANT_MethodHandle       = 15;
+    public static final byte CONSTANT_MethodType         = 16;
+    public static final byte CONSTANT_Dynamic            = 17;
+    public static final byte CONSTANT_InvokeDynamic      = 18;
+    public static final byte CONSTANT_Module             = 19;
+    public static final byte CONSTANT_Package            = 20;
+    // @formatter:on
+
     private static final DebugCounter UTF8_ENTRY_COUNT = DebugCounter.create("UTF8 Constant Pool entries");
 
     public enum Tag {
         INVALID(0),
-        UTF8(1),
-        INTEGER(3, true),
-        FLOAT(4, true),
-        LONG(5, true),
-        DOUBLE(6, true),
-        CLASS(7, true),
-        STRING(8, true),
-        FIELD_REF(9),
-        METHOD_REF(10),
-        INTERFACE_METHOD_REF(11),
-        NAME_AND_TYPE(12),
-        METHODHANDLE(15, true),
-        METHODTYPE(16, true),
-        DYNAMIC(17, true),
-        INVOKEDYNAMIC(18),
-        MODULE(19),
-        PACKAGE(20);
+        UTF8(CONSTANT_Utf8),
+        INTEGER(CONSTANT_Integer, true),
+        FLOAT(CONSTANT_Float, true),
+        LONG(CONSTANT_Long, true),
+        DOUBLE(CONSTANT_Double, true),
+        CLASS(CONSTANT_Class, true),
+        STRING(CONSTANT_String, true),
+        FIELD_REF(CONSTANT_Fieldref),
+        METHOD_REF(CONSTANT_Methodref),
+        INTERFACE_METHOD_REF(CONSTANT_InterfaceMethodref),
+        NAME_AND_TYPE(CONSTANT_NameAndType),
+        METHODHANDLE(CONSTANT_MethodHandle, true),
+        METHODTYPE(CONSTANT_MethodType, true),
+        DYNAMIC(CONSTANT_Dynamic, true),
+        INVOKEDYNAMIC(CONSTANT_InvokeDynamic),
+        MODULE(CONSTANT_Module),
+        PACKAGE(CONSTANT_Package);
 
         private final byte value;
         private final boolean loadable;
@@ -178,18 +199,27 @@ public abstract class ConstantPool {
     static @JavaType(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_VerifyError == null) {
+            throw EspressoError.fatal("VerifyError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
     public static @JavaType(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_ClassFormatError == null) {
+            throw EspressoError.fatal("ClassFormatError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
     }
 
     static @JavaType(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
         CompilerDirectives.transferToInterpreter();
         Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_NoClassDefFoundError == null) {
+            throw EspressoError.fatal("NoClassDefFoundError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 

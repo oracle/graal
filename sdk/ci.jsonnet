@@ -21,9 +21,9 @@
   },
 
   builds: [
-    common.linux_amd64  + common.oraclejdk11 + sdk_gate + common.eclipse + common.jdt + sdk_unittest,
-    common.linux_amd64  + common.oraclejdk17 + sdk_gate + common.eclipse + common.jdt + sdk_unittest,
-    common.darwin_amd64 + common.oraclejdk11 + sdk_gate + sdk_unittest,
-    common.darwin_amd64 + common.oraclejdk17 + sdk_gate + sdk_unittest,
+    common.linux_amd64  + common.oraclejdk11 + sdk_gate + common.eclipse + common.jdt + sdk_unittest + common.mach5_target,
+    common.linux_amd64  + common.oraclejdk17 + sdk_gate + common.eclipse + common.jdt + sdk_unittest + common.mach5_target,
+    common.darwin_amd64 + common.oraclejdk11 + sdk_gate + sdk_unittest + common.mach5_target,
+    common.darwin_amd64 + common.oraclejdk17 + sdk_gate + sdk_unittest + common.mach5_target,
   ]
 }

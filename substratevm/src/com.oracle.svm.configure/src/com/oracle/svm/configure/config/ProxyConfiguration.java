@@ -31,13 +31,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 
-public class ProxyConfiguration implements ConfigurationBase {
+public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public ProxyConfiguration() {
@@ -46,6 +48,40 @@ public class ProxyConfiguration implements ConfigurationBase {
     public ProxyConfiguration(ProxyConfiguration other) {
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
+        }
+    }
+
+    @Override
+    public ProxyConfiguration copy() {
+        return new ProxyConfiguration(this);
+    }
+
+    @Override
+    protected void merge(ProxyConfiguration other) {
+        for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
+            interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
+        }
+    }
+
+    @Override
+    protected void intersect(ProxyConfiguration other) {
+        interfaceLists.retainAll(other.interfaceLists);
+    }
+
+    @Override
+    protected void removeIf(Predicate predicate) {
+        interfaceLists.removeIf(predicate::testProxyInterfaceList);
+    }
+
+    @Override
+    public void subtract(ProxyConfiguration other) {
+        interfaceLists.removeAll(other.interfaceLists);
+    }
+
+    @Override
+    public void mergeConditional(ConfigurationCondition condition, ProxyConfiguration other) {
+        for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
+            add(condition, new ArrayList<>(interfaceList.getElement()));
         }
     }
 
@@ -59,10 +95,6 @@ public class ProxyConfiguration implements ConfigurationBase {
 
     public boolean contains(ConfigurationCondition condition, String... interfaces) {
         return contains(condition, Arrays.asList(interfaces));
-    }
-
-    public void removeAll(ProxyConfiguration other) {
-        interfaceLists.removeAll(other.interfaceLists);
     }
 
     @Override
@@ -93,6 +125,11 @@ public class ProxyConfiguration implements ConfigurationBase {
     }
 
     @Override
+    public ConfigurationParser createParser() {
+        return new ProxyConfigurationParser(interfaceLists::add, true);
+    }
+
+    @Override
     public boolean isEmpty() {
         return interfaceLists.isEmpty();
     }
@@ -107,4 +144,9 @@ public class ProxyConfiguration implements ConfigurationBase {
         return l1.size() - l2.size();
     }
 
+    public interface Predicate {
+
+        boolean testProxyInterfaceList(ConditionalElement<List<String>> conditionalElement);
+
+    }
 }

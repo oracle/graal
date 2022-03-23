@@ -378,6 +378,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         return jniEnv.getContext();
     }
 
+    @Override
+    protected String getName() {
+        return "VM";
+    }
+
     public @Pointer TruffleObject getJavaVM() {
         try {
             @Pointer

@@ -99,7 +99,11 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             try {
                 clazz = getJdkProxyClass(classLoader, intfs);
             } catch (Throwable e) {
-                return e;
+                try {
+                    clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
+                } catch (Throwable e2) {
+                    return e;
+                }
             }
 
             /*
@@ -129,6 +133,21 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
             return clazz;
         });
+    }
+
+    private static ClassLoader getCommonClassLoader(Class<?>... intfs) {
+        ClassLoader classLoader = null;
+        for (Class<?> intf : intfs) {
+            ClassLoader intfLoader = intf.getClassLoader();
+            if (classLoader == null) {
+                classLoader = intfLoader;
+            } else {
+                if (intfLoader != classLoader) {
+                    return null;
+                }
+            }
+        }
+        return classLoader;
     }
 
     @Override

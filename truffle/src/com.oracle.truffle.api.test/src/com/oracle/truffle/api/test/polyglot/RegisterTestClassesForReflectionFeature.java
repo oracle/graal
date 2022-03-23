@@ -55,7 +55,14 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
     private static final Class<?>[] TEST_CLASSES = {
                     ValueHostInteropTest.class,
                     ValueHostConversionTest.class,
-                    ValueAssert.class
+                    ValueAssert.class,
+                    ValueAPITest.class,
+                    ValueScopingTest.class,
+                    PolyglotExceptionTest.class,
+                    LanguageSPIHostInteropTest.class,
+                    HostAccessTest.class,
+                    ExposeToGuestTest.class,
+                    ContextAPITest.class
     };
 
     private static void registerClass(Class<?> clazz) {

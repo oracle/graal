@@ -81,6 +81,7 @@ final class LanguageAccessor extends Accessor {
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
+    static final ExceptionSupport EXCEPTIONS = ACCESSOR.exceptionSupport();
 
     private LanguageAccessor() {
     }
@@ -99,10 +100,6 @@ final class LanguageAccessor extends Accessor {
 
     static InteropSupport interopAccess() {
         return ACCESSOR.interopSupport();
-    }
-
-    static ExceptionSupport exceptionAccess() {
-        return ACCESSOR.exceptionSupport();
     }
 
     static IOSupport ioAccess() {

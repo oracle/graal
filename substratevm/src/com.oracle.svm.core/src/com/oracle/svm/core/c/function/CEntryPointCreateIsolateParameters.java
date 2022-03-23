@@ -68,7 +68,7 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
     /* fields below: version 3 */
 
     @CField("pkey")
-    void setProtectionKey(int pkey);
+    void setProtectionKey(int key);
 
     @CField("pkey")
     int protectionKey();

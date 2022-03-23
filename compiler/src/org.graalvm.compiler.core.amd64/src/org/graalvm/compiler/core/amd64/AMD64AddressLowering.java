@@ -155,7 +155,7 @@ public class AMD64AddressLowering extends AddressLowering {
                 if (base == ret.getBase()) {
                     ret.setBase(originalBase);
                 } else if (ret.getBase() != null) {
-                    ret.setBase(graph.maybeAddOrUnique(NegateNode.create(ret.getBase(), NodeView.DEFAULT)));
+                    ret.setBase(graph.addOrUnique(NegateNode.create(ret.getBase(), NodeView.DEFAULT)));
                 }
             }
 
@@ -163,7 +163,7 @@ public class AMD64AddressLowering extends AddressLowering {
                 if (index == ret.getIndex()) {
                     ret.setIndex(originalIndex);
                 } else if (ret.getIndex() != null) {
-                    ret.setIndex(graph.maybeAddOrUnique(NegateNode.create(ret.getIndex(), NodeView.DEFAULT)));
+                    ret.setIndex(graph.addOrUnique(NegateNode.create(ret.getIndex(), NodeView.DEFAULT)));
                 }
             }
             return improved;
@@ -175,7 +175,7 @@ public class AMD64AddressLowering extends AddressLowering {
 
     private static ValueNode considerNegation(StructuredGraph graph, ValueNode value, boolean negate) {
         if (negate && value != null) {
-            return graph.maybeAddOrUnique(NegateNode.create(value, NodeView.DEFAULT));
+            return graph.addOrUnique(NegateNode.create(value, NodeView.DEFAULT));
         }
         return value;
     }

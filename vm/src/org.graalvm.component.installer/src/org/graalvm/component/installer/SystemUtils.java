@@ -180,6 +180,10 @@ public class SystemUtils {
         }
     }
 
+    public static boolean nonBlankString(String string) {
+        return string != null && !string.isBlank();
+    }
+
     /**
      * Creates a proper {@link Path} from string representation. The string representation uses
      * <b>forward slashes</b> to delimit fileName components.

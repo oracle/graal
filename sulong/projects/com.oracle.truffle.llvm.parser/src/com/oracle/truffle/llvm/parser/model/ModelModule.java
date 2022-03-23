@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,6 +59,7 @@ public final class ModelModule {
     private final ArrayList<FunctionDeclaration> declares = new ArrayList<>();
     private final ArrayList<FunctionDefinition> defines = new ArrayList<>();
     private final ArrayList<TargetInformation> targetInfo = new ArrayList<>();
+    private final ArrayList<String> sectionNames = new ArrayList<>();
     private final HashMap<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
     private final HashMap<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
     private final HashMap<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
@@ -115,6 +116,14 @@ public final class ModelModule {
 
     public void addTargetInformation(TargetInformation info) {
         targetInfo.add(info);
+    }
+
+    public void addSectionName(String sectionName) {
+        sectionNames.add(sectionName);
+    }
+
+    public List<String> getSectionNames() {
+        return sectionNames;
     }
 
     public List<GlobalVariable> getGlobalVariables() {

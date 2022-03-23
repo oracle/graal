@@ -88,12 +88,18 @@
   "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
+  "labsjdk-ce-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-11-llvm"] }},
+  "labsjdk-ee-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-11-llvm"] }},
+  "labsjdk-ce-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
+  "labsjdk-ee-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
 
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
+  labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
+  labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
 
 
   // Hardware definitions
@@ -123,9 +129,15 @@
 
   linux_amd64::               self.linux               + self.amd64,
   darwin_amd64::              self.darwin              + self.amd64,
+  darwin_aarch64::            self.darwin              + self.aarch64 + {
+      # only needed until GR-22580 is resolved?
+      python_version: 3,
+  },
   windows_amd64::             self.windows             + self.amd64,
   windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
   linux_aarch64::             self.linux               + self.aarch64,
+
+  mach5_target:: {targets+: ["mach5"]},
 
   // Utils
   disable_proxies:: {

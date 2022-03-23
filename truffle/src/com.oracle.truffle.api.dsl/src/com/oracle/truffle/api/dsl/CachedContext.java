@@ -53,7 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
  * @deprecated in 21.3, use static final context references instead. See {@link ContextReference}
  *             for the new intended usage.
  */
-@Deprecated
+@Deprecated(since = "21.3")
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface CachedContext {
@@ -63,7 +63,7 @@ public @interface CachedContext {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link ContextReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     @SuppressWarnings("rawtypes")
     Class<? extends TruffleLanguage> value();
 

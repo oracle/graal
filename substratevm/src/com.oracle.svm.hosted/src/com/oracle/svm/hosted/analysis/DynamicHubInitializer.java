@@ -24,17 +24,14 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
-import java.lang.reflect.MalformedParameterizedTypeException;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -48,9 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -61,7 +56,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class DynamicHubInitializer {
 
@@ -71,18 +65,13 @@ public class DynamicHubInitializer {
     private final UnsupportedFeatures unsupportedFeatures;
     private final ConstantReflectionProvider constantReflection;
 
-    private final Map<GenericInterfacesEncodingKey, Type[]> genericInterfacesMap;
-    private final Map<AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap;
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
     private final Field dynamicHubClassInitializationInfoField;
     private final Field dynamicHubArrayHubField;
     private final Field dynamicHubEnclosingClassField;
     private final Field dynamicHubInterfacesEncodingField;
-    private final Field dynamicHubAnnotationsEncodingField;
     private final Field dynamicHubAnnotationsEnumConstantsReferenceField;
-    private final Field dynamicHubAnnotatedSuperInfoField;
-    private final Field dynamicHubGenericInfoField;
 
     public DynamicHubInitializer(BigBang bb) {
         this.bb = bb;
@@ -91,18 +80,13 @@ public class DynamicHubInitializer {
         this.unsupportedFeatures = bb.getUnsupportedFeatures();
         this.constantReflection = bb.getConstantReflectionProvider();
 
-        this.genericInterfacesMap = new ConcurrentHashMap<>();
-        this.annotatedInterfacesMap = new ConcurrentHashMap<>();
         this.interfacesEncodings = new ConcurrentHashMap<>();
 
         dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
         dynamicHubEnclosingClassField = ReflectionUtil.lookupField(DynamicHub.class, "enclosingClass");
         dynamicHubInterfacesEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
-        dynamicHubAnnotationsEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "annotationsEncoding");
         dynamicHubAnnotationsEnumConstantsReferenceField = ReflectionUtil.lookupField(DynamicHub.class, "enumConstantsReference");
-        dynamicHubAnnotatedSuperInfoField = ReflectionUtil.lookupField(DynamicHub.class, "annotatedSuperInfo");
-        dynamicHubGenericInfoField = ReflectionUtil.lookupField(DynamicHub.class, "genericInfo");
     }
 
     public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
@@ -118,11 +102,8 @@ public class DynamicHubInitializer {
         if (hub.getClassInitializationInfo() == null) {
             buildClassInitializationInfo(heapScanner, type, hub);
         }
-        if (hub.getGenericInfo() == null) {
-            fillGenericInfo(heapScanner, type, hub);
-        }
-        if (hub.getAnnotatedSuperInfo() == null) {
-            fillAnnotatedSuperInfo(heapScanner, type, hub);
+        if (hub.getSignature() == null) {
+            fillSignature(type, hub);
         }
 
         if (type.getJavaKind() == JavaKind.Object) {
@@ -144,28 +125,6 @@ public class DynamicHubInitializer {
             if (hub.getInterfacesEncoding() == null) {
                 fillInterfaces(type, hub);
                 heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
-            }
-
-            /*
-             * Support for Java annotations.
-             * 
-             * The annotation encodings must be updated after each analysis iteration since only the
-             * annotation types marked as reachable are included.
-             */
-            try {
-                /*
-                 * Get the annotations from the wrapped type since AnalysisType.getAnnotations()
-                 * defends against JDK-7183985, and we want to get the original behavior.
-                 */
-                Annotation[] annotations = type.getWrappedWithoutResolve().getAnnotations();
-                Annotation[] declared = type.getWrappedWithoutResolve().getDeclaredAnnotations();
-                Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(metaAccess, annotations, declared, hub.getAnnotationsEncoding());
-                if (hub.setAnnotationsEncoding(annotationsEncoding)) {
-                    heapScanner.rescanField(hub, dynamicHubAnnotationsEncodingField);
-                }
-            } catch (ArrayStoreException e) {
-                /* If we hit JDK-7183985 just encode the exception. */
-                hub.setAnnotationsEncoding(e);
             }
 
             /*
@@ -274,172 +233,17 @@ public class DynamicHubInitializer {
         CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
     }
 
-    static class GenericInterfacesEncodingKey {
-        final Type[] interfaces;
+    private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
 
-        GenericInterfacesEncodingKey(Type[] aInterfaces) {
-            this.interfaces = aInterfaces;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof GenericInterfacesEncodingKey && Arrays.equals(interfaces, ((GenericInterfacesEncodingKey) obj).interfaces);
-        }
-
-        @Override
-        public int hashCode() {
-            return Arrays.hashCode(interfaces);
-        }
-    }
-
-    /** Modified copy of {@link Arrays#equals(Object[], Object[])}. */
-    private static boolean shallowEquals(Object[] a, Object[] a2) {
-        if (a == a2) {
-            return true;
-        } else if (a == null || a2 == null) {
-            return false;
-        }
-        int length = a.length;
-        if (a2.length != length) {
-            return false;
-        }
-        for (int i = 0; i < length; i++) {
-            /* Modification: use reference equality. */
-            if (a[i] != a2[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /** Modified copy of {@link Arrays#hashCode(Object[])}. */
-    private static int shallowHashCode(Object[] a) {
-        if (a == null) {
-            return 0;
-        }
-        int result = 1;
-
-        for (Object element : a) {
-            /* Modification: use identity hash code. */
-            result = 31 * result + System.identityHashCode(element);
-        }
-        return result;
-    }
-
-    static class AnnotatedInterfacesEncodingKey {
-        final AnnotatedType[] interfaces;
-
-        AnnotatedInterfacesEncodingKey(AnnotatedType[] aInterfaces) {
-            this.interfaces = aInterfaces;
-        }
-
-        /*
-         * After JDK 11, the implementation of hashCode() and equals() for the implementation
-         * classes of annotated types can lead to the reification of generic bounds, which can lead
-         * to TypeNotPresentException when the class path is incomplete. Therefore, we use shallow
-         * implementations that only depend on the identity hash code and reference equality. This
-         * is the same behavior as on JDK 8 and JDK 11 anyway.
-         */
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof AnnotatedInterfacesEncodingKey && shallowEquals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
-        }
-
-        @Override
-        public int hashCode() {
-            return shallowHashCode(interfaces);
-        }
-    }
-
-    private void fillGenericInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
+    private static void fillSignature(AnalysisType type, DynamicHub hub) {
         Class<?> javaClass = type.getJavaClass();
-
-        TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
-
-        Type[] allGenericInterfaces;
+        String signature;
         try {
-            allGenericInterfaces = javaClass.getGenericInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
-            /*
-             * Loading generic interfaces can fail due to missing types. Ignore the exception and
-             * return an empty array.
-             */
-            allGenericInterfaces = new Type[0];
+            signature = (String) getSignature.invoke(javaClass);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw GraalError.shouldNotReachHere();
         }
-
-        Type[] genericInterfaces = Arrays.stream(allGenericInterfaces).filter(this::isTypeAllowed).toArray(Type[]::new);
-        Type[] cachedGenericInterfaces;
-        try {
-            cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
-            /*
-             * Computing the hash code of generic interfaces can fail due to missing types. Ignore
-             * the exception and proceed without caching. De-duplication of generic interfaces is an
-             * optimization and not necessary for correctness.
-             */
-            cachedGenericInterfaces = genericInterfaces;
-        }
-
-        Type genericSuperClass;
-        try {
-            genericSuperClass = javaClass.getGenericSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
-            /*
-             * Loading the generic super class can fail due to missing types. Ignore the exception
-             * and return null.
-             */
-            genericSuperClass = null;
-        }
-        if (!isTypeAllowed(genericSuperClass)) {
-            genericSuperClass = null;
-        }
-        hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
-        heapScanner.rescanField(hub, dynamicHubGenericInfoField);
-    }
-
-    private void fillAnnotatedSuperInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
-        Class<?> javaClass = type.getJavaClass();
-
-        AnnotatedType annotatedSuperclass;
-        try {
-            annotatedSuperclass = javaClass.getAnnotatedSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
-            /*
-             * Loading the annotated super class can fail due to missing types. Ignore the exception
-             * and return null.
-             */
-            annotatedSuperclass = null;
-        }
-        if (annotatedSuperclass != null && !isTypeAllowed(annotatedSuperclass.getType())) {
-            annotatedSuperclass = null;
-        }
-
-        AnnotatedType[] allAnnotatedInterfaces;
-        try {
-            allAnnotatedInterfaces = javaClass.getAnnotatedInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
-            /*
-             * Loading annotated interfaces can fail due to missing types. Ignore the exception and
-             * return an empty array.
-             */
-            allAnnotatedInterfaces = new AnnotatedType[0];
-        }
-
-        AnnotatedType[] annotatedInterfaces = Arrays.stream(allAnnotatedInterfaces)
-                        .filter(ai -> isTypeAllowed(ai.getType())).toArray(AnnotatedType[]::new);
-        AnnotatedType[] cachedAnnotatedInterfaces = annotatedInterfacesMap.computeIfAbsent(
-                        new AnnotatedInterfacesEncodingKey(annotatedInterfaces), k -> annotatedInterfaces);
-        hub.setAnnotatedSuperInfo(AnnotatedSuperInfo.factory(annotatedSuperclass, cachedAnnotatedInterfaces));
-        heapScanner.rescanField(hub, dynamicHubAnnotatedSuperInfoField);
-    }
-
-    private boolean isTypeAllowed(Type t) {
-        if (t instanceof Class) {
-            Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
-            return resolved.isPresent() && hostVM.platformSupported(resolved.get());
-        }
-        return true;
+        hub.setSignature(signature);
     }
 
     class InterfacesEncodingKey {
