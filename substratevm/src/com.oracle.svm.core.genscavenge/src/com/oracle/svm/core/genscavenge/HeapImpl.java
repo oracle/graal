@@ -30,6 +30,7 @@ import java.util.List;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
+import com.oracle.svm.core.heap.ReferenceHandler;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -466,6 +467,13 @@ public final class HeapImpl extends Heap {
     @Override
     public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
         return RememberedSet.get().createBarrierSet(metaAccess);
+    }
+
+    @Override
+    public void doReferenceHandling() {
+        if (ReferenceHandler.isExecutedManually()) {
+            ReferenceHandler.doReferenceHandling();
+        }
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "Only the GC increments the volatile field 'refListOfferCounter'.")

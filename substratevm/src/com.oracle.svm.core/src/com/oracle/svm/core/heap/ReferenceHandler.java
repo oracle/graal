@@ -39,13 +39,20 @@ import com.oracle.svm.core.util.VMError;
 public final class ReferenceHandler {
     @Fold
     public static boolean useDedicatedThread() {
-        return SubstrateOptions.UseReferenceHandlerThread.getValue() && SubstrateOptions.MultiThreaded.getValue();
+        return SubstrateOptions.AutomaticReferenceHandling.getValue() && SubstrateOptions.UseReferenceHandlerThread.getValue() && SubstrateOptions.MultiThreaded.getValue();
     }
 
-    public static void maybeProcessCurrentlyPending() {
-        if (useDedicatedThread()) {
-            return;
-        }
+    @Fold
+    public static boolean useRegularJavaThreads() {
+        return SubstrateOptions.AutomaticReferenceHandling.getValue() && (!SubstrateOptions.UseReferenceHandlerThread.getValue() || !SubstrateOptions.MultiThreaded.getValue());
+    }
+
+    @Fold
+    public static boolean isExecutedManually() {
+        return !SubstrateOptions.AutomaticReferenceHandling.getValue();
+    }
+
+    public static void doReferenceHandling() {
         /*
          * We might be running in a user thread that is close to a stack overflow, so enable the
          * yellow zone of the stack to ensure that we have sufficient stack space for enqueueing

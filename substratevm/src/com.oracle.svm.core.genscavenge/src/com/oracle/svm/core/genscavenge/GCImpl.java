@@ -1078,7 +1078,9 @@ public final class GCImpl implements GC {
      * threads for the same collection.
      */
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
-        if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
+        if (!ReferenceHandler.useRegularJavaThreads()) {
+            return;
+        } else if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
             /* No GC happened, so do not run any epilogue. */
             return;
 
@@ -1105,7 +1107,7 @@ public final class GCImpl implements GC {
         Timer refsTimer = new Timer("Enqueuing pending references and invoking internal cleaners");
         Timer timer = refsTimer.open();
         try {
-            ReferenceHandler.maybeProcessCurrentlyPending();
+            ReferenceHandler.doReferenceHandling();
         } finally {
             timer.close();
         }
