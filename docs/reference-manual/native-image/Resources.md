@@ -116,7 +116,7 @@ The following demo illustrates how to include a resource into a native executabl
 4. Build a native executable by specifying the resource path:
 
     ```shell
-    $JAVA_HOME/bin/native-image -H:IncludeResources=".*/Resource.*txt$" Fortune
+    $JAVA_HOME/bin/native-image Fortune -H:IncludeResources=".*u8$"
     ```
 
 5. Run the executable image: 
