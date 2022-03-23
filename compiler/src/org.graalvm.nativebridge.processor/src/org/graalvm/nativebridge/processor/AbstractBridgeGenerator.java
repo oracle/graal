@@ -55,7 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
@@ -77,10 +76,6 @@ abstract class AbstractBridgeGenerator {
         this.typeCache = parser.typeCache;
     }
 
-    protected final TypeMirror getType(Class<?> type) {
-        return parser.processor.getType(type);
-    }
-
     abstract void generate(DefinitionData data) throws IOException;
 
     abstract MarshallerSnippets marshallerSnippets(DefinitionData data, MarshallerData marshallerData);
@@ -98,11 +93,6 @@ abstract class AbstractBridgeGenerator {
         try (PrintWriter out = new PrintWriter(sourceFile.openWriter())) {
             out.print(content);
         }
-    }
-
-    final void reThrowAsAssertionError(CodeBuilder builder, CharSequence exceptionVariable) {
-        CodeBuilder message = new CodeBuilder(builder).invoke(exceptionVariable, "getMessage");
-        builder.lineStart("throw").space().newInstance(typeCache.assertionError, message.build(), exceptionVariable).lineEnd(";");
     }
 
     final FactoryMethodInfo generateStartPointFactory(CodeBuilder builder, DefinitionData data,
@@ -157,9 +147,7 @@ abstract class AbstractBridgeGenerator {
         return false;
     }
 
-    final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data, CodeBuilder.Parameter jniConfigVariable,
-                    boolean staticFields) {
-        String prefix = staticFields ? "" : "this.";
+    final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data) {
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             List<CharSequence> params = new ArrayList<>();
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
@@ -170,9 +158,8 @@ abstract class AbstractBridgeGenerator {
             for (AnnotationMirror annotationType : marshaller.annotations) {
                 params.add(new CodeBuilder(builder).classLiteral(annotationType.getAnnotationType()).build());
             }
-            builder.lineStart(prefix).write(marshaller.name).write(" = ");
-            CharSequence jniConfigName = jniConfigVariable == null ? "config" : jniConfigVariable.name;
-            builder.invoke(jniConfigName, "lookupMarshaller", params.toArray(new CharSequence[params.size()])).lineEnd(";");
+            builder.lineStart().write(marshaller.name).write(" = ");
+            builder.invoke("config", "lookupMarshaller", params.toArray(new CharSequence[0])).lineEnd(";");
         }
     }
 
@@ -312,7 +299,7 @@ abstract class AbstractBridgeGenerator {
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
-        return parameters.stream().map((p) -> p.name).toArray((len) -> new CharSequence[len]);
+        return parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
     }
 
     abstract static class MarshallerSnippets {
@@ -408,7 +395,7 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory && !isHSObject) {
                 DeclaredType receiverType = (DeclaredType) marshallerData.nonDefaultReceiver.asType();
                 List<CharSequence> newArgs = new ArrayList<>();
-                newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[args.size()])).build());
+                newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[0])).build());
                 newArgs.add(jniEnvFieldName);
                 args = newArgs;
             }
@@ -428,7 +415,7 @@ abstract class AbstractBridgeGenerator {
             boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
             boolean isNativeObject = types.isSubtype(marshallerData.forType, cache.nativeObject);
             if (hasGeneratedFactory && !isNativeObject) {
-                args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[args.size()])).build());
+                args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[0])).build());
             }
             CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
             if (marshallerData.customDispatchFactory != null) {
@@ -458,10 +445,10 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
                 return new CodeBuilder(builder).invoke(type,
-                                factoryMethod, args.toArray(new CharSequence[args.size()])).build();
+                                factoryMethod, args.toArray(new CharSequence[0])).build();
             } else {
                 return new CodeBuilder(builder).newInstance((DeclaredType) types.erasure(marshallerData.forType),
-                                args.toArray(new CharSequence[args.size()])).build();
+                                args.toArray(new CharSequence[0])).build();
             }
         }
 
@@ -612,7 +599,7 @@ abstract class AbstractBridgeGenerator {
     static final class CodeBuilder {
 
         private static final int INDENT_SIZE = 4;
-        private static final Comparator<TypeElement> FQN_COMPARATOR = (a, b) -> a.getQualifiedName().toString().compareTo(b.getQualifiedName().toString());
+        private static final Comparator<TypeElement> FQN_COMPARATOR = Comparator.comparing(a -> a.getQualifiedName().toString());
 
         private final CodeBuilder parent;
         private final PackageElement pkg;
@@ -786,10 +773,6 @@ abstract class AbstractBridgeGenerator {
                 write(".");
             }
             return write(memberName);
-        }
-
-        CodeBuilder memberSelect(DeclaredType receiver, CharSequence memberName, boolean brackets) {
-            return memberSelect(new CodeBuilder(this).write(receiver).build(), memberName, brackets);
         }
 
         CodeBuilder parameterizedType(DeclaredType parameterizedType, TypeMirror... actualTypeParameters) {
@@ -997,7 +980,7 @@ abstract class AbstractBridgeGenerator {
                     DeclaredType declaredType = ((DeclaredType) type);
                     List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
                     if (!typeArguments.isEmpty()) {
-                        parameterizedType(declaredType, typeArguments.toArray(new TypeMirror[typeArguments.size()]));
+                        parameterizedType(declaredType, typeArguments.toArray(new TypeMirror[0]));
                     } else {
                         write((TypeElement) declaredType.asElement());
                     }
@@ -1057,11 +1040,6 @@ abstract class AbstractBridgeGenerator {
             return new Parameter(type, name, annotations);
         }
 
-        static List<? extends Parameter> newParameters(List<? extends VariableElement> params) {
-            List<TypeMirror> parameterTypes = params.stream().map((ve) -> ve.asType()).collect(Collectors.toList());
-            return newParameters(params, parameterTypes);
-        }
-
         static List<? extends Parameter> newParameters(List<? extends VariableElement> params,
                         List<? extends TypeMirror> parameterTypes) {
             if (params.size() != parameterTypes.size()) {
@@ -1090,10 +1068,9 @@ abstract class AbstractBridgeGenerator {
 
         private static final class Scope {
 
-            private Scope parent;
-
-            private DeclaredType superClass;
-            private List<DeclaredType> superInterfaces;
+            private final Scope parent;
+            private final DeclaredType superClass;
+            private final List<DeclaredType> superInterfaces;
 
             Scope(DeclaredType superClass, List<DeclaredType> superInterfaces, Scope parent) {
                 this.superClass = superClass;

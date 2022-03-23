@@ -39,7 +39,7 @@ import java.util.Arrays;
  * @see BinaryMarshaller
  * @see Builder#registerMarshaller(Class, BinaryMarshaller)
  */
-public abstract class BinaryOutput implements Closeable {
+public abstract class BinaryOutput {
 
     /**
      * Maximum string length for string encoded by 4 bytes length followed be content.
@@ -237,13 +237,6 @@ public abstract class BinaryOutput implements Closeable {
     }
 
     /**
-     * Closes the buffer and possibly frees off-heap allocated resources.
-     */
-    @Override
-    public void close() {
-    }
-
-    /**
      * Writes the value that is represented by the given object, together with information on the
      * value's data type. Supported types are boxed Java primitive types, {@link String},
      * {@code null}, and arrays of these types.
@@ -390,7 +383,7 @@ public abstract class BinaryOutput implements Closeable {
     /**
      * A {@link BinaryOutput} backed by an off-heap memory.
      */
-    public static final class CCharPointerBinaryOutput extends BinaryOutput {
+    public static final class CCharPointerBinaryOutput extends BinaryOutput implements Closeable {
 
         private CCharPointer address;
         private int length;
@@ -436,6 +429,9 @@ public abstract class BinaryOutput implements Closeable {
             pos += len;
         }
 
+        /**
+         * Closes the buffer and frees off-heap allocated resources.
+         */
         @Override
         public void close() {
             if (unmanaged) {

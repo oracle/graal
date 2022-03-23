@@ -79,7 +79,8 @@ public final class ForeignException extends RuntimeException {
      * @param marshaller the marshaller to unmarshal the exception
      */
     public RuntimeException throwOriginalException(BinaryMarshaller<? extends Throwable> marshaller) {
-        try (BinaryInput in = BinaryInput.create(rawData)) {
+        try {
+            BinaryInput in = BinaryInput.create(rawData);
             Throwable t = marshaller.read(in);
             throw ForeignException.silenceException(RuntimeException.class, t);
         } finally {
@@ -146,10 +147,9 @@ public final class ForeignException extends RuntimeException {
      * @param marshaller the marshaller to marshall the exception
      */
     public static ForeignException forThrowable(Throwable exception, BinaryMarshaller<? super Throwable> marshaller) {
-        try (BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create()) {
-            marshaller.write(out, exception);
-            return new ForeignException(out.getArray(), UNDEFINED, false);
-        }
+        BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create();
+        marshaller.write(out, exception);
+        return new ForeignException(out.getArray(), UNDEFINED, false);
     }
 
     /**

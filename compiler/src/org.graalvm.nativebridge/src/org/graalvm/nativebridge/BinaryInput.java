@@ -26,8 +26,6 @@ package org.graalvm.nativebridge;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import java.io.Closeable;
-
 import static org.graalvm.nativebridge.BinaryOutput.LARGE_STRING_TAG;
 import static org.graalvm.nativebridge.BinaryOutput.NULL;
 import static org.graalvm.nativebridge.BinaryOutput.BYTE;
@@ -50,7 +48,7 @@ import static org.graalvm.nativebridge.BinaryOutput.bufferSize;
  * @see BinaryMarshaller
  * @see JNIConfig.Builder#registerMarshaller(Class, BinaryMarshaller)
  */
-public abstract class BinaryInput implements Closeable {
+public abstract class BinaryInput {
 
     private static final int EOF = -1;
 
@@ -303,13 +301,6 @@ public abstract class BinaryInput implements Closeable {
         }
         // The number of chars produced may be less than len
         return new String(charBuffer, 0, charCount);
-    }
-
-    /**
-     * Closes the buffer.
-     */
-    @Override
-    public final void close() {
     }
 
     /**
