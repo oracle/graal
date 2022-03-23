@@ -20,25 +20,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  sulong_ruby_downstream_test:: {
-    job:: "ruby-downstream",
-    packages+: {
-      ruby: "==2.6.3",
-      sqlite: "==3.31.0",
-    },
-    run: [
-      [
-        "mx",
-        "testdownstream",
-        "--repo",
-        "https://github.com/graalvm/truffleruby.git",
-        "--mx-command",
-        "--dynamicimports /sulong ruby_testdownstream_sulong",
-      ],
-    ],
-    timelimit: "45:00",
-  },
-
   sulong_gate_generated_sources:: {
     job: "generated-sources",
     run: [
@@ -91,9 +72,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk11-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk17-linux-amd64" },
-
-    sc.Description("Run ruby downstream tests") +
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream-jdk17-linux-amd64" },
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-linux-aarch64", timelimit: "30:00" },
 
