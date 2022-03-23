@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/Resources/
 # Accessing Resources in Native Images
 
 By default, the `native-image` tool will not integrate any of the resources which are on the classpath during the generation into the final image.
-To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or the corresponding `ClassLoader` methods) return specific resources (instead of `null`), the resources that should be accessible at image run time need to be explicitly specified. 
+To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at executable run time. 
 This can be done via a configuration file such as the following:
 
 ```json
