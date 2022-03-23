@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -218,7 +219,7 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            long startTicks = JfrGCEvents.getTicks();
+            long startTicks = JfrTicks.elapsedTicks();
             try {
                 outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
                 if (outOfMemory) {

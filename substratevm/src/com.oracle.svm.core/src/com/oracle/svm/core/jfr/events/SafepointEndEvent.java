@@ -39,12 +39,15 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
 public class SafepointEndEvent {
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(UnsignedWord safepointId, long startTick) {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || startTick == 0) {
             return;
         }
+        emit0(safepointId, startTick);
+    }
 
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static void emit0(UnsignedWord safepointId, long startTick) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.SafepointEnd)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
