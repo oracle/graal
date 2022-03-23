@@ -24,6 +24,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     job:: "ruby-downstream",
     packages+: {
       ruby: "==2.6.3",
+      sqlite: "==3.31.0",
     },
     run: [
       [
