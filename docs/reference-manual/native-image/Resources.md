@@ -35,7 +35,7 @@ native-image -H:IncludeResources="<Java regexp that matches resources to be incl
 ```
 The `-H:IncludeResources` and `-H:ExcludeResources` options can be passed several times to define more than one regexp to match or exclude resources, respectively.
 
-To see which resources get ultimately included into the image, you can enable the related logging info with `-H:Log=registerResource:`.
+To see which resources get ultimately included into the image, you can enable the related logging info with `-H:Log=registerResource:<log level>`. The `<log level>` can be in the range of `1` to `5`, from least detailed to most detailed, depending on a particular context.
 
 ### Example Usage
 
@@ -59,12 +59,9 @@ Then:
    (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
 *  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it with `-H:IncludeResources=".*/Resource.*txt$"` followed by `-H:ExcludeResources=".*/Resource2.txt$"`.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
-
-
 The following demo illustrates how to include a resource into a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix)).
 
-1.Save the following Java code into the _Fortune.java_ file:
+1. Save the following Java code into the _Fortune.java_ file:
 
     ```java
     import java.io.BufferedReader;
@@ -90,9 +87,8 @@ The following demo illustrates how to include a resource into a native executabl
         
         private void printRandomFortune() throws InterruptedException {
             int r = RANDOM.nextInt(fortunes.size()); //Pick a random number
-            //Use the random number to pick a random fortune
             String f = fortunes.get(r);  //Use the random number to pick a random fortune
-            for (char c: f.toCharArray()) {  // Print out the fortune s.l.o.w.l.y
+            for (char c: f.toCharArray()) {  // Print out the fortune
               System.out.print(c);
                 Thread.sleep(100);   
             }
@@ -103,8 +99,7 @@ The following demo illustrates how to include a resource into a native executabl
             fortune.printRandomFortune();
         }
     }
-  ```
-
+    ```
 2. Open the [_fortunes.u8_](assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
 3. Compile:
