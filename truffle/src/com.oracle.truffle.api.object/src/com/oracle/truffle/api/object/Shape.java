@@ -165,12 +165,13 @@ public abstract class Shape {
         private Class<? extends DynamicObject> layoutClass = DynamicObject.class;
         private Object dynamicType = ObjectType.DEFAULT;
         private int shapeFlags;
+        private boolean allowImplicitCastIntToDouble;
+        private boolean allowImplicitCastIntToLong;
         private boolean shared;
         private boolean propertyAssumptions;
         private Object sharedData;
         private Assumption singleContextAssumption;
         private EconomicMap<Object, Property> properties;
-        private EnumSet<Layout.ImplicitCast> allowedImplicitCasts = EnumSet.noneOf(Layout.ImplicitCast.class);
 
         Builder() {
         }
@@ -330,7 +331,7 @@ public abstract class Shape {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
 
-            Layout layout = Layout.newLayout().type(DynamicObject.class).build();
+            Layout layout = Layout.getFactory().createLayout(DynamicObject.class, 0);
 
             Location location = layout.createAllocator().constantLocation(value);
             properties.put(key, Property.create(key, location, flags));
@@ -345,11 +346,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder allowImplicitCastIntToLong(boolean allow) {
-            if (allow) {
-                this.allowedImplicitCasts.add(Layout.ImplicitCast.IntToLong);
-            } else {
-                this.allowedImplicitCasts.remove(Layout.ImplicitCast.IntToLong);
-            }
+            this.allowImplicitCastIntToLong = allow;
             return this;
         }
 
@@ -361,11 +358,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder allowImplicitCastIntToDouble(boolean allow) {
-            if (allow) {
-                this.allowedImplicitCasts.add(Layout.ImplicitCast.IntToDouble);
-            } else {
-                this.allowedImplicitCasts.remove(Layout.ImplicitCast.IntToDouble);
-            }
+            this.allowImplicitCastIntToDouble = allow;
             return this;
         }
 
@@ -384,8 +377,8 @@ public abstract class Shape {
                 flags = shapeFlags | OBJECT_PROPERTY_ASSUMPTIONS;
             }
 
-            Layout layout = Layout.newLayout().type(layoutClass).setAllowedImplicitCasts(allowedImplicitCasts).build();
-
+            int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
+            Layout layout = Layout.getFactory().createLayout(layoutClass, implicitCastFlags);
             Shape shape = layout.buildShape(dynamicType, sharedData, flags, singleContextAssumption);
 
             if (properties != null) {

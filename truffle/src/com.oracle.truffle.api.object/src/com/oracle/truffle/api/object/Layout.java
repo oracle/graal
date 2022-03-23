@@ -71,6 +71,9 @@ public abstract class Layout {
 
     private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
 
+    static final int INT_TO_DOUBLE_FLAG = 1;
+    static final int INT_TO_LONG_FLAG = 2;
+
     /**
      * Constructor for subclasses.
      *
@@ -296,13 +299,17 @@ public abstract class Layout {
     }
 
     /** @since 0.8 or earlier */
-    protected static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
+    static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
         return builder.allowedImplicitCasts;
     }
 
     /** @since 20.2.0 */
-    protected static Class<? extends DynamicObject> getType(Builder builder) {
+    static Class<? extends DynamicObject> getType(Builder builder) {
         return builder.dynamicObjectClass;
+    }
+
+    static int implicitCastFlags(EnumSet<ImplicitCast> allowedImplicitCasts) {
+        return (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
     }
 
     /**

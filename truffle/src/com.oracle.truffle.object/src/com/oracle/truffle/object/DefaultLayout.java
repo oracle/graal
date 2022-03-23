@@ -45,7 +45,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,10 +91,7 @@ class DefaultLayout extends LayoutImpl {
         }
     }
 
-    public static LayoutImpl createCoreLayout(com.oracle.truffle.api.object.Layout.Builder builder) {
-        Class<? extends DynamicObject> type = getType(builder);
-        EnumSet<ImplicitCast> allowedImplicitCasts = getAllowedImplicitCasts(builder);
-        int implicitCastFlags = implicitCastFlags(allowedImplicitCasts);
+    static LayoutImpl createCoreLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
         return getOrCreateLayout(type, implicitCastFlags);
     }
 
@@ -112,7 +108,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     static void registerLayoutClass(Class<? extends DynamicObject> type) {
-        getOrCreateLayout(type, 0);
+        createCoreLayout(type, 0);
     }
 
     @Override

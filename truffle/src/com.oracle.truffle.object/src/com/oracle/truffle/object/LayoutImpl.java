@@ -41,7 +41,6 @@
 package com.oracle.truffle.object;
 
 import java.lang.invoke.VarHandle;
-import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 
@@ -68,10 +67,6 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         this.clazz = Objects.requireNonNull(clazz);
 
         this.allowedImplicitCasts = implicitCastFlags;
-    }
-
-    protected static int implicitCastFlags(EnumSet<ImplicitCast> allowedImplicitCasts) {
-        return (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
     }
 
     /** @since 0.17 or earlier */

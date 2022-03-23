@@ -41,15 +41,11 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 
 @SuppressWarnings("deprecation")
-public class CoreLayoutFactory implements LayoutFactory {
-    public com.oracle.truffle.api.object.Layout createLayout(com.oracle.truffle.api.object.Layout.Builder layoutBuilder) {
-        return DefaultLayout.createCoreLayout(layoutBuilder);
-    }
+public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFactory {
 
     public final Property createProperty(Object id, Location location) {
         return createProperty(id, location, 0);
@@ -69,5 +65,9 @@ public class CoreLayoutFactory implements LayoutFactory {
 
     protected void registerLayoutClass(Class<? extends DynamicObject> subclass) {
         DefaultLayout.registerLayoutClass(subclass);
+    }
+
+    public com.oracle.truffle.api.object.Layout createLayout(Class<? extends DynamicObject> layoutClass, int implicitCastFlags) {
+        return DefaultLayout.createCoreLayout(layoutClass, implicitCastFlags);
     }
 }
