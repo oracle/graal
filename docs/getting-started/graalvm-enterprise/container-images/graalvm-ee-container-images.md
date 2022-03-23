@@ -2,10 +2,10 @@
 layout: docs
 toc_group: container-images
 link_title: Container Images
-permalink: /docs/getting-started/container-images/
+permalink: /getting-started/container-images/
 ---
 
-## GraalVM Enterprise Images
+# GraalVM Enterprise Images
 
 Oracle GraalVM Enterprise container images are published in the [Oracle Container Registry](https://container-registry.oracle.com).
 
