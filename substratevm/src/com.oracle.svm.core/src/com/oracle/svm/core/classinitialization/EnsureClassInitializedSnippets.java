@@ -34,7 +34,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
