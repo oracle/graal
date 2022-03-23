@@ -35,7 +35,7 @@ native-image -H:IncludeResources="<Java regexp that matches resources to be incl
 ```
 The `-H:IncludeResources` and `-H:ExcludeResources` options can be passed several times to define more than one regexp to match or exclude resources, respectively.
 
-To see which resources get ultimately included into the image, you can enable the related logging info with `-H:Log=registerResource:<log level>`. The `<log level>` can be in the range of `1` to `5`, from least detailed to most detailed, depending on a particular context.
+To see which resources are included in the native executable, use the option `-H:Log=registerResource:<log level>`. The `<log level>` must be in the range from `1` to `5`, from least detailed to most detailed.
 
 ### Example Usage
 
