@@ -46,7 +46,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, AVXSize maxUsedVectorSize, AVXSize maxSupportedVectorSize) {
         super(c);
 
-        assert isXMM(maxUsedVectorSize) && isXMM(maxSupportedVectorSize);
+        assert isXMMOrGreater(maxUsedVectorSize) && isXMMOrGreater(maxSupportedVectorSize);
 
         if (maxUsedVectorSize.fitsWithin(maxSupportedVectorSize)) {
             this.vectorSize = maxUsedVectorSize;
@@ -59,7 +59,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         return supports(tool.target(), CPUFeature.AVX512VL) && supports(tool.target(), CPUFeature.AVX512BW) && supports(tool.target(), CPUFeature.BMI2);
     }
 
-    private boolean isXMM(AVXSize size) {
+    private static boolean isXMMOrGreater(AVXSize size) {
         return size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM;
     }
 

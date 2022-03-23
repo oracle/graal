@@ -132,7 +132,8 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         Label labelDone = new Label();
         Label labelWhileHead = new Label();
         Label labelCompareWideVectorsLoopFailed = new Label(); // used only _LP64 && AVX3
-        int stride, stride2;
+        int stride;
+        int stride2;
         int adrStride = -1;
         int adrStride1 = -1;
         int adrStride2 = -1;
