@@ -46,8 +46,8 @@ import com.oracle.svm.core.thread.VMOperation.SystemEffect;
  * The VM operation names are user facing as they are for example used in JFR events.
  */
 public final class VMOperationInfos {
-    @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> HostedMap = new HashMap<>();
-    @UnknownObjectField(types = String[].class) static String[] Names = new String[0];
+    @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> hostedMap = new HashMap<>();
+    @UnknownObjectField(types = String[].class) static String[] names = new String[0];
 
     @Fold
     public static VMOperationInfos singleton() {
@@ -60,14 +60,14 @@ public final class VMOperationInfos {
      */
     @Fold
     public static VMOperationInfo get(Class<? extends VMOperation> clazz, String name, SystemEffect systemEffect) {
-        synchronized (HostedMap) {
+        synchronized (hostedMap) {
             VMOperationKey key = new VMOperationKey(clazz, name);
-            VMOperationInfo result = HostedMap.get(key);
+            VMOperationInfo result = hostedMap.get(key);
             if (result == null) {
                 // Generate a unique id per (clazz, name) tuple.
-                int id = HostedMap.size();
+                int id = hostedMap.size();
                 result = new VMOperationInfo(id, clazz, name, systemEffect);
-                HostedMap.put(key, result);
+                hostedMap.put(key, result);
             }
             return result;
         }
@@ -75,14 +75,14 @@ public final class VMOperationInfos {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void cacheNames() {
-        Names = new String[HostedMap.size()];
-        for (Entry<VMOperationKey, VMOperationInfo> entry : HostedMap.entrySet()) {
-            Names[entry.getValue().getId()] = entry.getKey().getName();
+        names = new String[hostedMap.size()];
+        for (Entry<VMOperationKey, VMOperationInfo> entry : hostedMap.entrySet()) {
+            names[entry.getValue().getId()] = entry.getKey().getName();
         }
     }
 
     public static String[] getNames() {
-        return Names;
+        return names;
     }
 
     private static class VMOperationKey {

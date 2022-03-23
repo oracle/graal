@@ -476,7 +476,7 @@ public abstract class VMThreads {
      * cleanup code needs to run in the detaching thread itself. We assume that this is tolerable
      * considering the immediately following tear-down.
      */
-    public void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
+    public static void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
         DetachAllThreadsExceptCurrentOperation vmOp = new DetachAllThreadsExceptCurrentOperation();
         vmOp.enqueue();
     }
