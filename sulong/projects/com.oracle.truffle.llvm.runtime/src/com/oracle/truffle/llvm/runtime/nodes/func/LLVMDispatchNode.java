@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -85,6 +86,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @CompilationFinal private ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
 
     @Child private AOTInitHelper aotInitHelper;
+    @CompilationFinal private boolean aot;
 
     protected LLVMDispatchNode(FunctionType type, LLVMFunction llvmFunction) {
         this.type = type;
@@ -104,6 +106,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
                     llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
                 }
+                aot = true;
                 // Throw the helper AOT init node away as it is used during the AOT preparation
                 // stage only
                 aotInitHelper = null;
@@ -119,6 +122,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             } catch (UnsupportedNativeTypeException e) {
                 // ignore it
             }
+        } else {
+            aotInitHelper = new AOTInitHelper((language, root) -> {
+                aot = true;
+                aotInitHelper = null;
+            });
         }
     }
 
@@ -215,6 +223,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
                     @Cached("create()") IndirectCallNode callNode) {
+        RootCallTarget intrinsicCallTarget;
         if (aotFixedIntrinsicFunction != null && aotFixedIntrinsicFunction.getFixedCodeAssumption().isValid()) {
             // This branch cannot be factored out to another specialization guarded by
             // aotFixedIntrinsicFunction.getFixedCodeAssumption() since aotFixedIntrinsicFunction
@@ -222,9 +231,15 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             // (see AOTInitHelper). As aotFixedIntrinsicFunction is still null at that point,
             // the respective specialization would not be included in the list of AOT
             // specialization.
-            return callNode.call(aotFixedIntrinsicFunction.getFixedCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
+            intrinsicCallTarget = aotFixedIntrinsicFunction.getFixedCode().getIntrinsic(resolve).cachedCallTarget(type);
+        } else {
+            LLVMFunctionCode.Intrinsic intrinsic = descriptor.getFunctionCode().getIntrinsic(resolve);
+            // In the AOT mode, the call target must be retrieved via the slow path as it may (is?) not
+            // cached yet and caching it would generate a deopt. Most of the code parts in cachedCallTarget are beyond
+            // the TB anyway.
+            intrinsicCallTarget = aot ? intrinsic.cachedCallTargetSlowPath(type) : intrinsic.cachedCallTarget(type);
         }
-        return callNode.call(descriptor.getFunctionCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
+        return callNode.call(intrinsicCallTarget, arguments);
     }
 
     /*
