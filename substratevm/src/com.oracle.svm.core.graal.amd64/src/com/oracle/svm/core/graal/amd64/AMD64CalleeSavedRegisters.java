@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -126,7 +127,16 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      * so dynamic CPU feature checks need to be emitted for storing the XMM register sizes.
      */
     private static boolean needDynamicFeatureCheck() {
-        return AMD64CPUFeatureAccess.canUpdateCPUFeatures();
+        return AMD64CPUFeatureAccess.canUpdateCPUFeatures() && isRuntimeCompilationEnabled();
+    }
+
+    /**
+     * Returns {@code true} if there is support for run-time compilation. We are (ab)using
+     * {@link DeoptimizationSupport} for that purpose because {@code GraalSupport}, which would be
+     * more appropriate, is not visible.
+     */
+    private static boolean isRuntimeCompilationEnabled() {
+        return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
     }
 
     private final List<Register> calleeSavedXMMRegister;
