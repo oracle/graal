@@ -65,6 +65,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseFolding;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyRegexParser;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
@@ -72,6 +73,7 @@ import com.oracle.truffle.regex.util.TBitSet;
 /**
  * Implements the parsing and translating of java.util.Pattern regular expressions to ECMAScript
  * regular expressions.
+ *
  */
 public final class JavaRegexParser implements RegexParser {
 
@@ -579,28 +581,45 @@ public final class JavaRegexParser implements RegexParser {
             }
         }
 
-//        boolean isQuantifierNext = isQuantifierNext();
+        boolean isQuantifierNext = isQuantifierNext();
         int last = codepointsBuffer.get(codepointsBuffer.length() - 1);
 
-//        if (!silent) {
-//            if (isQuantifierNext) {
-//                codepointsBuffer.setLength(codepointsBuffer.length() - 1);
-//            }
+        if (!silent) {
+            if (isQuantifierNext) {
+                codepointsBuffer.setLength(codepointsBuffer.length() - 1);
+            }
 //
 //            if (getLocalFlags().isIgnoreCase()) {
 //                RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray(), inSource.getEncoding().getFullSet(), astBuilder);
 //            } else {
-//                for (int i = 0; i < codepointsBuffer.length(); i++) {
-//                    addChar(codepointsBuffer.get(i));
-//                }
+                for (int i = 0; i < codepointsBuffer.length(); i++) {
+                    addChar(codepointsBuffer.get(i));
+                }
 //            }
 //
-//            if (isQuantifierNext) {
-//                buildChar(last);
-//            }
-//        }
+            if (isQuantifierNext) {
+                buildChar(last);
+            }
+        }
 
         lastTerm = TermCategory.Atom;
+    }
+
+    /**
+     * Adds a matcher for a given character. Since case-folding (IGNORECASE flag) can be enabled, a
+     * single character in the pattern could correspond to a variety of different characters in the
+     * input.
+     *
+     * @param codepoint the character to be matched
+     */
+    private void buildChar(int codepoint) {
+        if (!silent) {
+//            if (getLocalFlags().isIgnoreCase()) {
+//                RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}, inSource.getEncoding().getFullSet(), astBuilder);
+//            } else {
+                addChar(codepoint);
+//            }
+        }
     }
 
     /**
@@ -1586,6 +1605,44 @@ public final class JavaRegexParser implements RegexParser {
                 addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
                 lastTerm = TermCategory.Quantifier;
                 break;
+        }
+    }
+
+    /**
+     * Indicates whether a quantifier is coming up next.
+     */
+    public boolean isQuantifierNext() {
+        if (atEnd()) {
+            return false;
+        }
+        switch (curChar()) {
+            case '*':
+            case '+':
+            case '?':
+                return true;
+            case '{':
+                int oldPosition = position;
+                try {
+                    advance();
+                    if (match("}") || match(",}")) {
+                        return false;
+                    } else {
+                        // lower bound
+                        getMany(JavaRegexParser::isDecDigit);
+                        // upper bound
+                        if (match(",")) {
+                            getMany(JavaRegexParser::isDecDigit);
+                        }
+                        if (!match("}")) {
+                            return false;
+                        }
+                        return true;
+                    }
+                } finally {
+                    position = oldPosition;
+                }
+            default:
+                return false;
         }
     }
 }
