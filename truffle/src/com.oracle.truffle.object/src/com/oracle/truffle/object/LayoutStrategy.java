@@ -215,44 +215,10 @@ public abstract class LayoutStrategy {
         newProperty.setSafe(store, value, oldShape, newNextShape);
     }
 
-    /** @since 0.17 or earlier */
-    protected void objectDefineProperty(DynamicObjectImpl object, Object key, Object value, int flags, com.oracle.truffle.api.object.LocationFactory locationFactory, ShapeImpl currentShape) {
-        ShapeImpl oldShape = currentShape;
-        Property oldProperty = oldShape.getProperty(key);
-        ShapeImpl newShape = defineProperty(oldShape, key, value, flags, locationFactory, oldProperty, 0);
-        if (oldShape == newShape) {
-            assert oldProperty.equals(newShape.getProperty(key));
-            oldProperty.setSafe(object, value, oldShape);
-        } else {
-            Property newProperty = newShape.getProperty(key);
-            newProperty.setSafe(object, value, oldShape, newShape);
-        }
-    }
-
     private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, long putFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
         Location location = createLocationForValue(oldShape, value, putFlags, locationFactory);
         Property property = Property.create(key, location, propertyFlags);
         return createSeparateShape(oldShape).addProperty(property);
-    }
-
-    /** @since 0.17 or earlier */
-    protected void objectRemoveProperty(DynamicObjectImpl object, Property property, ShapeImpl currentShape) {
-        ShapeImpl oldShape = currentShape;
-        ShapeImpl newShape = oldShape.removeProperty(property);
-
-        reshapeAfterDelete(object, oldShape, newShape, ShapeImpl.findCommonAncestor(oldShape, newShape));
-    }
-
-    /** @since 0.17 or earlier */
-    protected void reshapeAfterDelete(DynamicObjectImpl object, ShapeImpl oldShape, ShapeImpl newShape, ShapeImpl deletedParentShape) {
-        if (oldShape.isShared()) {
-            object.setShapeAndGrow(oldShape, newShape);
-            return;
-        }
-
-        DynamicObject original = object.cloneWithShape(oldShape);
-        object.setShapeAndResize(newShape);
-        object.copyProperties(original, deletedParentShape);
     }
 
     /** @since 0.17 or earlier */
