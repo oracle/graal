@@ -95,12 +95,17 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             protectRoData.execute(roDataBase);
         }
         LLVMContext context = LLVMContext.get(this);
-        try (TLSInitializerAccess access = context.getTLSInitializerAccess()) {
+
+        // try-with-resources is not PE-safe (blocklisted method Throwable.addSuppressed)
+        TLSInitializerAccess access = context.getTLSInitializerAccess();
+        try {
             Thread[] threads = access.getAllRunningThreads();
             for (Thread thread : threads) {
                 threadGlobalVarInit.call(thread);
             }
             access.addThreadLocalGlobalInitializer((AggregateTLGlobalInPlaceNode) threadGlobalVarInit.getCurrentRootNode());
+        } finally {
+            access.close();
         }
     }
 
