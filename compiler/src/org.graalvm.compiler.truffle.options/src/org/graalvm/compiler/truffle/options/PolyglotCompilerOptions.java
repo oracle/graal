@@ -77,7 +77,8 @@ public final class PolyglotCompilerOptions {
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
         VIRTUAL_STORE("store", "Enables virtual store warnings"),
         FRAME_INCOMPATIBLE_MERGE("frame_merge", "Enables warnings about deopts inserted for incompatible frame slot merges"),
-        TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
+        TRIVIAL_FAIL("trivial", "Enables trivial fail warnings"),
+        MISSING_LOOP_FREQUENCY_INFO("loop", "Enables missing loop frequency warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {

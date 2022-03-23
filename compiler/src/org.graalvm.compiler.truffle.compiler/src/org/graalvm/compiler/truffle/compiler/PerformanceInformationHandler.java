@@ -41,10 +41,16 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -197,6 +203,28 @@ public final class PerformanceInformationHandler implements Closeable {
                 String reason = "Partial evaluation could not resolve virtual instanceof to an exact type due to: " +
                                 String.format(type.isInterface() ? "interface type check: %s" : "too deep in class hierarchy: %s", type);
                 logPerformanceInfo(target, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
+            }
+        }
+        if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+            for (Loop<Block> loop : cfg.getLoops()) {
+                // check if any loop exit contains a trusted profile
+                boolean containsTrustedProfile = false;
+                for (Block exit : loop.getLoopExits()) {
+                    Block exitDom = exit.getDominator();
+                    assert loop.getBlocks().contains(exitDom);
+                    FixedNode endNode = exitDom.getEndNode();
+                    if (endNode instanceof ControlSplitNode && ProfileSource.isTrusted(((ControlSplitNode) endNode).getProfileData().getProfileSource())) {
+                        containsTrustedProfile = true;
+                        break;
+                    }
+                }
+                if (!containsTrustedProfile) {
+                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
+                                    String.format("Missing loop profile for %s.", loop),
+                                    null);
+                    warnings.add(loop.getHeader().getBeginNode());
+                }
             }
         }
 
