@@ -128,18 +128,9 @@ public abstract class Location {
      * @since 0.8 or earlier
      */
     @Deprecated(since = "22.2")
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("unused")
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
-        if (canStore(value)) {
-            store.setShapeAndGrow(oldShape, newShape);
-            try {
-                setInternal(store, value);
-            } catch (IncompatibleLocationException ex) {
-                throw new IllegalStateException();
-            }
-        } else {
-            throw incompatibleLocation();
-        }
+        throw incompatibleLocation();
     }
 
     /**
