@@ -8,12 +8,12 @@
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+5-jvmci-21.3-b11", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+7-jvmci-21.3-b12", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.15+8-jvmci-21.3-b11", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-21.3-b11", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-21.3-b11-debug", "platformspecific": true },
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.3+5-jvmci-21.3-b12", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.3+5-jvmci-21.3-b12-debug", "platformspecific": true },
     "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.3+8-jvmci-21.3-b11", "platformspecific": true },
     "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.3+8-jvmci-21.3-b11-debug", "platformspecific": true }
   },
