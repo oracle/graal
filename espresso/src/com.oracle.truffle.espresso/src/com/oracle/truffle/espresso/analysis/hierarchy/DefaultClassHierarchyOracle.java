@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,12 +37,11 @@ import java.util.ArrayList;
  */
 public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public ClassHierarchyMarker registerNewKlassVersion(ObjectKlass.KlassVersion newVersion) {
+    public void registerNewKlassVersion(ObjectKlass.KlassVersion newVersion) {
         if (newVersion.isConcrete()) {
             addImplementorToAncestors(newVersion);
             updateVirtualAndInterfaceTables(newVersion);
         }
-        return ClassHierarchyMarker.initialized;
     }
 
     @Override

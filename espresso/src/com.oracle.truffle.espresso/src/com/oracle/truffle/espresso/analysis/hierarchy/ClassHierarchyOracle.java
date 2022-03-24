@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,22 +42,15 @@ public interface ClassHierarchyOracle {
         }
     }
 
-    final class ClassHierarchyMarker {
-        static final ClassHierarchyMarker initialized = new ClassHierarchyMarker();
-
-        private ClassHierarchyMarker() {
-        }
-    }
-
     /**
      * Must be called whenever a new
      * {@link com.oracle.truffle.espresso.impl.ObjectKlass.KlassVersion klass version} is created.
      * Communicates to the oracle the changes to the class hierarchy.
      *
      * @param newVersion -- newly created klass version
-     * @return -- a marker, enforcing that this method is called on every version creation.
      */
-    ClassHierarchyMarker registerNewKlassVersion(ObjectKlass.KlassVersion newVersion);
+    default void registerNewKlassVersion(@SuppressWarnings("unused") ObjectKlass.KlassVersion newVersion) {
+    }
 
     /**
      * Must be called to initialize {@code noConcreteSubclassesAssumption} of {@code newKlass}.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,11 +32,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  */
 public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
-
-    @Override
-    public ClassHierarchyMarker registerNewKlassVersion(ObjectKlass.KlassVersion newVersion) {
-        return ClassHierarchyMarker.initialized;
-    }
 
     @Override
     public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {

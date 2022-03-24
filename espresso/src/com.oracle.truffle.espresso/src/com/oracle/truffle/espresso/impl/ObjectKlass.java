@@ -53,7 +53,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
-import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyMarker;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -1583,8 +1582,6 @@ public final class ObjectKlass extends Klass {
 
         @CompilationFinal private HierarchyInfo hierarchyInfo;
 
-        @SuppressWarnings("unused") private final ClassHierarchyMarker initializationMarker;
-
         // used to create the first version only
         private KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
             this.assumption = Truffle.getRuntime().createAssumption();
@@ -1627,7 +1624,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.initializationMarker = getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
+            getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         // used to create a redefined version
@@ -1731,7 +1728,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.initializationMarker = getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
+            getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         public KlassVersion replace(Ids<Object> ids) {
