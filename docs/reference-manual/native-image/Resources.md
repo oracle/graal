@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/Resources/
 # Accessing Resources in Native Images
 
 By default, the `native-image` tool will not integrate any of the resources which are on the classpath during the generation into the final image.
-To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at executable run time. 
+To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at run time. 
 This can be achieved using a configuration file with the following content:
 
 ```json
@@ -100,6 +100,7 @@ The following demo illustrates how to include a resource into a native executabl
         }
     }
     ```
+
 2. Open the [_fortunes.u8_](assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
 3. Compile:
@@ -186,6 +187,6 @@ will always work as expected for resources registered as described above (even i
 ### JVM Mode of Localization
 
 Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM.
-As a result of that, it causes image size increase for smaller applications such as `HelloWorld`.
+As a result of that, it causes image size increase for smaller applications such as "Hello, World!".
 Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all bundles are known ahead of time.
 In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option.
