@@ -501,6 +501,12 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return result;
     }
 
+    static void setEspressoContextVar(MethodBuilder methodBuilder, SubstitutionHelper helper) {
+        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+            methodBuilder.addBodyLine(EspressoProcessor.ESPRESSO_CONTEXT_SETTER);
+        }
+    }
+
     /**
      * Injects the meta information in the substitution call.
      */
