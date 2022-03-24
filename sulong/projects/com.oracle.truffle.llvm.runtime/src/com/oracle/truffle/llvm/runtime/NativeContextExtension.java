@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -104,6 +104,32 @@ public abstract class NativeContextExtension implements ContextExtension {
     }
 
     public abstract WellKnownNativeFunctionNode getWellKnownNativeFunction(String name, String signature);
+
+    public static final class WellKnownNativeFunctionAndSignature {
+        private final Object signature;
+        private final Object function;
+        private final Object boundSignature;
+
+        public WellKnownNativeFunctionAndSignature(Object signature, Object function, Object boundSignature) {
+            this.signature = signature;
+            this.function = function;
+            this.boundSignature = boundSignature;
+        }
+
+        public Object getSignature() {
+            return signature;
+        }
+
+        public Object getFunction() {
+            return function;
+        }
+
+        public Object getBoundSignature() {
+            return boundSignature;
+        }
+    }
+
+    public abstract WellKnownNativeFunctionAndSignature getWellKnownNativeFunctionAndSignature(String name, String signature);
 
     public abstract Object getNativeFunction(String name, String signature);
 
