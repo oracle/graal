@@ -1,1 +1,5 @@
 com.oracle.truffle.llvm.tests.services.NativeTestEngineConfig
+com.oracle.truffle.llvm.tests.services.AOTCacheStoreNativeTestEngineConfig
+com.oracle.truffle.llvm.tests.services.AOTCacheLoadNativeTestEngineConfig
+com.oracle.truffle.llvm.tests.services.AOTDebugCacheTestEngineConfig
+com.oracle.truffle.llvm.tests.services.DryRunTestEngineConfig
