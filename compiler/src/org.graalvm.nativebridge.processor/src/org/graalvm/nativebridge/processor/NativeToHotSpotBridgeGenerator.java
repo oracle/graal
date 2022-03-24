@@ -25,6 +25,7 @@
 package org.graalvm.nativebridge.processor;
 
 import java.io.IOException;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -359,8 +360,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             CharSequence marshalledParametersVar = "marshalledParameters";
             CharSequence marshalledParametersOutputVar = "marshalledParametersOutput";
             builder.lineStart().write(typeCache.jByteArray).space().write(marshalledParametersVar).lineEnd(";");
-            builder.lineStart("try ").write("(").write(typeCache.cCharPointerBinaryOutput).space().write(marshalledParametersOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "create",
-                            staticBufferVar, Integer.toString(staticBufferLength), "false").lineEnd(") {");
+            CharSequence binaryOutputInit = generateCCharPointerBinaryOutputInit(builder, marshalledParametersOutputVar, methodData, customParameters, staticBufferVar, staticBufferLength);
+            builder.lineStart("try ").write("(").write(binaryOutputInit).lineEnd(") {");
             builder.indent();
             List<? extends VariableElement> formalParameters = methodData.element.getParameters();
             List<? extends TypeMirror> formalParameterTypes = methodData.type.getParameterTypes();
@@ -495,6 +496,35 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             builder.lineStart().invoke(address, "setJObject", marshalledParametersVar).lineEnd(";");
         }
         return jniArgs;
+    }
+
+    private void generateByteArrayBinaryOutputInit(CodeBuilder builder, CharSequence marshalledResultOutputVar,
+                    MarshallerData marshallerData, CharSequence endPointResultVar, CharSequence marshalledData) {
+        CharSequence sizeVar = "marshalledResultSizeEstimate";
+        generateSizeEstimate(builder, sizeVar, Collections.singletonList(new SimpleImmutableEntry<>(marshallerData, endPointResultVar)));
+        builder.lineStart().write(typeCache.byteArrayBinaryOutput).space().write(marshalledResultOutputVar).write(" = ");
+        if (marshalledData != null) {
+            builder.write(sizeVar).write(" > ").memberSelect(marshalledData, "length", false).write(" ? ").invokeStatic(typeCache.byteArrayBinaryOutput, "create", sizeVar).write(" : ").invokeStatic(
+                            typeCache.binaryOutput, "create", marshalledData);
+        } else {
+            builder.invokeStatic(typeCache.byteArrayBinaryOutput, "create", sizeVar);
+        }
+        builder.lineEnd(";");
+    }
+
+    private CharSequence generateCCharPointerBinaryOutputInit(CodeBuilder builder, CharSequence marshalledParametersOutputVar,
+                    MethodData methodData, List<Integer> customParameters,
+                    CharSequence staticBufferVar, int staticBufferSize) {
+        CharSequence sizeVar = "marshalledParametersSizeEstimate";
+        List<? extends VariableElement> parameters = methodData.element.getParameters();
+        List<Map.Entry<MarshallerData, CharSequence>> marshallers = new ArrayList<>();
+        for (int index : customParameters) {
+            marshallers.add(new SimpleImmutableEntry<>(methodData.getParameterMarshaller(index), parameters.get(index).getSimpleName()));
+        }
+        generateSizeEstimate(builder, sizeVar, marshallers);
+        return new CodeBuilder(builder).write(typeCache.cCharPointerBinaryOutput).space().write(marshalledParametersOutputVar).write(" = ").write(sizeVar).write(" > ").write(
+                        Integer.toString(staticBufferSize)).write(" ? ").invokeStatic(typeCache.cCharPointerBinaryOutput, "create", sizeVar).write(" : ").invokeStatic(typeCache.binaryOutput, "create",
+                                        staticBufferVar, Integer.toString(staticBufferSize), "false").build();
     }
 
     private CharSequence jValueSetterName(TypeMirror type) {
@@ -700,8 +730,8 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             resultSnippet = resultMarshallerSnippets.marshallResult(builder, methodData.type.getReturnType(), resultVariableName != null ? resultVariableName : resultSnippet,
                             marshalledResultOutputVar, null);
             if (marshallerData.isCustom()) {
-                builder.lineStart().write(typeCache.byteArrayBinaryOutput).space().write(marshalledResultOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "create",
-                                marshalledDataCount > 0 ? new CharSequence[]{MARSHALLED_DATA_PARAMETER} : new CharSequence[0]).lineEnd(";");
+                assert resultVariableName != null : "For custom marshalling the end point result must be stored in a variable.";
+                generateByteArrayBinaryOutputInit(builder, marshalledResultOutputVar, marshallerData, resultVariableName, marshalledDataCount > 0 ? MARSHALLED_DATA_PARAMETER : null);
                 builder.lineStart().write(resultSnippet).lineEnd(";");
                 builder.lineStart("return ").invoke(marshalledResultOutputVar, "getArray").lineEnd(";");
             } else {

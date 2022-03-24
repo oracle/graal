@@ -46,6 +46,14 @@ public interface BinaryMarshaller<T> {
     void write(BinaryOutput output, T object);
 
     /**
+     * Estimates a size in bytes needed to marshall given object. The returned value is used to
+     * pre-allocate the {@link BinaryOutput}'s buffer.
+     */
+    default int inferSize(@SuppressWarnings("unused") T object) {
+        return 32;
+    }
+
+    /**
      * Decorates {@code forMarshaller} by a {@link BinaryMarshaller} handling {@code null} values.
      * The returned {@link BinaryMarshaller} calls the {@code forMarshaller} only non-null values.
      */

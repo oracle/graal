@@ -1215,6 +1215,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType jniMethodScope;
         final DeclaredType jniUtil;
         final DeclaredType map;
+        final DeclaredType math;
         final DeclaredType marshallerAnnotation;
         final DeclaredType nativeIsolate;
         final DeclaredType nativeObject;
@@ -1273,6 +1274,7 @@ abstract class AbstractBridgeParser {
             this.jniMethodScope = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIMethodScope");
             this.jniUtil = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIUtil");
             this.map = (DeclaredType) processor.getType("java.util.Map");
+            this.math = (DeclaredType) processor.getType("java.lang.Math");
             this.marshallerAnnotation = (DeclaredType) processor.getType("org.graalvm.nativebridge.MarshallerAnnotation");
             this.nativeIsolate = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolate");
             this.nativeObject = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObject");

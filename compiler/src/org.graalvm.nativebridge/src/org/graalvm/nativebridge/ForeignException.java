@@ -34,6 +34,7 @@ import org.graalvm.jniutils.JNI.JThrowable;
 import org.graalvm.jniutils.JNI.JValue;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
@@ -147,7 +148,7 @@ public final class ForeignException extends RuntimeException {
      * @param marshaller the marshaller to marshall the exception
      */
     public static ForeignException forThrowable(Throwable exception, BinaryMarshaller<? super Throwable> marshaller) {
-        BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create();
+        ByteArrayBinaryOutput out = ByteArrayBinaryOutput.create(marshaller.inferSize(exception));
         marshaller.write(out, exception);
         return new ForeignException(out.getArray(), UNDEFINED, false);
     }

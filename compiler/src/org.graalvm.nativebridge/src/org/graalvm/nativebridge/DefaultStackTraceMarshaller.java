@@ -26,6 +26,7 @@ package org.graalvm.nativebridge;
 
 final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceElement[]> {
 
+    private static final int STACK_TRACE_ELEMENT_SIZE_ESTIMATE = 100;
     static final DefaultStackTraceMarshaller INSTANCE = new DefaultStackTraceMarshaller();
 
     private DefaultStackTraceMarshaller() {
@@ -56,5 +57,10 @@ final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceEl
             out.writeUTF(fileName == null ? "" : fileName);
             out.writeInt(stackTraceElement.getLineNumber());
         }
+    }
+
+    @Override
+    public int inferSize(StackTraceElement[] object) {
+        return object.length * STACK_TRACE_ELEMENT_SIZE_ESTIMATE;
     }
 }

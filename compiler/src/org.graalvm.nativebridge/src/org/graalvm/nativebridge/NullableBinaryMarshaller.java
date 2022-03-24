@@ -57,4 +57,13 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
             output.writeByte(NULL);
         }
     }
+
+    @Override
+    public int inferSize(T object) {
+        if (object != null) {
+            return 1 + delegate.inferSize(object);
+        } else {
+            return 1;
+        }
+    }
 }

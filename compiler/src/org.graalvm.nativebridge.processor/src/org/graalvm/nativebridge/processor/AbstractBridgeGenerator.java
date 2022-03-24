@@ -294,6 +294,20 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<Map.Entry<MarshallerData, CharSequence>> customMarshallers) {
+        builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
+        boolean first = true;
+        for (Map.Entry<MarshallerData, CharSequence> e : customMarshallers) {
+            if (first) {
+                first = false;
+            } else {
+                builder.spaceIfNeeded().write("+").space();
+            }
+            builder.invoke(e.getKey().name, "inferSize", e.getValue());
+        }
+        builder.lineEnd(";");
+    }
+
     static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
         return (PackageElement) typeElement.getEnclosingElement();
     }

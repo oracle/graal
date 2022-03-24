@@ -26,6 +26,7 @@ package org.graalvm.nativebridge;
 
 final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
 
+    private static final int THROWABLE_SIZE_ESTIMATE = 1024;
     private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
 
     @Override
@@ -43,4 +44,9 @@ final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
         stackTraceMarshaller.write(out, object.getStackTrace());
     }
 
+    @Override
+    public int inferSize(Throwable object) {
+        // We don't use Throwable#getStackTrace as it allocates.
+        return THROWABLE_SIZE_ESTIMATE;
+    }
 }

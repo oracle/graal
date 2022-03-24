@@ -31,6 +31,7 @@ import org.graalvm.word.WordFactory;
 
 import java.io.Closeable;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * A buffer used by the {@link BinaryMarshaller} to marshall parameters and results passed by value.
@@ -296,7 +297,7 @@ public abstract class BinaryOutput {
      * Creates a new buffer backed by a byte array.
      */
     public static ByteArrayBinaryOutput create() {
-        return new ByteArrayBinaryOutput();
+        return new ByteArrayBinaryOutput(ByteArrayBinaryOutput.INITIAL_SIZE);
     }
 
     /**
@@ -305,7 +306,8 @@ public abstract class BinaryOutput {
      * {@link ByteArrayBinaryOutput#getArray()} to obtain the marshaled data.
      */
     public static ByteArrayBinaryOutput create(byte[] initialBuffer) {
-        return initialBuffer == null ? new ByteArrayBinaryOutput() : new ByteArrayBinaryOutput(initialBuffer);
+        Objects.requireNonNull(initialBuffer, "InitialBuffer must be non null.");
+        return new ByteArrayBinaryOutput(initialBuffer);
     }
 
     /**
@@ -333,12 +335,12 @@ public abstract class BinaryOutput {
     public static final class ByteArrayBinaryOutput extends BinaryOutput {
 
         private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
-        private static final int INITIAL_SIZE = 32;
+        static final int INITIAL_SIZE = 32;
 
         private byte[] buffer;
 
-        private ByteArrayBinaryOutput() {
-            buffer = new byte[INITIAL_SIZE];
+        private ByteArrayBinaryOutput(int size) {
+            buffer = new byte[size];
         }
 
         private ByteArrayBinaryOutput(byte[] initialBuffer) {
@@ -377,6 +379,14 @@ public abstract class BinaryOutput {
                 }
                 buffer = Arrays.copyOf(buffer, newCapacity);
             }
+        }
+
+        /**
+         * Creates a new buffer backed by a byte array. The buffer initial size is
+         * {@code initialSize}.
+         */
+        public static ByteArrayBinaryOutput create(int initialSize) {
+            return new ByteArrayBinaryOutput(initialSize);
         }
     }
 
@@ -474,6 +484,14 @@ public abstract class BinaryOutput {
             for (int i = 0; i < len; i++) {
                 dst.write(i, src.read(i));
             }
+        }
+
+        /**
+         * Creates a new buffer backed by an off-heap memory segment. The buffer initial size is
+         * {@code initialSize}.
+         */
+        public static CCharPointerBinaryOutput create(int initialSize) {
+            return new CCharPointerBinaryOutput(UnmanagedMemory.malloc(initialSize), initialSize, true);
         }
     }
 }
