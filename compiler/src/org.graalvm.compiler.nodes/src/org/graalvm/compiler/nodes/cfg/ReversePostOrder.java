@@ -316,7 +316,7 @@ public class ReversePostOrder {
                     succ.add(sucBlock);
                     sucBlock.setPredecessors(ifPred);
                 }
-                b.setSuccessors(succ.toArray(new Block[succ.size()]));
+                b.setSuccessors(succ.toArray(new Block[succ.size()]), ((ControlSplitNode) blockEndNode).successorProbabilities());
             } else if (blockEndNode instanceof LoopEndNode) {
                 LoopEndNode loopEndNode = (LoopEndNode) blockEndNode;
                 b.setSuccessors(new Block[]{cfg.getNodeToBlock().get(loopEndNode.loopBegin())});
@@ -346,7 +346,6 @@ public class ReversePostOrder {
                 b.setPredecessors(predecessors);
             }
         }
-
     }
 
 }

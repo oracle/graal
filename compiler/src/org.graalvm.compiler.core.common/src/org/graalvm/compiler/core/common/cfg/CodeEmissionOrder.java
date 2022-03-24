@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.phases;
 
-import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
-import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool;
+package org.graalvm.compiler.core.common.cfg;
 
-public abstract class PostAllocationOptimizationPhase extends LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext> {
+import org.graalvm.compiler.options.OptionValues;
 
-    public static final class PostAllocationOptimizationContext {
-        public final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
-        public final CodeEmissionOrder<?> blockOrder;
+/**
+ * Interface to compute an ordering of the blocks that can be used by the machine code generator.
+ */
+public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
 
-        public PostAllocationOptimizationContext(DiagnosticLIRGeneratorTool diagnosticTool, CodeEmissionOrder<?> blockOrder) {
-            this.diagnosticLirGenTool = diagnosticTool;
-            this.blockOrder = blockOrder;
-        }
+    /** Specify when the code emitting order is computed. */
+    enum ComputationTime {
+        BEFORE_CONTROL_FLOW_OPTIMIZATIONS,
+        AFTER_CONTROL_FLOW_OPTIMIZATIONS
     }
+
+    /**
+     * Computes the block order used for code emission.
+     *
+     * @return sorted list of blocks
+     */
+    AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
 }

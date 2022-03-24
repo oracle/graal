@@ -406,7 +406,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         };
         boolean sawSaveRegisters = false;
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : lir.getBlocks()) {
             if (block == null) {
                 continue;
             }

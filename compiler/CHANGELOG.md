@@ -2,6 +2,9 @@
 
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
+## Version 22.2.0
+* (GR-16452) Compute the code emission basic block order after backend control flow optimizations.
+
 ## Version 22.1.0
 * (GR-36751): Removed the `DuplicateIrreducibleLoops` option. To disable irreducible loop handling, set
   `-Dgraal.MaxDuplicationFactor` to a value less than or equal to 1. For AOT compilations, the effort
