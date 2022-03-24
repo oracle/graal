@@ -104,6 +104,7 @@ public final class AccessAdvisor {
 
         accessWithoutCallerFilter = HierarchyFilterNode.createInclusiveRoot(); // in addition to
                                                                                // accessFilter
+
         accessWithoutCallerFilter.addOrGetChildren("jdk.vm.ci.**", ConfigurationFilter.Inclusion.Exclude);
         accessWithoutCallerFilter.addOrGetChildren("[Ljava.lang.String;", ConfigurationFilter.Inclusion.Exclude);
         // ^ String[]: for command-line argument arrays created before Java main method is called

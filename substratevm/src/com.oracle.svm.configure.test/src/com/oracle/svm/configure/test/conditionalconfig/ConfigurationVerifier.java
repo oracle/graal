@@ -68,8 +68,8 @@ public class ConfigurationVerifier {
     private static String getConfigurationJSON(ConfigurationSet config) throws IOException {
         StringWriter sw = new StringWriter();
         try (JsonWriter writer = new JsonWriter(sw)) {
-            for (ConfigurationFile file : ConfigurationFile.values()) {
-                if (file.canBeGeneratedByAgent() && !config.getConfiguration(file).isEmpty()) {
+            for (ConfigurationFile file : ConfigurationFile.agentGeneratedFiles()) {
+                if (!config.getConfiguration(file).isEmpty()) {
                     sw.append("\n").append(file.getName()).append("\n");
                     config.getConfiguration(file).printJson(writer);
                 }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.configwithorigins;
+package com.oracle.svm.configure.config.conditional;
 
 import java.io.IOException;
 import java.io.StringWriter;
