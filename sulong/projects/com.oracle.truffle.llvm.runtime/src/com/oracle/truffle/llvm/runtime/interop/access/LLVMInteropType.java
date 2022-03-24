@@ -527,6 +527,23 @@ public abstract class LLVMInteropType implements TruffleObject {
             return null;
         }
 
+        @Override
+        @TruffleBoundary
+        public StructMember findMember(String memberName) {
+            for (StructMember member : members) {
+                if (member.name.equals(memberName)) {
+                    return member;
+                }
+            }
+            for (ClazzInheritance ci : superclasses) {
+                StructMember member = ci.superClass.findMember(memberName);
+                if (member != null) {
+                    return member;
+                }
+            }
+            return null;
+        }
+
         @TruffleBoundary
         public String[] getVtableAccessNames() {
             if (!hasVirtualMethods()) {
