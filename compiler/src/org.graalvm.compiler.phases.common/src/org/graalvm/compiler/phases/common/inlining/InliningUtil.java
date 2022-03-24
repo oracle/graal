@@ -433,11 +433,10 @@ public class InliningUtil extends ValueMergeUtil {
         Mark mark = graph.getMark();
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
+        InliningLog inliningLog = graph.getInliningLog();
+        try (InliningLog.UpdateScope scope = InliningLog.openDefaultUpdateScope(inliningLog)) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-            if (scope != null || graph.getDebug().hasCompilationListener()) {
-                graph.getInliningLog().addDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
-            }
+            graph.notifyInliningDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
         }
 
         FrameState stateAfter = invoke.stateAfter();

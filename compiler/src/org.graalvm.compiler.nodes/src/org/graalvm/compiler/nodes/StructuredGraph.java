@@ -500,7 +500,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.isSubstitution = isSubstitution;
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options), debug);
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.frameStateVerification = isSubstitution ? FrameStateVerification.NONE : FrameStateVerification.ALL;
     }
@@ -546,7 +546,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected Object beforeNodeIdChange(Node node) {
-        if (node instanceof Invokable) {
+        if (inliningLog != null && node instanceof Invokable) {
             return inliningLog.removeLeafCallsite((Invokable) node);
         }
         return null;
@@ -554,7 +554,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterNodeIdChange(Node node, Object value) {
-        if (node instanceof Invokable) {
+        if (inliningLog != null && node instanceof Invokable) {
             inliningLog.addLeafCallsite((Invokable) node, (InliningLog.Callsite) value);
         }
     }
@@ -653,13 +653,43 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.start = start;
     }
 
+    /**
+     * Gets the inlining log associated with this graph. This will return {@code null} iff
+     * {@link GraalOptions#TraceInlining} is {@code false} in {@link #getOptions()}.
+     */
     public InliningLog getInliningLog() {
         return inliningLog;
     }
 
+    /**
+     * Notifies this graph of an inlining decision for {@code invoke}.
+     *
+     * An inlining decision can be either positive or negative. A positive inlining decision must be
+     * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
+     * and the {@link InliningLog} of the inlined graph must be provided.
+     *
+     * @param invoke the invocation to which the inlining decision pertains
+     * @param positive {@code true} if the invocation was inlined, {@code false} otherwise
+     * @param phase name of the phase doing the inlining
+     * @param replacements the node replacement map used by inlining. Must be non-null if
+     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param calleeLog the inlining log of the inlined graph. Must be non-null if
+     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param reason format string that along with {@code args} provides the reason for decision
+     */
+    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+        if (inliningLog != null) {
+            inliningLog.addDecision(invoke, positive, phase, replacements, calleeLog, reason, args);
+        }
+        if (getDebug().hasCompilationListener()) {
+            String message = String.format(reason, args);
+            getDebug().notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+        }
+    }
+
     public void logInliningTree() {
-        if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            String formattedTree = getInliningLog().formatAsTree(true);
+        if (inliningLog != null) {
+            String formattedTree = inliningLog.formatAsTree(true);
             if (formattedTree != null) {
                 TTY.println(formattedTree);
             }
@@ -724,10 +754,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = copy.getInliningLog().openDefaultUpdateScope()) {
+        InliningLog copyInliningLog = copy.getInliningLog();
+        try (InliningLog.UpdateScope scope = InliningLog.openDefaultUpdateScope(copyInliningLog)) {
             duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
             if (scope != null) {
-                copy.getInliningLog().replaceLog(duplicates, this.getInliningLog());
+                copyInliningLog.replaceLog(duplicates, this.getInliningLog());
             }
         }
         if (duplicationMapCallback != null) {
@@ -1278,10 +1309,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected void afterRegister(Node node) {
         assert !isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
-        if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            if (node instanceof Invokable) {
-                ((Invokable) node).updateInliningLogAfterRegister(this);
-            }
+        if (inliningLog != null && node instanceof Invokable) {
+            ((Invokable) node).updateInliningLogAfterRegister(this);
         }
     }
 
