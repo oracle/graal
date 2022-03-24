@@ -99,6 +99,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -792,28 +793,37 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (gen.needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null);
         }
+        JavaConstant deoptReasonAndAction = null;
+        JavaConstant deoptSpeculation = null;
         assert state != null : "Deopt node=" + deopt + " needs a state ";
         if (deopt instanceof ImplicitNullCheckNode) {
             ImplicitNullCheckNode implicitNullCheck = (ImplicitNullCheckNode) deopt;
-            JavaConstant deoptReasonAndAction = implicitNullCheck.getDeoptReasonAndAction();
-            JavaConstant deoptSpeculation = implicitNullCheck.getDeoptSpeculation();
-            if (deoptSpeculation != null) {
-                assert deoptReasonAndAction != null;
-                assert isValidImplicitLIRFrameState(implicitNullCheck) : "Unsupported implicit exception";
-                return getDebugInfoBuilder().build(deopt, state, exceptionEdge, deoptReasonAndAction, deoptSpeculation);
-            }
+            deoptReasonAndAction = implicitNullCheck.getDeoptReasonAndAction();
+            deoptSpeculation = implicitNullCheck.getDeoptSpeculation();
+
+        } else if (deopt instanceof IntegerDivRemNode) {
+            IntegerDivRemNode idiv = (IntegerDivRemNode) deopt;
+            deoptReasonAndAction = idiv.getDeoptReasonAndAction();
+            deoptSpeculation = idiv.getDeoptSpeculation();
         }
+        if (deoptSpeculation != null) {
+            assert deoptReasonAndAction != null;
+            assert isValidImplicitLIRFrameState(deoptReasonAndAction, deoptSpeculation, deopt.asNode().graph().getSpeculationLog()) : "Unsupported implicit exception";
+            return getDebugInfoBuilder().build(deopt, state, exceptionEdge, deoptReasonAndAction, deoptSpeculation);
+        }
+
         return getDebugInfoBuilder().build(deopt, state, exceptionEdge, null, null);
     }
 
-    private boolean isValidImplicitLIRFrameState(ImplicitNullCheckNode implicitNullCheck) {
+    private boolean isValidImplicitLIRFrameState(JavaConstant reasonAndAction, JavaConstant deoptSpeculation, SpeculationLog speculationLog) {
         if (GraalServices.supportsArbitraryImplicitException()) {
             return true;
         }
-        DeoptimizationReason deoptimizationReason = getLIRGeneratorTool().getMetaAccess().decodeDeoptReason(implicitNullCheck.getDeoptReasonAndAction());
-        SpeculationLog.Speculation speculation = getLIRGeneratorTool().getMetaAccess().decodeSpeculation(implicitNullCheck.getDeoptSpeculation(), implicitNullCheck.graph().getSpeculationLog());
+        DeoptimizationReason deoptimizationReason = getLIRGeneratorTool().getMetaAccess().decodeDeoptReason(reasonAndAction);
+        SpeculationLog.Speculation speculation = getLIRGeneratorTool().getMetaAccess().decodeSpeculation(deoptSpeculation, speculationLog);
         return (deoptimizationReason == DeoptimizationReason.NullCheckException || deoptimizationReason == DeoptimizationReason.UnreachedCode ||
-                        deoptimizationReason == DeoptimizationReason.TypeCheckedInliningViolated) && speculation == SpeculationLog.NO_SPECULATION;
+                        deoptimizationReason == DeoptimizationReason.TypeCheckedInliningViolated || deoptimizationReason == DeoptimizationReason.ArithmeticException) &&
+                        speculation == SpeculationLog.NO_SPECULATION;
     }
 
     @Override
