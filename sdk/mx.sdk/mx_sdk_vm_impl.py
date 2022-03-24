@@ -1133,7 +1133,7 @@ class SvmSupport(object):
         return self._debug_supported
 
     def is_pgo_supported(self):
-        return self._debug_supported
+        return self._pgo_supported
 
 
 def _get_svm_support():
