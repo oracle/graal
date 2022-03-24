@@ -12,6 +12,7 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
 public class OperationsData extends Template {
 

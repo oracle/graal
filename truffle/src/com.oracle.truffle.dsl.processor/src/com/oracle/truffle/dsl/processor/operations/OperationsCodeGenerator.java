@@ -10,7 +10,6 @@ import java.util.function.Supplier;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
@@ -18,8 +17,6 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -27,8 +24,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.Instruction.ExecuteVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
@@ -54,20 +51,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     CodeTypeElement createBuilder(String simpleName) {
         CodeTypeElement typBuilder = GeneratorUtils.createClass(m, null, MOD_PUBLIC_ABSTRACT, simpleName, types.OperationsBuilder);
 
-        CodeExecutableElement metCreateLabel = new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, types.OperationLabel, "createLabel");
-        typBuilder.add(metCreateLabel);
-
         // begin/end or emit methods
         for (Operation op : m.getOperations()) {
-            List<Argument> args = op.getArguments();
+            List<TypeMirror> args = op.getBuilderArgumentTypes();
             ArrayList<CodeVariableElement> params = new ArrayList<>();
 
             for (int i = 0; i < args.size(); i++) {
-                if (args.get(i).isImplicit()) {
-                    continue;
-                }
-
-                params.add(new CodeVariableElement(args.get(i).toBuilderArgumentType(), "arg" + i));
+                params.add(new CodeVariableElement(args.get(i), "arg" + i));
             }
 
             CodeVariableElement[] paramsArr = params.toArray(new CodeVariableElement[params.size()]);
@@ -100,7 +90,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilder.add(metParse);
 
             CodeTreeBuilder b = metParse.getBuilder();
-            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parParseContext, false));
+            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parParseContext, false, false));
             b.startStatement().startStaticCall(m.getParseMethod());
             b.variable(parLanguage);
             b.variable(parParseContext);
@@ -118,7 +108,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilder.add(metParse);
 
             CodeTreeBuilder b = metParse.getBuilder();
-            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parParseContext, true));
+            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parParseContext, true, true));
             b.startStatement().startStaticCall(m.getParseMethod());
             b.variable(parLanguage);
             b.variable(parParseContext);
@@ -130,8 +120,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return typBuilder;
     }
 
-    private static CodeTree createCreateBuilder(CodeTypeElement typBuilderImpl, CodeVariableElement language, CodeVariableElement parseContext, boolean withSourceInfo) {
-        return CodeTreeBuilder.createBuilder().startNew(typBuilderImpl.asType()).variable(language).variable(parseContext).string("" + withSourceInfo).end().build();
+    private static CodeTree createCreateBuilder(CodeTypeElement typBuilderImpl, CodeVariableElement language, CodeVariableElement parseContext, boolean withSourceInfo, boolean withInstrumentation) {
+        return CodeTreeBuilder.createBuilder().startNew(typBuilderImpl.asType()) //
+                        .variable(language) //
+                        .variable(parseContext) //
+                        .string("" + withSourceInfo) //
+                        .string("" + withInstrumentation) //
+                        .end().build();
     }
 
     private CodeTypeElement createBuilderImpl(CodeTypeElement typBuilder) {
@@ -147,6 +142,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeVariableElement fldKeepSourceInfo = new CodeVariableElement(MOD_PRIVATE_FINAL, context.getType(boolean.class), "keepSourceInfo");
         typBuilderImpl.add(fldKeepSourceInfo);
+
+        CodeVariableElement fldKeepInstrumentation = new CodeVariableElement(MOD_PRIVATE_FINAL, context.getType(boolean.class), "keepInstrumentation");
+        typBuilderImpl.add(fldKeepInstrumentation);
 
         CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), typBuilderImpl);
         typBuilderImpl.add(ctor);
@@ -190,14 +188,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(fldId);
         }
 
-        CodeTypeElement builderLabelImplType = createBuilderLabelImpl(simpleName + "Label");
-        typBuilderImpl.add(builderLabelImplType);
-
-        CodeTypeElement builderBytecodeNodeType = createBuilderBytecodeNode(typBuilderImpl, simpleName + "BytecodeNode");
-        typBuilderImpl.add(builderBytecodeNodeType);
+        CodeTypeElement builderBytecodeNodeType;
+        CodeTypeElement builderInstrBytecodeNodeType;
+        {
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "BytecodeNode", m, false);
+            builderBytecodeNodeType = bcg.createBuilderBytecodeNode();
+            typBuilderImpl.add(builderBytecodeNodeType);
+        }
+        {
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "InstrumentableBytecodeNode", m, true);
+            builderInstrBytecodeNodeType = bcg.createBuilderBytecodeNode();
+            typBuilderImpl.add(builderInstrBytecodeNodeType);
+        }
 
         CodeVariableElement fldOperationData = new CodeVariableElement(types.BuilderOperationData, "operationData");
-        typBuilderImpl.add(fldOperationData);
 
         CodeVariableElement fldBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
         typBuilderImpl.add(fldBc);
@@ -221,9 +225,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeVariableElement fldLastPush = new CodeVariableElement(context.getType(int.class), "lastPush");
         typBuilderImpl.add(fldLastPush);
-
-        CodeVariableElement fldMaxLocal = new CodeVariableElement(context.getType(int.class), "maxLocal");
-        typBuilderImpl.add(fldMaxLocal);
 
         CodeVariableElement fldMaxStack = new CodeVariableElement(context.getType(int.class), "maxStack");
         typBuilderImpl.add(fldMaxStack);
@@ -266,7 +267,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(metParse);
 
             CodeTreeBuilder b = metParse.getBuilder();
-            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parContext, true));
+            b.declaration(typBuilderImpl.asType(), "builder", createCreateBuilder(typBuilderImpl, parLanguage, parContext, true, true));
             b.startStatement().startStaticCall(m.getParseMethod()).variable(parLanguage).variable(parContext).string("builder").end(2);
             b.startReturn().startCall("builder", "collect").end().string("[").variable(parBuildOrder).string("]").end();
         }
@@ -279,8 +280,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.consts = fldConstPool;
         vars.maxStack = fldMaxStack;
         vars.curStack = fldCurStack;
-        vars.maxLocal = fldMaxLocal;
         vars.exteptionHandlers = fldExceptionHandlers;
+        vars.keepingInstrumentation = fldKeepInstrumentation;
 
         {
             CodeExecutableElement metReset = new CodeExecutableElement(
@@ -289,14 +290,16 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(metReset);
 
             CodeTreeBuilder b = metReset.getBuilder();
+
+            b.statement("super.reset()");
+
             b.startAssign(fldBci).string("0").end();
             b.startAssign(fldCurStack).string("0").end();
             b.startAssign(fldMaxStack).string("0").end();
-            b.startAssign(fldMaxLocal).string("-1").end();
             if (FLAG_NODE_AST_PRINTING) {
                 b.startAssign(fldIndent).string("0").end();
             }
-            b.startAssign(fldOperationData).startNew(types.BuilderOperationData).string("null").string("0").string("0").end(2);
+            b.startAssign(fldOperationData).startNew(types.BuilderOperationData).string("null").string("0").string("0").string("0").string("false").end(2);
             b.startStatement().startCall(fldExceptionHandlers.getName(), "clear").end(2);
             b.startStatement().startCall(fldConstPool.getName(), "reset").end(2);
             b.startAssign("nodeName").string("null").end();
@@ -311,10 +314,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         {
-            CodeExecutableElement mBuild = new CodeExecutableElement(MOD_PUBLIC, types.OperationsNode, "build");
+            CodeExecutableElement mBuild = new CodeExecutableElement(MOD_PUBLIC, types.OperationsNode, "buildImpl");
             typBuilderImpl.add(mBuild);
 
             CodeTreeBuilder b = mBuild.getBuilder();
+
+            b.statement("labelPass(bc)");
 
             b.startIf().string(fldOperationData.getName() + ".depth != 0").end();
             b.startBlock();
@@ -336,7 +341,31 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.end();
 
-            b.startAssign("OperationsNode result");
+            b.statement("OperationsNode result");
+
+            b.startIf().variable(fldKeepInstrumentation).end();
+            b.startBlock();
+
+            b.startAssign("result");
+            b.startNew(builderInstrBytecodeNodeType.asType());
+            b.variable(fldLanguage);
+            b.variable(fldParseContext);
+            b.string("nodeName");
+            b.string("isInternal");
+            b.string("sourceInfo");
+            b.string("sources");
+            b.variable(fldNodeNumber);
+            b.variable(fldMaxStack);
+            b.startGroup().string("maxLocals + 1").end();
+            b.string("bcCopy");
+            b.string("cpCopy");
+            b.string("handlers");
+            b.string("new ProbeNode[0]");
+            b.end(2);
+
+            b.end().startElseBlock();
+
+            b.startAssign("result");
             b.startNew(builderBytecodeNodeType.asType());
             b.variable(fldLanguage);
             b.variable(fldParseContext);
@@ -346,12 +375,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("sources");
             b.variable(fldNodeNumber);
             b.variable(fldMaxStack);
-            b.startGroup().variable(fldMaxLocal).string(" + 1").end();
+            b.startGroup().string("maxLocals + 1").end();
             b.string("bcCopy");
             b.string("cpCopy");
             b.string("handlers");
-
             b.end(2);
+
+            b.end();
 
             b.startStatement();
             b.startCall(fldBuiltNodes, "add");
@@ -366,25 +396,42 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         {
-            CodeExecutableElement mCollect = GeneratorUtils.overrideImplement(types.OperationsBuilder, "collect");
-            typBuilderImpl.add(mCollect);
+            // CodeVariableElement parBci = new CodeVariableElement(context.getType(int.class),
+            // "bci");
+            CodeVariableElement parData = new CodeVariableElement(types.BuilderOperationData, "data");
+            CodeExecutableElement mDoLeave = GeneratorUtils.overrideImplement(types.OperationsBuilder, "doLeaveOperation");
+            typBuilderImpl.add(mDoLeave);
 
-            CodeTreeBuilder b = mCollect.getBuilder();
+            CodeTreeBuilder b = mDoLeave.createBuilder();
 
-            b.startReturn();
-            b.startCall(fldBuiltNodes, "toArray");
-            b.string("new OperationsNode[builtNodes.size()]");
-            b.end(2);
-        }
+            b.startWhile().variable(vars.curStack).string(" > data.stackDepth").end();
+            b.startBlock();
 
-        {
-            CodeExecutableElement mCreateLabel = GeneratorUtils.overrideImplement(typBuilder, "createLabel");
-            typBuilderImpl.add(mCreateLabel);
+            b.tree(m.getOperationsContext().commonPop.createEmitCode(vars, new CodeTree[0]));
 
-            CodeTreeBuilder b = mCreateLabel.getBuilder();
-            b.startReturn();
-            b.startNew(builderLabelImplType.asType());
-            b.end(2);
+            b.end();
+
+            b.startSwitch().string("data.operationId").end();
+            b.startBlock();
+
+            for (Operation op : m.getOperations()) {
+                CodeTree leaveCode = op.createLeaveCode(vars);
+                if (leaveCode == null) {
+                    continue;
+                }
+
+                b.startCase().variable(op.idConstantField).end();
+                b.startBlock();
+
+                b.tree(leaveCode);
+                b.statement("break");
+
+                b.end();
+
+            }
+
+            b.end();
+
         }
 
         {
@@ -554,6 +601,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     CodeTreeBuilder b = metBegin.getBuilder();
 
+                    if (op.name.equals("Instrumentation")) {
+                        // this needs to be placed here, at the very start
+                        // of the begin/end methods
+                        b.startIf().string("!").variable(vars.keepingInstrumentation).end();
+                        b.startBlock();
+                        b.returnStatement();
+                        b.end();
+                    }
+
                     if (FLAG_NODE_AST_PRINTING) {
                         b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + "\")");
                         b.statement("indent++");
@@ -565,7 +621,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     b.variable(fldOperationData);
                     b.variable(op.idConstantField);
+                    b.variable(fldCurStack);
                     b.string("" + op.getNumAuxValues());
+                    b.string("" + op.hasLeaveCode());
 
                     for (VariableElement el : metBegin.getParameters()) {
                         b.variable(el);
@@ -584,6 +642,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     // doAfterChild();
                     CodeTreeBuilder b = metEnd.getBuilder();
+
+                    if (op.name.equals("Instrumentation")) {
+                        // this needs to be placed here, at the very start
+                        // of the begin/end methods
+                        b.startIf().string("!").variable(vars.keepingInstrumentation).end();
+                        b.startBlock();
+                        b.returnStatement();
+                        b.end();
+                    }
 
                     if (FLAG_NODE_AST_PRINTING) {
                         b.statement("System.out.print(\")\")");
@@ -644,26 +711,38 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
                     }
 
-                    CodeTreeBuilder b2 = CodeTreeBuilder.createBuilder();
-                    b2.startNew(types.BuilderOperationData);
-
-                    b2.variable(fldOperationData);
-                    b2.variable(op.idConstantField);
-                    b2.string("" + op.getNumAuxValues());
-                    for (VariableElement v : metEmit.getParameters()) {
-                        b2.variable(v);
-                    }
-
-                    b2.end();
-
-                    CodeVariableElement opData = new CodeVariableElement(types.BuilderOperationData, "opData");
-                    b.declaration(types.BuilderOperationData, "opData", b2.build());
-
                     b.statement("doBeforeChild()");
+
+                    if (op.name.equals("Label")) {
+                        // for labels we need to use local to not conflict with operation layering
+                        // requirements. we still create the variable since some other code expects
+                        // it to exist (it will shadow the actual field)
+                        b.string(types.BuilderOperationData.asElement().getSimpleName() + " ");
+                    }
+                    b.startAssign(fldOperationData);
+                    b.startNew(types.BuilderOperationData);
+
+                    b.field("this", fldOperationData);
+                    b.variable(op.idConstantField);
+                    b.variable(fldCurStack);
+                    b.string("" + op.getNumAuxValues());
+                    b.string("false");
+
+                    for (VariableElement v : metEmit.getParameters()) {
+                        b.variable(v);
+                    }
+                    b.end(2);
+
                     b.tree(op.createBeginCode(vars));
                     b.tree(op.createEndCode(vars));
                     b.startAssign(fldLastPush).tree(op.createPushCountCode(vars)).end();
+
+                    if (!op.name.equals("Label")) {
+                        b.startAssign(fldOperationData).variable(fldOperationData).string(".parent").end();
+                    }
+
                     b.statement("doAfterChild()");
+
                 }
                 typBuilderImpl.add(metEmit);
             }
@@ -671,401 +750,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         return typBuilderImpl;
 
-    }
-
-    private CodeTypeElement createBuilderLabelImpl(String simpleName) {
-        return GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, types.BuilderOperationLabel);
-    }
-
-    /**
-     * Create the BytecodeNode type. This type contains the bytecode interpreter, and is the
-     * executable Truffle node.
-     */
-    private CodeTypeElement createBuilderBytecodeNode(CodeTypeElement typBuilderImpl, String simpleName) {
-        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, simpleName, types.OperationsNode);
-
-        CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(byte.class)), "bc");
-        GeneratorUtils.addCompilationFinalAnnotation(fldBc, 1);
-        builderBytecodeNodeType.add(fldBc);
-
-        CodeVariableElement fldConsts = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(Object.class)), "consts");
-        GeneratorUtils.addCompilationFinalAnnotation(fldConsts, 1);
-        builderBytecodeNodeType.add(fldConsts);
-
-        CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
-        GeneratorUtils.addCompilationFinalAnnotation(fldHandlers, 1);
-        builderBytecodeNodeType.add(fldHandlers);
-
-        CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
-        builderBytecodeNodeType.add(ctor);
-
-        CodeVariableElement fldTracer = null;
-        CodeVariableElement fldHitCount = null;
-        if (m.isTracing()) {
-            fldHitCount = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(int.class)), "hitCount");
-            builderBytecodeNodeType.add(fldHitCount);
-
-            fldTracer = new CodeVariableElement(types.ExecutionTracer, "tracer");
-            builderBytecodeNodeType.add(fldTracer);
-        }
-
-        {
-            CodeTreeBuilder b = ctor.getBuilder();
-
-            if (m.isTracing()) {
-                b.startAssign(fldHitCount).startNewArray(
-                                (ArrayType) fldHitCount.getType(),
-                                CodeTreeBuilder.createBuilder().variable(fldBc).string(".length").build());
-                b.end(2);
-
-                b.startAssign(fldTracer).startStaticCall(types.ExecutionTracer, "get").end(2);
-            }
-        }
-
-        ExecuteVariables vars = new ExecuteVariables();
-        vars.bytecodeNodeType = builderBytecodeNodeType;
-        vars.bc = fldBc;
-        vars.consts = fldConsts;
-        vars.maxStack = new CodeVariableElement(context.getType(int.class), "maxStack");
-        vars.handlers = fldHandlers;
-        vars.tracer = fldTracer;
-
-        {
-            CodeExecutableElement mExecute = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(Object.class), "execute", new CodeVariableElement(types.VirtualFrame, "frame"));
-            builderBytecodeNodeType.add(mExecute);
-
-            CodeTreeBuilder builder = mExecute.getBuilder();
-            builder.startReturn();
-            builder.startCall("continueAt");
-
-            builder.string("frame");
-            builder.string("null");
-
-            builder.end(2);
-
-        }
-
-        {
-            CodeVariableElement argFrame = new CodeVariableElement(types.VirtualFrame, "frame");
-            CodeVariableElement argStartIndex = new CodeVariableElement(types.OperationLabel, "startIndex");
-            CodeExecutableElement mContinueAt = new CodeExecutableElement(
-                            Set.of(Modifier.PUBLIC), context.getType(Object.class), "continueAt",
-                            argFrame, argStartIndex);
-            builderBytecodeNodeType.add(mContinueAt);
-
-            {
-                CodeAnnotationMirror annExplodeLoop = new CodeAnnotationMirror(types.ExplodeLoop);
-                mContinueAt.addAnnotationMirror(annExplodeLoop);
-                annExplodeLoop.setElementValue("kind", new CodeAnnotationValue(new CodeVariableElement(
-                                context.getDeclaredType("com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind"), "MERGE_EXPLODE")));
-            }
-
-            CodeTreeBuilder b = mContinueAt.getBuilder();
-
-            CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
-            CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
-            CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(byte.class), "curOpcode");
-
-            b.declaration("int", varSp.getName(), "maxLocals + VALUES_OFFSET");
-            b.declaration("int", varBci.getName(), "0");
-
-            if (m.isTracing()) {
-                b.startStatement().startCall(fldTracer, "startFunction").string("this").end(2);
-            }
-
-            CodeVariableElement varReturnValue = new CodeVariableElement(context.getType(Object.class), "returnValue");
-            b.statement("Object " + varReturnValue.getName());
-
-            b.string("loop: ");
-            b.startWhile().string("true").end();
-            b.startBlock();
-            CodeVariableElement varNextBci = new CodeVariableElement(context.getType(int.class), "nextBci");
-            b.statement("int nextBci");
-
-            vars.bci = varBci;
-            vars.nextBci = varNextBci;
-            vars.frame = argFrame;
-            vars.sp = varSp;
-            vars.returnValue = varReturnValue;
-
-            b.declaration("byte", varCurOpcode.getName(), CodeTreeBuilder.singleString("bc[bci]"));
-
-            b.startTryBlock();
-
-            b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
-            b.tree(GeneratorUtils.createPartialEvaluationConstant(varSp));
-            b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
-
-            if (m.isTracing()) {
-                b.startStatement().variable(fldHitCount).string("[bci]++").end();
-            }
-
-            b.startIf().variable(varSp).string(" < maxLocals + VALUES_OFFSET").end();
-            b.startBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
-            b.end();
-
-            b.startSwitch().string("curOpcode").end();
-            b.startBlock();
-
-            for (Instruction op : m.getInstructions()) {
-                b.startCase().variable(op.opcodeIdField).end();
-                b.startBlock();
-
-                if (m.isTracing()) {
-                    b.startStatement().startCall(fldTracer, "traceInstruction");
-                    b.variable(varBci);
-                    b.variable(op.opcodeIdField);
-
-                    int ofs = 1;
-                    for (Argument arg : op.arguments) {
-                        b.tree(arg.createReadCode(vars, ofs));
-                        ofs += arg.length;
-                    }
-
-                    b.end(2);
-                }
-
-                b.tree(op.createExecuteCode(vars));
-                b.tree(op.createExecuteEpilogue(vars));
-
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock().tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered")).end();
-
-            b.end(); // switch block
-
-            b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
-
-            if (m.isTracing()) {
-                b.startStatement().startCall(fldTracer, "traceException");
-                b.string("ex");
-                b.end(2);
-
-            }
-
-            b.startFor().string("int handlerIndex = 0; handlerIndex < " + vars.handlers.getName() + ".length; handlerIndex++").end();
-            b.startBlock();
-
-            b.declaration(types.BuilderExceptionHandler, "handler", vars.handlers.getName() + "[handlerIndex]");
-            b.startIf().string("handler.startBci > bci || handler.endBci <= bci").end();
-            b.statement("continue");
-
-            b.startAssign(varSp).string("handler.startStack + VALUES_OFFSET").end();
-            // TODO check exception type (?)
-
-            b.tree(OperationGeneratorUtils.createWriteLocal(vars,
-                            CodeTreeBuilder.singleString("handler.exceptionIndex"),
-                            CodeTreeBuilder.singleString("ex")));
-
-            b.statement("bci = handler.handlerBci");
-            b.statement("continue loop");
-
-            b.end(); // for (handlerIndex ...)
-
-            b.startThrow().string("ex").end();
-
-            b.end(); // catch block
-
-            b.statement("bci = nextBci");
-            b.end(); // while block
-
-            if (m.isTracing()) {
-                b.startStatement().startCall(fldTracer, "endFunction").end(2);
-            }
-
-            b.startReturn().string("returnValue").end();
-
-            vars.bci = null;
-            vars.nextBci = null;
-            vars.frame = null;
-            vars.sp = null;
-            vars.returnValue = null;
-
-        }
-
-        {
-            CodeExecutableElement mDump = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(String.class), "dump");
-            builderBytecodeNodeType.add(mDump);
-
-            CodeTreeBuilder b = mDump.getBuilder();
-
-            b.declaration("int", "bci", "0");
-            b.declaration("StringBuilder", "sb", "new StringBuilder()");
-
-            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
-
-            b.startWhile().string("bci < bc.length").end();
-            b.startBlock(); // while block
-
-            if (m.isTracing()) {
-                b.statement("sb.append(String.format(\" [ %3d ]\", hitCount[bci]))");
-            }
-
-            b.statement("sb.append(String.format(\" %04x \", bci))");
-
-            b.startSwitch().string("bc[bci]").end();
-            b.startBlock();
-
-            for (Instruction op : m.getInstructions()) {
-                b.startCase().variable(op.opcodeIdField).end();
-                b.startBlock();
-
-                b.statement("sb.append(\"" + op.name + " \")");
-
-                int ofs = 1;
-                for (int i = 0; i < op.arguments.length; i++) {
-                    b.tree(op.arguments[i].getDumpCode(vars, CodeTreeBuilder.singleString("bci + " + ofs)));
-                    ofs += op.arguments[i].length;
-                }
-
-                b.statement("bci += " + op.length());
-                b.statement("break");
-
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock();
-            b.statement("sb.append(String.format(\"unknown 0x%02x\", bc[bci++]))");
-            b.statement("break");
-            b.end(); // default case block
-            b.end(); // switch block
-
-            b.statement("sb.append(\"\\n\")");
-
-            b.end(); // while block
-
-            b.startFor().string("int i = 0; i < ").variable(fldHandlers).string(".length; i++").end();
-            b.startBlock();
-
-            b.startStatement().string("sb.append(").variable(fldHandlers).string("[i] + \"\\n\")").end();
-
-            b.end();
-
-            b.startIf().string("sourceInfo != null").end();
-            b.startBlock();
-            {
-                b.statement("sb.append(\"Source info:\\n\")");
-                b.startFor().string("int i = 0; i < sourceInfo[0].length; i++").end();
-                b.startBlock();
-
-                b.statement("sb.append(String.format(\"  bci=%04x, offset=%d, length=%d\\n\", sourceInfo[0][i], sourceInfo[1][i], sourceInfo[2][i]))");
-
-                b.end();
-            }
-            b.end();
-
-            b.startReturn().string("sb.toString()").end();
-
-            vars.bci = null;
-
-        }
-
-        if (m.isTracing()) {
-            CodeExecutableElement mGetTrace = GeneratorUtils.override(types.OperationsNode, "getNodeTrace");
-            builderBytecodeNodeType.add(mGetTrace);
-
-            CodeTreeBuilder b = mGetTrace.getBuilder();
-
-            b.declaration("int", "bci", "0");
-            b.declaration("ArrayList<InstructionTrace>", "insts", "new ArrayList<>()");
-
-            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
-
-            b.startWhile().string("bci < bc.length").end();
-            b.startBlock(); // while block
-
-            b.startSwitch().string("bc[bci]").end();
-            b.startBlock();
-
-            for (Instruction op : m.getInstructions()) {
-                b.startCase().variable(op.opcodeIdField).end();
-                b.startBlock();
-
-                b.startStatement();
-                b.startCall("insts", "add");
-                b.startNew(types.InstructionTrace);
-
-                b.variable(op.opcodeIdField);
-                b.startGroup().variable(fldHitCount).string("[bci]").end();
-
-                int ofs = 1;
-                for (int i = 0; i < op.arguments.length; i++) {
-                    b.tree(op.arguments[i].createReadCode(vars, ofs));
-                }
-
-                b.end(3);
-
-                b.statement("bci += " + op.length());
-                b.statement("break");
-
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock();
-            b.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Unknown opcode").end(2);
-            b.end(); // default case block
-            b.end(); // switch block
-
-            b.end(); // while block
-
-            b.startReturn().startNew(types.NodeTrace);
-            b.startCall("insts", "toArray").string("new InstructionTrace[0]").end();
-            b.end(2);
-
-            vars.bci = null;
-        }
-
-        {
-            CodeExecutableElement mGetSourceSection = GeneratorUtils.overrideImplement(types.Node, "getSourceSection");
-            builderBytecodeNodeType.add(mGetSourceSection);
-
-            CodeTreeBuilder b = mGetSourceSection.createBuilder();
-
-            b.tree(createReparseCheck(typBuilderImpl));
-
-            b.startReturn();
-            b.startCall("this", "getSourceSectionImpl");
-            b.end(2);
-        }
-
-        {
-            CodeVariableElement pBci = new CodeVariableElement(context.getType(int.class), "bci");
-            CodeExecutableElement mGetSourceSectionAtBci = GeneratorUtils.overrideImplement(types.OperationsNode, "getSourceSectionAtBci");
-            builderBytecodeNodeType.add(mGetSourceSectionAtBci);
-
-            CodeTreeBuilder b = mGetSourceSectionAtBci.createBuilder();
-
-            b.tree(createReparseCheck(typBuilderImpl));
-
-            b.startReturn();
-            b.startCall("this", "getSourceSectionAtBciImpl");
-            b.variable(pBci);
-            b.end(2);
-        }
-
-        return builderBytecodeNodeType;
-    }
-
-    private CodeTree createReparseCheck(CodeTypeElement typBuilderImpl) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startIf().string("sourceInfo == null").end();
-        b.startBlock();
-        {
-            b.startStatement();
-            b.string("OperationsNode reparsed = ");
-            b.startStaticCall(typBuilderImpl.asType(), "reparse");
-            b.startCall("getLanguage").typeLiteral(m.getLanguageType()).end();
-            b.startGroup().cast(m.getParseContextType()).string("parseContext").end();
-            b.string("buildOrder");
-            b.end(2);
-
-            b.statement("copyReparsedInfo(reparsed)");
-        }
-        b.end();
-
-        return b.build();
     }
 
     /**

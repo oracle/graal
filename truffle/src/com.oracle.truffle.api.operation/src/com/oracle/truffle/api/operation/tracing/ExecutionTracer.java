@@ -1,6 +1,7 @@
 package com.oracle.truffle.api.operation.tracing;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.operation.OperationsNode;
@@ -97,6 +98,7 @@ public class ExecutionTracer {
     }
 
     public final void traceInstruction(int bci, int id, Object... arguments) {
+        // System.out.printf(" [TT] %04x %d %s\n", bci, id, List.of(a, arguments));
         for (int i = 0; i < last.length; i++) {
             last[i] = last[i].add(id);
             if (last[i].isValid()) {

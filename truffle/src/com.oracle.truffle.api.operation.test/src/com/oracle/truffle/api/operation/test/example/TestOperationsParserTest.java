@@ -151,7 +151,7 @@ public class TestOperationsParserTest {
         }
     }
 
-    @Test
+    // @Test
     public void testTracing() {
         //@formatter:off
         String src = "(do"
@@ -170,6 +170,17 @@ public class TestOperationsParserTest {
                    + "  (return (local 2)))";
         //@formatter:on
         new Tester(src).test(495000L);
+        ExecutionTracer.get().dump();
+    }
+
+    @Test
+    public void testInstrumentation() {
+        //@formatter:off
+        String src = "(stmt"
+                   + "  (return (add 1 2)))";
+        //@formatter:on
+
+        new Tester(src, true).test(3L);
         ExecutionTracer.get().dump();
     }
 }

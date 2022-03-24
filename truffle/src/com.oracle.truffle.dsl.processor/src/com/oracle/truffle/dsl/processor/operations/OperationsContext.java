@@ -3,6 +3,18 @@ package com.oracle.truffle.dsl.processor.operations;
 import java.util.ArrayList;
 
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
+import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.DiscardInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
+import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationEnterInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationExitInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationLeaveInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.SuperInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.TransferInstruction;
 
 public class OperationsContext {
 
@@ -22,9 +34,9 @@ public class OperationsContext {
     }
 
     private void createCommonInstructions() {
-        commonPop = add(new Instruction.Pop(instructionId++));
-        commonBranch = add(new Instruction.Branch(instructionId++));
-        commonBranchFalse = add(new Instruction.BranchFalse(instructionId++));
+        commonPop = add(new DiscardInstruction("pop", instructionId++, InputType.STACK_VALUE_IGNORED));
+        commonBranch = add(new BranchInstruction(instructionId++));
+        commonBranchFalse = add(new ConditionalBranchInstruction(instructionId++));
     }
 
     private void createBuiltinOperations() {
@@ -35,13 +47,24 @@ public class OperationsContext {
         add(new Operation.While(this, operationId++));
         add(new Operation.TryCatch(this, operationId++));
 
+        Instruction iConst;
+        Instruction iStloc;
+
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
-        add(new Operation.Simple(this, "ConstObject", operationId++, 0, add(new Instruction.ConstObject(instructionId++))));
-        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, add(new Instruction.LoadArgument(instructionId++))));
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new Instruction.LoadLocal(instructionId++))));
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new Instruction.StoreLocal(instructionId++))));
-        add(new Operation.Simple(this, "Return", operationId++, 1, add(new Instruction.Return(instructionId++))));
+        add(new Operation.Simple(this, "ConstObject", operationId++, 0, iConst = add(new TransferInstruction("const", instructionId++, ResultType.STACK_VALUE, InputType.CONST_POOL))));
+        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, add(new TransferInstruction("ldarg", instructionId++, ResultType.STACK_VALUE, InputType.ARGUMENT))));
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new TransferInstruction("ldloc", instructionId++, ResultType.STACK_VALUE, InputType.LOCAL))));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, iStloc = add(new TransferInstruction("stloc", instructionId++, ResultType.SET_LOCAL, InputType.STACK_VALUE))));
+        add(new Operation.Simple(this, "Return", operationId++, 1, add(new TransferInstruction("return", instructionId++, ResultType.RETURN, InputType.STACK_VALUE))));
+
+        add(new Operation.Instrumentation(this, operationId++,
+                        add(new InstrumentationEnterInstruction(instructionId++)),
+                        add(new InstrumentationExitInstruction(instructionId++)),
+                        add(new InstrumentationExitInstruction(instructionId++, true)),
+                        add(new InstrumentationLeaveInstruction(instructionId++))));
+
+        Instruction iSuper = add(new SuperInstruction(instructionId++, new Instruction[]{iConst, iStloc}));
     }
 
     public Instruction add(Instruction elem) {
@@ -63,7 +86,6 @@ public class OperationsContext {
     }
 
     public void processOperation(SingleOperationData opData) {
-        Argument[] arguments;
 
         MethodProperties props = opData.getMainProperties();
 
@@ -72,16 +94,12 @@ public class OperationsContext {
             return;
         }
 
-        if (props.isVariadic) {
-            arguments = new Argument[]{new Argument.VarArgsCount(props.numStackValues - 1)};
-        } else {
-            arguments = new Argument[0];
-        }
-
-        Instruction.Custom instr = new Instruction.Custom("custom." + opData.getName(), getNextInstructionId(), opData, arguments);
+        CustomInstruction instr = new CustomInstruction("custom." + opData.getName(), getNextInstructionId(), opData);
         add(instr);
 
-        Operation.Custom op = new Operation.Custom(this, opData.getName(), getNextOperationId(), props.numStackValues, instr);
+        int numChildren = props.isVariadic ? -1 : props.numStackValues;
+
+        Operation.Simple op = new Operation.Simple(this, opData.getName(), getNextOperationId(), numChildren, instr);
         add(op);
     }
 }

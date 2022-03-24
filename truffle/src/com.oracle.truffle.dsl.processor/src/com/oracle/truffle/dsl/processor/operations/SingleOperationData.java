@@ -22,7 +22,7 @@ public class SingleOperationData extends Template {
     private OperationsData parent;
     private final Set<TypeMirror> throwDeclarations = new HashSet<>();
 
-    static enum ParameterKind {
+    public static enum ParameterKind {
         STACK_VALUE,
         VARIADIC,
         VIRTUAL_FRAME;
@@ -53,7 +53,7 @@ public class SingleOperationData extends Template {
         }
     }
 
-    static class MethodProperties {
+    public static class MethodProperties {
         public final ExecutableElement element;
         public final List<ParameterKind> parameters;
         public final boolean isVariadic;

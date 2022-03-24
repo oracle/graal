@@ -3,7 +3,6 @@ package com.oracle.truffle.sl.operations;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;

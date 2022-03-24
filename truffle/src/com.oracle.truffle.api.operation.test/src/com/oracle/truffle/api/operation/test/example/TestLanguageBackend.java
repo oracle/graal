@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation.test.example;
 
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.operation.test.example.TestLanguageAst.ListNode;
 import com.oracle.truffle.api.operation.test.example.TestLanguageAst.NumberNode;
 import com.oracle.truffle.api.operation.test.example.TestLanguageAst.SymbolNode;
@@ -143,6 +144,13 @@ class TestLanguageBackend {
                 b.beginReturn();
                 build(ast.get(1));
                 b.endReturn();
+                break;
+            case "stmt":
+                b.beginInstrumentation(StatementTag.class);
+                for (int i = 1; i < ast.size(); i++) {
+                    build(ast.get(i));
+                }
+                b.endInstrumentation();
                 break;
             case "fail":
                 if (ast.size() != 1) {
