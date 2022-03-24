@@ -433,44 +433,6 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
     }
 }
 
-enum OS {
-    Darwin,
-    Linux,
-    Solaris,
-    Windows;
-
-    private static final OS current = findCurrent();
-
-    private static OS findCurrent() {
-        final String name = System.getProperty("os.name");
-        if (name.equals("Linux")) {
-            return OS.Linux;
-        }
-        if (name.equals("SunOS")) {
-            return OS.Solaris;
-        }
-        if (name.equals("Mac OS X") || name.equals("Darwin")) {
-            return OS.Darwin;
-        }
-        if (name.startsWith("Windows")) {
-            return OS.Windows;
-        }
-        throw EspressoError.shouldNotReachHere("unknown OS: " + name);
-    }
-
-    public static OS getCurrent() {
-        return current;
-    }
-
-    public static boolean isWindows() {
-        return getCurrent() == OS.Windows;
-    }
-
-    public static boolean isUnix() {
-        return getCurrent() != OS.Windows;
-    }
-}
-
 final class LinuxBuilder extends PlatformBuilder {
     private static final Path SYS_EXT_DIR = Paths.get("/usr/java/packages");
 

@@ -414,7 +414,7 @@ jlong (*JVM_MaxMemory)(void);
 
 jint (*JVM_ActiveProcessorCount)(void);
 
-void * (*JVM_LoadLibrary)(const char *name);
+void * (*JVM_LoadLibrary)(const char *name, jboolean throwException);
 
 void (*JVM_UnloadLibrary)(void * handle);
 
