@@ -252,9 +252,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String ESPRESSO_CONTEX_SIMPLE_NAME = "EspressoContext";
     static final String META_SIMPLE_NAME = "Meta";
 
-    static final String ESPRESSO_LANGUAGE_GETTER = "EspressoLanguage.get(this)";
-    static final String ESPRESSO_CONTEXT_GETTER = "EspressoContext.get(this)";
-    static final String META_GETTER = "EspressoContext.get(this).getMeta()";
+    static final String ESPRESSO_CONTEXT_VAR = "context";
+    static final String ESPRESSO_CONTEXT_SETTER = String.format("%s %s = %s.get(this);", ESPRESSO_CONTEX_SIMPLE_NAME, ESPRESSO_CONTEXT_VAR, ESPRESSO_CONTEX_SIMPLE_NAME);
+
+    static final String ESPRESSO_LANGUAGE_FROM_ESPRESSO_CONTEXT = String.format("%s.getLanguage()", ESPRESSO_CONTEXT_VAR);
+    static final String META_FROM_ESPRESSO_CONTEXT = String.format("%s.getMeta()", ESPRESSO_CONTEXT_VAR);
 
     static final String PROFILE_CLASS = "SubstitutionProfiler";
     static final String PROFILE_ARG_CALL = "this";
@@ -664,13 +666,13 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectLanguage(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(ESPRESSO_LANGUAGE_GETTER);
+        str.append(ESPRESSO_LANGUAGE_FROM_ESPRESSO_CONTEXT);
         return false;
     }
 
     static boolean injectMeta(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(META_GETTER);
+        str.append(META_FROM_ESPRESSO_CONTEXT);
         return false;
     }
 
@@ -682,7 +684,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectContext(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(ESPRESSO_CONTEXT_GETTER);
+        str.append(ESPRESSO_CONTEXT_VAR);
         return false;
     }
 
@@ -706,7 +708,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         if (helper.hasLanguageInjection) {
             expectedImports.add(IMPORT_ESPRESSO_LANGUAGE);
         }
-        if (helper.hasMetaInjection || helper.hasContextInjection) {
+        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
         if (helper.hasMetaInjection && !helper.isNodeTarget()) {

@@ -630,6 +630,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", castTo(ARGS_NAME + "[" + argIndex + "]", argType), ";");
             argIndex++;
         }
+        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+            invoke.addBodyLine(EspressoProcessor.ESPRESSO_CONTEXT_SETTER);
+        }
         if (h.returnType.equals("V")) {
             invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim());
             invoke.addBodyLine("return StaticObject.NULL;");

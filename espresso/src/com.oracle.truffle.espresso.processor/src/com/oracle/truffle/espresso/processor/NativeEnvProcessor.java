@@ -469,6 +469,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             invoke.addBodyLine(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0));
         }
+        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+            invoke.addBodyLine(EspressoProcessor.ESPRESSO_CONTEXT_SETTER);
+        }
         switch (h.jniNativeSignature[0]) {
             case VOID:
                 invoke.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
@@ -497,6 +500,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             argIndex = 0;
             for (String type : parameterTypes) {
                 invokeDirect.addBodyLine(extractArg(argIndex++, type, false, 0));
+            }
+            if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+                invokeDirect.addBodyLine(EspressoProcessor.ESPRESSO_CONTEXT_SETTER);
             }
             if (h.jniNativeSignature[0] == NativeType.VOID) {
                 invokeDirect.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
