@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.reflect.proxy.hosted;
 
+import java.util.List;
+import java.util.function.Consumer;
+
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
-
-import java.util.List;
-import java.util.function.Consumer;
 
 public class ProxyRegistry extends ConditionalConfigurationRegistry implements Consumer<ConditionalElement<List<String>>> {
     private final ConfigurationTypeResolver typeResolver;
@@ -55,11 +54,8 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
         for (int i = 0; i < interfaceNames.size(); i++) {
             String className = interfaceNames.get(i);
             Class<?> clazz = imageClassLoader.findClass(className).get();
-            if (clazz == null) {
-                throw UserError.abort("Class %s not found.", className);
-            }
-            if (!clazz.isInterface()) {
-                throw UserError.abort("The class %s is not an interface.", className);
+            if (!checkClass(interfaceNames, className, clazz)) {
+                return;
             }
             interfaces[i] = clazz;
         }
@@ -67,5 +63,21 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
             dynamicProxySupport.addProxyClass(interfaces);
         });
+    }
+
+    private static boolean checkClass(List<String> interfaceNames, String className, Class<?> clazz) {
+        if (clazz == null) {
+            warning(interfaceNames, "Class " + className + " not found.");
+            return false;
+        } else if (!clazz.isInterface()) {
+            warning(interfaceNames, "Class " + className + " is not an interface.");
+            return false;
+        }
+        return true;
+    }
+
+    private static void warning(List<String> interfaceNames, String reason) {
+        System.out.println("WARNING: Cannot register dynamic proxy for interface list: " +
+                        String.join(", ", interfaceNames) + ". Reason: " + reason);
     }
 }
