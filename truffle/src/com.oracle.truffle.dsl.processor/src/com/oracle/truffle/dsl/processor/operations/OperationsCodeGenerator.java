@@ -360,7 +360,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("bcCopy");
             b.string("cpCopy");
             b.string("handlers");
-            b.string("new ProbeNode[0]");
+            b.string("getInstrumentTrees()");
             b.end(2);
 
             b.end().startElseBlock();

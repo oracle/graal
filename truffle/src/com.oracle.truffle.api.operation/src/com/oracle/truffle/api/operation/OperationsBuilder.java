@@ -1,11 +1,9 @@
 package com.oracle.truffle.api.operation;
 
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.function.Supplier;
 
-import javax.swing.text.html.HTML.Tag;
-
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.source.Source;
 
@@ -179,4 +177,15 @@ public abstract class OperationsBuilder {
     public abstract void endSourceSection(int length);
 
     // ------------------------ instrumentation ------------------------
+
+    private final ArrayList<OperationsInstrumentTreeNode> instrumentTrees = new ArrayList<>();
+
+    protected final OperationsInstrumentTreeNode[] getInstrumentTrees() {
+        return instrumentTrees.toArray(new OperationsInstrumentTreeNode[instrumentTrees.size()]);
+    }
+
+    protected final int doBeginInstrumentation(Class<? extends Tag> tag) {
+        instrumentTrees.add(new OperationsInstrumentTreeNode(tag));
+        return instrumentTrees.size() - 1;
+    }
 }

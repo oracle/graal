@@ -233,7 +233,8 @@ public class TruffleTypes {
     public static final String OperationsBuilder_Name = "com.oracle.truffle.api.operation.OperationsBuilder";
     public static final String OperationsConstantPool_Name = "com.oracle.truffle.api.operation.OperationsConstantPool";
     public static final String OperationsNode_Name = "com.oracle.truffle.api.operation.OperationsNode";
-    public static final String Special_Name = "com.oracle.truffle.api.operation.Special";
+    public static final String OperationsInstrumentableNode_Name = "com.oracle.truffle.api.operation.OperationsInstrumentableNode";
+    public static final String OperationsInstrumentTreeNode_Name = "com.oracle.truffle.api.operation.OperationsInstrumentTreeNode";
     public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
     public static final String NodeTrace_Name = "com.oracle.truffle.api.operation.tracing.NodeTrace";
@@ -249,7 +250,8 @@ public class TruffleTypes {
     public final DeclaredType OperationsBuilder = c.getDeclaredTypeOptional(OperationsBuilder_Name);
     public final DeclaredType OperationsConstantPool = c.getDeclaredTypeOptional(OperationsConstantPool_Name);
     public final DeclaredType OperationsNode = c.getDeclaredTypeOptional(OperationsNode_Name);
-    public final DeclaredType Special = c.getDeclaredTypeOptional(Special_Name);
+    public final DeclaredType OperationsInstrumentableNode = c.getDeclaredTypeOptional(OperationsInstrumentableNode_Name);
+    public final DeclaredType OperationsInstrumentTreeNode = c.getDeclaredTypeOptional(OperationsInstrumentTreeNode_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
     public final DeclaredType ExecutionTracer = c.getDeclaredTypeOptional(ExecutionTracer_Name);
     public final DeclaredType NodeTrace = c.getDeclaredTypeOptional(NodeTrace_Name);

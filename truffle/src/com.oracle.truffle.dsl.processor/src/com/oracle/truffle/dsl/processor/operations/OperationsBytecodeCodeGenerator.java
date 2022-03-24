@@ -82,7 +82,7 @@ public class OperationsBytecodeCodeGenerator {
 
         CodeVariableElement fldProbeNodes = null;
         if (withInstrumentation) {
-            fldProbeNodes = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.ProbeNode), "probeNodes");
+            fldProbeNodes = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.OperationsInstrumentTreeNode), "instruments");
             GeneratorUtils.addCompilationFinalAnnotation(fldProbeNodes, 1);
             builderBytecodeNodeType.add(fldProbeNodes);
         }

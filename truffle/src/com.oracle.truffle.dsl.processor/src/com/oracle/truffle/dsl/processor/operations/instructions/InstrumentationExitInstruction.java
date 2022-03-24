@@ -2,6 +2,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 
 public class InstrumentationExitInstruction extends Instruction {
     private final boolean returnsValue;
@@ -21,9 +22,16 @@ public class InstrumentationExitInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
+        b.declaration(OperationGeneratorUtils.getTypes().ProbeNode, "probe",
+                        CodeTreeBuilder.createBuilder().variable(vars.probeNodes) //
+                                        .string("[").variable(vars.inputs[0]).string("].") //
+                                        .startCall("getTreeProbeNode").end(2).build());
+
+        b.startIf().string("probe != null").end();
+        b.startBlock();
+
         b.startStatement();
-        b.variable(vars.probeNodes).string("[").variable(vars.inputs[0]).string("].");
-        b.startCall("onReturnValue");
+        b.startCall("probe", "onReturnValue");
         b.variable(vars.frame);
         if (returnsValue) {
             b.variable(vars.inputs[1]);
@@ -31,6 +39,8 @@ public class InstrumentationExitInstruction extends Instruction {
             b.string("null");
         }
         b.end(2);
+
+        b.end();
 
         if (returnsValue) {
             b.startAssign(vars.results[0]).variable(vars.inputs[1]).end();

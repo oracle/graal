@@ -12,9 +12,16 @@ public class InstrumentationLeaveInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startAssign("Object result");
+        b.startAssign("ProbeNode probe");
         b.variable(vars.probeNodes).string("[").variable(vars.inputs[0]).string("].");
-        b.startCall("onReturnExceptionalOrUnwind");
+        b.startCall("getTreeProbeNode");
+        b.end(2);
+
+        b.startIf().string("probe != null").end();
+        b.startBlock();
+
+        b.startAssign("Object result");
+        b.startCall("probe", "onReturnExceptionalOrUnwind");
         b.variable(vars.frame);
         b.string("null");
         b.string("false");
@@ -32,6 +39,11 @@ public class InstrumentationLeaveInstruction extends Instruction {
         b.startStatement().startCall(vars.frame, "setObject").string("sp++").string("result").end(2);
         b.startAssign(vars.results[0]).variable(vars.inputs[2]).end();
 
+        b.end().startElseBlock();
+
+        b.startAssign(vars.results[0]).variable(vars.bci).string(" + " + length()).end();
+
+        b.end();
         b.end().startElseBlock();
 
         b.startAssign(vars.results[0]).variable(vars.bci).string(" + " + length()).end();

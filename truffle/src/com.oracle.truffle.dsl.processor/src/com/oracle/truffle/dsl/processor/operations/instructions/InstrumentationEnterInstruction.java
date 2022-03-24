@@ -13,11 +13,20 @@ public class InstrumentationEnterInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startStatement();
+        b.startAssign("ProbeNode probe");
         b.variable(vars.probeNodes).string("[").variable(vars.inputs[0]).string("].");
-        b.startCall("onEnter");
+        b.startCall("getTreeProbeNode");
+        b.end(2);
+
+        b.startIf().string("probe != null").end();
+        b.startBlock();
+
+        b.startStatement();
+        b.startCall("probe", "onEnter");
         b.variable(vars.frame);
         b.end(2);
+
+        b.end();
 
         return b.build();
     }

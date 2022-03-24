@@ -7,7 +7,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class OperationsInstrumentableNode extends OperationsNode {
 
-    @Children OperationsInstrumentTree[] instrumentTree;
+    @Children OperationsInstrumentTreeNode[] instrumentTree;
 
     protected OperationsInstrumentableNode(
                     TruffleLanguage<?> language,
@@ -19,7 +19,7 @@ public abstract class OperationsInstrumentableNode extends OperationsNode {
                     int buildOrder,
                     int maxStack,
                     int maxLocals,
-                    OperationsInstrumentTree[] instrumentTree) {
+                    OperationsInstrumentTreeNode[] instrumentTree) {
         super(language, parseContext, nodeName, isInternal, sourceInfo, sources, buildOrder, maxStack, maxLocals);
         this.instrumentTree = instrumentTree;
     }

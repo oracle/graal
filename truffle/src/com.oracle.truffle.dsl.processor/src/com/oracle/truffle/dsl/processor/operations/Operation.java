@@ -518,7 +518,7 @@ public abstract class Operation {
             CodeVariableElement varStartLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "startLabel");
             CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
 
-            b.declaration("int", varCurInstrumentId.getName(), "instrumentationId++");
+            b.declaration("int", varCurInstrumentId.getName(), "doBeginInstrumentation((Class) arg0)");
             b.declaration(getTypes().BuilderOperationLabel, varStartLabel.getName(), createCreateLabel());
             b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
 

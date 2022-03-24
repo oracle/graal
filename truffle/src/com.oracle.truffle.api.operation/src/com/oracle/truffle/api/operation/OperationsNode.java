@@ -5,13 +5,14 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.tracing.NodeTrace;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public abstract class OperationsNode extends RootNode {
+public abstract class OperationsNode extends RootNode implements InstrumentableNode {
 
     protected static final int BCI_SLOT = 0;
     protected static final int VALUES_OFFSET = 1;
@@ -139,5 +140,10 @@ public abstract class OperationsNode extends RootNode {
                 return getSourceSectionAtBci(bci);
             }
         };
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return true;
     }
 }

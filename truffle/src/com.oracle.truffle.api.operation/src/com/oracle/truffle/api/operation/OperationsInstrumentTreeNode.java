@@ -2,15 +2,17 @@ package com.oracle.truffle.api.operation;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 
-public class OperationsInstrumentTree extends Node implements InstrumentableNode {
+public class OperationsInstrumentTreeNode extends Node implements InstrumentableNode {
 
-    private static class Wrapper extends OperationsInstrumentTree implements WrapperNode {
+    private static class Wrapper extends OperationsInstrumentTreeNode implements WrapperNode {
         private final Node delegateNode;
         private final ProbeNode probeNode;
 
-        public Wrapper(Node delegateNode, ProbeNode probeNode) {
+        public Wrapper(OperationsInstrumentTreeNode delegateNode, ProbeNode probeNode) {
+            super(delegateNode.tag);
             this.delegateNode = delegateNode;
             this.probeNode = probeNode;
         }
@@ -29,6 +31,12 @@ public class OperationsInstrumentTree extends Node implements InstrumentableNode
         }
     }
 
+    private final Class<? extends Tag> tag;
+
+    public OperationsInstrumentTreeNode(Class<? extends Tag> tag) {
+        this.tag = tag;
+    }
+
     public boolean isInstrumentable() {
         return true;
     }
@@ -39,6 +47,10 @@ public class OperationsInstrumentTree extends Node implements InstrumentableNode
 
     public ProbeNode getTreeProbeNode() {
         return null;
+    }
+
+    public boolean hasTag(Class<? extends Tag> other) {
+        return tag == other;
     }
 
 }
