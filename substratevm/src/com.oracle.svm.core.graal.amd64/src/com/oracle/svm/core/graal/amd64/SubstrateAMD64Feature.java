@@ -67,7 +67,7 @@ class SubstrateAMD64Feature implements Feature {
         ImageSingletons.add(ReservedRegisters.class, new AMD64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
-            AMD64CalleeSavedRegisters.createAndRegister();
+            AMD64CalleeSavedRegisters.createAndRegister(access);
 
             ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
                 @Override

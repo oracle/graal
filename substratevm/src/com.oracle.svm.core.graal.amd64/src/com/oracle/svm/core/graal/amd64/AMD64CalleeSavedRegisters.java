@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -45,6 +44,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -66,6 +66,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
@@ -79,13 +80,19 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void createAndRegister() {
+    public static void createAndRegister(Feature.AfterRegistrationAccess access) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         SubstrateRegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(SubstrateRegisterConfig.ConfigKind.NORMAL, null, target, SubstrateOptions.PreserveFramePointer.getValue());
 
         Register frameRegister = registerConfig.getFrameRegister();
         List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters().asList());
         List<Register> calleeSavedXMMRegisters = new ArrayList<>();
+
+        /*
+         * Check whether JIT support is enabled by checking for the GraalFeature. Other options, for
+         * example DeoptimizationSupport#enabled(), do not work because they are not yet registered.
+         */
+        boolean isRuntimeCompilationEnabled = ImageSingletons.contains(access.findClassByName("com.oracle.svm.graal.hosted.GraalFeature"));
 
         /*
          * Reverse list so that CPU registers are spilled close to the beginning of the frame, i.e.,
@@ -104,7 +111,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 // XMM registers are handled separately
                 calleeSavedXMMRegisters.add(register);
             }
-            if (isXMM && needDynamicFeatureCheck()) {
+            if (isXMM && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 // we might need to safe the full 512 bit vector register
                 offset += AMD64Kind.V512_QWORD.getSizeInBytes();
             } else {
@@ -119,33 +126,18 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         ImageSingletons.add(CalleeSavedRegisters.class,
                         new AMD64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedXMMRegisters, calleeSavedRegisterOffsets, calleeSavedRegistersSizeInBytes,
-                                        saveAreaOffsetInFrame));
-    }
-
-    /**
-     * Returns {@code true} if the size of {@link AMD64#XMM} registers is not known at compile time,
-     * so dynamic CPU feature checks need to be emitted for storing the XMM register sizes.
-     */
-    private static boolean needDynamicFeatureCheck() {
-        return AMD64CPUFeatureAccess.canUpdateCPUFeatures() && isRuntimeCompilationEnabled();
-    }
-
-    /**
-     * Returns {@code true} if there is support for run-time compilation. We are (ab)using
-     * {@link DeoptimizationSupport} for that purpose because {@code GraalSupport}, which would be
-     * more appropriate, is not visible.
-     */
-    private static boolean isRuntimeCompilationEnabled() {
-        return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
+                                        saveAreaOffsetInFrame, isRuntimeCompilationEnabled));
     }
 
     private final List<Register> calleeSavedXMMRegister;
+    private final boolean isRuntimeCompilationEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private AMD64CalleeSavedRegisters(Register frameRegister, List<Register> calleeSavedRegisters, List<Register> calleeSavedXMMRegisters, Map<Register, Integer> offsetsInSaveArea, int saveAreaSize,
-                    int saveAreaOffsetInFrame) {
+                    int saveAreaOffsetInFrame, boolean isRuntimeCompilationEnabled) {
         super(frameRegister, calleeSavedRegisters, offsetsInSaveArea, saveAreaSize, saveAreaOffsetInFrame);
         this.calleeSavedXMMRegister = calleeSavedXMMRegisters;
+        this.isRuntimeCompilationEnabled = isRuntimeCompilationEnabled;
     }
 
     /**
@@ -225,16 +217,16 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         public void emit() {
-            if (needDynamicFeatureCheck()) {
+            if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 Label end = new Label();
                 try {
                     // AVX512
-                    if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX512F)) {
+                    if (emitConditionalSaveRestore(end, CPUFeature.AVX512F)) {
                         // AVX512 statically available, no further checks needed
                         return;
                     }
                     // AVX
-                    if (emitConditionalSaveRestore(end, AMD64.CPUFeature.AVX)) {
+                    if (emitConditionalSaveRestore(end, CPUFeature.AVX)) {
                         // AVX statically available, no further checks needed
                         return;
                     }
@@ -245,11 +237,11 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 }
             } else {
                 var features = ((AMD64) ConfigurationValues.getTarget().arch).getFeatures();
-                final AMD64.CPUFeature avxVersion;
-                if (features.contains(AMD64.CPUFeature.AVX512F)) {
-                    avxVersion = AMD64.CPUFeature.AVX512F;
-                } else if (features.contains(AMD64.CPUFeature.AVX)) {
-                    avxVersion = AMD64.CPUFeature.AVX;
+                final CPUFeature avxVersion;
+                if (features.contains(CPUFeature.AVX512F)) {
+                    avxVersion = CPUFeature.AVX512F;
+                } else if (features.contains(CPUFeature.AVX)) {
+                    avxVersion = CPUFeature.AVX;
                 } else {
                     avxVersion = null;
                 }
@@ -261,7 +253,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          * @return {@code true} if the {@code avxVersion} is statically available (so no further
          *         checks are needed).
          */
-        private boolean emitConditionalSaveRestore(Label end, AMD64.CPUFeature avxVersion) {
+        private boolean emitConditionalSaveRestore(Label end, CPUFeature avxVersion) {
             var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
             if (hostedCPUFeatures.contains(avxVersion)) {
                 emitSaveRestore(avxVersion);
@@ -273,10 +265,31 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                  * run-time compilations, use the features available at run time.
                  */
                 Label avxVersionNotAvailable = emitRuntimeFeatureTest(avxVersion);
-                asm.addFeatures(EnumSet.of(avxVersion));
+                // do we need vzeroupper?
+                boolean isAvxSseTransition = !hostedCPUFeatures.contains(CPUFeature.AVX);
+                if (isAvxSseTransition && avxVersion == CPUFeature.AVX512F) {
+                    // we need AVX for vzeroupper
+                    asm.addFeatures(EnumSet.of(CPUFeature.AVX, CPUFeature.AVX512F));
+                } else {
+                    asm.addFeatures(EnumSet.of(avxVersion));
+                }
+                if (isAvxSseTransition && mode == Mode.RESTORE) {
+                    /*
+                     * We are leaving an SSE-only region and are about to restore AVX registers.
+                     * Need vzeroupper.
+                     */
+                    asm.vzeroupper();
+                }
                 try {
                     emitSaveRestore(avxVersion);
                 } finally {
+                    if (isAvxSseTransition && mode == Mode.SAVE) {
+                        /*
+                         * We are entering an SSE-only region and have saved AVX register . Need
+                         * vzeroupper.
+                         */
+                        asm.vzeroupper();
+                    }
                     asm.removeFeatures();
                 }
                 asm.jmp(end);
@@ -285,18 +298,18 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             return false;
         }
 
-        private void emitSaveRestore(AMD64.CPUFeature avxVersion) {
+        private void emitSaveRestore(CPUFeature avxVersion) {
             for (Register register : calleeSavedXMMRegister) {
                 AMD64Address address = calleeSaveAddress(asm, frameSize, register);
                 RegisterCategory category = register.getRegisterCategory();
                 assert category.equals(AMD64.XMM);
-                if (AMD64.CPUFeature.AVX512F.equals(avxVersion)) {
+                if (CPUFeature.AVX512F.equals(avxVersion)) {
                     if (mode == Mode.SAVE) {
                         asm.evmovdqu64(address, register);
                     } else {
                         asm.evmovdqu64(register, address);
                     }
-                } else if (AMD64.CPUFeature.AVX.equals(avxVersion)) {
+                } else if (CPUFeature.AVX.equals(avxVersion)) {
                     if (mode == Mode.SAVE) {
                         asm.vmovdqu(address, register);
                     } else {
@@ -319,7 +332,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          *         available.
          */
         @Platforms(Platform.HOSTED_ONLY.class)
-        private Label emitRuntimeFeatureTest(AMD64.CPUFeature feature) {
+        private Label emitRuntimeFeatureTest(CPUFeature feature) {
             AMD64Address address = getFeatureMapAddress();
             int mask = RuntimeCPUFeatureCheckImpl.instance().computeFeatureMask(EnumSet.of(feature));
             GraalError.guarantee(mask != 0, "Mask must not be 0 for features %s", feature);
