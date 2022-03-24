@@ -235,16 +235,21 @@ The `Complex` type is unknown to the annotation processor. We need to provide a 
 final class ComplexMarshaller implements BinaryMarshaller<Complex> {
 
     @Override
-    public Complex read(BinaryInput input) throws IOException {
+    public Complex read(BinaryInput input) {
         int re = input.readInt();
         int img = input.readInt();
         return new Complex(re, img);
     }
 
     @Override
-    public void write(BinaryOutput output, Complex complex) throws IOException {
+    public void write(BinaryOutput output, Complex complex) {
         output.writeInt(complex.re);
         output.writeInt(complex.img);
+    }
+
+    @Override
+    public int inferSize(Complex complex) {
+        return Integer.BYTES * 2;
     }
 }
 ```
