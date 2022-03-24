@@ -384,14 +384,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
+    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @Inject EspressoLanguage language, @Inject Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
         String bindingName = meta.toHostString(name);
         if (value.isForeignObject()) {
-            meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject(meta.getContext().getLanguage()));
+            meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject(language));
         } else {
             meta.getContext().getEnv().exportSymbol(bindingName, value);
         }

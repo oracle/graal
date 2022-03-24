@@ -521,8 +521,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl(isJni = true)
     public static void JVM_ArrayCopy(@SuppressWarnings("unused") @JavaType(Class/* <System> */.class) StaticObject ignored,
                     @JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
-                    @Inject Meta meta, @Inject SubstitutionProfiler profile) {
-        Target_java_lang_System.arraycopy(src, srcPos, dest, destPos, length, meta, profile);
+                    @Inject EspressoLanguage language, @Inject Meta meta, @Inject SubstitutionProfiler profile) {
+        Target_java_lang_System.arraycopy(src, srcPos, dest, destPos, length, language, meta, profile);
     }
 
     @VmImpl
@@ -604,8 +604,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region objects
 
     private static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
-                    Meta meta, SubstitutionProfiler profiler, char exceptionBranch) {
-        EspressoLanguage language = meta.getContext().getLanguage();
+                    EspressoLanguage language, Meta meta, SubstitutionProfiler profiler, char exceptionBranch) {
         try {
             return interop.readArrayElement(array.rawForeignObject(language), index);
         } catch (UnsupportedMessageException e) {
@@ -617,12 +616,12 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static StaticObject cloneForeignArray(StaticObject array, Meta meta, InteropLibrary interop, ToEspressoNode toEspressoNode, SubstitutionProfiler profiler, char exceptionBranch) {
+    private static StaticObject cloneForeignArray(StaticObject array, EspressoLanguage language, Meta meta, InteropLibrary interop, ToEspressoNode toEspressoNode, SubstitutionProfiler profiler,
+                    char exceptionBranch) {
         assert array.isForeignObject();
         assert array.isArray();
         int length;
         try {
-            EspressoLanguage language = meta.getContext().getLanguage();
             long longLength = interop.getArraySize(array.rawForeignObject(language));
             if (longLength > Integer.MAX_VALUE) {
                 profiler.profile(exceptionBranch);
@@ -646,56 +645,56 @@ public final class VM extends NativeEnv implements ContextAccess {
                     case Boolean:
                         boolean[] booleanArray = new boolean[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             booleanArray[i] = (boolean) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, booleanArray);
                     case Byte:
                         byte[] byteArray = new byte[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             byteArray[i] = (byte) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, byteArray);
                     case Short:
                         short[] shortArray = new short[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             shortArray[i] = (short) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, shortArray);
                     case Char:
                         char[] charArray = new char[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             charArray[i] = (char) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, charArray);
                     case Int:
                         int[] intArray = new int[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             intArray[i] = (int) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, intArray);
                     case Float:
                         float[] floatArray = new float[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             floatArray[i] = (float) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, floatArray);
                     case Long:
                         long[] longArray = new long[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             longArray[i] = (long) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, longArray);
                     case Double:
                         double[] doubleArray = new double[length];
                         for (int i = 0; i < length; ++i) {
-                            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+                            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
                             doubleArray[i] = (double) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, doubleArray);
@@ -714,7 +713,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         StaticObject[] newArray = new StaticObject[length];
         for (int i = 0; i < length; ++i) {
-            Object foreignElement = readForeignArrayElement(array, i, interop, meta, profiler, exceptionBranch);
+            Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
 
             try {
                 newArray[i] = (StaticObject) toEspressoNode.execute(foreignElement, componentType);
@@ -728,14 +727,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl(isJni = true)
     public static @JavaType(Object.class) StaticObject JVM_Clone(@JavaType(Object.class) StaticObject self,
-                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+                    @Inject EspressoLanguage language, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         assert StaticObject.notNull(self);
         char exceptionBranch = 3;
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
-                EspressoLanguage language = meta.getContext().getLanguage();
-                return cloneForeignArray(self, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
+                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
             }
             return self.copy();
         }

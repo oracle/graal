@@ -31,6 +31,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -76,9 +77,10 @@ public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @JavaType(Object.class) StaticObject clone(@JavaType(Object.class) StaticObject self,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, meta, profiler);
+        return VM.JVM_Clone(self, language, meta, profiler);
     }
 
     /* As of JDK 14+, these are no longer linked in libjava. */

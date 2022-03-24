@@ -280,10 +280,11 @@ public final class Target_java_lang_System {
     // Maintained only to be called by JVM_ArrayCopy.
     public static void arraycopy(@JavaType(Object.class) StaticObject src, int srcPos,
                     @JavaType(Object.class) StaticObject dest, int destPos, int length,
-                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+                    @Inject EspressoLanguage language, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
-            doArrayCopy(src, srcPos, dest, destPos, length, meta, profiler);
+            doArrayCopy(src, srcPos, dest, destPos, length, language, meta, profiler);
         } catch (NullPointerException e) {
             throw throwNullPointerEx(meta, profiler);
         } catch (ArrayStoreException e) {
@@ -314,14 +315,13 @@ public final class Target_java_lang_System {
      *      if an element in the src array could not be stored into the dest array because of a type mismatch
      */
     private static void doArrayCopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
-                    Meta meta, SubstitutionProfiler profiler) {
+                    EspressoLanguage language, Meta meta, SubstitutionProfiler profiler) {
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
             throw throwNullPointerEx(meta, profiler);
         }
         if (src.isForeignObject() || dest.isForeignObject()) {
             // TODO: handle foreign arrays efficiently.
             profiler.profile(FOREIGN_PROFILE);
-            EspressoLanguage language = meta.getContext().getLanguage();
             handleForeignArray(src.isForeignObject() ? src.rawForeignObject(language) : src, srcPos, dest.isForeignObject() ? dest.rawForeignObject(language) : dest, destPos, length,
                             ((ArrayKlass) dest.getKlass()).getComponentType(), meta, profiler);
             return;
