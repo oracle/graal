@@ -1447,7 +1447,7 @@ public final class Target_sun_misc_Unsafe {
 
     private static boolean consumeUnparkSignal(StaticObject self, Meta meta) {
         Field signals = meta.HIDDEN_THREAD_UNPARK_SIGNALS;
-        return signals.compareAndExchangeInt(self, signals.getInt(self), 0) > 0;
+        return signals.getAndSetInt(self, 0) > 0;
     }
 
     /**
