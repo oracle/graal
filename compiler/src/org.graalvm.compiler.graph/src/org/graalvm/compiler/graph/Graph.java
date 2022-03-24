@@ -546,16 +546,8 @@ public class Graph {
     }
 
     /**
-     * For node event listing we have multiple straight forward events like
-     *
-     * <ul>
-     * <li>adding a node -> NODE_ADDED</li>
-     * <li>removing a node -> NODE_REMOVED</li>
-     * <li>etc</li>
-     * </ul>
-     *
-     * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
-     * form before filling any node fields. We want to observe these events as well.
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph but its fields have yet to be initialized.
      */
     public void beforeDecodingFields(Node node) {
         if (nodeEventListener != null) {
@@ -564,7 +556,8 @@ public class Graph {
     }
 
     /**
-     * @see #beforeDecodingFields(Node)
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph and its fields have now been initialized.
      */
     public void afterDecodingFields(Node node) {
         if (nodeEventListener != null) {
@@ -599,7 +592,7 @@ public class Graph {
         /**
          * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
          * form before filling any node fields. We want to observe these events as well. This event
-         * is triggered before a "stub" node's fields are decoded and populated.
+         * is triggered before a "stub" node's fields are decoded and initialized.
          */
         BEFORE_DECODING_FIELDS,
 
