@@ -948,15 +948,31 @@ public class Graph {
      * of nodes is compressed such that all non-null entries precede all null entries while
      * preserving the ordering between the nodes within the list.
      */
-    public boolean maybeCompress() {
-        if (debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()) {
+    public final boolean maybeCompress() {
+        return compress(false);
+    }
+
+    /**
+     * Minimize the memory occupied by the graph by trimming all node arrays to the minimum size.
+     * Note that this can make subsequent optimization phases run slower, because additions to the
+     * graph must re-allocate larger arrays again. So invoking this method is only beneficial if a
+     * graph is alive for a long time.
+     */
+    public final void minimizeSize() {
+        compress(true);
+    }
+
+    protected boolean compress(boolean minimizeSize) {
+        if (!minimizeSize && (debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod())) {
             return false;
         }
         int liveNodeCount = getNodeCount();
-        int liveNodePercent = liveNodeCount * 100 / nodesSize;
-        int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
-        if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
-            return false;
+        if (!minimizeSize) {
+            int liveNodePercent = liveNodeCount * 100 / nodesSize;
+            int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
+            if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
+                return false;
+            }
         }
         GraphCompressions.increment(debug);
         int nextId = 0;
@@ -984,7 +1000,36 @@ public class Graph {
         compressions++;
         nodesDeletedBeforeLastCompression += nodesDeletedSinceLastCompression;
         nodesDeletedSinceLastCompression = 0;
+
+        if (minimizeSize) {
+            /* Trim the array of all alive nodes itself. */
+            nodes = trimArrayToNewSize(nodes, nextId, NodeList.EMPTY_NODE_ARRAY);
+            /* Remove deleted nodes from the linked list of Node.typeCacheNext. */
+            recomputeIterableNodeLists();
+            /* Trim node arrays used within each node. */
+            for (Node node : nodes) {
+                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount, NodeList.EMPTY_NODE_ARRAY);
+                node.getNodeClass().getInputEdges().minimizeSize(node);
+                node.getNodeClass().getSuccessorEdges().minimizeSize(node);
+            }
+        }
         return true;
+    }
+
+    static <T> T[] trimArrayToNewSize(T[] input, int newSize, T[] emptyArray) {
+        assert emptyArray.length == 0;
+        if (input.length == newSize) {
+            return input;
+        }
+        for (int i = newSize; i < input.length; i++) {
+            GraalError.guarantee(input[i] == null, "removing non-null element");
+        }
+
+        if (newSize == 0) {
+            return emptyArray;
+        } else {
+            return Arrays.copyOf(input, newSize);
+        }
     }
 
     /**

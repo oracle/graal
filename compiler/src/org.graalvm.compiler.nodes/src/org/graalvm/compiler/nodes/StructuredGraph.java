@@ -560,8 +560,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     @Override
-    public boolean maybeCompress() {
-        if (super.maybeCompress()) {
+    protected boolean compress(boolean minimizeSize) {
+        if (super.compress(minimizeSize)) {
             /*
              * The schedule contains a NodeMap which is unusable after compression.
              */
