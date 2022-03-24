@@ -244,6 +244,13 @@ final class EspressoShutdownHandler implements ContextAccess {
             teardownPhase3(initiatingThread);
             nextPhase = !waitSpin(initiatingThread, true);
 
+            // Special handling of the reference drainer
+            try {
+                referenceDrainer.shutdownAndWaitReferenceDrain();
+            } catch (InterruptedException e) {
+                // ignore
+            }
+
             if (nextPhase) {
                 getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
                 getContext().getLogger().severe(() -> {
@@ -255,16 +262,10 @@ final class EspressoShutdownHandler implements ContextAccess {
                 });
                 if (getContext().AllowHostExit) {
                     // Needed until we can detach rogue threads from Truffle.
-                    getContext().getLogger().severe("Calling Host System.ext()...");
+                    getContext().getLogger().severe("Calling Host System.exit()...");
                     System.exit(getExitStatus());
-                }
-            }
 
-            // Special handling of the reference drainer
-            try {
-                referenceDrainer.shutdownAndWaitReferenceDrain();
-            } catch (InterruptedException e) {
-                // ignore
+                }
             }
         }
 
