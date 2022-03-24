@@ -155,6 +155,10 @@ Filter files have the following structure:
     {"excludeClasses": "com.oracle.svm.**"},
     {"includeClasses": "com.oracle.svm.tutorial.*"},
     {"excludeClasses": "com.oracle.svm.tutorial.HostedHelper"}
+  ],
+  "regexRules": [
+    {"includeClasses": ".*"},
+    {"excludeClasses": ".*\\$\\$Generated[0-9]+"}
   ]
 }
 ```
@@ -170,6 +174,12 @@ In the example above, the first rule excludes lookups originating in all classes
 In the next rule however, lookups from those classes that are directly in package `com.oracle.svm.tutorial` are included again.
 Finally, lookups from the `HostedHelper` class is excluded again. Each of these rules partially overrides the previous ones.
 For example, if the rules were in the reverse order, the exclusion of `com.oracle.svm.**` would be the last rule and would override all other rules.
+
+The `regexRules` section also contains a sequence of rules.
+Its structure is the same as that of the `rules` section, but rules are specified as regular expression patterns which are matched against the entire fully qualified class identifier.
+The `regexRules` section is optional.
+If a `regexRules` section is specified, a class will be considered included if (and only if) both `rules` and `regexRules` include the class and neither of them exclude it.
+With no `regexRules` section, only the `rules` section determines whether a class is included or excluded.
 
 For testing purposes, the built-in filter for Java class library lookups can be disabled by adding the `no-builtin-caller-filter` option, but the resulting configuration files are generally unsuitable for a native image build.
 Similarly, the built-in filter for Java VM-internal accesses based on heuristics can be disabled with `no-builtin-heuristic-filter` and will also generally lead to less usable configuration files.
@@ -243,3 +253,8 @@ native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/
 
 This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
 An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure help` for all options.
+
+### Experimental Options
+
+The native-image-agent has options which are currently experimental and might be enabled in future releases, but can also be changed or removed entirely.
+See the [ExperimentalAgentOptions.md](ExperimentalAgentOptions.md) guide.
