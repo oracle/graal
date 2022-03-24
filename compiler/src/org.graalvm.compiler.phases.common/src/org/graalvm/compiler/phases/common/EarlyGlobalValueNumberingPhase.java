@@ -36,6 +36,7 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -124,6 +125,9 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
+        if (graph.getDebug().isDumpEnabledForMethod()) {
+            TTY.printf("");
+        }
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         LoopsData ld = context.getLoopsDataProvider().getLoopsData(graph);
         cfg.visitDominatorTreeDefault(new GVNVisitor(cfg, ld));
@@ -230,12 +234,6 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                 unconditionallyInsideLoop = false;
             }
 
-            // we exited a loop down this path, effects can have happened, kill everything (exit as
-            // well reachable over the backedge)
-            if (b.getDominator() != null && b.getDominator().getLoop() != null && b.getLoop() != b.getDominator().getLoop()) {
-                killLoopLocations(((HIRLoop) b.getDominator().getLoop()).getKillLocations(), blockMap);
-            }
-
             // begin nodes can be memory kills
             blockMap.killValuesByPotentialMemoryKill(b.getBeginNode());
             ArrayList<FixedWithNextNode> nodes = new ArrayList<>();
@@ -275,6 +273,18 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
         private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, LocationSet thisLoopKilledLocations, Loop<Block> hirLoop,
                         ValueMap blockMap, ControlFlowGraph cfg, NodeBitMap licmNodes, StructuredGraph graph, LoopsData ld) {
+            if (cur instanceof LoopExitNode) {
+                /*
+                 * We exit a loop down this path, we have to account for the effects of the loop
+                 * since it is not necessarily true that all effects of the loop body dominate the
+                 * loop exit. However, if an iteration of a loop is taken it will kill all locations
+                 * it touches.
+                 */
+                final LoopBeginNode exitedLoop = ((LoopExitNode) cur).loopBegin();
+                final Loop<Block> loop = cfg.blockFor(exitedLoop).getLoop();
+                killLoopLocations(((HIRLoop) loop).getKillLocations(), blockMap);
+            }
+
             if (MemoryKill.isMemoryKill(cur)) {
                 blockMap.killValuesByPotentialMemoryKill(cur);
                 return;
@@ -524,7 +534,6 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                         earlyGVNAbort.increment(graph.getDebug());
                         return;
                     }
-                    return;
                 }
 
                 graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: replacing %s with %s", n, edgeDataEqual);
