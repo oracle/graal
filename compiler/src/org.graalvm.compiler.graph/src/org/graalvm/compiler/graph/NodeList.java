@@ -279,6 +279,10 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         size = 0;
     }
 
+    void minimizeSize() {
+        nodes = Graph.trimArrayToNewSize(nodes, size, EMPTY_NODE_ARRAY);
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public boolean remove(Object node) {

@@ -689,6 +689,7 @@ public class CompileQueue {
                          * Publish the new graph, it can be picked up immediately by other threads
                          * trying to inline this method.
                          */
+                        graph.minimizeSize();
                         method.compilationInfo.setGraph(graph);
                         checkTrivial(method);
                         inliningProgress = true;
@@ -1110,6 +1111,7 @@ public class CompileQueue {
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
                 assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
 
+                graph.minimizeSize();
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
                 if (!parseOnce) {
                     UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);

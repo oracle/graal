@@ -205,6 +205,7 @@ public class MethodTypeFlowBuilder {
              * needed after static analysis.
              */
             if (bb.strengthenGraalGraphs()) {
+                graph.minimizeSize();
                 method.setAnalyzedGraph(graph);
             }
 
