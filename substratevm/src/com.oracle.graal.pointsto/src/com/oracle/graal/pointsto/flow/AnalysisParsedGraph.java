@@ -114,7 +114,10 @@ public final class AnalysisParsedGraph {
                 return EMPTY;
             }
 
-            graph = new StructuredGraph.Builder(options, debug).method(method).build();
+            graph = new StructuredGraph.Builder(options, debug)
+                            .method(method)
+                            .recordInlinedMethods(false)
+                            .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 
                 // enable this logging to get log output in compilation passes
