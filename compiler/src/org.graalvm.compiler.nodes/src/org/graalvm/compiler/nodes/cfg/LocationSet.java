@@ -99,11 +99,13 @@ public class LocationSet {
     }
 
     public boolean contains(LocationIdentity locationIdentity) {
-        if (LocationIdentity.any().equals(firstLocation)) {
-            return true;
-        }
-        if (locationIdentity.equals(firstLocation)) {
-            return true;
+        if (locationIdentity.isMutable()) {
+            if (LocationIdentity.any().equals(firstLocation)) {
+                return true;
+            }
+            if (locationIdentity.equals(firstLocation)) {
+                return true;
+            }
         }
         if (list != null) {
             for (int i = 0; i < list.size(); ++i) {
