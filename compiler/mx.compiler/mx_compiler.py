@@ -1381,6 +1381,11 @@ def print_graaljdk_config(args):
     """print the GraalJDK config"""
     mx_sdk_vm_impl.graalvm_show([], _graaljdk_dist(_parse_graaljdk_edition('Print the GraalJDK config', args)))
 
+def prof_bisect(args):
+    cp = _remove_redundant_entries(mx.classpath('GRAAL_BISECT', jdk=jdk))
+    args = ['-cp', cp, 'org.graalvm.bisect.ProfBisect'] + args
+    run_java(args)
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
@@ -1395,6 +1400,7 @@ mx.update_commands(_suite, {
     'graaljdk-home': [print_graaljdk_home, '[options]'],
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
+    'profbisect': [prof_bisect, 'proftoolOutputRun1 optimizationLogRun1 proftoolOutputRun2 optimizationLogRun2'],
 })
 
 def mx_post_parse_cmd_line(opts):

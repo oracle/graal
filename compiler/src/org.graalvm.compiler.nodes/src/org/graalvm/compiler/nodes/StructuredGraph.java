@@ -49,6 +49,7 @@ import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
+import org.graalvm.compiler.core.common.OptimizationLog;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -336,6 +337,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public static final boolean USE_PROFILING_INFO = true;
 
     public static final boolean NO_PROFILING_INFO = false;
+
+    private OptimizationLog optimizationLog;
 
     private StructuredGraph(String name,
                     ResolvedJavaMethod method,
@@ -1143,5 +1146,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public NodeSourcePosition getCallerContext() {
         return callerContext;
+    }
+
+    public OptimizationLog getOptimizationLog() {
+        return optimizationLog;
+    }
+
+    public void setOptimizationLog(OptimizationLog optimizationLog) {
+        this.optimizationLog = optimizationLog;
     }
 }

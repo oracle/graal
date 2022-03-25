@@ -1852,7 +1852,24 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.bisect" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+    },
 
+    "org.graalvm.bisect.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.bisect",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,Test",
+    },
   },
 
   "distributions" : {
@@ -1906,6 +1923,7 @@ suite = {
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.nativebridge.processor.test",
+        "org.graalvm.bisect.test",
       ],
       "distDependencies" : [
         "GRAAL_ONLY_TEST",
@@ -2150,6 +2168,12 @@ suite = {
           },
         },
       },
+    },
+
+    "GRAAL_BISECT": {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.bisect"],
+      "maven": False,
     },
   },
 }
