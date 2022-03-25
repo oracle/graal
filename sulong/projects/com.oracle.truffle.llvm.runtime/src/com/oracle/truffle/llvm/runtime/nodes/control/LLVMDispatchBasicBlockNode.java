@@ -70,6 +70,11 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
         this.debugInfo = debugInfo;
     }
 
+    @Override
+    public String toString() {
+        return getRootNode() != null ? getRootNode().toString() : "<OSR>";
+    }
+
     public LocalVariableDebugInfo getDebugInfo() {
         return debugInfo;
     }
