@@ -65,7 +65,7 @@ public final class MethodHandleIntrinsics {
 
     private final ConcurrentHashMap<MethodRef, Method> intrinsics;
 
-    MethodHandleIntrinsics(EspressoContext context) {
+    MethodHandleIntrinsics() {
         this.intrinsics = new ConcurrentHashMap<>();
     }
 
