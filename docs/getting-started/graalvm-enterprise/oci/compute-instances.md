@@ -18,16 +18,19 @@ To replicate the steps in this guide, [create a compute VM instance and connect 
 
 ## Install GraalVM Enterprise
 
-For convenient installation, GraalVM Enterprise RPMs have been made available in the OCI YUM repository.
+For convenience, GraalVM Enterpriise RPMs are available in the Oracle YUM repository. 
+Each RPM is self-contained and will automatically pull in all the required dependencies.
+
 That means that OCI customers can use the GraalVM Enterprise environment in their cloud instances by installing it with `yum` - a package-management utility for the Linux operating systems.
 
-For demonstration purposes, a demo-instance of the **VM.Standard.E4.Flex** shape with the **Oracle Linux 7.9** pre-built image was created.
-The following SSH command is then used to connect to a Linux instance from a Unix-style system:
-```shell
-ssh -i .ssh/id_rsa opc@INSTANCE_PUBLIC_IP
-```
+The following instructions have been tested on an OCI Compute Instance with **Oracle Linux 7.9** and **VM.Standard.E4.Flex** with 1 OCPU and 16 GB RAM.
+Use the following command to connect to the OCI Compute Instance from a Unix-style system:
 
-In this instance, `.ssh/id_rsa` is the full path and name of the file containing the private SSH key, `opc` is the default name for the Oracle Linux image, and `INSTANCE_PUBLIC_IP` is the instance IP address provisioned from the console.
+   ```shell
+   ssh -i .ssh/id_rsa opc@INSTANCE_PUBLIC_IP
+   ```
+
+The `.ssh/id_rsa` part is the full path and name of the file containing the private SSH key, `opc` is the default name for the Oracle Linux image, and `INSTANCE_PUBLIC_IP` is the instance IP address provisioned from the console.
 For more details, refer to the [Connecting to Your Linux Instance Using SSH](https://docs.cloud.oracle.com/iaas/Content/GSG/Tasks/testingconnection.htm) tutorial.
 
 1. Having connected to the instance, verify which GraalVM Enterprise RPMs are available for the installation, narrowing down the search to the latest release, and Java 11.
@@ -44,7 +47,7 @@ For example, to install the latest version of "Oracle GraalVM Enterprise Edition
    sudo yum install graalvm22-ee-11-jdk
    ```
    Confirm if the installed package size is okay by typing `yes` at the prompt. 
-   It will install the latest version of **graalvm22-ee-11-jdk** which includes the JVM runtime, the Graal compiler, and all dependent packages, for example, `libpolyglot`, `llvm`, etc.
+   It will install the latest version of **graalvm22-ee-11-jdk** which includes the JVM runtime with the Graal compiler.
 
    After the installation, the GraalVM Enterprise binary is placed in _/usr/lib64/graalvm_. You can check this with:
 
@@ -69,18 +72,24 @@ For example, to install the latest version of "Oracle GraalVM Enterprise Edition
       source ~/.bashrc
       ```
 
-   - Verify the values of `PATH` and `JAVA_HOME` to check if it was successful:
+   - Verify the values of `PATH` and `JAVA_HOME`:
 
       ```shell
       echo $JAVA_HOME
       echo $PATH
+      ```
+   - Run the following command to confirm the version of GraalVM Enterprise JDK installed:
+
+      ```shell
+      java -version
       ```
 
 Now you have a ready-to-go VM instance with GraalVM Enterprise installed.
 
 ## Install Additional Features
 
-GraalVM Enterprise is shipped with core components (to save the filesize) and can be extended with more features on demand. For example, you can install Native Image, the Node.js runtime, the LLVM toolchain, etc. Find information on available features [here](https://docs.oracle.com/en/graalvm/enterprise/22/docs/overview/architecture/).
+GraalVM Enterprise consists of different features and components - JDK, Native Image, Python runtime, Node.js runtime, LLVM toolchain, etc. - each of which can be installed separately or as an add-on to an existing component. 
+See [Distribution Components List](https://docs.oracle.com/en/graalvm/enterprise/22/docs/overview/architecture/#distribution-components-list) for more information.
 
 To add additional features to GraalVM Enterprise, use the `yum install <package_name>` command. 
 
@@ -92,7 +101,7 @@ To add additional features to GraalVM Enterprise, use the `yum install <package_
    The printed list is enormous. If you are interested in a particular component, for example, the Python runtime, narrow down the search providing the exact package name:
 
    ```shell
-   sudo yum provides graalvm21-ee-11-python*
+   sudo yum provides graalvm22-ee-11-python*
    ```
 
 2. Install the component to GraalVM Enterprise with the `yum install <package_name> command` command. To install the Python runtime, run:
@@ -110,7 +119,7 @@ To add additional features to GraalVM Enterprise, use the `yum install <package_
 1. Search for Native Image PRMs available for your installation: 
 
    ```shell
-   sudo yum provides graalvm21-ee-11-native-image*
+   sudo yum provides graalvm22-ee-11-native-image*
    ```
 2. Install Native Image using the `yum install <package_name> command` command. All required dependencies will be automatically resolved.
 
@@ -153,16 +162,16 @@ The `yum` package manager for Oracle Linux can be used to update an existing Gra
    java -version
    ```
 
-The **graalvm22-ee-17-jdk** package is installed alongside **graalvm21-ee-11-jdk** in the _/usr/lib64/graalvm_ directory. Note that regardless the version printed to the console, the `PATH` and `JAVA_HOME` environment variables still point to the old version. Reset the variables as described in [Install GraalVM Enterprise](#install-graalvm-enterprise), step 3.
+The **graalvm22-ee-17-jdk** package is installed alongside **graalvm22-ee-11-jdk** in the _/usr/lib64/graalvm_ directory. Note that regardless the version printed to the console, the `PATH` and `JAVA_HOME` environment variables still point to the old version. Reset the variables as described in [Install GraalVM Enterprise](#install-graalvm-enterprise), step 3.
 
 ### Note on `yum upgrade`
 
 The `yum upgrade` command can be used to update on the same year package line, for example, to upgrade from GraalVM Enterprise 22.0.0 to version 22.0.1 when this RPM package becomes available:
 
    ```shell
-   sudo yum upgrade graalvm22-ee-17-jdk
+   sudo yum upgrade graalvm22-ee-11-jdk
    ```
-   If there is no newer package available, you will see the `No packages marked for update` message.
+   As there are no newer package available, you will see the `No packages marked for update` message.
 
 It will update the whole system and remove the obsolete GraalVM Enterprise installation.
 
