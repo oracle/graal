@@ -63,7 +63,7 @@ public final class WindowsLibraryLocator extends LibraryLocator {
         }
 
         // then try the current directory
-        Path path = Paths.get(".").toAbsolutePath();
+        Path path = Paths.get(context.getEnv().getCurrentWorkingDirectory().getPath());
         file = DefaultLibraryLocator.locateAbsolute(context, path.resolve(libPath));
         if (file != null) {
             return file;

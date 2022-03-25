@@ -27,5 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/*
+ * The bitcode format tests are also executed on linux, leading to a dependency issue, because
+ * kernel32.dll file is missing. To resolve this issue, we introduce a dummy dll that can be
+ * used instead. The file requires an empty _DllMainCRTStatup function to correctly load.
+ *
+ * The dll can be compiled by executing the following command:
+ *   `clang.cmd kernel32.c -shared -emit-llvm -o KERNEL32.dll -nostdlib`
+ */
+
 void _DllMainCRTStartup() {
 }
