@@ -113,7 +113,7 @@ public abstract class ByteArrayLoad extends Node {
                 Meta meta = context.getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }

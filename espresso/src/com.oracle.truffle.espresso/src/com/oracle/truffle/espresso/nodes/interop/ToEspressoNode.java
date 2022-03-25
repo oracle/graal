@@ -104,11 +104,11 @@ public abstract class ToEspressoNode extends Node {
                     }
                     break;
                 case Void:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("Unexpected cast to void");
             }
         } catch (UnsupportedMessageException e) {
-            exceptionProfile.enter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Contract violation: if fitsIn{type} returns true, as{type} must succeed.");
         }
         exceptionProfile.enter();
@@ -175,7 +175,7 @@ public abstract class ToEspressoNode extends Node {
             try {
                 return klass.getMeta().toGuestString(interop.asString(value));
             } catch (UnsupportedMessageException e) {
-                exceptionProfile.enter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
             }
         }
@@ -252,7 +252,7 @@ public abstract class ToEspressoNode extends Node {
                     return;
                 }
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }

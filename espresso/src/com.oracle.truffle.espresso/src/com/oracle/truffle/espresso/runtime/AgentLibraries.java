@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.interop.ArityException;
@@ -91,6 +92,7 @@ final class AgentLibraries implements ContextAccess {
                     throw context.abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }

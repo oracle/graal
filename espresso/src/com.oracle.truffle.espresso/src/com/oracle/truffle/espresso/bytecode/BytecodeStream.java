@@ -249,6 +249,25 @@ public final class BytecodeStream {
     }
 
     /**
+     * Reads a 1-byte constant pool index for the current instruction. Used by
+     * {@link Bytecodes#LDC}.
+     *
+     * @return the constant pool index
+     */
+    public char readCPI1(int curBCI) {
+        return (char) Bytes.beU1(code, curBCI + 1);
+    }
+
+    /**
+     * Reads a 2-byte constant pool index for the current instruction.
+     *
+     * @return the constant pool index
+     */
+    public char readCPI2(int curBCI) {
+        return (char) Bytes.beU2(code, curBCI + 1);
+    }
+
+    /**
      * Reads a constant pool index for the current instruction.
      *
      * @return the constant pool index
@@ -427,7 +446,7 @@ public final class BytecodeStream {
                 out.println(str.toString());
             }
         } catch (Throwable e) {
-            throw EspressoError.unexpected("Exception thrown during bytecode printing, aborting...", e);
+            throw EspressoError.shouldNotReachHere("Exception thrown during bytecode printing, aborting...", e);
         }
     }
 

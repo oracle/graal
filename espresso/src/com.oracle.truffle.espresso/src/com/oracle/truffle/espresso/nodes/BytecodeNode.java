@@ -231,6 +231,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -285,16 +286,15 @@ import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -355,7 +355,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
-    private static final DebugCounter[] BYTECODE_HISTOGRAM;
 
     private static final byte TRIVIAL_UNINITIALIZED = -1;
     private static final byte TRIVIAL_NO = 0;
@@ -364,10 +363,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
     static {
-        BYTECODE_HISTOGRAM = new DebugCounter[0xFF];
-        for (int bc = 0; bc <= SLIM_QUICK; ++bc) {
-            BYTECODE_HISTOGRAM[bc] = DebugCounter.create(Bytecodes.nameOf(bc));
-        }
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
@@ -399,6 +394,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     // All implicit exception paths in the method will be compiled if at least one implicit
     // exception is thrown.
     @CompilationFinal private boolean implicitExceptionProfile;
+
+    @CompilationFinal private boolean linkageExceptionProfile;
 
     private final LivenessAnalysis livenessAnalysis;
 
@@ -462,32 +459,33 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
 
         Symbol<Type>[] methodSignature = getMethod().getParsedSignature();
-        int argCount = Signatures.parameterCount(methodSignature, false);
+        int argCount = Signatures.parameterCount(methodSignature);
         CompilerAsserts.partialEvaluationConstant(argCount);
         for (int i = 0; i < argCount; ++i) {
             Symbol<Type> argType = Signatures.parameterType(methodSignature, i);
-            if (argType.length() == 1) {
-                // @formatter:off
-                switch (argType.byteAt(0)) {
-                    case 'Z' : setLocalInt(frame, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
-                    case 'B' : setLocalInt(frame, curSlot, ((byte) arguments[i + receiverSlot]));            break;
-                    case 'S' : setLocalInt(frame, curSlot, ((short) arguments[i + receiverSlot]));           break;
-                    case 'C' : setLocalInt(frame, curSlot, ((char) arguments[i + receiverSlot]));            break;
-                    case 'I' : setLocalInt(frame, curSlot, (int) arguments[i + receiverSlot]);               break;
-                    case 'F' : setLocalFloat(frame, curSlot, (float) arguments[i + receiverSlot]);           break;
-                    case 'J' : setLocalLong(frame, curSlot, (long) arguments[i + receiverSlot]);     ++curSlot; break;
-                    case 'D' : setLocalDouble(frame, curSlot, (double) arguments[i + receiverSlot]); ++curSlot; break;
-                    default      :
-                        CompilerDirectives.transferToInterpreter();
-                        throw EspressoError.shouldNotReachHere("unexpected kind");
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : setLocalInt(frame, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
+                case 'B' : setLocalInt(frame, curSlot, ((byte) arguments[i + receiverSlot]));            break;
+                case 'S' : setLocalInt(frame, curSlot, ((short) arguments[i + receiverSlot]));           break;
+                case 'C' : setLocalInt(frame, curSlot, ((char) arguments[i + receiverSlot]));            break;
+                case 'I' : setLocalInt(frame, curSlot, (int) arguments[i + receiverSlot]);               break;
+                case 'F' : setLocalFloat(frame, curSlot, (float) arguments[i + receiverSlot]);           break;
+                case 'J' : setLocalLong(frame, curSlot, (long) arguments[i + receiverSlot]);     ++curSlot; break;
+                case 'D' : setLocalDouble(frame, curSlot, (double) arguments[i + receiverSlot]); ++curSlot; break;
+                case '[' : // fall through
+                case 'L' : {
+                    // Reference type.
+                    StaticObject argument = (StaticObject) arguments[i + receiverSlot];
+                    setLocalObject(frame, curSlot, argument);
+                    checkNoForeignObjectAssumption(argument);
+                    break;
                 }
-                // @formatter:on
-            } else {
-                // Reference type.
-                StaticObject argument = (StaticObject) arguments[i + receiverSlot];
-                setLocalObject(frame, curSlot, argument);
-                checkNoForeignObjectAssumption(argument);
+                default :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
             }
+            // @formatter:on
             ++curSlot;
         }
     }
@@ -846,9 +844,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
                     case BIPUSH: putInt(frame, top, bs.readByte(curBCI)); break;
                     case SIPUSH: putInt(frame, top, bs.readShort(curBCI)); break;
-                    case LDC: // fall through
-                    case LDC_W: // fall through
-                    case LDC2_W: putPoolConstant(frame, top, readCPI(curBCI), curOpcode); break;
+
+                    case LDC   : putPoolConstant(frame, top, bs.readCPI1(curBCI), curOpcode); break;
+                    case LDC_W : // fall through
+                    case LDC2_W: putPoolConstant(frame, top, bs.readCPI2(curBCI), curOpcode); break;
 
                     case ILOAD:
                         putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
@@ -1295,9 +1294,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case INVOKEINTERFACE:
                         top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(NEW, readCPI(curBCI)), true)); break;
+                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(NEW, bs.readCPI2(curBCI)), true)); break;
                     case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta(), this)); break;
-                    case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, readCPI(curBCI)), popInt(frame, top - 1), this)); break;
+                    case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1), this)); break;
 
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
@@ -1355,7 +1354,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 continue loop;
                             }
                             default:
-                                CompilerDirectives.transferToInterpreter();
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
                                 throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                         }
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
@@ -1366,10 +1365,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         continue loop;
                     }
 
-                    case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
+                    case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, bs.readCPI2(curBCI)), bs.readUByte(curBCI + 3)); break;
 
                     case BREAKPOINT:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                     case INVOKEDYNAMIC:
@@ -1383,7 +1382,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             continue loop;
                         }
-                        BaseQuickNode quickNode = nodes[readCPI(curBCI)];
+                        BaseQuickNode quickNode = nodes[bs.readCPI2(curBCI)];
                         if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);
@@ -1396,7 +1395,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         break;
 
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
@@ -1558,9 +1557,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case 'F' : return popFloat(frame, top - 1);
             case 'D' : return popDouble(frame, top - 1);
             case 'V' : return StaticObject.NULL; // void
+            case '[' : // fall through
+            case 'L' : return popObject(frame, top - 1);
             default:
-                assert Types.isReference(returnType);
-                return popObject(frame, top - 1);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -1615,7 +1616,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IFNULL    : return StaticObject.isNull(operand);
             case IFNONNULL : return StaticObject.notNull(operand);
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expected IFNULL or IFNONNULL bytecode");
         }
         // @formatter:on
@@ -1632,7 +1633,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IFGT      : return operand  > 0;
             case IFLE      : return operand <= 0;
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expecting IFEQ,IFNE,IFLT,IFGE,IFGT,IFLE");
         }
         // @formatter:on
@@ -1649,7 +1650,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IF_ICMPGT : return operand1  < operand2;
             case IF_ICMPLE : return operand1 >= operand2;
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expecting IF_ICMPEQ,IF_ICMPNE,IF_ICMPLT,IF_ICMPGE,IF_ICMPGT,IF_ICMPLE");
         }
         // @formatter:on
@@ -1662,7 +1663,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IF_ACMPEQ : return operand1 == operand2;
             case IF_ACMPNE : return operand1 != operand2;
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
         }
         // @formatter:on
@@ -1698,7 +1699,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array, this)); break;
                 case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array, this));       break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -1730,7 +1731,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 case DASTORE: getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, this);     break;
                 case AASTORE: referenceArrayStore(frame, top, index, array);     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -1850,7 +1851,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             DynamicConstant.Resolved dynamicConstant = pool.resolvedDynamicConstantAt(getDeclaringKlass(), cpi);
             dynamicConstant.putResolved(frame, top, this);
         } else {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.unimplemented(constant.toString());
         }
     }
@@ -2039,7 +2040,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DALOAD: arrayLoadNode = new DoubleArrayLoadQuickNode(top, curBCI); break;
                     case AALOAD: arrayLoadNode = new ReferenceArrayLoadQuickNode(top, curBCI); break;
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
@@ -2068,7 +2069,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DASTORE: arrayStoreNode = new DoubleArrayStoreQuickNode(top, curBCI); break;
                     case AASTORE: arrayStoreNode = new ReferenceArrayStoreQuickNode(top, curBCI); break;
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
@@ -2089,9 +2090,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 // Otherwise, if the resolved method is an instance method, the invokestatic
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
-                    CompilerDirectives.transferToInterpreter();
-                    Meta meta = getMeta();
-                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                    enterLinkageExceptionProfile();
+                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEINTERFACE:
@@ -2099,18 +2099,16 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
                                 (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
-                    CompilerDirectives.transferToInterpreter();
-                    Meta meta = getMeta();
-                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                    enterLinkageExceptionProfile();
+                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEVIRTUAL:
                 // Otherwise, if the resolved method is a class (static) method, the invokevirtual
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    CompilerDirectives.transferToInterpreter();
-                    Meta meta = getMeta();
-                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                    enterLinkageExceptionProfile();
+                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKESPECIAL:
@@ -2119,18 +2117,19 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 // instruction, a NoSuchMethodError is thrown.
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
-                        CompilerDirectives.transferToInterpreter();
-                        Meta meta = getMeta();
-                        throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                        meta.toGuestString(resolved.getDeclaringKlass().getNameAsString() + "." + resolved.getName() + resolved.getRawSignature()));
+                        enterLinkageExceptionProfile();
+                        throw throwBoundary(getMeta().java_lang_NoSuchMethodError,
+                                        "%s.%s%s",
+                                        resolved.getDeclaringKlass().getNameAsString(),
+                                        resolved.getNameAsString(),
+                                        resolved.getSignatureAsString());
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    CompilerDirectives.transferToInterpreter();
-                    Meta meta = getMeta();
-                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                    enterLinkageExceptionProfile();
+                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -2154,7 +2153,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 }
                 break;
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
 
@@ -2183,12 +2182,27 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
                 case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
                 default              :
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
             }
             // @formatter:on
         }
         return invoke;
+    }
+
+    @TruffleBoundary
+    private RuntimeException throwBoundary(ObjectKlass exceptionKlass) {
+        throw getMeta().throwException(exceptionKlass);
+    }
+
+    @TruffleBoundary
+    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String message) {
+        throw getMeta().throwExceptionWithMessage(exceptionKlass, message);
+    }
+
+    @TruffleBoundary
+    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, String... args) {
+        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, (Object[]) args));
     }
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
@@ -2370,14 +2384,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     // region Misc. checks
 
-    private StaticObject nullCheck(StaticObject value) {
-        if (StaticObject.isNull(value)) {
-            enterImplicitExceptionProfile();
-            throw getMeta().throwNullPointerException();
-        }
-        return value;
-    }
-
     public void enterImplicitExceptionProfile() {
         if (!implicitExceptionProfile) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2385,13 +2391,27 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
     }
 
+    public void enterLinkageExceptionProfile() {
+        if (!linkageExceptionProfile) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            linkageExceptionProfile = true;
+        }
+    }
+
+    private StaticObject nullCheck(StaticObject value) {
+        if (!StaticObject.isNull(value)) {
+            return value;
+        }
+        enterImplicitExceptionProfile();
+        throw getMeta().throwNullPointerException();
+    }
+
     private int checkNonZero(int value) {
         if (value != 0) {
             return value;
         }
         enterImplicitExceptionProfile();
-        Meta meta = getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
@@ -2399,8 +2419,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             return value;
         }
         enterImplicitExceptionProfile();
-        Meta meta = getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -2430,13 +2449,12 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
          * field, putstatic throws an IncompatibleClassChangeError.
          */
         if (field.isStatic() != (opcode == PUTSTATIC)) {
-            CompilerDirectives.transferToInterpreter();
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError,
-                            String.format("Expected %s field %s.%s",
-                                            (opcode == PUTSTATIC) ? "static" : "non-static",
-                                            field.getDeclaringKlass().getNameAsString(),
-                                            field.getNameAsString()));
+            enterLinkageExceptionProfile();
+            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+                            "Expected %s field %s.%s",
+                            (opcode == PUTSTATIC) ? "static" : "non-static",
+                            field.getDeclaringKlass().getNameAsString(),
+                            field.getNameAsString());
         }
 
         /*
@@ -2450,14 +2468,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
          */
         if (field.isFinalFlagSet()) {
             if (field.getDeclaringKlass() != getDeclaringKlass()) {
-                CompilerDirectives.transferToInterpreter();
-                Meta meta = getMeta();
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError,
-                                String.format("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
-                                                (opcode == PUTSTATIC) ? "static" : "non-static",
-                                                field.getDeclaringKlass().getNameAsString(),
-                                                field.getNameAsString(),
-                                                getDeclaringKlass().getNameAsString()));
+                enterLinkageExceptionProfile();
+                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                                "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
+                                (opcode == PUTSTATIC) ? "static" : "non-static",
+                                field.getDeclaringKlass().getNameAsString(),
+                                field.getNameAsString(),
+                                getDeclaringKlass().getNameAsString());
             }
 
             boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||
@@ -2467,92 +2484,96 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (enforceInitializerCheck &&
                             ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
                                             (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
-                CompilerDirectives.transferToInterpreter();
-                Meta meta = getMeta();
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError,
-                                String.format("Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
-                                                (opcode == PUTSTATIC) ? "static" : "non-static",
-                                                field.getDeclaringKlass().getNameAsString(),
-                                                field.getNameAsString(),
-                                                getMethod().getNameAsString(),
-                                                (opcode == PUTSTATIC) ? "<clinit>" : "<init>"));
+                enterLinkageExceptionProfile();
+                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                                "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
+                                (opcode == PUTSTATIC) ? "static" : "non-static",
+                                field.getDeclaringKlass().getNameAsString(),
+                                field.getNameAsString(),
+                                getMethod().getNameAsString(),
+                                (opcode == PUTSTATIC) ? "<clinit>" : "<init>");
             }
         }
 
         assert field.isStatic() == (opcode == PUTSTATIC);
 
-        int slot = top - field.getKind().getSlotCount() - 1; // -receiver
-        StaticObject receiver = field.isStatic()
+        byte typeHeader = field.getType().byteAt(0);
+        int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
+        assert slotCount == field.getKind().getSlotCount();
+        int slot = top - slotCount - 1; // -receiver
+        StaticObject receiver = (opcode == PUTSTATIC)
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         // Do not release the object, it might be read again in PutFieldNode
                         : nullCheck(popObject(frame, slot));
 
         if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
             if (receiver.isForeignObject()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Restore the receiver for quickening.
                 putObject(frame, slot, receiver);
                 return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
             }
         }
 
-        switch (field.getKind()) {
-            case Boolean:
+        switch (typeHeader) {
+            case 'Z':
                 boolean booleanValue = stackIntToBoolean(popInt(frame, top - 1));
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
                 }
                 InterpreterToVM.setFieldBoolean(booleanValue, receiver, field);
                 break;
-            case Byte:
+            case 'B':
                 byte byteValue = (byte) popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, byteValue);
                 }
                 InterpreterToVM.setFieldByte(byteValue, receiver, field);
                 break;
-            case Char:
+            case 'C':
                 char charValue = (char) popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, charValue);
                 }
                 InterpreterToVM.setFieldChar(charValue, receiver, field);
                 break;
-            case Short:
+            case 'S':
                 short shortValue = (short) popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, shortValue);
                 }
                 InterpreterToVM.setFieldShort(shortValue, receiver, field);
                 break;
-            case Int:
+            case 'I':
                 int intValue = popInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, intValue);
                 }
                 InterpreterToVM.setFieldInt(intValue, receiver, field);
                 break;
-            case Double:
+            case 'D':
                 double doubleValue = popDouble(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, doubleValue);
                 }
                 InterpreterToVM.setFieldDouble(doubleValue, receiver, field);
                 break;
-            case Float:
+            case 'F':
                 float floatValue = popFloat(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, floatValue);
                 }
                 InterpreterToVM.setFieldFloat(floatValue, receiver, field);
                 break;
-            case Long:
+            case 'J':
                 long longValue = popLong(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, longValue);
                 }
                 InterpreterToVM.setFieldLong(longValue, receiver, field);
                 break;
-            case Object:
+            case '[': // fall through
+            case 'L':
                 StaticObject value = popObject(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
@@ -2560,10 +2581,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 InterpreterToVM.setFieldObject(value, receiver, field);
                 break;
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
-        return -field.getKind().getSlotCount();
+        return -slotCount;
     }
 
     /**
@@ -2589,25 +2610,25 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
          * field, getstatic throws an IncompatibleClassChangeError.
          */
         if (field.isStatic() != (opcode == GETSTATIC)) {
-            CompilerDirectives.transferToInterpreter();
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError,
-                            String.format("Expected %s field %s.%s",
-                                            (opcode == GETSTATIC) ? "static" : "non-static",
-                                            field.getDeclaringKlass().getNameAsString(),
-                                            field.getNameAsString()));
+            enterLinkageExceptionProfile();
+            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+                            "Expected %s field %s.%s",
+                            (opcode == GETSTATIC) ? "static" : "non-static",
+                            field.getDeclaringKlass().getNameAsString(),
+                            field.getNameAsString());
         }
 
         assert field.isStatic() == (opcode == GETSTATIC);
 
         int slot = top - 1;
-        StaticObject receiver = field.isStatic()
+        StaticObject receiver = opcode == GETSTATIC
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         // Do not release the object, it might be read again in GetFieldNode
                         : nullCheck(peekObject(frame, slot));
 
         if (!noForeignObjects.isValid() && opcode == GETFIELD) {
             if (receiver.isForeignObject()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Restore the receiver for quickening.
                 putObject(frame, slot, receiver);
                 return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
@@ -2620,27 +2641,31 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
         int resultAt = field.isStatic() ? top : (top - 1);
         // @formatter:off
-        switch (field.getKind()) {
-            case Boolean : putInt(frame, resultAt, InterpreterToVM.getFieldBoolean(receiver, field) ? 1 : 0); break;
-            case Byte    : putInt(frame, resultAt, InterpreterToVM.getFieldByte(receiver, field));      break;
-            case Char    : putInt(frame, resultAt, InterpreterToVM.getFieldChar(receiver, field));      break;
-            case Short   : putInt(frame, resultAt, InterpreterToVM.getFieldShort(receiver, field));     break;
-            case Int     : putInt(frame, resultAt, InterpreterToVM.getFieldInt(receiver, field));       break;
-            case Double  : putDouble(frame, resultAt, InterpreterToVM.getFieldDouble(receiver, field)); break;
-            case Float   : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
-            case Long    : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
-            case Object  : {
+        byte typeHeader = field.getType().byteAt(0);
+        switch (typeHeader) {
+            case 'Z' : putInt(frame, resultAt, InterpreterToVM.getFieldBoolean(receiver, field) ? 1 : 0); break;
+            case 'B' : putInt(frame, resultAt, InterpreterToVM.getFieldByte(receiver, field));      break;
+            case 'C' : putInt(frame, resultAt, InterpreterToVM.getFieldChar(receiver, field));      break;
+            case 'S' : putInt(frame, resultAt, InterpreterToVM.getFieldShort(receiver, field));     break;
+            case 'I' : putInt(frame, resultAt, InterpreterToVM.getFieldInt(receiver, field));       break;
+            case 'D' : putDouble(frame, resultAt, InterpreterToVM.getFieldDouble(receiver, field)); break;
+            case 'F' : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
+            case 'J' : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
+            case '[' : // fall through
+            case 'L' : {
                 StaticObject value = InterpreterToVM.getFieldObject(receiver, field);
                 putObject(frame, resultAt, value);
                 checkNoForeignObjectAssumption(value);
                 break;
             }
-            default :
-                CompilerDirectives.transferToInterpreter();
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
-        return field.getKind().getSlotCount();
+        int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
+        assert slotCount == field.getKind().getSlotCount();
+        return slotCount;
     }
 
     // endregion Field read/write
@@ -2652,7 +2677,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @ExplodeLoop
     public static Object[] popArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
-        int argCount = Signatures.parameterCount(signature, false);
+        int argCount = Signatures.parameterCount(signature);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];
@@ -2664,25 +2689,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
-            if (argType.length() == 1) {
-                // @formatter:off
-                switch (argType.byteAt(0)) {
-                    case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
-                    case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
-                    case 'S' : args[i + extraParam] = (short) popInt(frame, argAt); break;
-                    case 'C' : args[i + extraParam] = (char) popInt(frame, argAt);  break;
-                    case 'I' : args[i + extraParam] = popInt(frame, argAt);         break;
-                    case 'F' : args[i + extraParam] = popFloat(frame, argAt);       break;
-                    case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
-                    case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
-                    default  :
-                        CompilerDirectives.transferToInterpreter();
-                        throw EspressoError.shouldNotReachHere();
-                }
-                // @formatter:on
-            } else {
-                args[i + extraParam] = popObject(frame, argAt);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
+                case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
+                case 'S' : args[i + extraParam] = (short) popInt(frame, argAt); break;
+                case 'C' : args[i + extraParam] = (char) popInt(frame, argAt);  break;
+                case 'I' : args[i + extraParam] = popInt(frame, argAt);         break;
+                case 'F' : args[i + extraParam] = popFloat(frame, argAt);       break;
+                case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + extraParam] = popObject(frame, argAt);      break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
             }
+            // @formatter:on
             --argAt;
 
         }
@@ -2701,25 +2724,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
-            if (argType.length() == 1) {
-                // @formatter:off
-                switch (argType.byteAt(0)) {
-                    case 'Z' : // fall through
-                    case 'B' : // fall through
-                    case 'S' : // fall through
-                    case 'C' : // fall through
-                    case 'I' : args[i + start] = popInt(frame, argAt);    break;
-                    case 'F' : args[i + start] = popFloat(frame, argAt);  break;
-                    case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
-                    case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
-                    default  :
-                        CompilerDirectives.transferToInterpreter();
-                        throw EspressoError.shouldNotReachHere();
-                }
-                // @formatter:on
-            } else {
-                args[i + start] = popObject(frame, argAt);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : // fall through
+                case 'B' : // fall through
+                case 'S' : // fall through
+                case 'C' : // fall through
+                case 'I' : args[i + start] = popInt(frame, argAt);    break;
+                case 'F' : args[i + start] = popFloat(frame, argAt);  break;
+                case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + start] = popObject(frame, argAt); break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
             }
+            // @formatter:on
             --argAt;
         }
         return args;
@@ -2748,7 +2769,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case Object  : putObject(frame, top, (StaticObject) value);         break;
             case Void    : /* ignore */                                        break;
             default      :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on

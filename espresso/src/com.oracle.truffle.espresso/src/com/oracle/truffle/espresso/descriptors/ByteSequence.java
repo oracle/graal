@@ -67,7 +67,7 @@ public abstract class ByteSequence {
 
     public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
         if ((length > 0 && offset >= underlyingBytes.length) || offset + (long) length > underlyingBytes.length || length < 0 || offset < 0) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("ByteSequence illegal bounds: offset: " + offset + " length: " + length + " bytes length: " + underlyingBytes.length);
         }
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {
@@ -176,6 +176,7 @@ public abstract class ByteSequence {
         try {
             return ModifiedUtf8.toJavaString(getUnderlyingBytes(), offset(), length());
         } catch (IOException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }

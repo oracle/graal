@@ -133,7 +133,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
                             .sorted() //
                             .collect(Collectors.toList());
         } catch (IOException e) {
-            throw EspressoError.unexpected(e.getMessage(), e);
+            throw EspressoError.shouldNotReachHere(e.getMessage(), e);
         }
 
         for (Path llvmImpl : sortedPaths) {

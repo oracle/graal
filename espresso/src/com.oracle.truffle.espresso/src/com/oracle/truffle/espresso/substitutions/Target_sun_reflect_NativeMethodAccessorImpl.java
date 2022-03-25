@@ -323,7 +323,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Check number of arguments.
-        if (Signatures.parameterCount(signature, false) != argsLen) {
+        if (Signatures.parameterCount(signature) != argsLen) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "wrong number of arguments!");
         }
 

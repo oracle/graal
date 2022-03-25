@@ -307,8 +307,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast to void");
         }
-        CompilerDirectives.transferToInterpreter();
-        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: ", targetKlass);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: " + targetKlass);
     }
 
     // endregion Polyglot#cast
