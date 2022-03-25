@@ -24,13 +24,13 @@ local jdks = common_json.jdks;
     },
   },
 
-  vm_linux_amd64_java_11:: self.vm_java_11 + {
+  vm_java_11_llvm:: self.vm_java_11 + {
     downloads+: {
       LLVM_JAVA_HOME: jdks['labsjdk-ce-11-llvm'],
     },
   },
 
-  vm_linux_amd64_java_17:: self.vm_java_17 + {
+  vm_java_17_llvm:: self.vm_java_17 + {
     downloads+: {
       LLVM_JAVA_HOME: jdks['labsjdk-ce-17-llvm'],
     },
