@@ -45,6 +45,7 @@ import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -559,7 +560,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
      * which they must not float
      */
     private static boolean canGVN(Node n) {
-        return !MemoryKill.isMemoryKill(n) && !(n instanceof VirtualizableAllocation) && !(n instanceof ControlFlowAnchored) && !(n instanceof AnchoringNode);
+        return !MemoryKill.isMemoryKill(n) && (n instanceof MemoryAccess || n instanceof FixedGuardNode) && !(n instanceof ControlFlowAnchored) && !(n instanceof AnchoringNode);
     }
 
     /**
@@ -589,7 +590,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
-    private static boolean nodeCanBeLifted(Node n, LoopEx loop, NodeBitMap liftedNodes) {
+    public static boolean nodeCanBeLifted(Node n, LoopEx loop, NodeBitMap liftedNodes) {
         /*
          * Note that the caller has to ensure n is not a memory kill at that point
          */
