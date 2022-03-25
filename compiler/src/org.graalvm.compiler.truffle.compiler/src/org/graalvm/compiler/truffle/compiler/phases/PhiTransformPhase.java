@@ -51,14 +51,16 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
+import org.graalvm.compiler.truffle.compiler.nodes.AnyExtendNode;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This phase recognizes {@link ValuePhiNode phis} that are repeatedly converted back and forth with
  * lossless conversions. The main use case is i64 phis that actually contain i32/f32/f64 values and
- * that use {@link NarrowNode}, {@link ZeroExtendNode} and {@link ReinterpretNode} for conversion.
- * In loop nests and complex control flow, multiple phis may need to be transformed as a group.<br/>
+ * that use {@link NarrowNode}, {@link ZeroExtendNode}, {@link SignExtendNode},
+ * {@link AnyExtendNode} and {@link ReinterpretNode} for conversion. In loop nests and complex
+ * control flow, multiple phis may need to be transformed as a group.<br/>
  *
  * In order to be considered, phis can only have constants, other phis in the group, or an
  * appropriate conversion as an input (see
@@ -188,7 +190,14 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                     // not the exact reverse of the narrow
                     return false;
                 }
-                return !usedInState || convert instanceof ZeroExtendNode;
+                return !usedInState;
+            }
+            if (value instanceof AnyExtendNode) {
+                if (narrow.getResultBits() != AnyExtendNode.INPUT_BITS || narrow.getInputBits() != AnyExtendNode.OUTPUT_BITS) {
+                    // not the exact reverse of the narrow
+                    return false;
+                }
+                return true;
             }
         } else {
             assert transformation instanceof ReinterpretNode;
@@ -204,6 +213,9 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
         } else {
             if (transformation instanceof NarrowNode) {
                 NarrowNode narrow = (NarrowNode) transformation;
+                if (value instanceof AnyExtendNode && narrow.getInputBits() == AnyExtendNode.OUTPUT_BITS && narrow.getResultBits() == AnyExtendNode.INPUT_BITS) {
+                    return ((AnyExtendNode) value).getValue();
+                }
                 newValue = graph.unique(new NarrowNode(value, narrow.getInputBits(), narrow.getResultBits()));
             } else {
                 assert transformation instanceof ReinterpretNode;
@@ -241,14 +253,12 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 // look at the inputs
                 if (node.getClass() == ValuePhiNode.class) {
                     ReinterpretNode reinterpret = ((ValuePhiNode) node).values().filter(ReinterpretNode.class).first();
-                    IntegerConvertNode<?> convert = ((ValuePhiNode) node).values().filter(IntegerConvertNode.class).first();
+                    AnyExtendNode convert = ((ValuePhiNode) node).values().filter(AnyExtendNode.class).first();
 
                     if (reinterpret != null && convert == null) {
                         transformation = new ReinterpretNode(reinterpret.getValue().getStackKind(), (ValueNode) node);
                     } else if (reinterpret == null && convert != null) {
-                        if (convert.getInputBits() == 64 && convert.getResultBits() == 64) {
-                            transformation = new NarrowNode((ValueNode) node, 64, 32);
-                        }
+                        transformation = new NarrowNode((ValueNode) node, AnyExtendNode.OUTPUT_BITS, AnyExtendNode.INPUT_BITS);
                     }
                 }
                 if (transformation == null) {
@@ -311,14 +321,16 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 target.replaceAndDelete(duplicate);
             }
             return true;
-        } else if (node.getClass() == ZeroExtendNode.class) {
-            ZeroExtendNode extend = (ZeroExtendNode) node;
-            if (node.hasExactlyOneUsage() && extend.getInputBits() == 32 && extend.getResultBits() == 64 && isValidStateUsage(node.singleUsage(), longClass)) {
+        } else if (node.getClass() == AnyExtendNode.class) {
+            AnyExtendNode extend = (AnyExtendNode) node;
+            if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
                 node.replaceAtUsagesAndDelete(extend.getValue());
+                return true;
             }
         } else if (node.getClass() == ReinterpretNode.class) {
             if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
                 node.replaceAtUsagesAndDelete(((ReinterpretNode) node).getValue());
+                return true;
             }
         }
         return false;
