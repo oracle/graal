@@ -763,6 +763,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 main_component = _get_main_component(installable_components)
                 mx.logv("Adding gu metadata for{}installable '{}'".format(' disabled ' if _disable_installable(main_component) else ' ', main_component.installable_id))
                 _add(layout, components_dir + 'org.graalvm.' + main_component.installable_id + '.component', "string:" + manifest_str)
+            # Register Core
+            manifest_str = _format_properties({
+                "Bundle-Name": "GraalVM Core",
+                "Bundle-Symbolic-Name": "org.graalvm",
+                "Bundle-Version": _suite.release_version(),
+                "x-GraalVM-Stability-Level": _get_core_stability(),
+            })
+            _add(layout, components_dir + 'org.graalvm.component', "string:" + manifest_str)
 
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
@@ -2209,6 +2217,12 @@ def _get_component_stability(component):
     if _src_jdk_version > 11:
         return "experimental"
     return component.stability
+
+
+def _get_core_stability():
+    if _src_jdk_version > 11:
+        return "experimental"
+    return "supported"
 
 
 def _gen_gu_manifest(components, formatter, bundled=False):
