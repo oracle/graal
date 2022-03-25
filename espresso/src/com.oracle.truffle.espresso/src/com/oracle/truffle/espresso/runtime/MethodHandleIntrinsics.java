@@ -32,7 +32,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -56,9 +55,9 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
  * with a signature that was never seen before by the context, espresso creates a dummy placeholder
  * method and keeps track of it.
  * <li>When a call site needs to link against a polymorphic signatures, it obtains the dummy method.
- * It then calls {@link Method#spawnIntrinsicNode(Klass, Symbol, Symbol)} which gives a truffle node
- * implementing the behavior of the MethodHandle intrinsics (ie: extracting the call target from the
- * arguments, appending an appendix to the erguments, etc...)
+ * It then calls {@link Method#spawnIntrinsicNode(EspressoLanguage, Meta, Klass, Symbol, Symbol)}
+ * which gives a truffle node implementing the behavior of the MethodHandle intrinsics (ie:
+ * extracting the call target from the arguments, appending an appendix to the erguments, etc...)
  * <li>This node is then fed to a {@link InvokeHandleNode} whose role is exactly like the other
  * invoke nodes: extracting arguments from the stack and passing it to its child.
  */
