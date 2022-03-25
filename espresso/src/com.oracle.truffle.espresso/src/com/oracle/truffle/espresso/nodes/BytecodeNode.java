@@ -1303,9 +1303,31 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case ATHROW      :
                         throw getMeta().throwException(nullCheck(popObject(frame, top - 1)));
 
-                    case CHECKCAST   : top += quickenCheckCast(frame, top, curBCI, CHECKCAST); break;
-                    case INSTANCEOF  : top += quickenInstanceOf(frame, top, curBCI, INSTANCEOF); break;
-
+                    case CHECKCAST   : {
+                        StaticObject receiver = peekObject(frame, top - 1);
+                        if (StaticObject.isNull(receiver) || receiver.getKlass() == resolveType(CHECKCAST, readOriginalCPI(curBCI))) {
+                            // Most common case, avoid spawning a node.
+                        } else {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            quickenCheckCast(frame, top, curBCI, CHECKCAST);
+                        }
+                        break;
+                    }
+                    case INSTANCEOF  : {
+                        StaticObject receiver = popObject(frame, top - 1);
+                        if (StaticObject.isNull(receiver)) {
+                            // Skip resolution.
+                            putInt(frame, top - 1, /* false */ 0);
+                        } else if (receiver.getKlass() == resolveType(INSTANCEOF, readOriginalCPI(curBCI))) {
+                            // Quick-check, avoid spawning a node.
+                            putInt(frame, top - 1, /* true */ 1);
+                        } else {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            putObject(frame, top - 1, receiver);
+                            quickenInstanceOf(frame, top, curBCI, INSTANCEOF);
+                        }
+                        break;
+                    }
                     case MONITORENTER: getRoot().monitorEnter(frame, nullCheck(popObject(frame, top - 1))); break;
                     case MONITOREXIT : getRoot().monitorExit(frame, nullCheck(popObject(frame, top - 1))); break;
 
@@ -1938,26 +1960,21 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     private int quickenCheckCast(VirtualFrame frame, int top, int curBCI, int opcode) {
-        if (StaticObject.isNull(peekObject(frame, top - 1))) {
-            // Skip resolution.
-            return -Bytecodes.stackEffectOf(opcode);
-        }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+        CompilerAsserts.neverPartOfCompilation();
         assert opcode == CHECKCAST;
         BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        quick.execute(frame);
+        assert Bytecodes.stackEffectOf(opcode) == 0;
+        return 0; // Bytecodes.stackEffectOf(opcode);
     }
 
     private int quickenInstanceOf(VirtualFrame frame, int top, int curBCI, int opcode) {
-        if (StaticObject.isNull(peekObject(frame, top - 1))) {
-            // Skip resolution.
-            putInt(frame, top - 1, 0);
-            return -Bytecodes.stackEffectOf(opcode);
-        }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+        CompilerAsserts.neverPartOfCompilation();
         assert opcode == INSTANCEOF;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(INSTANCEOF, readCPI(curBCI)), top, curBCI));
+        quick.execute(frame);
+        assert Bytecodes.stackEffectOf(opcode) == 0;
+        return 0; // Bytecodes.stackEffectOf(opcode);
     }
 
     private int quickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
