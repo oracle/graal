@@ -183,6 +183,13 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     ],
 )
 
+if mx_sdk_vm.base_jdk_version() not in (11, 17):
+    _espresso_stability = "experimental"
+elif mx.get_os() != "linux" or mx.get_arch() != "amd64":
+    _espresso_stability = "experimental"
+else:
+    _espresso_stability = "supported"
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Java on Truffle',
@@ -208,7 +215,7 @@ Usage: java -truffle [-options] class [args...]
 
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_javavm_cp,
-    stability="supported",
+    stability=_espresso_stability,
 ))
 
 if LLVM_JAVA_HOME:
@@ -238,7 +245,7 @@ if LLVM_JAVA_HOME:
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
         priority=2,
-        stability="supported",
+        stability=_espresso_stability,
     ))
 
 
@@ -271,7 +278,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
-    stability="supported",
+    stability=_espresso_stability,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
