@@ -204,6 +204,10 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeCast(tags, byte[].class, true, true, true);
     }
 
+    private static long extend(int value) {
+        return value & INT_MASK;
+    }
+
     Object getObjectUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
         return unsafeGetObject(getLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slotIndex * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, condition, slot);
     }
@@ -242,7 +246,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setByteUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, byte value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value & INT_MASK, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, extend(value), slot);
     }
 
     @Override
@@ -266,7 +270,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setBooleanUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value ? 1 : 0, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, value ? 1L : 0L, slot);
     }
 
     @Override
@@ -290,7 +294,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setFloatUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, float value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, Float.floatToRawIntBits(value) & INT_MASK, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, extend(Float.floatToRawIntBits(value)), slot);
     }
 
     @Override
@@ -338,7 +342,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void setIntUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, int value) {
         long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value & INT_MASK, slot);
+        unsafePutLong(getPrimitiveLocals(), offset, extend(value), slot);
     }
 
     @Override
@@ -613,7 +617,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setByte(int slot, byte value) {
         verifyIndexedSet(slot, BYTE_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & INT_MASK, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
 
     @Override
@@ -625,7 +629,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setBoolean(int slot, boolean value) {
         verifyIndexedSet(slot, BOOLEAN_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value ? 1 : 0, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value ? 1L : 0L, PRIMITIVE_LOCATION);
     }
 
     @Override
@@ -637,7 +641,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setFloat(int slot, float value) {
         verifyIndexedSet(slot, FLOAT_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Float.floatToRawIntBits(value) & INT_MASK, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(Float.floatToRawIntBits(value)), PRIMITIVE_LOCATION);
     }
 
     @Override
@@ -661,7 +665,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setInt(int slot, int value) {
         verifyIndexedSet(slot, INT_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value & INT_MASK, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
 
     @Override
