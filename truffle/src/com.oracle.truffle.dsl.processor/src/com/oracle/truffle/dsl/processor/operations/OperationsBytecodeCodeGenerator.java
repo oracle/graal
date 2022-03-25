@@ -1,5 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -16,24 +17,24 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class OperationsBytecodeCodeGenerator {
 
@@ -44,6 +45,9 @@ public class OperationsBytecodeCodeGenerator {
     private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
     private final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+
+    private static final String DSL_METHOD_PREFIX = "execute_";
+    private static final String DSL_CLASS_PREFIX = "Execute_";
 
     private final CodeTypeElement typBuilderImpl;
     private final String simpleName;
@@ -121,20 +125,76 @@ public class OperationsBytecodeCodeGenerator {
                 }
 
                 CustomInstruction cinstr = (CustomInstruction) instr;
-                SingleOperationData soData = cinstr.getData();
 
-                CodeTypeElement result = new NodeCodeGenerator().create(context, null, soData.getNodeData()).get(0);
+                final SingleOperationData soData = cinstr.getData();
+                final List<BitSet> bitSets = new ArrayList<>();
+
+                NodeGeneratorPlugs plugs = new NodeGeneratorPlugs() {
+                    @Override
+                    public String transformNodeMethodName(String name) {
+                        return DSL_METHOD_PREFIX + name + "_" + soData.getName();
+                    }
+
+                    @Override
+                    public String transformNodeInnerTypeName(String name) {
+                        return DSL_CLASS_PREFIX + name + "_" + soData.getName();
+                    }
+
+                    @Override
+                    public void addNodeCallParameters(CodeTreeBuilder builder) {
+                        builder.string("$bci");
+                    }
+
+                    @Override
+                    public int getMaxStateBits(int defaultValue) {
+                        return 8;
+                    }
+
+                    @Override
+                    public TypeMirror getBitSetType(TypeMirror defaultType) {
+                        return new CodeTypeMirror(TypeKind.BYTE);
+                    }
+
+                    @Override
+                    public CodeTree createBitSetReference(BitSet bits) {
+                        int index = bitSets.indexOf(bits);
+                        if (index == -1) {
+                            index = bitSets.size();
+                            bitSets.add(bits);
+                        }
+
+                        return CodeTreeBuilder.createBuilder().variable(fldBc).string("[$bci + " + cinstr.lengthWithoutState() + " + " + index + "]").build();
+                    }
+
+                    @Override
+                    public CodeTree transformValueBeforePersist(CodeTree tree) {
+                        return CodeTreeBuilder.createBuilder().cast(new CodeTypeMirror(TypeKind.BYTE)).startParantheses().tree(tree).end().build();
+                    }
+                };
+                NodeCodeGenerator generator = new NodeCodeGenerator();
+                generator.setPlugs(plugs);
+
+                CodeTypeElement result = generator.create(context, null, soData.getNodeData()).get(0);
 
                 CodeExecutableElement uncExec = null;
-                loop: for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
-                    if (te.getSimpleName().toString().equals("Uncached")) {
-                        for (ExecutableElement ex : ElementFilter.methodsIn(te.getEnclosedElements())) {
-                            if (ex.getSimpleName().toString().equals("execute")) {
-                                uncExec = (CodeExecutableElement) ex;
-                                break loop;
-                            }
-                        }
+                List<CodeExecutableElement> execs = new ArrayList<>();
+                for (ExecutableElement ex : ElementFilter.methodsIn(result.getEnclosedElements())) {
+                    if (!ex.getSimpleName().toString().startsWith(DSL_METHOD_PREFIX)) {
+                        continue;
                     }
+
+                    if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName("execute"))) {
+                        uncExec = (CodeExecutableElement) ex;
+                    }
+                    execs.add((CodeExecutableElement) ex);
+                }
+
+                for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
+                    if (!te.getSimpleName().toString().startsWith(DSL_CLASS_PREFIX)) {
+                        continue;
+                    }
+
+                    builderBytecodeNodeType.add(te);
                 }
 
                 for (VariableElement ve : ElementFilter.fieldsIn(result.getEnclosedElements())) {
@@ -154,13 +214,17 @@ public class OperationsBytecodeCodeGenerator {
                     builderBytecodeNodeType.add(ve);
                 }
 
-                uncExec.setSimpleName(CodeNames.of("execute" + soData.getName() + "_"));
-                uncExec.getParameters().add(0, new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "$bci"));
-                uncExec.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
-
-                builderBytecodeNodeType.add(uncExec);
+                for (CodeExecutableElement exToCopy : execs) {
+                    exToCopy.getParameters().add(0, new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "$bci"));
+                    exToCopy.getModifiers().remove(Modifier.PUBLIC);
+                    exToCopy.getModifiers().add(Modifier.PRIVATE);
+                    exToCopy.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
+                    exToCopy.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(context.getType(Override.class)));
+                    builderBytecodeNodeType.add(exToCopy);
+                }
 
                 cinstr.setExecuteMethod(uncExec);
+                cinstr.setAdditionalStateBytes(bitSets.size());
             }
         }
 
@@ -171,21 +235,6 @@ public class OperationsBytecodeCodeGenerator {
         vars.probeNodes = fldProbeNodes;
         // vars.handlers = fldHandlers;
         // vars.tracer = fldTracer;
-
-        {
-            CodeExecutableElement mExecute = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(Object.class), "execute", new CodeVariableElement(types.VirtualFrame, "frame"));
-            builderBytecodeNodeType.add(mExecute);
-
-            CodeTreeBuilder builder = mExecute.getBuilder();
-            builder.startReturn();
-            builder.startCall("continueAt");
-
-            builder.string("frame");
-            builder.string("null");
-
-            builder.end(2);
-
-        }
 
         {
             CodeVariableElement argFrame = new CodeVariableElement(types.VirtualFrame, "frame");
@@ -635,7 +684,7 @@ public class OperationsBytecodeCodeGenerator {
             b.startStatement();
             b.string("OperationsNode reparsed = ");
             b.startStaticCall(typBuilderImpl.asType(), "reparse");
-            b.startCall("getLanguage").typeLiteral(m.getLanguageType()).end();
+            b.startGroup().cast(m.getLanguageType()).string("this.language").end();
             b.startGroup().cast(m.getParseContextType()).string("parseContext").end();
             b.string("buildOrder");
             b.end(2);

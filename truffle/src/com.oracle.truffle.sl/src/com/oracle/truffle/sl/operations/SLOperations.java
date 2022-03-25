@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -66,7 +67,7 @@ public class SLOperations {
         public static Object perform(
                         VirtualFrame frame,
                         Map<?, ?> functions,
-                        @Cached("this") Node node) {
+                        @Bind("this") Node node) {
             SLContext.get(node).getFunctionRegistry().register((Map<TruffleString, RootCallTarget>) functions);
 
             RootCallTarget main = (RootCallTarget) functions.get(SLStrings.MAIN);
@@ -98,7 +99,7 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLFunctionLiteralOperation {
         @Specialization
-        public static Object execute(TruffleString functionName, @Cached("this") Node node) {
+        public static Object execute(TruffleString functionName, @Bind("this") Node node) {
             Object res = SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
             return res;
         }
@@ -162,7 +163,7 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLConvertToBoolean {
         @Specialization
-        public static boolean perform(Object obj, @Cached("this") Node node, @Cached("$bci") int bci) {
+        public static boolean perform(Object obj, @Bind("this") Node node, @Bind("$bci") int bci) {
             try {
                 return SLTypesGen.expectBoolean(obj);
             } catch (UnexpectedResultException e) {

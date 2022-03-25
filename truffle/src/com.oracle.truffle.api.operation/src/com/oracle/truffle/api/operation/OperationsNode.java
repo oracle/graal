@@ -1,18 +1,17 @@
 package com.oracle.truffle.api.operation;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.tracing.NodeTrace;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public abstract class OperationsNode extends RootNode implements InstrumentableNode {
+public abstract class OperationsNode extends Node implements InstrumentableNode {
 
     protected static final int BCI_SLOT = 0;
     protected static final int VALUES_OFFSET = 1;
@@ -32,6 +31,7 @@ public abstract class OperationsNode extends RootNode implements InstrumentableN
     protected final int maxLocals;
     protected final String nodeName;
 
+    protected final TruffleLanguage<?> language;
     protected final Object parseContext;
     protected int[][] sourceInfo;
     protected Source[] sources;
@@ -48,7 +48,7 @@ public abstract class OperationsNode extends RootNode implements InstrumentableN
                     int buildOrder,
                     int maxStack,
                     int maxLocals) {
-        super(language, createFrameDescriptor(maxStack, maxLocals));
+        this.language = language;
         this.buildOrder = buildOrder;
         this.parseContext = parseContext;
         this.nodeName = nodeName;
@@ -59,19 +59,21 @@ public abstract class OperationsNode extends RootNode implements InstrumentableN
         this.maxStack = maxStack;
     }
 
+    public FrameDescriptor createFrameDescriptor() {
+        return createFrameDescriptor(maxStack, maxLocals);
+    }
+
+    public OperationsRootNode createRootNode() {
+        return new OperationsRootNode(this);
+    }
+
+    public final Object execute(VirtualFrame frame) {
+        return continueAt(frame, null);
+    }
+
     public abstract Object continueAt(VirtualFrame frame, OperationLabel index);
 
     public abstract String dump();
-
-    @Override
-    public String getName() {
-        return nodeName;
-    }
-
-    @Override
-    public boolean isInternal() {
-        return isInternal;
-    }
 
     public NodeTrace getNodeTrace() {
         throw new UnsupportedOperationException("Operations not built with tracing");
@@ -117,17 +119,6 @@ public abstract class OperationsNode extends RootNode implements InstrumentableN
         }
     }
 
-    @Override
-    public boolean isCaptureFramesForTrace() {
-        return true;
-    }
-
-    @Override
-    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
-        int bci = element.getFrame().getInt(BCI_SLOT);
-        return new OperationsStackTraceElement(element.getTarget().getRootNode(), getSourceSectionAtBci(bci));
-    }
-
     public final Node createFakeLocationNode(final int bci) {
         return new Node() {
             @Override
@@ -145,5 +136,10 @@ public abstract class OperationsNode extends RootNode implements InstrumentableN
     @Override
     public boolean isInstrumentable() {
         return true;
+    }
+
+    public WrapperNode createWrapper(ProbeNode probe) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

@@ -5,12 +5,14 @@ import javax.lang.model.element.ExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
+import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public class CustomInstruction extends Instruction {
     private final SingleOperationData data;
     private ExecutableElement executeMethod;
+    private int stateBytes = -1;
 
     public SingleOperationData getData() {
         return data;
@@ -39,6 +41,23 @@ public class CustomInstruction extends Instruction {
                         ? new ResultType[]{ResultType.STACK_VALUE}
                         : new ResultType[]{}, createInputs(data));
         this.data = data;
+    }
+
+    @Override
+    protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
+        if (getAdditionalStateBytes() == 0) {
+            return null;
+        }
+
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        int lengthWithoutState = lengthWithoutState();
+
+        for (int i = 0; i < stateBytes; i++) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + (lengthWithoutState + i) + "] = 0").end();
+        }
+
+        return b.build();
     }
 
     @Override
@@ -71,5 +90,18 @@ public class CustomInstruction extends Instruction {
         b.end(2);
 
         return b.build();
+    }
+
+    @Override
+    public int getAdditionalStateBytes() {
+        if (stateBytes == -1) {
+            throw new UnsupportedOperationException("state bytes not yet initialized");
+        }
+
+        return stateBytes;
+    }
+
+    public void setAdditionalStateBytes(int size) {
+        stateBytes = size;
     }
 }

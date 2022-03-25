@@ -369,8 +369,12 @@ public abstract class Instruction {
         }
     }
 
-    public int length() {
+    public int lengthWithoutState() {
         return getArgumentOffset(inputs.length + results.length);
+    }
+
+    public int length() {
+        return lengthWithoutState() + getAdditionalStateBytes();
     }
 
     public List<TypeMirror> getBuilderArgumentTypes() {
@@ -405,6 +409,10 @@ public abstract class Instruction {
             CodeTree argument = needsBuilderArgument(i) ? arguments[argIndex++] : null;
             b.tree(createWriteArgumentCode(i, vars, argument));
         }
+
+        // emit state bytes
+
+        b.tree(createInitializeAdditionalStateBytes(vars, arguments));
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
 
@@ -446,5 +454,15 @@ public abstract class Instruction {
 
     public boolean isInstrumentationOnly() {
         return false;
+    }
+
+    // state
+
+    public int getAdditionalStateBytes() {
+        return 0;
+    }
+
+    protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
+        return null;
     }
 }

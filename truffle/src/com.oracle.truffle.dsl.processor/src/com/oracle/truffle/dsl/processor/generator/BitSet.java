@@ -58,7 +58,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
-class BitSet {
+public class BitSet {
 
     private static final Object[] EMPTY_OBJECTS = new Object[0];
 
@@ -68,18 +68,28 @@ class BitSet {
     private final Object[] objects;
     private final long allMask;
     private final TypeMirror type;
+    private NodeGeneratorPlugs plugs;
 
-    BitSet(String name, Object[] objects) {
+    BitSet(String name, Object[] objects, NodeGeneratorPlugs plugs) {
         this.name = name;
         this.objects = objects;
         this.capacity = intializeCapacity();
+        TypeMirror typeTmp;
         if (capacity <= 32) {
-            type = ProcessorContext.getInstance().getType(int.class);
+            typeTmp = ProcessorContext.getInstance().getType(int.class);
         } else if (capacity <= 64) {
-            type = ProcessorContext.getInstance().getType(long.class);
+            typeTmp = ProcessorContext.getInstance().getType(long.class);
         } else {
             throw new UnsupportedOperationException("State space too big " + capacity + ". Only <= 64 supported.");
         }
+
+        if (plugs != null) {
+            type = plugs.getBitSetType(typeTmp);
+        } else {
+            type = typeTmp;
+        }
+
+        this.plugs = plugs;
         this.allMask = createMask(objects);
     }
 
@@ -128,7 +138,11 @@ class BitSet {
     public CodeTree createReference(FrameState frameState) {
         CodeTree ref = createLocalReference(frameState);
         if (ref == null) {
-            ref = CodeTreeBuilder.createBuilder().string("this.", getName(), "_").build();
+            if (plugs != null) {
+                ref = plugs.createBitSetReference(this);
+            } else {
+                ref = CodeTreeBuilder.createBuilder().string("this.", getName(), "_").build();
+            }
         }
         return ref;
     }
@@ -167,7 +181,11 @@ class BitSet {
         String fieldName = name + "_";
         LocalVariable var = new LocalVariable(type, name, null);
         CodeTreeBuilder init = builder.create();
-        init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
+        if (plugs != null) {
+            init.tree(plugs.createBitSetReference(this));
+        } else {
+            init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
+        }
         builder.tree(var.createDeclaration(init.build()));
         frameState.set(name, var);
         return builder.build();
@@ -349,7 +367,11 @@ class BitSet {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         if (persist) {
-            builder.string("this.", name, "_ = ");
+            if (plugs != null) {
+                builder.tree(plugs.createBitSetReference(this)).string(" = ");
+            } else {
+                builder.string("this.", name, "_ = ");
+            }
 
             // if there is a local variable we need to update it as well
             CodeTree localReference = createLocalReference(frameState);
@@ -359,7 +381,13 @@ class BitSet {
         } else {
             builder.tree(createReference(frameState)).string(" = ");
         }
-        builder.tree(valueTree);
+
+        CodeTree value = valueTree;
+        if (plugs != null) {
+            value = plugs.transformValueBeforePersist(value);
+        }
+
+        builder.tree(value);
         builder.end(); // statement
         return builder.build();
     }

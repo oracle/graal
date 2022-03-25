@@ -201,25 +201,28 @@ public class FlatNodeGenFactory {
     private final boolean needsSpecializeLocking;
     private final GeneratorMode generatorMode;
 
+    private final NodeGeneratorPlugs plugs;
+
     public enum GeneratorMode {
         DEFAULT,
         EXPORTED_MESSAGE
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
-                    StaticConstants constants) {
-        this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants);
+                    StaticConstants constants, NodeGeneratorPlugs plugs) {
+        this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, plugs);
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
                     Collection<NodeData> stateSharingNodes,
                     Map<CacheExpression, String> sharedCaches,
-                    StaticConstants constants) {
+                    StaticConstants constants, NodeGeneratorPlugs plugs) {
         Objects.requireNonNull(node);
         this.generatorMode = mode;
         this.context = context;
         this.sharingNodes = stateSharingNodes;
         this.node = node;
+        this.plugs = plugs;
         this.typeSystem = node.getTypeSystem();
         this.genericType = context.getType(Object.class);
         this.boxingEliminationEnabled = !TruffleProcessorOptions.generateSlowPathOnly(context.getEnvironment());
@@ -282,7 +285,7 @@ public class FlatNodeGenFactory {
         }
         this.multiState = createMultiStateBitset(stateObjects, activeStateStartIndex, activeStateEndIndex, volatileState);
         this.allMultiState = new MultiStateBitSet(this.multiState.all, this.multiState.all);
-        this.exclude = new ExcludeBitSet(excludeObjects.toArray(new SpecializationData[0]), volatileState);
+        this.exclude = new ExcludeBitSet(excludeObjects.toArray(new SpecializationData[0]), volatileState, plugs);
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
         this.needsSpecializeLocking = exclude.getCapacity() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
 
@@ -297,6 +300,10 @@ public class FlatNodeGenFactory {
 
     private MultiStateBitSet createMultiStateBitset(List<Object> stateObjects, int activeStateStartIndex, int activeStateEndIndex, boolean volatileState) {
         int maxBits = TruffleProcessorOptions.stateBitWidth(context.getEnvironment());
+
+        if (plugs != null) {
+            maxBits = plugs.getMaxStateBits(maxBits);
+        }
 
         int usedBits = 0;
         List<StateBitSet> allStateBits = new ArrayList<>();
@@ -319,7 +326,7 @@ public class FlatNodeGenFactory {
                 }
                 allStateBits.add(new StateBitSet(currentElements.toArray(),
                                 relevantSpecializations.toArray(new SpecializationData[0]),
-                                volatileState, allStateBits.size()));
+                                volatileState, allStateBits.size(), plugs));
                 currentElements.clear();
                 relevantSpecializations.clear();
                 usedBits = 0;
@@ -346,7 +353,7 @@ public class FlatNodeGenFactory {
 
         allStateBits.add(new StateBitSet(currentElements.toArray(),
                         relevantSpecializations.toArray(new SpecializationData[0]),
-                        volatileState, allStateBits.size()));
+                        volatileState, allStateBits.size(), plugs));
 
         List<StateBitSet> activeStateBits = allStateBits.subList(activeStartBits, activeEndBits + 1);
         return new MultiStateBitSet(allStateBits, activeStateBits);
@@ -373,11 +380,18 @@ public class FlatNodeGenFactory {
     }
 
     private String createSpecializationTypeName(SpecializationData s) {
+        String result;
         if (hasMultipleNodes()) {
-            return firstLetterUpperCase(getNodePrefix(s)) + firstLetterUpperCase(s.getId()) + "Data";
+            result = firstLetterUpperCase(getNodePrefix(s)) + firstLetterUpperCase(s.getId()) + "Data";
         } else {
-            return firstLetterUpperCase(s.getId()) + "Data";
+            result = firstLetterUpperCase(s.getId()) + "Data";
         }
+
+        if (plugs != null) {
+            result = plugs.transformNodeInnerTypeName(result);
+        }
+
+        return result;
     }
 
     private String createSpecializationFieldName(SpecializationData s) {
@@ -2033,27 +2047,41 @@ public class FlatNodeGenFactory {
     }
 
     private String createFallbackName() {
+        String result;
         if (hasMultipleNodes()) {
             String messageName = node.getNodeId();
             if (messageName.endsWith("Node")) {
                 messageName = messageName.substring(0, messageName.length() - 4);
             }
-            return firstLetterLowerCase(messageName) + "FallbackGuard_";
+            result = firstLetterLowerCase(messageName) + "FallbackGuard_";
         } else {
-            return "fallbackGuard_";
+            result = "fallbackGuard_";
         }
+
+        if (plugs != null) {
+            result = plugs.transformNodeMethodName(result);
+        }
+
+        return result;
     }
 
     private String createExecuteAndSpecializeName() {
+        String result;
         if (hasMultipleNodes()) {
             String messageName = node.getNodeId();
             if (messageName.endsWith("Node")) {
                 messageName = messageName.substring(0, messageName.length() - 4);
             }
-            return firstLetterLowerCase(messageName) + "AndSpecialize";
+            result = firstLetterLowerCase(messageName) + "AndSpecialize";
         } else {
-            return "executeAndSpecialize";
+            result = "executeAndSpecialize";
         }
+
+        if (plugs != null) {
+            result = plugs.transformNodeMethodName(result);
+        }
+
+        return result;
     }
 
     private CodeExecutableElement createExecuteAndSpecialize() {
@@ -2141,15 +2169,22 @@ public class FlatNodeGenFactory {
     private static final String COUNT_CACHES = "countCaches";
 
     private String createName(String defaultName) {
+        String result;
         if (hasMultipleNodes()) {
             String messageName = node.getNodeId();
             if (messageName.endsWith("Node")) {
                 messageName = messageName.substring(0, messageName.length() - 4);
             }
-            return firstLetterLowerCase(messageName) + "_" + defaultName;
+            result = firstLetterLowerCase(messageName) + "_" + defaultName;
         } else {
-            return defaultName;
+            result = defaultName;
         }
+
+        if (plugs != null) {
+            result = plugs.transformNodeMethodName(result);
+        }
+
+        return result;
     }
 
     private boolean requiresCacheCheck(ReportPolymorphismAction reportPolymorphismAction) {
@@ -3166,9 +3201,14 @@ public class FlatNodeGenFactory {
             methodName = executedType.getUniqueName();
         }
 
+        if (plugs != null) {
+            methodName = plugs.transformNodeMethodName(methodName);
+        }
+
         CodeExecutableElement executable;
         if (executedType.getMethod() != null) {
             executable = CodeExecutableElement.clone(executedType.getMethod());
+            executable.setSimpleName(CodeNames.of(methodName));
             executable.getAnnotationMirrors().clear();
             executable.getModifiers().remove(ABSTRACT);
             for (VariableElement var : executable.getParameters()) {
@@ -3248,6 +3288,9 @@ public class FlatNodeGenFactory {
                 builder.tree(multiState.createLoad(frameState, fallbackState));
             }
             builder.startIf().startCall(createFallbackName());
+            if (plugs != null) {
+                plugs.addNodeCallParameters(builder);
+            }
             if (fallbackNeedsState) {
                 multiState.addReferencesTo(frameState, builder, fallbackState);
             }
@@ -3988,6 +4031,9 @@ public class FlatNodeGenFactory {
         innerBuilder = boundaryMethod.createBuilder();
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);
         builder.startReturn().startCall("this", boundaryMethod);
+        if (plugs != null) {
+            plugs.addNodeCallParameters(builder);
+        }
         multiState.addReferencesTo(frameState, builder);
         frameState.addReferencesTo(builder, includeFrameParameter, createSpecializationLocalName(specialization));
         builder.end().end();
@@ -4635,6 +4681,9 @@ public class FlatNodeGenFactory {
 
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startCall(createExecuteAndSpecializeName());
+        if (plugs != null) {
+            plugs.addNodeCallParameters(builder);
+        }
         frameState.addReferencesTo(builder, frame);
         builder.end();
         CodeTree call = builder.build();
@@ -5621,8 +5670,8 @@ public class FlatNodeGenFactory {
 
         private final boolean needsVolatile;
 
-        NodeBitSet(String name, Object[] objects, boolean needsVolatile) {
-            super(name, objects);
+        NodeBitSet(String name, Object[] objects, boolean needsVolatile, NodeGeneratorPlugs plugs) {
+            super(name, objects, plugs);
             this.needsVolatile = needsVolatile;
         }
 
@@ -5647,8 +5696,8 @@ public class FlatNodeGenFactory {
 
         private final Set<SpecializationData> relevantSpecializations;
 
-        StateBitSet(Object[] objects, SpecializationData[] relevantSpecializations, boolean needsVolatile, int index) {
-            super("state_" + index, objects, needsVolatile);
+        StateBitSet(Object[] objects, SpecializationData[] relevantSpecializations, boolean needsVolatile, int index, NodeGeneratorPlugs plugs) {
+            super("state_" + index, objects, needsVolatile, plugs);
             this.relevantSpecializations = new HashSet<>(Arrays.asList(relevantSpecializations));
         }
 
@@ -5678,8 +5727,8 @@ public class FlatNodeGenFactory {
 
     private static class ExcludeBitSet extends NodeBitSet {
 
-        ExcludeBitSet(SpecializationData[] specializations, boolean needsVolatile) {
-            super("exclude", specializations, needsVolatile);
+        ExcludeBitSet(SpecializationData[] specializations, boolean needsVolatile, NodeGeneratorPlugs plugs) {
+            super("exclude", specializations, needsVolatile, plugs);
         }
 
         @Override

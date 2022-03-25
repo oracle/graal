@@ -1,8 +1,8 @@
 package com.oracle.truffle.api.operation.test.example;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
@@ -62,7 +62,7 @@ public class TestOperations {
     @Operation
     static class ThrowOperation {
         @Specialization
-        public static void perform(@Cached("$bci") int bci, @Cached("this") OperationsNode node) {
+        public static void perform(@Bind("$bci") int bci, @Bind("this") OperationsNode node) {
             throw new TestException("fail", node, bci);
         }
     }

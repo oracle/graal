@@ -328,7 +328,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         }
 
         OperationsNode[] operations = SLOperationsBuilder.parse(this, source);
-        return operations[operations.length - 1].getCallTarget();
+        return operations[operations.length - 1].createRootNode().getCallTarget();
     }
 
     /**

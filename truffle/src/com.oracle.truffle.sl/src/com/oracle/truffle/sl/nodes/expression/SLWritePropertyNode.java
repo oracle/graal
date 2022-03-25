@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -101,8 +102,8 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeObject(Object receiver, Object name, Object value,
-                    @Cached("this") Node node,
-                    @Cached("$bci") int bci,
+                    @Bind("this") Node node,
+                    @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {
