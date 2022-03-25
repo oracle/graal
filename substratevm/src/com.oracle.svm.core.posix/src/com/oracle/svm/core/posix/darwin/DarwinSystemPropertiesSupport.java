@@ -48,7 +48,7 @@ import com.oracle.svm.core.posix.headers.darwin.Foundation;
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
-    protected String tmpdirValue() {
+    protected String javaIoTmpdirValue() {
         /* Darwin has a per-user temp dir */
         int buflen = Limits.PATH_MAX();
         CCharPointer tmpPath = StackValue.get(buflen);
@@ -57,8 +57,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
             return CTypeConversion.toJavaString(tmpPath);
         } else {
             /*
-             * Default as defined in JDK source/jdk/src/solaris/native/java/lang/java_props_md.c
-             * line 135.
+             * Default as defined in JDK src/java.base/unix/native/libjava/java_props_md.c line 90.
              */
             return "/var/tmp";
         }
