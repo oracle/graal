@@ -2214,13 +2214,17 @@ def _format_properties(data):
 
 
 def _get_component_stability(component):
-    if _src_jdk_version > 11:
+    if _src_jdk_version not in (11, 17):
+        return "experimental"
+    if mx.is_darwin() and mx.get_arch() == 'aarch64':
         return "experimental"
     return component.stability
 
 
 def _get_core_stability():
-    if _src_jdk_version > 11:
+    if _src_jdk_version not in (11, 17):
+        return "experimental"
+    if mx.is_darwin() and mx.get_arch() == 'aarch64':
         return "experimental"
     return "supported"
 
