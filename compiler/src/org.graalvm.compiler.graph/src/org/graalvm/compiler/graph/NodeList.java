@@ -64,7 +64,11 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         checkMaxSize(initialSize);
         this.size = initialSize;
         this.initialSize = initialSize;
-        this.nodes = new Node[initialSize];
+        if (initialSize == 0) {
+            this.nodes = EMPTY_NODE_ARRAY;
+        } else {
+            this.nodes = new Node[initialSize];
+        }
     }
 
     protected NodeList(Node self, T[] elements) {
@@ -239,8 +243,13 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     void copy(NodeList<? extends Node> other) {
         self.incModCount();
         incModCount();
-        Node[] newNodes = new Node[other.size];
-        System.arraycopy(other.nodes, 0, newNodes, 0, newNodes.length);
+        Node[] newNodes;
+        if (other.size == 0) {
+            newNodes = EMPTY_NODE_ARRAY;
+        } else {
+            newNodes = new Node[other.size];
+            System.arraycopy(other.nodes, 0, newNodes, 0, newNodes.length);
+        }
         nodes = newNodes;
         size = other.size;
     }
@@ -284,6 +293,10 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     void clearWithoutUpdate() {
         nodes = EMPTY_NODE_ARRAY;
         size = 0;
+    }
+
+    void minimizeSize() {
+        nodes = Graph.trimArrayToNewSize(nodes, size, EMPTY_NODE_ARRAY);
     }
 
     @Override
