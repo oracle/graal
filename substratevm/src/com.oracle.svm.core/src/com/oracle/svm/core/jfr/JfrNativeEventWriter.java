@@ -80,32 +80,29 @@ public final class JfrNativeEventWriter {
         UnsignedWord written = getUncommittedSize(data);
         if (large) {
             // Write a 4 byte size and commit the event if any payload was written.
-            if (written.aboveThan(Integer.BYTES)) {
-                assert written.belowOrEqual(MAX_PADDED_INT_VALUE);
+            if (written.belowOrEqual(MAX_PADDED_INT_VALUE) && written.aboveThan(Integer.BYTES)) {
                 Pointer currentPos = data.getCurrentPos();
                 data.setCurrentPos(data.getStartPos());
-                putInt(data, makePaddedInt((int) written.rawValue()));
+                putPaddedInt(data, (int) written.rawValue());
                 data.setCurrentPos(currentPos);
                 commitEvent(data);
+                return written;
             }
         } else {
-            // Abort if event size will not fit in one byte (compressed).
-            if (written.aboveThan(MAX_COMPRESSED_BYTE_VALUE)) {
-                reset(data);
-                written = WordFactory.unsigned(0);
-            } else {
-                // Write a 1 byte size and commit the event if any payload was written.
-                if (written.aboveThan(Byte.BYTES)) {
-                    assert written.belowOrEqual(MAX_COMPRESSED_BYTE_VALUE);
-                    Pointer currentPos = data.getCurrentPos();
-                    data.setCurrentPos(data.getStartPos());
-                    putByte(data, (byte) written.rawValue());
-                    data.setCurrentPos(currentPos);
-                    commitEvent(data);
-                }
+            // Write one byte size and commit the event if any payload was written.
+            if (written.belowOrEqual(MAX_COMPRESSED_BYTE_VALUE) && written.aboveThan(Byte.BYTES)) {
+                Pointer currentPos = data.getCurrentPos();
+                data.setCurrentPos(data.getStartPos());
+                putByte(data, (byte) written.rawValue());
+                data.setCurrentPos(currentPos);
+                commitEvent(data);
+                return written;
             }
         }
-        return written;
+        // Abort if event size will not fit in pre-allocated size field (compressed),
+        // or event payload is empty.
+        reset(data);
+        return WordFactory.unsigned(0);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
@@ -343,6 +340,23 @@ public final class JfrNativeEventWriter {
         long b4 = (((v >>> 21) & 0x7F)) << 0;
 
         return (int) (b1 + b2 + b3 + b4);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void putPaddedInt(JfrNativeEventWriterData data, int v) {
+        assert v <= MAX_PADDED_INT_VALUE;
+        if (!ensureSize(data, Integer.BYTES)) {
+            return;
+        }
+
+        long b = v & 0x7F;
+        putUncheckedByte(data, (byte) (b | 0x80));
+        b = ((v >>> 7) & 0x7F);
+        putUncheckedByte(data, (byte) (b | 0x80));
+        b = ((v >>> 14) & 0x7F);
+        putUncheckedByte(data, (byte) (b | 0x80));
+        b = ((v >>> 21) & 0x7F);
+        putUncheckedByte(data, (byte) b);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
