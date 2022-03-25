@@ -54,11 +54,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.ClassLoaderSupport;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -71,7 +67,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final Map<String, Set<Module>> packageToModules;
 
-    protected ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
+    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         this.imageClassLoader = classLoaderSupport.getClassLoader();
         packageToModules = new HashMap<>();
@@ -265,14 +261,5 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
             /* Add to exiting HashSet - happens rarely */
             prevValue.add(moduleName);
         }
-    }
-}
-
-@AutomaticFeature
-public class ClassLoaderSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl(access.getImageClassLoader().classLoaderSupport));
     }
 }
