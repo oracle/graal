@@ -42,7 +42,7 @@ local jdks = common_json.jdks;
   custom_vm_linux: {},
   custom_vm_darwin: {},
   vm_profiles:: [],
-  collect_profiles:: [],
+  collect_profiles():: [],
 
   mx_cmd_base_no_env: ['mx'],
 

@@ -6,7 +6,16 @@
     default_jvm_config:: "graal-core",
     libgraal_env_file:: "libgraal",
     vm_suite:: "vm",
-    compiler_suite:: "compiler"
+    compiler_suite:: "compiler",
+
+    # Returns a command line to collect a profile to build libgraal with PGO
+    #
+    # @param mx_prefix the mx command line prior to the specific command being run
+    collect_libgraal_profile(mx_prefix=["mx"]):: [],
+
+    # Returns mx arguments to have native image generation use
+    # the profile created by `collect_libgraal_profile`.
+    use_libgraal_profile:: [],
   },
 
   vm:: {

@@ -134,16 +134,31 @@ local repo_config = import '../../repo-configuration.libsonnet';
 
   x52_js_bench_compilation_throughput: self.vm_bench_common + common.heap.default + {
     local libgraal_env = repo_config.vm.mx_env.libgraal,
+    local mx_libgraal = ["mx", "--env", libgraal_env],
+
     setup+: [
-      ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js", "sforceimports"],  # clone the revision of /graal-js imported by /vm
-      ["git", "clone", "--depth", "1", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], "../../js-benchmarks"],
-      ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js,js-benchmarks", "sversions"],
-      ["mx", "--env", libgraal_env, "--dynamicimports", "/graal-js,js-benchmarks", "build", "--force-javac"]
+      mx_libgraal + ["--dynamicimports", "/graal-js", "sforceimports"],  # clone the revision of /graal-js imported by /vm
+      ["git", "clone", "--depth", "1", ['mx', 'urlrewrite', "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"],
+      mx_libgraal + ["--dynamicimports", "/graal-js,js-benchmarks", "sversions"]
+    ] + repo_config.compiler.collect_libgraal_profile(mx_libgraal) + [
+      mx_libgraal + ["--dynamicimports", "/graal-js,js-benchmarks", "build", "--force-javac"]
     ],
     local xms = if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     local xmx = if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
     run: [
-      ["mx", "--env", libgraal_env, "--dynamicimports", "js-benchmarks,/graal-js", "benchmark", "octane:typescript", "--results-file", self.result_file, "--"] + xms + xmx + ["--experimental-options", "--engine.CompilationFailureAction=ExitVM", "-Dgraal.DumpOnError=true", "-Dgraal.PrintGraph=File", "--js-vm=graal-js", "--js-vm-config=default", "--jvm=server", "--jvm-config=" + repo_config.compiler.default_jvm_config + "-libgraal-no-truffle-bg-comp", "-XX:+CITime"],
+      mx_libgraal + ["--dynamicimports", "js-benchmarks,/graal-js",
+        "benchmark", "octane:typescript",
+        "--results-file", self.result_file, "--"
+      ] + xms + xmx + [
+        "--experimental-options",
+        "--engine.CompilationFailureAction=ExitVM",
+        "-Dgraal.DumpOnError=true",
+        "-Dgraal.PrintGraph=File",
+        "--js-vm=graal-js",
+        "--js-vm-config=default",
+        "--jvm=server",
+        "--jvm-config=" + repo_config.compiler.default_jvm_config + "-libgraal-no-truffle-bg-comp",
+        "-XX:+CITime"],
       self.upload
     ],
     logs+: [

@@ -1,7 +1,7 @@
 {
   local common = import "../../common.jsonnet",
   local bench_common = import "../../bench-common.libsonnet",
-  local config = import '../../repo-configuration.libsonnet',
+  local config = import "../../repo-configuration.libsonnet",
   local ci_resources = import "../../ci-resources.libsonnet",
 
   enable_profiling:: {
@@ -21,6 +21,12 @@
   // Benchmarking building blocks
   // ****************************
   compiler_bench_base:: bench_common.bench_base + {
+    # The extra steps and mx arguments to be applied to build libgraal with PGO
+    local is_libgraal = std.objectHasAll(self, "platform") && std.findSubstr("libgraal", self.platform) != [],
+    local libgraal_only(value) = if is_libgraal then value else [],
+    local collect_libgraal_profile = libgraal_only(config.compiler.collect_libgraal_profile()),
+    local use_libgraal_profile = libgraal_only(config.compiler.use_libgraal_profile),
+
     job_prefix:: "bench-compiler",
     environment+: {
       MX_PYTHON_VERSION : "3",
@@ -54,12 +60,11 @@
     setup+: [
       ["cd", "./" + config.compiler.compiler_suite],
     ]
-    + if self.should_mx_build then [
+    + if self.should_mx_build then collect_libgraal_profile + [
       ["mx", "hsdis", "||", "true"],
-      ["mx", "build"]
+      ["mx"] + use_libgraal_profile + ["build"]
     ] else [],
-    teardown+: [
-    ]
+    teardown+: []
   },
 
   compiler_benchmarks_notifications:: {

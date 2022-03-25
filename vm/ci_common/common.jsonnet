@@ -1,6 +1,7 @@
 local composable = (import '../../common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
 local graal_common = import '../../common.jsonnet';
+local repo_config = import '../../repo-configuration.libsonnet';
 local common_json = composable(import '../../common.json');
 local devkits = common_json.devkits;
 
@@ -404,46 +405,44 @@ local devkits = common_json.devkits;
   full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin_amd64,
   full_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64,
 
-  local libgraal_build(build_args) =
-    ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + ['build'],
 
-  libgraal_compiler: self.svm_common_linux_amd64 + vm.custom_vm_linux + {
+  libgraal_build(build_args):: {
+    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else 'build-libgraal-pgo',
     run+: [
-      # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea']),
+      ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + [build_command]
+    ]
+  },
+
+  # enable asserts in the JVM building the image and enable asserts in the resulting native image
+  libgraal_compiler_base(quickbuild_args=[]):: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
+    run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
     timelimit: '1:00:00',
   },
-  libgraal_truffle: self.svm_common_linux_amd64 + vm.custom_vm_linux + {
+
+  # enable asserts in the JVM building the image and enable asserts in the resulting native image
+  libgraal_compiler:: self.libgraal_compiler_base(),
+  # enable economy mode building with the -Ob flag
+  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(['-Ob']),
+
+
+  libgraal_truffle_base(quickbuild_args=[]): self.svm_common_linux_amd64 + vm.custom_vm_linux + self.libgraal_build(['-J-ea', '-ea'] + quickbuild_args) + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate
       TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.*'
     },
     run+: [
-      # -ea assertions are enough to keep execution time reasonable
-      libgraal_build(['-J-ea', '-ea']),
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
     ],
     logs+: ['*/graal-compiler.log'],
     timelimit: '45:00',
   },
 
-  libgraal_compiler_quickbuild: self.libgraal_compiler + {
-    run: [
-      # enable economy mode building with with the -Ob flag
-      libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea', '-Ob']),
-      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
-    ],
-  },
-  libgraal_truffle_quickbuild: self.libgraal_truffle + {
-    run: [
-      # enable economy mode building with with the -Ob flag
-      libgraal_build(['-J-ea', '-ea', '-Ob']),
-      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
-    ],
-    timelimit: '1:00:00',
-  },
+  # -ea assertions are enough to keep execution time reasonable
+  libgraal_truffle: self.libgraal_truffle_base(),
+  # enable economy mode building with the -Ob flag
+  libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
   # for cases where a maven package is not easily accessible
   maven_download_unix: {
@@ -483,7 +482,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles + [
+    ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -506,7 +505,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles + [
+    ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -521,7 +520,7 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_darwin_amd64: {
-    run: vm.collect_profiles + [
+    run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
@@ -551,7 +550,7 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_darwin_aarch64: {
-    run: vm.collect_profiles + [
+    run: vm.collect_profiles() + [
       # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
       ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
@@ -582,13 +581,13 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_windows_amd64: {
-    run: [
+    run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
       $.mx_vm_common + ['graalvm-show'],
       $.mx_vm_common + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + vm.check_graalvm_base_build + [
-      $.mx_vm_common + $.record_file_sizes,
+      $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
@@ -612,7 +611,7 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_ruby: {
-    run: vm.collect_profiles + [
+    run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-ruby"],
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
@@ -692,5 +691,5 @@ local devkits = common_json.devkits;
     },
   ],
 
-  builds: [{'defined_in': std.thisFile} + b for b in builds],
+  builds:: [{'defined_in': std.thisFile} + b for b in builds],
 }
