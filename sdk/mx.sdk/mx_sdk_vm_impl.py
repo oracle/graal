@@ -2205,6 +2205,12 @@ def _format_properties(data):
     ) + "\n"
 
 
+def _get_component_stability(component):
+    if _src_jdk_version > 11:
+        return "experimental"
+    return component.stability
+
+
 def _gen_gu_manifest(components, formatter, bundled=False):
     main_component = _get_main_component(components)
     version = _suite.release_version()
@@ -2221,9 +2227,7 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                               and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability is not None:
-        stability = main_component.stability
-        if _src_jdk_version > 11:
-            stability = "experimental"
+        stability = _get_component_stability(main_component)
         manifest["x-GraalVM-Stability-Level"] = stability
         if stability in ("experimental", "earlyadopter", "supported"):
             # set x-GraalVM-Stability for backward compatibility when possible
@@ -3149,6 +3153,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
     parser.add_argument('--print-env', action='store_true', help='print the contents of an env file that reproduces the current GraalVM config')
+    parser.add_argument('--stability', action='store_true', help='show the stability level of components')
     args = parser.parse_args(args)
 
     graalvm_dist = forced_graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
@@ -3157,7 +3162,10 @@ def graalvm_show(args, forced_graalvm_dist=None):
     print("Config name: {}".format(graalvm_dist.vm_config_name))
     print("Components:")
     for component in graalvm_dist.components:
-        print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
+        if args.stability:
+            print(" - {} ('{}', /{}, {})".format(component.name, component.short_name, component.dir_name, _get_component_stability(component)))
+        else:
+            print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
 
     if forced_graalvm_dist is None:
         # Custom GraalVM distributions with a forced component list do not yet support launchers and libraries.
