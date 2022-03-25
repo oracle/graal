@@ -102,7 +102,7 @@ def _test_libgraal_basic(extra_vm_arguments):
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
     """
-    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from JVMCI native library"
+    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from[ \w]* JVMCI native library"
     compiler_log_file = abspath('graal-compiler.log')
     args = ['-Dgraal.ShowConfiguration=info',
             '-Dgraal.LogFile=' + compiler_log_file,
