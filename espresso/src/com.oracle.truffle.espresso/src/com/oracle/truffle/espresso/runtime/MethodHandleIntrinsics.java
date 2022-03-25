@@ -69,7 +69,7 @@ public final class MethodHandleIntrinsics {
         this.intrinsics = new ConcurrentHashMap<>();
     }
 
-    public MethodHandleIntrinsicNode createIntrinsicNode(EspressoLanguage language, Meta meta, Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
+    public static MethodHandleIntrinsicNode createIntrinsicNode(EspressoLanguage language, Meta meta, Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
         PolySigIntrinsics id = getId(method);
         switch (id) {
             case InvokeBasic:

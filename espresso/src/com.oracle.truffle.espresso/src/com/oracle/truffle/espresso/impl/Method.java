@@ -830,7 +830,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public MethodHandleIntrinsicNode spawnIntrinsicNode(EspressoLanguage language, Meta meta, Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
         assert isPolySignatureIntrinsic();
-        return getContext().getMethodHandleIntrinsics().createIntrinsicNode(language, meta, this, accessingKlass, mname, signature);
+        return MethodHandleIntrinsics.createIntrinsicNode(language, meta, this, accessingKlass, mname, signature);
     }
 
     public Method forceSplit() {
