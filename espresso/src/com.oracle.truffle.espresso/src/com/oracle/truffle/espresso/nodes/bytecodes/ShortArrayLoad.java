@@ -83,9 +83,10 @@ public abstract class ShortArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        short doEspresso(StaticObject array, int index) {
+        short doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayShort(index, array);
+            return getContext().getInterpreterToVM().getArrayShort(language, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

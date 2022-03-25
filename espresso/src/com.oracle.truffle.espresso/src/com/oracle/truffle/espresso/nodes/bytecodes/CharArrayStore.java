@@ -82,9 +82,10 @@ public abstract class CharArrayStore extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, char value) {
+        void doEspresso(StaticObject array, int index, char value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayChar(value, index, array);
+            getContext().getInterpreterToVM().setArrayChar(language, value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

@@ -82,9 +82,10 @@ public abstract class ShortArrayStore extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, short value) {
+        void doEspresso(StaticObject array, int index, short value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayShort(value, index, array);
+            getContext().getInterpreterToVM().setArrayShort(language, value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

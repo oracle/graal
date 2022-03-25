@@ -3968,7 +3968,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         Object[] doEspressoNoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments) {
-            return arguments.<StaticObject[]> unwrap();
+            return arguments.<StaticObject[]> unwrap(getLanguage());
         }
 
         @Specialization(guards = {
@@ -3978,8 +3978,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         Object[] doEspressoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments) {
-            EspressoLanguage language = EspressoLanguage.get(this);
-            Object[] rawArgs = arguments.unwrap();
+            EspressoLanguage language = getLanguage();
+            Object[] rawArgs = arguments.unwrap(language);
             Object[] hostArgs = new Object[rawArgs.length];
             for (int i = 0; i < rawArgs.length; ++i) {
                 hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i]);
@@ -3995,7 +3995,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object[].class) StaticObject arguments,
                         @Cached GetArraySize getArraySize,
                         @Cached ReadArrayElement readArrayElement) {
-            EspressoLanguage language = EspressoLanguage.get(this);
+            EspressoLanguage language = getLanguage();
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
             Object[] hostArgs = new Object[argsLength];
             for (int i = 0; i < argsLength; ++i) {

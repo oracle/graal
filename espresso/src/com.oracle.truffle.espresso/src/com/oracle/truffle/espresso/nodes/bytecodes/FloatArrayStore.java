@@ -82,9 +82,10 @@ public abstract class FloatArrayStore extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, float value) {
+        void doEspresso(StaticObject array, int index, float value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayFloat(value, index, array);
+            getContext().getInterpreterToVM().setArrayFloat(language, value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

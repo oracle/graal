@@ -30,6 +30,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
@@ -43,7 +44,7 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
     private final Map<KlassRef, List<ProxyCache>> cache = Collections.synchronizedMap(new HashMap<>());
     private DirectCallNode proxyGeneratorMethodCallNode;
 
-    public synchronized void collectProxyArguments(@JavaType(String.class) StaticObject proxyName,
+    public synchronized void collectProxyArguments(EspressoLanguage language, @JavaType(String.class) StaticObject proxyName,
                     @JavaType(Class[].class) StaticObject interfaces,
                     int classModifier,
                     DirectCallNode generatorMethodCallNode) {
@@ -57,9 +58,9 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
             // invoking the call node later on re-generation
             ProxyCache proxyCache = new ProxyCache(klass, proxyName, interfaces, classModifier);
 
-            Klass[] proxyInterfaces = new Klass[interfaces.length()];
+            Klass[] proxyInterfaces = new Klass[interfaces.length(getContext().getLanguage())];
             for (int i = 0; i < proxyInterfaces.length; i++) {
-                proxyInterfaces[i] = (Klass) getContext().getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(interfaces.get(i));
+                proxyInterfaces[i] = (Klass) getContext().getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(interfaces.get(language, i));
             }
             // cache proxy arguments under each interface, so that
             // when they change we can re-generate the proxy bytes

@@ -82,9 +82,10 @@ public abstract class IntArrayStore extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, int value) {
+        void doEspresso(StaticObject array, int index, int value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayInt(value, index, array);
+            getContext().getInterpreterToVM().setArrayInt(language, value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

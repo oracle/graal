@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -189,14 +190,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @SuppressWarnings("unused")
     @Substitution
     public static int getNamedCon(int which, @JavaType(Object[].class) StaticObject name,
-                    @Inject Meta meta) {
-        if (name.getKlass() == meta.java_lang_Object_array && name.length() > 0) {
+                    @Inject EspressoLanguage language, @Inject Meta meta) {
+        if (name.getKlass() == meta.java_lang_Object_array && name.length(language) > 0) {
             if (which < CONSTANTS.size()) {
                 if (which >= CONSTANTS_BEFORE_16 && !meta.getJavaVersion().java16OrLater()) {
                     return 0;
                 }
                 Pair<String, Integer> pair = CONSTANTS.get(which);
-                meta.getInterpreterToVM().setArrayObject(meta.toGuestString(pair.getLeft()), 0, name);
+                meta.getInterpreterToVM().setArrayObject(language, meta.toGuestString(pair.getLeft()), 0, name);
                 return pair.getRight();
             }
         }
@@ -226,12 +227,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @JavaType(Class.class) StaticObject originalCaller,
                     int skip,
                     @JavaType(internalName = "[Ljava/lang/invoke/MemberName;") StaticObject resultsArr,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta) {
         if (StaticObject.isNull(defc) || StaticObject.isNull(resultsArr)) {
             return -1;
         }
         EspressoContext context = meta.getContext();
-        StaticObject[] results = resultsArr.unwrap();
+        StaticObject[] results = resultsArr.unwrap(language);
         Symbol<Name> name = null;
         if (!StaticObject.isNull(matchName)) {
             name = context.getNames().lookup(meta.toHostString(matchName));

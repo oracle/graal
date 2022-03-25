@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -32,4 +33,7 @@ abstract class SubstitutionNode extends Node implements ContextAccess {
         return EspressoContext.get(this);
     }
 
+    public final EspressoLanguage getLanguage() {
+        return EspressoLanguage.get(this);
+    }
 }

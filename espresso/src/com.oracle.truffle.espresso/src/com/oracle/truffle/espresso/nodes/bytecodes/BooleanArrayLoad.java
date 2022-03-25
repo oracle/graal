@@ -85,9 +85,10 @@ public abstract class BooleanArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        boolean doEspresso(StaticObject array, int index) {
+        boolean doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayByte(index, array) != 0;
+            return getContext().getInterpreterToVM().getArrayByte(language, index, array) != 0;
         }
 
         @Specialization(guards = "array.isForeignObject()")

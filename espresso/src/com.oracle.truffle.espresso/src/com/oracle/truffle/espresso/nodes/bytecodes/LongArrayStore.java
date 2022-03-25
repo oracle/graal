@@ -83,9 +83,10 @@ public abstract class LongArrayStore extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, long value) {
+        void doEspresso(StaticObject array, int index, long value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayLong(value, index, array);
+            getContext().getInterpreterToVM().setArrayLong(language, value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

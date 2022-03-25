@@ -83,9 +83,10 @@ public abstract class FloatArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        float doEspresso(StaticObject array, int index) {
+        float doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayFloat(index, array);
+            return getContext().getInterpreterToVM().getArrayFloat(language, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

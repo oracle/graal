@@ -83,9 +83,10 @@ public abstract class LongArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        long doEspresso(StaticObject array, int index) {
+        long doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayLong(index, array);
+            return getContext().getInterpreterToVM().getArrayLong(language, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

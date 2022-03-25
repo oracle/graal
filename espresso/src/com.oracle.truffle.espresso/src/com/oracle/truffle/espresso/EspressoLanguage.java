@@ -92,11 +92,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private long startupClockNanos = 0;
 
-    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
-    // This field should be static final, but until we move the static object model we cannot have a
-    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
+    // This field should be final, but creating a shape requires a fully-initialized instance of
+    // TruffleLanguage.
     @CompilerDirectives.CompilationFinal //
-    private static StaticShape<StaticObjectFactory> arrayShape;
+    private StaticShape<StaticObjectFactory> arrayShape;
 
     private final StaticProperty foreignProperty = new DefaultStaticProperty("foreignObject");
     // This field should be final, but creating a shape requires a fully-initialized instance of
@@ -242,25 +242,21 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.disposeThread(thread);
     }
 
-    public static StaticProperty getArrayProperty() {
-        return ARRAY_PROPERTY;
+    public StaticProperty getArrayProperty() {
+        return arrayProperty;
     }
 
     public StaticShape<StaticObjectFactory> getArrayShape() {
         if (arrayShape == null) {
-            return initializeArrayShape();
+            arrayShape = createArrayShape();
         }
         return arrayShape;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private StaticShape<StaticObjectFactory> initializeArrayShape() {
-        synchronized (EspressoLanguage.class) {
-            if (arrayShape == null) {
-                arrayShape = StaticShape.newBuilder(this).property(ARRAY_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
-            }
-            return arrayShape;
-        }
+    private StaticShape<StaticObjectFactory> createArrayShape() {
+        assert arrayShape == null;
+        return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
     }
 
     public StaticProperty getForeignProperty() {

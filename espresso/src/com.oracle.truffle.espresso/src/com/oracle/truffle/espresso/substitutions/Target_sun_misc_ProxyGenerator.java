@@ -26,6 +26,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.redefinition.plugins.jdkproxy.JDKProxyRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -45,12 +46,13 @@ public final class Target_sun_misc_ProxyGenerator {
                         @JavaType(String.class) StaticObject proxyName,
                         @JavaType(Class[].class) StaticObject interfaces,
                         int classModifier,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_ProxyGenerator_generateProxyClass.getCallTargetNoSubstitution())") DirectCallNode original) {
             // for class redefinition we need to collect details about generated JDK Dynamic proxies
             JDKProxyRedefinitionPlugin plugin = context.lookup(JDKProxyRedefinitionPlugin.class);
             if (plugin != null) {
-                plugin.collectProxyArguments(proxyName, interfaces, classModifier, original);
+                plugin.collectProxyArguments(language, proxyName, interfaces, classModifier, original);
             }
             // call original method
             return (StaticObject) original.call(proxyName, interfaces, classModifier);

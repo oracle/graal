@@ -31,6 +31,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -94,15 +95,15 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @Inject Meta meta) {
+    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @Inject EspressoLanguage language, @Inject Meta meta) {
         if (StaticObject.isNull(threads)) {
             throw meta.throwNullPointerException();
         }
-        if (threads.length() == 0) {
+        if (threads.length(language) == 0) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY);
-        StaticObject[] toWrap = new StaticObject[threads.length()];
+        StaticObject[] toWrap = new StaticObject[threads.length(language)];
         Arrays.fill(toWrap, trace);
         return StaticObject.createArray(meta.java_lang_StackTraceElement.array().array(), toWrap);
     }

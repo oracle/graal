@@ -105,9 +105,10 @@ public abstract class CharArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        char doEspresso(StaticObject array, int index) {
+        char doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayChar(index, array);
+            return getContext().getInterpreterToVM().getArrayChar(language, index, array);
         }
     }
 }

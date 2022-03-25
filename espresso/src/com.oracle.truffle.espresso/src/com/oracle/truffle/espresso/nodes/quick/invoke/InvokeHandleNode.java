@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -34,6 +35,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class InvokeHandleNode extends QuickNode {
@@ -51,12 +53,17 @@ public final class InvokeHandleNode extends QuickNode {
     private final JavaKind rKind;
     private final boolean returnsPrimitiveType;
 
+    @Override
+    public EspressoLanguage getLanguage() {
+        return EspressoLanguage.get(this);
+    }
+
     public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
         super(top, curBCI);
         this.method = method;
         this.parsedSignature = method.getParsedSignature();
         this.hasReceiver = !method.isStatic();
-        this.intrinsic = method.spawnIntrinsicNode(accessingKlass, method.getName(), method.getRawSignature());
+        this.intrinsic = method.spawnIntrinsicNode(getLanguage(), getContext().getMeta(), accessingKlass, method.getName(), method.getRawSignature());
         this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isInvokeIntrinsic() ? 1 : 0);
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();

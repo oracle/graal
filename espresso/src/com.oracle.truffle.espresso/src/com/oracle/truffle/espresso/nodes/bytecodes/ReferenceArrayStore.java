@@ -84,7 +84,7 @@ public abstract class ReferenceArrayStore extends Node {
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, StaticObject value) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayObject(value, index, array);
+            getContext().getInterpreterToVM().setArrayObject(EspressoLanguage.get(this), value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

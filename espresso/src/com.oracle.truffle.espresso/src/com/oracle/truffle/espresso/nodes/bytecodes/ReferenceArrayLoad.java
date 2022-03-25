@@ -86,9 +86,10 @@ public abstract class ReferenceArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        StaticObject doEspresso(StaticObject array, int index) {
+        StaticObject doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayObject(index, array);
+            return getContext().getInterpreterToVM().getArrayObject(language, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

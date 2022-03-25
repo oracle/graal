@@ -82,9 +82,10 @@ public abstract class DoubleArrayStore extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, double value) {
+        void doEspresso(StaticObject array, int index, double value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayDouble(value, index, array);
+            getContext().getInterpreterToVM().setArrayDouble(language, value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

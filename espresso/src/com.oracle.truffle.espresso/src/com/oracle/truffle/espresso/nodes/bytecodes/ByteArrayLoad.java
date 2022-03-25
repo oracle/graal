@@ -97,9 +97,10 @@ public abstract class ByteArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        byte doEspresso(StaticObject array, int index) {
+        byte doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayByte(index, array);
+            return getContext().getInterpreterToVM().getArrayByte(language, index, array);
         }
 
         @Specialization(guards = {

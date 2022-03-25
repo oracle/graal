@@ -186,7 +186,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                     StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
                                     appendix);
                 }
-                StaticObject unboxedAppendix = appendix.get(0);
+                StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);
 
                 return new CallSiteLink(memberName, unboxedAppendix, parsedInvokeSignature);
             } catch (EspressoException e) {

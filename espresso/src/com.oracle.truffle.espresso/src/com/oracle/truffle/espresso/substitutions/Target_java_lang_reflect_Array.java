@@ -27,6 +27,7 @@ import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -116,7 +117,9 @@ public final class Target_java_lang_reflect_Array {
      */
     @TruffleBoundary
     @Substitution
-    public static @JavaType(Object.class) StaticObject multiNewArray(@JavaType(Class.class) StaticObject componentType, @JavaType(int[].class) StaticObject dimensionsArray, @Inject Meta meta) {
+    public static @JavaType(Object.class) StaticObject multiNewArray(@JavaType(Class.class) StaticObject componentType, @JavaType(int[].class) StaticObject dimensionsArray,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta) {
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwNullPointerException();
         }
@@ -124,7 +127,7 @@ public final class Target_java_lang_reflect_Array {
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-        final int[] dimensions = dimensionsArray.unwrap();
+        final int[] dimensions = dimensionsArray.unwrap(language);
         int finalDimensions = dimensions.length;
         if (component.isArray()) {
             finalDimensions += Types.getArrayDimensions(component.getType());
@@ -146,6 +149,7 @@ public final class Target_java_lang_reflect_Array {
 
     @Substitution
     public static boolean getBoolean(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(array)) {
@@ -159,7 +163,7 @@ public final class Target_java_lang_reflect_Array {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         try {
-            return Array.getByte(array.unwrap(), index) != 0;
+            return Array.getByte(array.unwrap(language), index) != 0;
         } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -167,11 +171,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static byte getByte(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static byte getByte(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getByte(array.unwrap(), index);
+            return Array.getByte(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -179,11 +185,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static char getChar(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static char getChar(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getChar(array.unwrap(), index);
+            return Array.getChar(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -191,11 +199,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static short getShort(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static short getShort(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getShort(array.unwrap(), index);
+            return Array.getShort(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -203,11 +213,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static int getInt(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static int getInt(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getInt(array.unwrap(), index);
+            return Array.getInt(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -215,11 +227,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static float getFloat(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static float getFloat(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getFloat(array.unwrap(), index);
+            return Array.getFloat(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -227,11 +241,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static double getDouble(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static double getDouble(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getDouble(array.unwrap(), index);
+            return Array.getDouble(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -239,11 +255,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static long getLong(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static long getLong(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getLong(array.unwrap(), index);
+            return Array.getLong(array.unwrap(language), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -286,7 +304,9 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setBoolean(@JavaType(Object.class) StaticObject array, int index, boolean value, @Inject Meta meta,
+    public static void setBoolean(@JavaType(Object.class) StaticObject array, int index, boolean value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(array)) {
             profiler.profile(0);
@@ -300,7 +320,7 @@ public final class Target_java_lang_reflect_Array {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         try {
-            Array.setByte(array.unwrap(), index, value ? (byte) 1 : (byte) 0);
+            Array.setByte(array.unwrap(language), index, value ? (byte) 1 : (byte) 0);
         } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -308,11 +328,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setByte(@JavaType(Object.class) StaticObject array, int index, byte value, @Inject Meta meta,
+    public static void setByte(@JavaType(Object.class) StaticObject array, int index, byte value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setByte(array.unwrap(), index, value);
+            Array.setByte(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -320,11 +342,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setChar(@JavaType(Object.class) StaticObject array, int index, char value, @Inject Meta meta,
+    public static void setChar(@JavaType(Object.class) StaticObject array, int index, char value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setChar(array.unwrap(), index, value);
+            Array.setChar(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -332,11 +356,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setShort(@JavaType(Object.class) StaticObject array, int index, short value, @Inject Meta meta,
+    public static void setShort(@JavaType(Object.class) StaticObject array, int index, short value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setShort(array.unwrap(), index, value);
+            Array.setShort(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -344,11 +370,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setInt(@JavaType(Object.class) StaticObject array, int index, int value, @Inject Meta meta,
+    public static void setInt(@JavaType(Object.class) StaticObject array, int index, int value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setInt(array.unwrap(), index, value);
+            Array.setInt(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -356,11 +384,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setFloat(@JavaType(Object.class) StaticObject array, int index, float value, @Inject Meta meta,
+    public static void setFloat(@JavaType(Object.class) StaticObject array, int index, float value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setFloat(array.unwrap(), index, value);
+            Array.setFloat(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -368,11 +398,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setDouble(@JavaType(Object.class) StaticObject array, int index, double value, @Inject Meta meta,
+    public static void setDouble(@JavaType(Object.class) StaticObject array, int index, double value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setDouble(array.unwrap(), index, value);
+            Array.setDouble(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -380,11 +412,13 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setLong(@JavaType(Object.class) StaticObject array, int index, long value, @Inject Meta meta,
+    public static void setLong(@JavaType(Object.class) StaticObject array, int index, long value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setLong(array.unwrap(), index, value);
+            Array.setLong(array.unwrap(language), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -407,7 +441,9 @@ public final class Target_java_lang_reflect_Array {
      *                array
      */
     @Substitution
-    public static void set(@JavaType(Object.class) StaticObject array, int index, @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
+    public static void set(@JavaType(Object.class) StaticObject array, int index, @JavaType(Object.class) StaticObject value,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();
@@ -416,15 +452,15 @@ public final class Target_java_lang_reflect_Array {
             // @formatter:off
             Object widenValue = Target_sun_reflect_NativeMethodAccessorImpl.checkAndWiden(meta, value, ((ArrayKlass) array.getKlass()).getComponentType());
             switch (((ArrayKlass) array.getKlass()).getComponentType().getJavaKind()) {
-                case Boolean : vm.setArrayByte(((boolean) widenValue) ? (byte) 1 : (byte) 0, index, array); break;
-                case Byte    : vm.setArrayByte(((byte) widenValue), index, array);       break;
-                case Short   : vm.setArrayShort(((short) widenValue), index, array);     break;
-                case Char    : vm.setArrayChar(((char) widenValue), index, array);  break;
-                case Int     : vm.setArrayInt(((int) widenValue), index, array);     break;
-                case Float   : vm.setArrayFloat(((float) widenValue), index, array);     break;
-                case Long    : vm.setArrayLong(((long) widenValue), index, array);       break;
-                case Double  : vm.setArrayDouble(((double) widenValue), index, array);   break;
-                case Object  : vm.setArrayObject(value, index, array); break;
+                case Boolean : vm.setArrayByte(language, ((boolean) widenValue) ? (byte) 1 : (byte) 0, index, array); break;
+                case Byte    : vm.setArrayByte(language, ((byte) widenValue), index, array);       break;
+                case Short   : vm.setArrayShort(language, ((short) widenValue), index, array);     break;
+                case Char    : vm.setArrayChar(language, ((char) widenValue), index, array);  break;
+                case Int     : vm.setArrayInt(language, ((int) widenValue), index, array);     break;
+                case Float   : vm.setArrayFloat(language, ((float) widenValue), index, array);     break;
+                case Long    : vm.setArrayLong(language, ((long) widenValue), index, array);       break;
+                case Double  : vm.setArrayDouble(language, ((double) widenValue), index, array);   break;
+                case Object  : vm.setArrayObject(language, value, index, array); break;
                 default      :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("invalid array type: " + array);
@@ -449,7 +485,9 @@ public final class Target_java_lang_reflect_Array {
      *                array
      */
     @Substitution
-    public static @JavaType(Object.class) StaticObject get(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta) {
+    public static @JavaType(Object.class) StaticObject get(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();
@@ -457,15 +495,15 @@ public final class Target_java_lang_reflect_Array {
         if (array.isArray()) {
             // @formatter:off
             switch (((ArrayKlass) array.getKlass()).getComponentType().getJavaKind()) {
-                case Boolean : return meta.boxBoolean(vm.getArrayByte(index, array) != 0);
-                case Byte    : return meta.boxByte(vm.getArrayByte(index, array));
-                case Short   : return meta.boxShort(vm.getArrayShort(index, array));
-                case Char    : return meta.boxCharacter(vm.getArrayChar(index, array));
-                case Int     : return meta.boxInteger(vm.getArrayInt(index, array));
-                case Float   : return meta.boxFloat(vm.getArrayFloat(index, array));
-                case Long    : return meta.boxLong(vm.getArrayLong(index, array));
-                case Double  : return meta.boxDouble(vm.getArrayDouble(index, array));
-                case Object  : return vm.getArrayObject(index, array);
+                case Boolean : return meta.boxBoolean(vm.getArrayByte(language, index, array) != 0);
+                case Byte    : return meta.boxByte(vm.getArrayByte(language, index, array));
+                case Short   : return meta.boxShort(vm.getArrayShort(language, index, array));
+                case Char    : return meta.boxCharacter(vm.getArrayChar(language, index, array));
+                case Int     : return meta.boxInteger(vm.getArrayInt(language, index, array));
+                case Float   : return meta.boxFloat(vm.getArrayFloat(language, index, array));
+                case Long    : return meta.boxLong(vm.getArrayLong(language, index, array));
+                case Double  : return meta.boxDouble(vm.getArrayDouble(language, index, array));
+                case Object  : return vm.getArrayObject(language, index, array);
                 default      :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("invalid array type: " + array);

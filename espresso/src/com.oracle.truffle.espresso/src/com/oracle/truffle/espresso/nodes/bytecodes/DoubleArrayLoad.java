@@ -83,9 +83,10 @@ public abstract class DoubleArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        double doEspresso(StaticObject array, int index) {
+        double doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayDouble(index, array);
+            return getContext().getInterpreterToVM().getArrayDouble(language, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -48,6 +49,7 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
 
         @Specialization
         public static void clinit(
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_Modules_clinit.getCallTargetNoSubstitution())") DirectCallNode original) {
             Meta meta = context.getMeta();
@@ -80,10 +82,10 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
 
             StaticObject array = (StaticObject) toArray.invokeDirect(originalResult, meta.java_lang_String.allocateReferenceArray(0));
             assert array.isArray();
-            StaticObject[] unwrapped = array.unwrap();
+            StaticObject[] unwrapped = array.unwrap(language);
 
             StaticObject resultArray = meta.java_lang_String.allocateReferenceArray(unwrapped.length + toAdd.size());
-            StaticObject[] unwrappedResult = resultArray.unwrap();
+            StaticObject[] unwrappedResult = resultArray.unwrap(language);
 
             System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.size(), unwrapped.length);
 

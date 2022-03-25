@@ -91,7 +91,7 @@ public abstract class ArrayLength {
         @Specialization(guards = "array.isEspressoObject()")
         int doEspresso(StaticObject array) {
             assert !StaticObject.isNull(array);
-            return InterpreterToVM.arrayLength(array);
+            return InterpreterToVM.arrayLength(array, getLanguage());
         }
 
         @Specialization(guards = {

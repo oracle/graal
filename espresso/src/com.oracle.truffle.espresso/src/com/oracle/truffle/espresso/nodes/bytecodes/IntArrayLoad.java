@@ -83,9 +83,10 @@ public abstract class IntArrayLoad extends Node {
         }
 
         @Specialization(guards = "array.isEspressoObject()")
-        int doEspresso(StaticObject array, int index) {
+        int doEspresso(StaticObject array, int index,
+                        @Bind("getLanguage()") EspressoLanguage language) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayInt(index, array);
+            return getContext().getInterpreterToVM().getArrayInt(language, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")

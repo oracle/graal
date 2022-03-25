@@ -400,9 +400,10 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getArrayLength(Object array) {
         StaticObject staticObject = (StaticObject) array;
+        EspressoLanguage language = context.getLanguage();
         if (staticObject.isForeignObject()) {
             try {
-                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject(context.getLanguage()));
+                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject(language));
                 if (arrayLength > Integer.MAX_VALUE) {
                     return -1;
                 }
@@ -411,13 +412,14 @@ public final class JDWPContextImpl implements JDWPContext {
                 return -1;
             }
         }
-        return staticObject.length();
+        return staticObject.length(language);
     }
 
     @Override
     public <T> T getUnboxedArray(Object array) {
         StaticObject staticObject = (StaticObject) array;
-        return staticObject.unwrap();
+        EspressoLanguage language = staticObject.getKlass().getContext().getLanguage();
+        return staticObject.unwrap(language);
     }
 
     @Override
@@ -493,7 +495,7 @@ public final class JDWPContextImpl implements JDWPContext {
             Object boxedArray = getUnboxedArray(array);
             value = Array.get(boxedArray, index);
         } else {
-            value = arrayRef.get(index);
+            value = arrayRef.get(context.getLanguage(), index);
         }
         return value;
     }
@@ -501,7 +503,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public void setArrayValue(Object array, int index, Object value) {
         StaticObject arrayRef = (StaticObject) array;
-        context.getInterpreterToVM().setArrayObject((StaticObject) value, index, arrayRef);
+        context.getInterpreterToVM().setArrayObject(context.getLanguage(), (StaticObject) value, index, arrayRef);
     }
 
     @Override

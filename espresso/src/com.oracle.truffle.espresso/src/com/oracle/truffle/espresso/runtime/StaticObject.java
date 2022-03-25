@@ -189,8 +189,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
         assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
-        StaticObject newObj = klass.getLanguage().getArrayShape().getFactory().create(klass);
-        EspressoLanguage.getArrayProperty().setObject(newObj, array);
+        EspressoLanguage language = klass.getContext().getLanguage();
+        StaticObject newObj = language.getArrayShape().getFactory().create(klass);
+        language.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -230,14 +231,14 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     // Shallow copy.
-    public final StaticObject copy() {
+    public final StaticObject copy(EspressoLanguage language) {
         if (isNull(this)) {
             return this;
         }
         checkNotForeign();
         StaticObject obj;
         if (getKlass().isArray()) {
-            obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray());
+            obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray(language));
         } else {
             try {
                 // Call `this.clone()` rather than `super.clone()` to execute the `clone()` methods
@@ -396,8 +397,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (isForeignObject()) {
             return "foreign object: " + getKlass().getTypeAsString();
         }
-        if (getKlass() == getKlass().getMeta().java_lang_String) {
-            Meta meta = getKlass().getMeta();
+        Meta meta = getKlass().getMeta();
+        if (getKlass() == meta.java_lang_String) {
             StaticObject value = meta.java_lang_String_value.getObject(this);
             if (value == null || isNull(value)) {
                 // Prevents debugger crashes when trying to inspect a string in construction.
@@ -406,9 +407,9 @@ public class StaticObject implements TruffleObject, Cloneable {
             return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
-            return unwrap().toString();
+            return unwrap(meta.getLanguage()).toString();
         }
-        if (getKlass() == getKlass().getMeta().java_lang_Class) {
+        if (getKlass() == meta.java_lang_Class) {
             return "mirror: " + getMirrorKlass().toString();
         }
         return getKlass().getType().toString();
@@ -425,8 +426,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (isForeignObject()) {
             return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject(getKlass().getContext().getLanguage())));
         }
-        if (getKlass() == getKlass().getMeta().java_lang_String) {
-            Meta meta = getKlass().getMeta();
+        Meta meta = getKlass().getMeta();
+        if (getKlass() == meta.java_lang_String) {
             StaticObject value = meta.java_lang_String_value.getObject(this);
             if (value == null || isNull(value)) {
                 // Prevents debugger crashes when trying to inspect a string in construction.
@@ -435,9 +436,9 @@ public class StaticObject implements TruffleObject, Cloneable {
             return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
-            return unwrap().toString();
+            return unwrap(meta.getLanguage()).toString();
         }
-        if (getKlass() == getKlass().getMeta().java_lang_Class) {
+        if (getKlass() == meta.java_lang_Class) {
             return "mirror: " + getMirrorKlass().toString();
         }
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
@@ -453,33 +454,33 @@ public class StaticObject implements TruffleObject, Cloneable {
     /**
      * Start of Array manipulation.
      */
-    private Object getArray() {
-        return EspressoLanguage.getArrayProperty().getObject(this);
+    private Object getArray(EspressoLanguage language) {
+        return language.getArrayProperty().getObject(this);
     }
 
     @SuppressWarnings("unchecked")
-    public final <T> T unwrap() {
+    public final <T> T unwrap(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        return (T) getArray();
+        return (T) getArray(language);
     }
 
-    public final <T> T get(int index) {
+    public final <T> T get(EspressoLanguage language, int index) {
         checkNotForeign();
         assert isArray();
-        return this.<T[]> unwrap()[index];
+        return this.<T[]> unwrap(language)[index];
     }
 
-    public final int length() {
+    public final int length(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        return Array.getLength(getArray());
+        return Array.getLength(getArray(language));
     }
 
-    private Object cloneWrappedArray() {
+    private Object cloneWrappedArray(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        Object array = getArray();
+        Object array = getArray(language);
         if (array instanceof byte[]) {
             return ((byte[]) array).clone();
         }

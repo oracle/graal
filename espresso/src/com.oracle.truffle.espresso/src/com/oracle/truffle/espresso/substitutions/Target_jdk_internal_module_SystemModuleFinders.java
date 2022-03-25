@@ -56,6 +56,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
         StaticObject executeImpl(
                         @JavaType(internalName = "Ljdk/internal/module/SystemModules;") StaticObject systemModules,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_SystemModuleFinders_of.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct a ModuleFinder that can locate our Espresso-specific platform modules
@@ -64,7 +65,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
             StaticObject moduleFinder = (StaticObject) original.call(systemModules);
             StaticObject extensionPathArray = getEspressoExtensionPaths(meta);
             if (extensionPathArray != StaticObject.NULL) {
-                moduleFinder = extendModuleFinders(meta, moduleFinder, extensionPathArray);
+                moduleFinder = extendModuleFinders(language, meta, moduleFinder, extensionPathArray);
             }
             return moduleFinder;
         }
@@ -78,6 +79,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         @Specialization
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
         StaticObject executeImpl(
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_SystemModuleFinders_ofSystem.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct ModuleFinders that can locate our Espresso-specific platform modules
@@ -86,7 +88,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
             StaticObject moduleFinder = (StaticObject) original.call();
             StaticObject extensionPathArray = getEspressoExtensionPaths(meta);
             if (extensionPathArray != StaticObject.NULL) {
-                moduleFinder = extendModuleFinders(meta, moduleFinder, extensionPathArray);
+                moduleFinder = extendModuleFinders(language, meta, moduleFinder, extensionPathArray);
             }
             return moduleFinder;
         }
@@ -108,12 +110,12 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     }
 
     @TruffleBoundary
-    private static StaticObject extendModuleFinders(Meta meta, StaticObject moduleFinder, StaticObject pathArray) {
+    private static StaticObject extendModuleFinders(EspressoLanguage language, Meta meta, StaticObject moduleFinder, StaticObject pathArray) {
         // ModuleFinder extension = ModulePath.of(pathArray);
         // moduleFinder = ModuleFinder.compose(extension, moduleFinder);
         StaticObject extension = (StaticObject) meta.jdk_internal_module_ModulePath_of.invokeDirect(StaticObject.NULL, pathArray);
         StaticObject moduleFinderArray = meta.java_lang_module_ModuleFinder.allocateReferenceArray(2);
-        StaticObject[] unwrapped = moduleFinderArray.unwrap();
+        StaticObject[] unwrapped = moduleFinderArray.unwrap(language);
         unwrapped[0] = extension;
         unwrapped[1] = moduleFinder;
         return (StaticObject) meta.java_lang_module_ModuleFinder_compose.invokeDirect(StaticObject.NULL, moduleFinderArray);
