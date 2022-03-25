@@ -299,6 +299,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     receive requests. This benchmark suite runs a tester process in the background (such as JMeter or Wrk2) and run a
     Microservice application in foreground. Once the tester finishes stress testing the application, the tester process
     terminates and the application is killed with SIGTERM.
+
+    The number of environment variables affects the startup time of all microservice frameworks. To ensure benchmark
+    stability, we therefore execute those benchmarks with an empty set of environment variables.
     """
 
     NumMeasureTimeToFirstResponse = 10
@@ -502,32 +505,37 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
                 for _ in range(self.NumMeasureTimeToFirstResponse):
-                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    with EmptyEnv():
+                        returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure startup performance (without RSS tracker)
                 self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
-                returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                with EmptyEnv():
+                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure peak performance (with all command mapper hooks)
                 self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
-                returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                with EmptyEnv():
+                    returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
                     # Calibrate for latency measurements (without RSS tracker)
                     self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
-                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    with EmptyEnv():
+                        returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     # Measure latency (without RSS tracker)
                     self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
-                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    with EmptyEnv():
+                        returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
@@ -605,33 +613,45 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             mx.disable_command_mapper_hooks()
             self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
             for _ in range(self.NumMeasureTimeToFirstResponse):
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                with EmptyEnv():
+                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
             mx.enable_command_mapper_hooks()
 
             # Measure startup performance (without RSS tracker)
             mx_benchmark.disable_tracker()
             self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
-            datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            with EmptyEnv():
+                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
             mx_benchmark.enable_tracker()
 
             # Measure peak performance (with all command mapper hooks)
             self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
-            datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            with EmptyEnv():
+                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
             if self.measureLatency:
                 # Calibrate for latency measurements (without RSS tracker)
                 mx_benchmark.disable_tracker()
                 self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                with EmptyEnv():
+                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
                 # Measure latency (without RSS tracker)
                 self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                with EmptyEnv():
+                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                 mx_benchmark.enable_tracker()
 
             return datapoints
         else:
             return super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+
+class EmptyEnv():
+    def __enter__(self):
+        self._prev_environ = os.environ
+        os.environ = {}
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.environ = self._prev_environ
 
 class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     """Base class for JMeter based benchmark suites."""
