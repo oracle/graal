@@ -55,11 +55,11 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -91,6 +91,8 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
 
+    private final SVMHost hostVM;
+
     private final int allowedNodes = Options.InlineBeforeAnalysisAllowedNodes.getValue();
     private final int allowedInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
     private final int allowedDepth = Options.InlineBeforeAnalysisAllowedDepth.getValue();
@@ -111,6 +113,10 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         }
     }
 
+    public InlineBeforeAnalysisPolicyImpl(SVMHost hostVM) {
+        this.hostVM = hostVM;
+    }
+    
     protected boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") ResolvedJavaMethod method) {
         return false;
     }
@@ -130,10 +136,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
 
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
         AnalysisMethod callee = (AnalysisMethod) method;
-        if (!callee.canBeInlined()) {
-            return false;
-        }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+        if (hostVM.neverInlineTrivial(caller, callee)) {
             return false;
         }
         if (GuardedAnnotationAccess.isAnnotationPresent(callee, Fold.class) || GuardedAnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
