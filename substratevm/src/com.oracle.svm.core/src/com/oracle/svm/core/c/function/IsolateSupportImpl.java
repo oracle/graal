@@ -71,10 +71,9 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setVersion(3);
+            params.setVersion(4);
 
             if (MemoryProtectionProvider.isAvailable()) {
-
                 try {
                     int pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
                     params.setProtectionKey(pkey);
@@ -90,7 +89,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
             int argc = args.size();
             params.setArgc(argc);
             params.setArgv(WordFactory.nullPointer());
+            params.setIgnoreUnrecognizedArguments(false);
+            params.setExitWhenArgumentParsingFails(false);
 
+            // TEMP (chaeubl): is this correct regarding the 1st argument?
             CTypeConversion.CCharPointerHolder[] pointerHolders = null;
             if (argc > 0) {
                 CCharPointerPointer argv = UnmanagedMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc));

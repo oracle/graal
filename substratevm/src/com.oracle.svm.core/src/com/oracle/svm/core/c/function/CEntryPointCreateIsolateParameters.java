@@ -90,4 +90,17 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
 
     @CField("_reserved_2")
     void setArgv(CCharPointerPointer value);
+
+    /* fields below: version 4 */
+    @CField("_reserved_3")
+    boolean getIgnoreUnrecognizedArguments();
+
+    @CField("_reserved_3")
+    void setIgnoreUnrecognizedArguments(boolean value);
+
+    @CField("_reserved_4")
+    boolean getExitWhenArgumentParsingFails();
+
+    @CField("_reserved_4")
+    void setExitWhenArgumentParsingFails(boolean value);
 }

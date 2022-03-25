@@ -271,9 +271,11 @@ public class JavaMainWrapper {
         @Uninterruptible(reason = "prologue")
         public static void enter(int paramArgc, CCharPointerPointer paramArgv) {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
-            args.setVersion(3);
+            args.setVersion(4);
             args.setArgc(paramArgc);
             args.setArgv(paramArgv);
+            args.setIgnoreUnrecognizedArguments(false);
+            args.setExitWhenArgumentParsingFails(true);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
             if (code != CEntryPointErrors.NO_ERROR) {

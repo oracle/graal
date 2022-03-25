@@ -119,6 +119,9 @@ public final class CEntryPointErrors {
     @Description("The auxiliary image was built from a different primary image.") //
     public static final int AUX_IMAGE_PRIMARY_IMAGE_MISMATCH = 21;
 
+    @Description("The isolate arguments could not be parsed.") //
+    public static final int ARGUMENT_PARSING_FAILED = 22;
+
     public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {
