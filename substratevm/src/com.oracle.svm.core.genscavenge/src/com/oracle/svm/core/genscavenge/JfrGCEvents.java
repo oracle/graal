@@ -31,13 +31,6 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.heap.GCCause;
 
 class JfrGCEvents {
-    public static long getTicks() {
-        if (!hasJfrSupport()) {
-            return 0;
-        }
-        return jfrSupport().getTicks();
-    }
-
     public static long startGCPhasePause() {
         if (!hasJfrSupport()) {
             return 0;
@@ -46,17 +39,17 @@ class JfrGCEvents {
     }
 
     public static void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
-        if (!hasJfrSupport()) {
+        if (!hasJfrSupport() || start == 0) {
             return;
         }
         jfrSupport().emitGarbageCollectionEvent(gcEpoch, cause, start);
     }
 
-    public static void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long startTicks) {
-        if (!hasJfrSupport()) {
+    public static void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long start) {
+        if (!hasJfrSupport() || start == 0) {
             return;
         }
-        jfrSupport().emitGCPhasePauseEvent(gcEpoch, name, startTicks);
+        jfrSupport().emitGCPhasePauseEvent(gcEpoch, name, start);
     }
 
     @Fold
