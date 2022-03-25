@@ -187,6 +187,6 @@ will always work as expected for resources registered as described above (even i
 ### JVM Mode of Localization
 
 Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM.
-As a result of that, it causes image size increase for smaller applications such as "Hello, World!".
+As a result of that, it causes the size of the executable to increase for smaller applications such as `HelloWorld`.
 Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all bundles are known ahead of time.
 In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option.
