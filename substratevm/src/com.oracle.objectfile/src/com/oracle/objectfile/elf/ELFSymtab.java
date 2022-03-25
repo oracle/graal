@@ -444,8 +444,8 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         if (entriesToIndex != null) {
             throw new IllegalArgumentException("Symbol table already sealed");
         }
+        entriesByName.compute(entry.getName(), (k, v) -> SymbolTable.tryReplace(v, entry));
         entries.add(entry);
-        entriesByName.put(entry.getName(), entry);
         return entry;
     }
 
