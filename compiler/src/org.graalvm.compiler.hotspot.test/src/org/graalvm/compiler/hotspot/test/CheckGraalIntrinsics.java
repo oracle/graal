@@ -434,12 +434,16 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
-        if (isJDK16OrHigher()) {
+        if (isJDK11OrHigher()) {
             add(toBeInvestigated,
                             "java/lang/Math.copySign(DD)D",
                             "java/lang/Math.copySign(FF)F",
                             "java/lang/Math.signum(D)D",
-                            "java/lang/Math.signum(F)F",
+                            "java/lang/Math.signum(F)F");
+        }
+
+        if (isJDK16OrHigher()) {
+            add(toBeInvestigated,
                             "sun/security/provider/MD5.implCompress0([BI)V");
         }
 
