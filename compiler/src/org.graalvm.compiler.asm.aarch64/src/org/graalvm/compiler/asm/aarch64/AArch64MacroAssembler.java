@@ -64,6 +64,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     // preferred byte alignment for the start of a loop
     public static final int PREFERRED_LOOP_ALIGNMENT = 16;
 
+    // preferred byte alignment for a branch target
+    public static final int PREFERRED_BRANCH_TARGET_ALIGNMENT = 16;
+
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);
@@ -428,7 +431,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      */
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(src)) {
+        if (dst.equals(src) && size == 64) {
             /* No action necessary */
         } else if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
