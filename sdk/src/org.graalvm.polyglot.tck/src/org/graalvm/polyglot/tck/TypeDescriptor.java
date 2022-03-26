@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -144,7 +144,7 @@ public final class TypeDescriptor {
      * content type.
      *
      * @see #isAssignable(org.graalvm.polyglot.tck.TypeDescriptor).
-     * @see Value#hasMembers().
+     * @see Value#hasArrayElements().
      * @since 0.30
      */
     public static final TypeDescriptor ARRAY;
@@ -204,7 +204,7 @@ public final class TypeDescriptor {
     public static final TypeDescriptor META_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.META_OBJECT));
 
     /**
-     * Type descriptor for duration.
+     * Type descriptor for exception.
      *
      * @since 19.3
      */
