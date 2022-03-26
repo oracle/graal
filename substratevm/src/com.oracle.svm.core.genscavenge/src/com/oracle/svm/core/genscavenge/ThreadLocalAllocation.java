@@ -203,7 +203,6 @@ public final class ThreadLocalAllocation {
      * </pre>
      */
     private static void runSlowPathHooks() {
-        GCImpl.doReferenceHandlingInRegularThread();
         GCImpl.getPolicy().updateSizeParameters();
     }
 
