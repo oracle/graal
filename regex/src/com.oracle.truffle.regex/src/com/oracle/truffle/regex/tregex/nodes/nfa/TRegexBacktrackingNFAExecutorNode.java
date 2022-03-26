@@ -77,7 +77,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
  */
 public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
 
-    public static final TRegexExecutorNode[] NO_LOOK_AROUND_EXECUTORS = {};
+    public static final TRegexExecutorNode[] NO_SUB_EXECUTORS = {};
 
     private final PureNFA nfa;
     private final int nQuantifiers;
@@ -116,7 +116,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final boolean loneSurrogates;
     private final boolean loopbackInitialState;
     private final InnerLiteral innerLiteral;
-    @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] lookAroundExecutors;
+    @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] subExecutors;
     @CompilationFinal(dimensions = 1) private CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
@@ -125,7 +125,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Child InputIndexOfStringNode indexOfNode;
     private final CharMatcher loopbackInitialStateMatcher;
 
-    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, boolean mustAdvance, CompilationBuffer compilationBuffer) {
+    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] subExecutors, boolean mustAdvance, CompilationBuffer compilationBuffer) {
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
         this.nfa = nfa;
         this.writesCaptureGroups = subtree.hasCaptureGroups();
@@ -154,7 +154,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             }
             this.zeroWidthQuantifierCGOffsets[i + 1] = offset;
         }
-        this.lookAroundExecutors = lookAroundExecutors;
+        this.subExecutors = subExecutors;
         this.loopbackInitialState = nfa == nfaMap.getRoot() && !nfaMap.getAst().getFlags().isSticky() && !nfaMap.getAst().getRoot().startsWithCaret();
         if (nfa == nfaMap.getRoot() && nfaMap.getAst().getProperties().hasInnerLiteral()) {
             this.innerLiteral = nfaMap.getAst().extractInnerLiteral();
@@ -182,7 +182,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     }
 
     public void initialize(TRegexExecNode rootNode) {
-        for (TRegexExecutorNode executor : lookAroundExecutors) {
+        for (TRegexExecutorNode executor : subExecutors) {
             executor.setRoot(rootNode);
             insert(executor);
         }
@@ -362,12 +362,19 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
          * explosion. Drawback: these postponed operations cannot be checked eagerly, so their state
          * will always be pushed to the stack.
          */
-        if (curState.isLookAround() && !canInlineLookAroundIntoTransition(curState)) {
-            int[] subMatchResult = runSubMatcher(locals.createSubNFALocals(lookAroundExecutorReturnsFirstGroup(curState)), codeRange, tString, curState);
+        if (curState.isSubMatcher() && !canInlineLookAroundIntoTransition(curState)) {
+            TRegexBacktrackingNFAExecutorLocals subLocals = locals.createSubNFALocals(subExecutorReturnsFirstGroup(curState));
+            int[] subMatchResult = runSubMatcher(subLocals, codeRange, tString, curState);
             if (subMatchFailed(curState, subMatchResult)) {
                 return IP_BACKTRACK;
-            } else if (!curState.isLookAroundNegated() && getLookAroundExecutor(curState).writesCaptureGroups()) {
-                locals.overwriteCaptureGroups(subMatchResult);
+            } else {
+                if (!curState.isSubMatcherNegated() && getSubExecutor(curState).writesCaptureGroups()) {
+                    locals.overwriteCaptureGroups(subMatchResult);
+                }
+                if (!curState.isLookAround()) {
+                    locals.saveIndex(subLocals.getIndex());
+                    locals.restoreIndex();
+                }
             }
         }
         if (curState.isBackReference() && !canInlineBackReferenceIntoTransition()) {
@@ -448,7 +455,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     locals.writeFrame(currentFrame);
                 }
             }
-            // The stack always one leftover stack frame that is to be discarded
+            // The stack always contains one leftover stack frame that is to be discarded
             // (that frame is a copy of the current frame that would have been used by the next
             // transition, if there was any).
             if (transitionToFinalStateWins) {
@@ -571,16 +578,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         return returnsFirstGroup;
     }
 
-    private TRegexExecutorNode getLookAroundExecutor(PureNFAState lookAroundState) {
-        return lookAroundExecutors[lookAroundState.getLookAroundId()];
+    private TRegexExecutorNode getSubExecutor(PureNFAState subMatcherState) {
+        return subExecutors[subMatcherState.getSubtreeId()];
     }
 
     protected boolean lookAroundExecutorIsLiteral(PureNFAState s) {
-        return getLookAroundExecutor(s) instanceof TRegexLiteralLookAroundExecutorNode;
+        return getSubExecutor(s) instanceof TRegexLiteralLookAroundExecutorNode;
     }
 
-    private boolean lookAroundExecutorReturnsFirstGroup(PureNFAState s) {
-        TRegexExecutorNode executor = getLookAroundExecutor(s);
+    private boolean subExecutorReturnsFirstGroup(PureNFAState s) {
+        TRegexExecutorNode executor = getSubExecutor(s);
         if (executor instanceof TRegexBacktrackingNFAExecutorNode) {
             return ((TRegexBacktrackingNFAExecutorNode) executor).returnsFirstGroup();
         } else {
@@ -589,12 +596,12 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     }
 
     private boolean canInlineLookAroundIntoTransition(PureNFAState s) {
-        return (s.getPredecessors().length == 1 || lookAroundExecutorIsLiteral(s)) && (s.isLookAroundNegated() || !getLookAroundExecutor(s).writesCaptureGroups());
+        return s.isLookAround() && (s.getPredecessors().length == 1 || lookAroundExecutorIsLiteral(s)) && (s.isSubMatcherNegated() || !getSubExecutor(s).writesCaptureGroups());
     }
 
     private boolean checkSubMatcherInline(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString, PureNFATransition transition, PureNFAState target) {
         if (lookAroundExecutorIsLiteral(target)) {
-            TRegexLiteralLookAroundExecutorNode literal = (TRegexLiteralLookAroundExecutorNode) getLookAroundExecutor(target);
+            TRegexLiteralLookAroundExecutorNode literal = (TRegexLiteralLookAroundExecutorNode) getSubExecutor(target);
             int saveIndex = locals.getIndex();
             int saveNextIndex = locals.getNextIndex();
             boolean result = (boolean) literal.execute(locals, codeRange, tString);
@@ -602,16 +609,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             locals.setNextIndex(saveNextIndex);
             return result;
         } else {
-            return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition, lookAroundExecutorReturnsFirstGroup(target)), codeRange, tString, target));
+            return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition, subExecutorReturnsFirstGroup(target)), codeRange, tString, target));
         }
     }
 
-    protected int[] runSubMatcher(TRegexBacktrackingNFAExecutorLocals subLocals, TruffleString.CodeRange codeRange, boolean tString, PureNFAState lookAroundState) {
-        return (int[]) getLookAroundExecutor(lookAroundState).execute(subLocals, codeRange, tString);
+    protected int[] runSubMatcher(TRegexBacktrackingNFAExecutorLocals subLocals, TruffleString.CodeRange codeRange, boolean tString, PureNFAState subMatcherState) {
+        return (int[]) getSubExecutor(subMatcherState).execute(subLocals, codeRange, tString);
     }
 
     protected static boolean subMatchFailed(PureNFAState curState, Object subMatchResult) {
-        return (subMatchResult == null) != curState.isLookAroundNegated();
+        return (subMatchResult == null) != curState.isSubMatcherNegated();
     }
 
     @ExplodeLoop
@@ -672,7 +679,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 return target.isAnchoredFinalState(isForward()) ? atEnd : true;
             case PureNFAState.KIND_CHARACTER_CLASS:
                 return !atEnd && matchers[target.getId()].match(c);
-            case PureNFAState.KIND_LOOK_AROUND:
+            case PureNFAState.KIND_SUB_MATCHER:
                 if (canInlineLookAroundIntoTransition(target)) {
                     return checkSubMatcherInline(locals, codeRange, tString, transition, target);
                 } else {
@@ -784,7 +791,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     return false;
                 }
                 break;
-            case PureNFAState.KIND_LOOK_AROUND:
+            case PureNFAState.KIND_SUB_MATCHER:
                 if (canInlineLookAroundIntoTransition(target) && !checkSubMatcherInline(locals, codeRange, tString, transition, target)) {
                     return false;
                 }
@@ -880,7 +887,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 return index;
             case PureNFAState.KIND_CHARACTER_CLASS:
                 return locals.getNextIndex();
-            case PureNFAState.KIND_LOOK_AROUND:
+            case PureNFAState.KIND_SUB_MATCHER:
                 return index;
             case PureNFAState.KIND_BACK_REFERENCE:
                 if (canInlineBackReferenceIntoTransition()) {

@@ -482,7 +482,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     return retreat();
                 }
             } else {
-                assert cur.isCharacterClass() || cur.isBackReference() || cur.isMatchFound() || (!canTraverseLookArounds() && cur.isLookAroundAssertion());
+                assert cur.isCharacterClass() || cur.isBackReference() || cur.isMatchFound() || cur.isAtomicGroup() || (!canTraverseLookArounds() && cur.isLookAroundAssertion());
                 if (forward && dollarsOnPath() && cur.isCharacterClass()) {
                     // don't visit CharacterClass nodes if we traversed dollar - PositionAssertions
                     // already

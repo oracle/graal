@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,79 +38,74 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.ast.visitors;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
-import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
-import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
-import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
-import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
- * Counts the total number of child nodes of a given node.
+ * A group that commits to its first successful match. Backtracking will not consider any other
+ * match for the contents of the group.
+ * <p>
+ * Used in Ruby regular expressions.
  */
-public class NodeCountVisitor extends DepthFirstTraversalRegexASTVisitor {
+public final class AtomicGroup extends RegexASTSubtreeRootNode {
 
-    private int count = 0;
+    /**
+     * Creates a new atomic group AST node.
+     *
+     * Note that for this node to be complete, {@link RegexASTSubtreeRootNode#setGroup(Group)} has
+     * to be called with the {@link Group} that represents the contents of this atomic group.
+     */
+    AtomicGroup() {
+    }
 
-    public int count(RegexASTNode runRoot) {
-        count = 0;
-        run(runRoot);
-        return count;
+    private AtomicGroup(AtomicGroup copy, RegexAST ast) {
+        super(copy, ast);
+    }
+
+    private AtomicGroup(AtomicGroup copy, RegexAST ast, CompilationBuffer compilationBuffer) {
+        super(copy, ast, compilationBuffer);
     }
 
     @Override
-    protected void visit(BackReference backReference) {
-        count++;
+    public RegexASTSubtreeRootNode copy(RegexAST ast) {
+        return ast.register(new AtomicGroup(this, ast));
     }
 
     @Override
-    protected void visit(Group group) {
-        count++;
-        if (group.getParent() instanceof RegexASTSubtreeRootNode) {
-            // account for the NFA helper nodes
-            count += 4;
-        }
+    public Term copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return ast.register(new AtomicGroup(this, ast, compilationBuffer));
+    }
+
+    /**
+     * Gets the (inclusive) lower bound of the range of capture groups contained within this group.
+     */
+    public int getEnclosedCaptureGroupsLow() {
+        return getGroup().getEnclosedCaptureGroupsLow();
+    }
+
+    /**
+     * Gets the (exclusive) upper bound of the range of capture groups contained within this group.
+     */
+    public int getEnclosedCaptureGroupsHigh() {
+        return getGroup().getEnclosedCaptureGroupsHigh();
     }
 
     @Override
-    protected void visit(Sequence sequence) {
-        count++;
+    public String getPrefix() {
+        return "?>";
     }
 
     @Override
-    protected void visit(PositionAssertion assertion) {
-        count++;
+    public boolean equalsSemantic(RegexASTNode obj) {
+        return this == obj || (obj.isAtomicGroup() && getGroup().equalsSemantic(obj.asAtomicGroup().getGroup()));
     }
 
+    @TruffleBoundary
     @Override
-    protected void visit(LookBehindAssertion assertion) {
-        count++;
-    }
-
-    @Override
-    protected void visit(LookAheadAssertion assertion) {
-        count++;
-    }
-
-    @Override
-    protected void visit(AtomicGroup atomicGroup) {
-        count++;
-    }
-
-    @Override
-    protected void visit(CharacterClass characterClass) {
-        count++;
-    }
-
-    @Override
-    protected void visit(SubexpressionCall subexpressionCall) {
-        count++;
+    public JsonValue toJson() {
+        return toJson("AtomicGroup");
     }
 }

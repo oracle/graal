@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.AbstractRegexObject;
-import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public interface RegexParser {
+public final class SubTreeIndex extends SimpleStateIndex<RegexASTSubtreeRootNode> {
 
-    /**
-     * Runs the parser and produces an AST.
-     *
-     * @throws RegexSyntaxException when the pattern or the flags are not well-formed
-     * @throws UnsupportedRegexException when the pattern cannot be translated to an equivalent
-     *             ECMAScript pattern
-     */
-    RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException;
+    @Override
+    protected int getStateId(RegexASTSubtreeRootNode state) {
+        return state.getSubTreeId();
+    }
 
-    /**
-     * Returns a {@link TruffleObject} representing the compilation flags which were set for the
-     * regular expression. The returned object responds to 'READ' messages on names which correspond
-     * to the names of the flags as used in the language from which the flavor originates. This
-     * method has to be called after calling {@link #parse}.
-     */
-    AbstractRegexObject getFlags();
-
-    /**
-     * Returns a map from the names of capture groups to their indices. If the regular expression
-     * had no named capture groups, returns null. This method has to be called after calling
-     * {@link #parse}.
-     */
-    AbstractRegexObject getNamedCaptureGroups();
+    @Override
+    protected void setStateId(RegexASTSubtreeRootNode state, int id) {
+        state.setSubTreeId(id);
+    }
 }
