@@ -102,6 +102,11 @@ public final class PEFile {
         ImageOptionNT64Header header = getOptionHeader();
         if (header != null) {
             ImageDataDirectory importDirectory = header.getImportDirectory();
+            if (importDirectory.getSize() == 0) {
+                // The import directory is empty
+                return null;
+            }
+
             if (importDirectory != null) {
                 return coffFile.getReaderAtVirtualAddress(importDirectory.getVirtualAddress());
             }
