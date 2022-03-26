@@ -171,6 +171,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for date.
      *
+     * @see Value#isDate().
      * @since 20.0
      */
     public static final TypeDescriptor DATE = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DATE));
@@ -178,6 +179,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for time.
      *
+     * @see Value#isTime().
      * @since 20.0
      */
     public static final TypeDescriptor TIME = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.TIME));
@@ -185,6 +187,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for time zone.
      *
+     * @see Value#isTimeZone().
      * @since 20.0
      */
     public static final TypeDescriptor TIME_ZONE = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.TIME_ZONE));
@@ -192,6 +195,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for duration.
      *
+     * @see Value#isDuration().
      * @since 20.0
      */
     public static final TypeDescriptor DURATION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DURATION));
@@ -199,6 +203,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for metaobjects.
      *
+     * @see Value#isMetaObject().
      * @since 20.0
      */
     public static final TypeDescriptor META_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.META_OBJECT));
@@ -206,6 +211,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for exception.
      *
+     * @see Value#isException()
      * @since 19.3
      */
     public static final TypeDescriptor EXCEPTION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.EXCEPTION));
