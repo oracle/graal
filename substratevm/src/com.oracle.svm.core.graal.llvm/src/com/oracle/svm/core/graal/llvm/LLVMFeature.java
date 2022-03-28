@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.llvm;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.graph.Node;
@@ -90,9 +89,6 @@ public class LLVMFeature implements Feature, GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        for (String packageName : Arrays.asList("jdk.vm.ci.meta", "jdk.vm.ci.code", "jdk.vm.ci.code.site")) {
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", packageName, false, LLVMFeature.class);
-        }
         if (ModuleSupport.modulePathBuild) {
             ModuleSupport.openModuleByClass(LLVMIntrinsicNode.class, NodeClass.class);
         }
