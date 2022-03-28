@@ -535,7 +535,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
-        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(NativeImageUtil.toOriginal(methodHandleMethod)).build();
+        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug)
+                        .method(NativeImageUtil.toOriginal(methodHandleMethod))
+                        .recordInlinedMethods(false)
+                        .build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
             /*

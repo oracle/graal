@@ -50,6 +50,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -106,7 +107,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             plantResolvedMethod(self, target, target.getRefKind(), meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(self, target.getDeclaringKlass().mirror());
         } else {
-            throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: ", ref.getKlass());
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: " + ref.getKlass());
         }
     }
 
@@ -256,6 +258,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @SuppressWarnings("unused")
     private static int findMemberNames(Klass klass, Symbol<Name> name, String sig, int matchFlags, Klass caller, int skip, StaticObject[] results) {
         // TODO(garcia) this.
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.unimplemented();
     }
 

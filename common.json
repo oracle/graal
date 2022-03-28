@@ -4,18 +4,18 @@
   "jdks": {
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+4-jvmci-22.1-b02", "platformspecific": true },
-    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.15+4-jvmci-22.1-b02-sulong", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.15+7-jvmci-22.1-b02", "platformspecific": true },
-    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.15+7-jvmci-22.1-b02-sulong", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+5-jvmci-22.1-b03", "platformspecific": true },
+    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.15+5-jvmci-22.1-b03-sulong", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.15+8-jvmci-22.1-b03", "platformspecific": true },
+    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.15+8-jvmci-22.1-b03-sulong", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-22.1-b02", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-22.1-b02-debug", "platformspecific": true },
-    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-22.1-b02-sulong", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.3+7-jvmci-22.1-b02", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.3+7-jvmci-22.1-b02-debug", "platformspecific": true },
-    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.3+7-jvmci-22.1-b02-sulong", "platformspecific": true }
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-22.1-b03", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-22.1-b03-debug", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.3+4-jvmci-22.1-b03-sulong", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.3+8-jvmci-22.1-b03", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.3+8-jvmci-22.1-b03-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.3+8-jvmci-22.1-b03-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
@@ -96,9 +96,14 @@
           "cmake": "==3.15.2"
         }
       },
-      "darwin": {
+      "darwin_amd64": {
         "packages": {
           "cmake": "==3.15.2"
+        }
+      },
+      "darwin_aarch64": {
+        "packages": {
+          "cmake": "==3.22.2"
         }
       },
       "windows": {
@@ -165,7 +170,8 @@
           "ruby": ">=2.1.0"
         }
       },
-      "darwin": {},
+      "darwin_amd64": {},
+      "darwin_aarch64": {},
       "windows": {}
     }
   }

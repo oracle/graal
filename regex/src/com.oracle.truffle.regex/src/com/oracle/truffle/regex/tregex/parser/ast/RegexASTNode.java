@@ -462,6 +462,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return this instanceof LookBehindAssertion;
     }
 
+    public boolean isAtomicGroup() {
+        return this instanceof AtomicGroup;
+    }
+
     public boolean isMatchFound() {
         return this instanceof MatchFound;
     }
@@ -516,6 +520,14 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public LookBehindAssertion asLookBehindAssertion() {
         return (LookBehindAssertion) this;
+    }
+
+    public AtomicGroup asAtomicGroup() {
+        return (AtomicGroup) this;
+    }
+
+    public RegexASTSubtreeRootNode asSubtreeRootNode() {
+        return (RegexASTSubtreeRootNode) this;
     }
 
     public MatchFound asMatchFound() {

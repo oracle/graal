@@ -306,6 +306,7 @@ final class InterfaceTables {
                     virtualMethod = declared[index];
                     break;
                 default:
+                    CompilerAsserts.neverPartOfCompilation();
                     throw EspressoError.shouldNotReachHere();
             }
             if (!virtualMethod.getKlassVersion().isInterface()) {
@@ -354,6 +355,7 @@ final class InterfaceTables {
                 newMiranda.setVTableIndex(vtableIndex);
                 break;
             default:
+                CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere();
         }
     }

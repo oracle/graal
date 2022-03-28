@@ -62,7 +62,6 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
@@ -115,7 +114,7 @@ public final class ResourcesFeature implements Feature {
     public final Set<String> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
-        private ConfigurationTypeResolver configurationTypeResolver;
+        private final ConfigurationTypeResolver configurationTypeResolver;
 
         ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
             this.configurationTypeResolver = configurationTypeResolver;
@@ -208,7 +207,6 @@ public final class ResourcesFeature implements Feature {
 
         @Override
         public boolean isIncluded(String moduleName, String resourceName) {
-            VMError.guarantee(!resourceName.contains("\\"), "Resource path contains backslash!");
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
 
             for (ResourcePattern rp : excludePatterns) {
@@ -283,7 +281,7 @@ public final class ResourcesFeature implements Feature {
         if (moduleNameWithPattern.length < 2) {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
-            Optional<? extends Object> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
+            Optional<?> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
             if (optModule.isPresent()) {
                 return new ResourcePattern(moduleNameWithPattern[0], Pattern.compile(moduleNameWithPattern[1]));
             } else {

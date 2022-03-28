@@ -643,10 +643,6 @@ public class SubstrateOptions {
         @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
-        /** Use {@link ReferenceHandler#useDedicatedThread()} instead. */
-        @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new ImmutableRuntimeOptionKey<>(true);
-
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
         public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new ImmutableRuntimeOptionKey<>(true);

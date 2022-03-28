@@ -69,6 +69,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "jdk_internal_misc",
                     "jdk_internal_util",
                     "jdk_internal_jimage",
+                    "jdk_internal_vm",
                     "jdk_net",
                     "sun_invoke",
                     "sun_launcher",

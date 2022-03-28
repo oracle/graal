@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ public final class IncompatibleLocationException extends SlowPathException {
      *
      * @since 0.8 or earlier
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public IncompatibleLocationException() {
     }
 

@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,12 +77,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      */
     private final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
-    /*
+    /**
      * These two are intentionally static to keep the reference to objects and classes that were
      * initialized in the JDK.
      */
     private static final Map<Class<?>, StackTraceElement[]> initializedClasses = new ConcurrentHashMap<>();
-    private static final Map<Object, StackTraceElement[]> instantiatedObjects = new ConcurrentHashMap<>();
+    /**
+     * Instantiated objects must be traced using their identities as their hashCode may change
+     * during the execution. We also want two objects of the same class that have the same hash and
+     * are equal to be mapped as two distinct entries.
+     */
+    private static final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
 
     private boolean configurationSealed;
 
@@ -577,6 +583,20 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         InitKind existing = classInitKinds.get(clazz);
         if (existing != null) {
             return existing;
+        }
+
+        /* Initialize all annotations because we don't support parsing at run-time. */
+        if (clazz.isAnnotation()) {
+            forceInitializeHosted(clazz, "all annotations are initialized", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        /* Well, and enums that got initialized while annotations are parsed. */
+        if (clazz.isEnum() && !Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
+            if (memoize) {
+                forceInitializeHosted(clazz, "enums referred in annotations must be initialized", false);
+            }
+            return InitKind.BUILD_TIME;
         }
 
         if (clazz.isPrimitive()) {

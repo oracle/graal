@@ -93,11 +93,9 @@ final class NativeSignature {
     static class ExecuteHelper {
 
         static int alignUp(int index, int alignment) {
-            int ret = index;
-            if (ret % alignment != 0) {
-                ret += alignment - (ret % alignment);
-            }
-            return ret;
+            int mask = alignment - 1;
+            assert (alignment & mask) == 0 : "not a power of 2";
+            return (index + mask) & ~mask;
         }
 
         @SuppressWarnings("try")

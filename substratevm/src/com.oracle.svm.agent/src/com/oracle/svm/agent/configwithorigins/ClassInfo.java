@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.configure.config.conditional.MethodInfo;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.WordFactory;
@@ -50,7 +51,7 @@ class ClassInfo {
         this.nameAndSignatureToMethodInfoMap = new ConcurrentHashMap<>();
     }
 
-    MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
+    public MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
         JNIMethodId jMethodId = WordFactory.pointer(rawJMethodIdValue);
 
         CCharPointerPointer methodNamePtr = StackValue.get(CCharPointerPointer.class);
@@ -61,7 +62,7 @@ class ClassInfo {
         String methodSignature = MethodInfoRecordKeeper.getJavaStringAndFreeNativeString(methodSignaturePtr.read());
         String methodNameAndSignature = combineMethodNameAndSignature(methodName, methodSignature);
 
-        nameAndSignatureToMethodInfoMap.computeIfAbsent(methodNameAndSignature, nameAndSignature -> new MethodInfo(methodName, methodSignature, this));
+        nameAndSignatureToMethodInfoMap.computeIfAbsent(methodNameAndSignature, nameAndSignature -> new MethodInfo(methodName, methodSignature, className));
         return nameAndSignatureToMethodInfoMap.get(methodNameAndSignature);
     }
 

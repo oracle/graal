@@ -151,17 +151,17 @@ public class ObjectScanner {
     protected final void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
+            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
+                /* The value is not available yet. */
+                return;
+            }
             JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
-
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
                 throw AnalysisError.shouldNotReachHere("Could not find field " + field.format("%H.%n") +
                                 (receiver == null ? "" : " on " + constantType(bb, receiver).toJavaName()) +
                                 System.lineSeparator() + backtrace);
-            } else if (fieldValue.getJavaKind() == JavaKind.Illegal) {
-                /* The value is not available yet */
-                return;
             }
 
             if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(constantAsObject(bb, fieldValue))) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -167,7 +167,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlot addFrameSlot(Object identifier) {
         return addFrameSlot(identifier, null, FrameSlotKind.Illegal);
     }
@@ -189,7 +189,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
         return addFrameSlot(identifier, null, kind);
     }
@@ -211,7 +211,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
     public FrameSlot addFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
@@ -239,7 +239,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlot findFrameSlot(Object identifier) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -256,7 +256,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlot findOrAddFrameSlot(Object identifier) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -278,7 +278,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlot findOrAddFrameSlot(Object identifier, FrameSlotKind kind) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -301,7 +301,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlot findOrAddFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -322,7 +322,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public void removeFrameSlot(Object identifier) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -346,7 +346,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 19.0
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public FrameSlotKind getFrameSlotKind(final FrameSlot frameSlot) {
         assert checkFrameSlotOwnership(frameSlot);
         /*
@@ -365,7 +365,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 19.0
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public void setFrameSlotKind(final FrameSlot frameSlot, final FrameSlotKind kind) {
         if (frameSlot.kind != kind) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -412,7 +412,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public int getSize() {
         if (CompilerDirectives.inCompiledCode()) {
             if (!this.version.isValid()) {
@@ -430,7 +430,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public List<? extends FrameSlot> getSlots() {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -446,7 +446,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public Set<Object> getIdentifiers() {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
@@ -576,7 +576,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public Assumption getVersion() {
         return version;
     }
@@ -601,7 +601,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      * @deprecated use index-based and auxiliary slots instead
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public Assumption getNotInFrameAssumption(Object identifier) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {

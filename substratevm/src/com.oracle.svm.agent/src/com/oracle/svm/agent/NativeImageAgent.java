@@ -50,6 +50,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.agent.conditionalconfig.ConditionalConfigurationPartialRunWriter;
+import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsTracer;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -65,7 +67,7 @@ import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
 import com.oracle.svm.agent.tracing.TraceFileWriter;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.config.ConditionalConfigurationPredicate;
+import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
@@ -105,6 +107,18 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         return token.substring(token.indexOf('=') + 1);
     }
 
+    private static boolean getBooleanTokenValue(String token) {
+        int equalsIndex = token.indexOf('=');
+        if (equalsIndex == -1) {
+            return true;
+        }
+        return Boolean.parseBoolean(token.substring(equalsIndex + 1));
+    }
+
+    private static boolean isBooleanOption(String token, String option) {
+        return token.equals(option) || token.startsWith(option + "=");
+    }
+
     @Override
     protected int getRequiredJvmtiVersion() {
         return JvmtiInterface.JVMTI_VERSION_1_2;
@@ -127,11 +141,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
         boolean experimentalClassDefineSupport = false;
+        boolean experimentalUnsafeAllocationSupport = false;
         boolean experimentalOmitClasspathConfig = false;
         boolean build = false;
         boolean configurationWithOrigins = false;
         List<String> conditionalConfigUserPackageFilterFiles = new ArrayList<>();
         List<String> conditionalConfigClassNameFilterFiles = new ArrayList<>();
+        boolean conditionalConfigPartialRun = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
         boolean trackReflectionMetadata = true;
@@ -155,38 +171,31 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 String omittedConfigDir = getTokenValue(token);
                 omittedConfigDir = transformPath(omittedConfigDir);
                 omittedConfigs.addDirectory(Paths.get(omittedConfigDir));
-            } else if (token.equals("experimental-omit-config-from-classpath")) {
-                experimentalOmitClasspathConfig = true;
-            } else if (token.startsWith("experimental-omit-config-from-classpath=")) {
-                experimentalOmitClasspathConfig = Boolean.parseBoolean(getTokenValue(token));
+            } else if (isBooleanOption(token, "experimental-omit-config-from-classpath")) {
+                experimentalOmitClasspathConfig = getBooleanTokenValue(token);
             } else if (token.startsWith("restrict-all-dir") || token.equals("restrict") || token.startsWith("restrict=")) {
                 warn("restrict mode is no longer supported, ignoring option: " + token);
             } else if (token.equals("no-builtin-caller-filter")) {
                 builtinCallerFilter = false;
-            } else if (token.startsWith("builtin-caller-filter=")) {
-                builtinCallerFilter = Boolean.parseBoolean(getTokenValue(token));
+            } else if (isBooleanOption(token, "builtin-caller-filter")) {
+                builtinCallerFilter = getBooleanTokenValue(token);
             } else if (token.equals("no-builtin-heuristic-filter")) {
                 builtinHeuristicFilter = false;
-            } else if (token.startsWith("builtin-heuristic-filter=")) {
-                builtinHeuristicFilter = Boolean.parseBoolean(getTokenValue(token));
-            } else if (token.equals("no-filter")) { // legacy
-                builtinCallerFilter = false;
-                builtinHeuristicFilter = false;
-            } else if (token.startsWith("no-filter=")) { // legacy
-                builtinCallerFilter = !Boolean.parseBoolean(getTokenValue(token));
+            } else if (isBooleanOption(token, "builtin-heuristic-filter")) {
+                builtinHeuristicFilter = getBooleanTokenValue(token);
+            } else if (isBooleanOption(token, "no-filter")) { // legacy
+                builtinCallerFilter = !getBooleanTokenValue(token);
                 builtinHeuristicFilter = builtinCallerFilter;
             } else if (token.startsWith("caller-filter-file=")) {
                 callerFilterFiles.add(getTokenValue(token));
             } else if (token.startsWith("access-filter-file=")) {
                 accessFilterFiles.add(getTokenValue(token));
-            } else if (token.equals("experimental-class-loader-support")) {
-                experimentalClassLoaderSupport = true;
-            } else if (token.startsWith("experimental-class-loader-support=")) {
-                experimentalClassLoaderSupport = Boolean.parseBoolean(getTokenValue(token));
-            } else if (token.equals("experimental-class-define-support")) {
-                experimentalClassDefineSupport = true;
-            } else if (token.startsWith("experimental-class-define-support=")) {
-                experimentalClassDefineSupport = Boolean.parseBoolean(getTokenValue(token));
+            } else if (isBooleanOption(token, "experimental-class-loader-support")) {
+                experimentalClassLoaderSupport = getBooleanTokenValue(token);
+            } else if (isBooleanOption(token, "experimental-class-define-support")) {
+                experimentalClassDefineSupport = getBooleanTokenValue(token);
+            } else if (isBooleanOption(token, "experimental-unsafe-allocation-support")) {
+                experimentalUnsafeAllocationSupport = getBooleanTokenValue(token);
             } else if (token.startsWith("config-write-period-secs=")) {
                 configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriod <= 0) {
@@ -197,20 +206,18 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (configWritePeriodInitialDelay < 0) {
                     return usage(1, "config-write-initial-delay-secs must be an integer greater or equal to 0");
                 }
-            } else if (token.equals("build")) {
-                build = true;
-            } else if (token.startsWith("build=")) {
-                build = Boolean.parseBoolean(getTokenValue(token));
-            } else if (token.equals("experimental-configuration-with-origins")) {
-                configurationWithOrigins = true;
+            } else if (isBooleanOption(token, "build")) {
+                build = getBooleanTokenValue(token);
+            } else if (isBooleanOption(token, "experimental-configuration-with-origins")) {
+                configurationWithOrigins = getBooleanTokenValue(token);
             } else if (token.startsWith("experimental-conditional-config-filter-file=")) {
                 conditionalConfigUserPackageFilterFiles.add(getTokenValue(token));
             } else if (token.startsWith("conditional-config-class-filter-file=")) {
                 conditionalConfigClassNameFilterFiles.add(getTokenValue(token));
-            } else if (token.equals("track-reflection-metadata")) {
-                trackReflectionMetadata = true;
-            } else if (token.startsWith("track-reflection-metadata=")) {
-                trackReflectionMetadata = Boolean.parseBoolean(getTokenValue(token));
+            } else if (isBooleanOption(token, "experimental-conditional-config-part")) {
+                conditionalConfigPartialRun = getBooleanTokenValue(token);
+            } else if (isBooleanOption(token, "track-reflection-metadata")) {
+                trackReflectionMetadata = getBooleanTokenValue(token);
             } else {
                 return usage(1, "unknown option: '" + token + "'.");
             }
@@ -259,7 +266,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
-        boolean shouldTraceOriginInformation = configurationWithOrigins || !conditionalConfigUserPackageFilterFiles.isEmpty();
+        if (!conditionalConfigUserPackageFilterFiles.isEmpty() && conditionalConfigPartialRun) {
+            return error(6, "The agent can generate conditional configuration either for the current run or in the partial mode but not both at the same time.");
+        }
+
+        boolean isConditionalConfigurationRun = !conditionalConfigUserPackageFilterFiles.isEmpty() || conditionalConfigPartialRun;
+        boolean shouldTraceOriginInformation = configurationWithOrigins || isConditionalConfigurationRun;
         final MethodInfoRecordKeeper recordKeeper = new MethodInfoRecordKeeper(shouldTraceOriginInformation);
         final Supplier<InterceptedState> interceptedStateSupplier = shouldTraceOriginInformation ? EagerlyLoadedJavaStackAccess.stackAccessSupplier()
                         : OnDemandJavaStackAccess.stackAccessSupplier();
@@ -304,29 +316,34 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     shouldExcludeClassesWithHash = omittedConfiguration.getPredefinedClassesConfiguration()::containsClassWithHash;
                 }
 
-                if (configurationWithOrigins) {
-                    ConfigurationWithOriginsWriter writer = new ConfigurationWithOriginsWriter(processor, recordKeeper);
-                    tracer = writer;
-                    tracingResultWriter = writer;
-                } else if (!conditionalConfigUserPackageFilterFiles.isEmpty()) {
-                    ComplexFilter userCodeFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
-                    if (!parseFilterFiles(userCodeFilter, conditionalConfigUserPackageFilterFiles)) {
-                        return 2;
-                    }
-                    ComplexFilter classNameFilter;
-                    if (!conditionalConfigClassNameFilterFiles.isEmpty()) {
-                        classNameFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
-                        if (!parseFilterFiles(classNameFilter, conditionalConfigClassNameFilterFiles)) {
-                            return 3;
+                if (shouldTraceOriginInformation) {
+                    ConfigurationWithOriginsTracer configWithOriginsTracer = new ConfigurationWithOriginsTracer(processor, recordKeeper);
+                    tracer = configWithOriginsTracer;
+
+                    if (isConditionalConfigurationRun) {
+                        if (conditionalConfigPartialRun) {
+                            tracingResultWriter = new ConditionalConfigurationPartialRunWriter(configWithOriginsTracer);
+                        } else {
+                            ComplexFilter userCodeFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+                            if (!parseFilterFiles(userCodeFilter, conditionalConfigUserPackageFilterFiles)) {
+                                return 2;
+                            }
+                            ComplexFilter classNameFilter;
+                            if (!conditionalConfigClassNameFilterFiles.isEmpty()) {
+                                classNameFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+                                if (!parseFilterFiles(classNameFilter, conditionalConfigClassNameFilterFiles)) {
+                                    return 3;
+                                }
+                            } else {
+                                classNameFilter = new ComplexFilter(HierarchyFilterNode.createInclusiveRoot());
+                            }
+
+                            ConditionalConfigurationPredicate predicate = new ConditionalConfigurationPredicate(classNameFilter);
+                            tracingResultWriter = new ConditionalConfigurationWriter(configWithOriginsTracer, userCodeFilter, predicate);
                         }
                     } else {
-                        classNameFilter = new ComplexFilter(HierarchyFilterNode.createInclusiveRoot());
+                        tracingResultWriter = new ConfigurationWithOriginsWriter(configWithOriginsTracer);
                     }
-
-                    ConditionalConfigurationPredicate predicate = new ConditionalConfigurationPredicate(classNameFilter);
-                    ConditionalConfigurationWriter writer = new ConditionalConfigurationWriter(processor, recordKeeper, userCodeFilter, predicate);
-                    tracer = writer;
-                    tracingResultWriter = writer;
                 } else {
                     Path[] predefinedClassDestDirs = {Files.createDirectories(configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR))};
                     Function<IOException, Exception> handler = e -> {
@@ -370,7 +387,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         try {
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
-                            experimentalClassLoaderSupport, experimentalClassDefineSupport, trackReflectionMetadata);
+                            experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);
         } catch (Throwable t) {
             return error(3, t.toString());
         }

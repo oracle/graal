@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
@@ -55,6 +56,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
@@ -91,7 +93,7 @@ public class RegexASTPostProcessor {
         CalcASTPropsVisitor.run(ast);
         ast.createPrefix();
         InitIDVisitor.init(ast);
-        if (!properties.hasNonLiteralLookBehindAssertions() && !ast.getRoot().hasBackReferences() && !properties.hasLargeCountedRepetitions()) {
+        if (!properties.hasNonLiteralLookBehindAssertions() && !ast.getRoot().hasBackReferences() && !properties.hasLargeCountedRepetitions() && !properties.hasAtomicGroups()) {
             new MarkLookBehindEntriesVisitor(ast).run();
         }
         checkInnerLiteral();
@@ -161,6 +163,11 @@ public class RegexASTPostProcessor {
             if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifier() && !group.getLastAlternative().isExpandedQuantifier()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
+        }
+
+        @Override
+        protected void visit(SubexpressionCall subexpressionCall) {
+            throw CompilerDirectives.shouldNotReachHere("subexpression calls should be expanded by the parser");
         }
 
         private boolean shouldUnroll(QuantifiableTerm term) {

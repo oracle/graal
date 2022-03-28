@@ -1458,6 +1458,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     static native byte[] getExecutableTypeAnnotationBytes(Executable ex);
 
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    private native boolean isDirectSubType(Class<?> c);
+
     /*
      * We need to filter out hiding methods at the last moment. This ensures that the JDK internals
      * see them as regular methods and ensure the visibility of methods is correct, but they should

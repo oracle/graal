@@ -92,6 +92,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private boolean sealed;
 
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Class<?>> unsafeInstantiatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<Executable, ExecutableAccessibility> reflectionMethods = new ConcurrentHashMap<>();
     private final Map<Executable, Object> methodAccessors = new ConcurrentHashMap<>();
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -116,17 +117,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Class<?>... classes) {
+    public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
         checkNotSealed();
-        registerConditionalConfiguration(condition, () -> registerClasses(classes));
-    }
-
-    private void registerClasses(Class<?>[] classes) {
-        for (Class<?> clazz : classes) {
+        registerConditionalConfiguration(condition, () -> {
+            if (unsafeInstantiated) {
+                unsafeInstantiatedClasses.add(clazz);
+            }
             if (reflectionClasses.add(clazz)) {
                 modifiedClasses.add(clazz);
             }
-        }
+        });
     }
 
     @Override
@@ -530,7 +530,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static void registerTypesForAnnotation(DuringAnalysisAccessImpl access, Annotation annotation) {
-        registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
+        if (annotation != null) {
+            registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -615,6 +617,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * build the reflection metadata.
          */
         type.registerAsReachable();
+        if (unsafeInstantiatedClasses.contains(clazz)) {
+            type.registerAsAllocated(null);
+        }
 
         if (reflectionClasses.contains(clazz)) {
             ClassForNameSupport.registerClass(clazz);

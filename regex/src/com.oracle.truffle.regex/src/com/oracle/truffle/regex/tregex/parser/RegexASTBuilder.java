@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -241,6 +242,17 @@ public final class RegexASTBuilder {
         pushLookBehindAssertion(null, negate);
     }
 
+    public void pushAtomicGroup(Token token) {
+        AtomicGroup atomicGroup = ast.createAtomicGroup();
+        ast.addSourceSection(atomicGroup, token);
+        addTerm(atomicGroup);
+        pushGroup(token, false, atomicGroup);
+    }
+
+    public void pushAtomicGroup() {
+        pushAtomicGroup(null);
+    }
+
     private Group pushGroup(Token token, boolean capture, RegexASTSubtreeRootNode parent) {
         Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
         if (parent != null) {
@@ -276,7 +288,7 @@ public final class RegexASTBuilder {
             ast.addSourceSection(curGroup.getParent(), token);
         }
         RegexASTNode parent = curGroup.getParent();
-        if (parent.isLookAroundAssertion()) {
+        if (parent.isSubtreeRoot()) {
             curTerm = (Term) parent;
             curSequence = parent.getParent().asSequence();
         } else {
@@ -561,7 +573,6 @@ public final class RegexASTBuilder {
                 return;
             }
         }
-        ast.addSourceSection(curTerm, quantifier);
         if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
             // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
             // ignore.
@@ -571,13 +582,13 @@ public final class RegexASTBuilder {
             // x{1,1} -> x
             return;
         }
-        setQuantifier((QuantifiableTerm) curTerm, quantifier);
+        curTerm = addQuantifier(curTerm, quantifier);
         // merge equal successive quantified terms
         if (curSequence.size() > 1) {
             Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
             if (prevTerm.isQuantifiableTerm()) {
                 QuantifiableTerm prev = prevTerm.asQuantifiableTerm();
-                if (prev.hasQuantifier() && ((QuantifiableTerm) curTerm).equalsSemantic(prev, true)) {
+                if (prev.hasQuantifier() && curTerm.asQuantifiableTerm().equalsSemantic(prev, true)) {
                     removeCurTerm();
                     long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
                     long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
@@ -594,12 +605,37 @@ public final class RegexASTBuilder {
         }
     }
 
+    private QuantifiableTerm addQuantifier(Term term, Token.Quantifier quantifier) {
+        QuantifiableTerm quantifiableTerm = term.isQuantifiableTerm() ? term.asQuantifiableTerm() : wrapTermInGroup(term);
+        if (quantifiableTerm.hasQuantifier()) {
+            quantifiableTerm = wrapTermInGroup(term);
+        }
+        ast.addSourceSection(quantifiableTerm, quantifier);
+        setQuantifier(quantifiableTerm, quantifier);
+        return quantifiableTerm;
+    }
+
     private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
         term.setQuantifier(quantifier);
         if (!term.isUnrollingCandidate()) {
             properties.setLargeCountedRepetitions();
         }
         properties.setQuantifiers();
+    }
+
+    private Group wrapTermInGroup(Term term) {
+        Group wrapperGroup = ast.createGroup();
+        if (term.isGroup()) {
+            wrapperGroup.setEnclosedCaptureGroupsLow(term.asGroup().getEnclosedCaptureGroupsLow());
+            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getEnclosedCaptureGroupsHigh());
+        } else if (term.isAtomicGroup()) {
+            wrapperGroup.setEnclosedCaptureGroupsLow(term.asAtomicGroup().getEnclosedCaptureGroupsLow());
+            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asAtomicGroup().getEnclosedCaptureGroupsHigh());
+        }
+        Sequence wrapperSequence = wrapperGroup.addSequence(ast);
+        term.getParent().asSequence().replace(term.getSeqIndex(), wrapperGroup);
+        wrapperSequence.add(term);
+        return wrapperGroup;
     }
 
     /**
@@ -642,16 +678,22 @@ public final class RegexASTBuilder {
     }
 
     /**
-     * Wraps the current {@link Term} in a non-capturing group. This can be useful when putting
-     * quantifiers on terms which are not {@link QuantifiableTerm}s or when trying to add multiple
-     * quantifiers onto the same term.
+     * Wraps the current {@link Term} in a non-capturing group.
      */
     public void wrapCurTermInGroup() {
-        Term wrappedTerm = curTerm;
-        curSequence.removeLastTerm();
-        pushGroup();
-        addTerm(wrappedTerm);
-        popGroup();
+        curTerm = wrapTermInGroup(curTerm);
+    }
+
+    /**
+     * Wraps the current {@link Term} in an atomic group. This can be useful when implementing
+     * possessive quantifiers.
+     */
+    public void wrapCurTermInAtomicGroup() {
+        Group atomicGroupContents = wrapTermInGroup(curTerm);
+        AtomicGroup atomicGroup = ast.createAtomicGroup();
+        curSequence.replace(atomicGroupContents.getSeqIndex(), atomicGroup);
+        atomicGroup.setGroup(atomicGroupContents);
+        curTerm = atomicGroup;
     }
 
     /* optimizations */

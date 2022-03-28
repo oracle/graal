@@ -180,6 +180,7 @@ public class NFINativeAccess implements NativeAccess {
         try {
             return (TruffleObject) target.call();
         } catch (IllegalArgumentException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             getLogger().log(Level.SEVERE, "TruffleNFI native library isolation is not supported", e);
             throw EspressoError.shouldNotReachHere(e);
         } catch (AbstractTruffleException e) {
@@ -206,6 +207,7 @@ public class NFINativeAccess implements NativeAccess {
             }
             return symbol;
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } catch (UnknownIdentifierException e) {
             return null;
@@ -274,7 +276,7 @@ public class NFINativeAccess implements NativeAccess {
                 }
                 return ret;
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 throw e;
@@ -387,7 +389,7 @@ public class NFINativeAccess implements NativeAccess {
                 }
                 return ret;
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 throw e;
@@ -442,6 +444,7 @@ public class NFINativeAccess implements NativeAccess {
         try {
             oldAddress = InteropLibrary.getUncached().asPointer(buffer);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
         long newAddress = 0L;
@@ -460,6 +463,7 @@ public class NFINativeAccess implements NativeAccess {
         try {
             address = InteropLibrary.getUncached().asPointer(buffer);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
         UNSAFE.freeMemory(address);

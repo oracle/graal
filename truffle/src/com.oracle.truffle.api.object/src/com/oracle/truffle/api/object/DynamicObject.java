@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,7 +123,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @deprecated This obsolete constructor has been replaced by {@link #DynamicObject(Shape)} and
      *             will be removed in the future.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     protected DynamicObject() {
         CompilerAsserts.neverPartOfCompilation();
         throw CompilerDirectives.shouldNotReachHere();
@@ -169,7 +169,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 20.2.0
      * @deprecated Internal constructor
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     protected DynamicObject(Shape shape, @SuppressWarnings("unused") Layout.Access access) {
         if (access == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -257,7 +257,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#getOrDefault} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public Object get(Object key) {
         return DynamicObjectLibrary.getUncached().getOrDefault(this, key, null);
     }
@@ -271,7 +271,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#getOrDefault} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public Object get(Object key, Object defaultValue) {
         return DynamicObjectLibrary.getUncached().getOrDefault(this, key, defaultValue);
     }
@@ -285,7 +285,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#putIfPresent} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public boolean set(Object key, Object value) {
         return DynamicObjectLibrary.getUncached().putIfPresent(this, key, value);
     }
@@ -296,7 +296,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#containsKey} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public boolean containsKey(Object key) {
         return DynamicObjectLibrary.getUncached().containsKey(this, key);
     }
@@ -310,7 +310,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @deprecated Use {@link DynamicObjectLibrary#put} or {@link DynamicObjectLibrary#putWithFlags}
      *             instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public void define(Object key, Object value) {
         define(key, value, 0);
     }
@@ -324,7 +324,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#putWithFlags} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public void define(Object key, Object value, int flags) {
         DynamicObjectLibrary.getUncached().putWithFlags(this, key, value, flags);
     }
@@ -340,7 +340,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @deprecated Use {@link DynamicObjectLibrary#putWithFlags} or
      *             {@link DynamicObjectLibrary#putConstant} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public void define(Object key, Object value, int flags, LocationFactory locationFactory) {
         deprecated("putWithFlags");
     }
@@ -353,7 +353,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#removeKey} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public boolean delete(Object key) {
         return DynamicObjectLibrary.getUncached().removeKey(this, key);
     }
@@ -364,7 +364,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link Shape#getPropertyCount() getShape().getPropertyCount()} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.3")
     public int size() {
         return getShape().getPropertyCount();
     }
@@ -375,7 +375,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link Shape#getPropertyCount() getShape().getPropertyCount() == 0} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.3")
     public boolean isEmpty() {
         return size() == 0;
     }
@@ -388,7 +388,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use one of the {@link DynamicObjectLibrary} methods instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public void setShapeAndGrow(Shape oldShape, Shape newShape) {
         deprecated();
     }
@@ -401,7 +401,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use one of the {@link DynamicObjectLibrary} methods instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public void setShapeAndResize(Shape oldShape, Shape newShape) {
         deprecated();
     }
@@ -413,7 +413,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#updateShape} instead.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public boolean updateShape() {
         return DynamicObjectLibrary.getUncached().updateShape(this);
     }
@@ -426,7 +426,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @deprecated No longer supported; as a replacement, you should implement your own copy method
      *             that constructs a new object and copies any properties over.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public DynamicObject copy(Shape currentShape) {
         throw deprecated();
     }

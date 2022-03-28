@@ -204,6 +204,15 @@ public abstract class Edges extends Fields {
         }
     }
 
+    void minimizeSize(Node node) {
+        for (int i = getDirectCount(); i < getCount(); i++) {
+            NodeList<Node> list = getNodeList(node, offsets, i);
+            if (list != null) {
+                list.minimizeSize();
+            }
+        }
+    }
+
     /**
      * Sets the value of a given edge without notifying the new and old nodes on the other end of
      * the edge of the change.

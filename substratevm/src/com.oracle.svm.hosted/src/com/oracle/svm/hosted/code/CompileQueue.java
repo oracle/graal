@@ -219,6 +219,7 @@ public class CompileQueue {
 
     private SnippetReflectionProvider snippetReflection;
     private final FeatureHandler featureHandler;
+    private final OptionValues compileOptions;
 
     private volatile boolean inliningProgress;
 
@@ -391,6 +392,7 @@ public class CompileQueue {
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
+        this.compileOptions = getCustomizedOptions(debug);
 
         callForReplacements(debug, runtimeConfig);
     }
@@ -410,10 +412,8 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
-            // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
-            // Checking @RestrictHeapAccess annotations does not take long enough to justify a
-            // timer.
+            // Checking annotations does not take long enough to justify a timer.
+            UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
             /*
@@ -691,6 +691,7 @@ public class CompileQueue {
                          * Publish the new graph, it can be picked up immediately by other threads
                          * trying to inline this method.
                          */
+                        graph.minimizeSize();
                         method.compilationInfo.setGraph(graph);
                         checkTrivial(method);
                         inliningProgress = true;
@@ -837,13 +838,12 @@ public class CompileQueue {
          */
         aMethod.setAnalyzedGraph(null);
 
-        OptionValues options = getCustomizedOptions(debug);
         /*
          * The static analysis always needs NodeSourcePosition. But for AOT compilation, we only
          * need to preserve them when explicitly enabled, to reduce memory pressure.
          */
-        boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(options);
-        StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), options, debug, trackNodeSourcePosition);
+        boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(compileOptions);
+        StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), compileOptions, debug, trackNodeSourcePosition);
 
         transplantEscapeAnalysisState(graph);
 
@@ -1079,7 +1079,7 @@ public class CompileQueue {
                     Bytecode code = new ResolvedJavaMethodBytecode(method);
                     // DebugContext debug = new DebugContext(options,
                     // providers.getSnippetReflection());
-                    graph = new SubstrateIntrinsicGraphBuilder(getCustomizedOptions(debug), debug, providers,
+                    graph = new SubstrateIntrinsicGraphBuilder(compileOptions, debug, providers,
                                     code).buildGraph(plugin);
                 }
             }
@@ -1089,7 +1089,10 @@ public class CompileQueue {
             }
             if (graph == null) {
                 needParsing = true;
-                graph = new StructuredGraph.Builder(getCustomizedOptions(debug), debug).method(method).build();
+                graph = new StructuredGraph.Builder(compileOptions, debug)
+                                .method(method)
+                                .recordInlinedMethods(false)
+                                .build();
             }
         }
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
@@ -1109,7 +1112,11 @@ public class CompileQueue {
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
                 assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
 
+                graph.minimizeSize();
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
+                if (!parseOnce) {
+                    UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+                }
 
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
@@ -1439,7 +1446,7 @@ public class CompileQueue {
             FixReadsPhase fixReads = (FixReadsPhase) it.previous();
             it.remove();
             boolean replaceInputsWithConstants = false;
-            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase(), fixReads.getCanonicalizerPhase()));
+            it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase()));
         }
     }
 

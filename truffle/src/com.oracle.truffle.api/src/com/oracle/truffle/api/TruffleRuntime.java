@@ -80,7 +80,7 @@ public interface TruffleRuntime {
      * @since 0.8 or earlier
      * @deprecated Use {@link RootNode#getCallTarget()}.
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     RootCallTarget createCallTarget(RootNode rootNode);
 
     /**
@@ -164,7 +164,7 @@ public interface TruffleRuntime {
      *             removal.
      */
     @SuppressWarnings("deprecation")
-    @Deprecated
+    @Deprecated(since = "22.1")
     default com.oracle.truffle.api.CompilerOptions createCompilerOptions() {
         return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
     }
@@ -245,7 +245,7 @@ public interface TruffleRuntime {
      *             sure this restriction is honored when migrating this API as this may lead to
      *             difficult to debug problems and sometimes even VM crashes.
      */
-    @Deprecated
+    @Deprecated(since = "22.1")
     default FrameInstance getCallerFrame() {
         return iterateFrames((f) -> f, 1);
     }
@@ -258,7 +258,7 @@ public interface TruffleRuntime {
      *             sure this restriction is honored when migrating this API as this may lead to
      *             difficult to debug problems and sometimes even VM crashes.
      */
-    @Deprecated
+    @Deprecated(since = "22.1")
     default FrameInstance getCurrentFrame() {
         return iterateFrames((f) -> f, 0);
     }

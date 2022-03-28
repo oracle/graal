@@ -73,7 +73,7 @@ public class CharacterClass extends QuantifiableTerm {
 
     private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private StateSet<LookAroundIndex, LookBehindAssertion> lookBehindEntries;
+    private StateSet<SubTreeIndex, LookBehindAssertion> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
@@ -134,7 +134,7 @@ public class CharacterClass extends QuantifiableTerm {
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(ast.getLookArounds());
+            lookBehindEntries = StateSet.create(ast.getSubtrees());
         }
         lookBehindEntries.add(lookBehindEntry);
     }

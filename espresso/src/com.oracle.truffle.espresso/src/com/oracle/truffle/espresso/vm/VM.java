@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.runtime.OS;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -390,6 +391,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert getUncached().isPointer(ptr);
             return ptr;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("getJavaVM failed", e);
         }
     }
@@ -699,7 +701,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     case Void:
                     case ReturnAddress:
                     case Illegal:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
                 }
 
@@ -2054,15 +2056,48 @@ public final class VM extends NativeEnv implements ContextAccess {
         return handle2Sym.get(handle);
     }
 
+    private static boolean hasDynamicLoaderCacheValue = false;
+    private static boolean hasDynamicLoaderCacheInit = false;
+
+    private static boolean hasDynamicLoaderCache() {
+        if (hasDynamicLoaderCacheInit) {
+            return hasDynamicLoaderCacheValue;
+        }
+        // Implement JDK-8275703 on our side
+        if (OS.getCurrent() == OS.Darwin) {
+            String osVersion = System.getProperty("os.version");
+            // dynamic linker cache support on os.version >= 11.x
+            int major = 11;
+            int i = osVersion.indexOf('.');
+            try {
+                major = Integer.parseInt(i < 0 ? osVersion : osVersion.substring(0, i));
+            } catch (NumberFormatException e) {
+            }
+            hasDynamicLoaderCacheValue = major >= 11;
+        } else {
+            hasDynamicLoaderCacheValue = false;
+        }
+        hasDynamicLoaderCacheInit = true;
+        return hasDynamicLoaderCacheValue;
+    }
+
     @VmImpl
     @TruffleBoundary
-    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
+    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr, @SuppressWarnings("unused") boolean throwException_) {
         String name = NativeUtils.interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
+
+        // don't trust the value coming from native code, it might be garbage if the used base lib
+        // doesn't have this signature.
+        boolean throwException = !hasDynamicLoaderCache();
+
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
         if (lib == null) {
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_UnsatisfiedLinkError, name);
+            if (throwException) {
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsatisfiedLinkError, name);
+            }
+            return RawPointer.create(0);
         }
         long handle = getLibraryHandle(lib);
         handle2Lib.put(handle, lib);
@@ -3028,6 +3063,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         } else if (meta.java_lang_reflect_Constructor.isAssignableFrom(executable.getKlass())) {
             method = Method.getHostReflectiveConstructorRoot(executable, meta);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
 
@@ -3098,6 +3134,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert constructorRoot != null;
             return (StaticObject) getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.getHiddenObject(constructorRoot);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
     }

@@ -304,17 +304,17 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("isPointerReturnType()") boolean isPointerReturnType,
                     @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
-                    @CachedLibrary(limit = "1") NativePointerLibrary nfiNativePointerLibrary,
+                    @CachedLibrary(limit = "1") NativePointerLibrary nativePointerLibrary,
                     @Cached @SuppressWarnings("unused") ResolveFunctionNode resolve) {
         try {
             Object signature = getNativeCtxExt().createSignature(signatureSource);
             Object nativeFunction = descriptor.getFunctionCode().getNativeFunction(resolve);
             Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
             Object returnValue = signatureLibrary.call(signature, nativeFunction, nativeArgs);
-            if (isPointerReturnType && nfiNativePointerLibrary.isPointer(returnValue)) {
+            if (isPointerReturnType && nativePointerLibrary.isPointer(returnValue)) {
                 // By using the raw long value we can avoid using interop in the subsequent
                 // conversion
-                returnValue = nfiNativePointerLibrary.asPointer(returnValue);
+                returnValue = nativePointerLibrary.asPointer(returnValue);
             }
             return fromNative.executeConvert(returnValue);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {

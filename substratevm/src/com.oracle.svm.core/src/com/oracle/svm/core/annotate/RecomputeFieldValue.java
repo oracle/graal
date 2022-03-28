@@ -30,6 +30,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Array;
 
+import com.oracle.svm.core.util.VMError;
+
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -114,8 +116,11 @@ public @interface RecomputeFieldValue {
     }
 
     enum ValueAvailability {
+        /** Value is independent of analysis/compilation results. */
         BeforeAnalysis,
+        /** Value depends on data computed by the analysis. */
         AfterAnalysis,
+        /** Value depends on data computed during compilation. */
         AfterCompilation
     }
 
@@ -128,25 +133,18 @@ public @interface RecomputeFieldValue {
          */
         ValueAvailability valueAvailability();
 
-        /** Return true if value is available during analysis, false otherwise. */
-        default boolean isAvailableBeforeAnalysis() {
-            return valueAvailability() == ValueAvailability.BeforeAnalysis;
-        }
-
         /**
-         * Return true if value is available only after analysis, i.e., it depends on data computed
-         * by the analysis (such as field offsets), false otherwise.
+         * Specify types that this field can take if the value is not available for analysis. The
+         * concrete type of the computed value can be a subtype of one of the specified types as
+         * specified by {@link Class#isAssignableFrom(Class)}. If the array contains `null` then the
+         * field value can also be null.
          */
-        default boolean isAvailableAfterAnalysis() {
-            return valueAvailability() == ValueAvailability.AfterAnalysis;
-        }
-
-        /**
-         * Return true if value is available only after compilation, i.e., it depends on data
-         * computed during compilation, false otherwise.
-         */
-        default boolean isAvailableAfterCompilation() {
-            return valueAvailability() == ValueAvailability.AfterCompilation;
+        default Class<?>[] types() {
+            if (valueAvailability() != ValueAvailability.BeforeAnalysis) {
+                throw VMError.shouldNotReachHere("Custom value field whose value is not available during analysis " +
+                                "must override CustomFieldValueProvider.types() and specify types for analysis.");
+            }
+            return null;
         }
     }
 

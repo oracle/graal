@@ -55,22 +55,24 @@ import com.oracle.truffle.regex.util.BitSets;
  * <ul>
  * <li>the current index in the input string</li>
  * <li>the current NFA state</li>
- * <li>all current capture group boundaries</li>
+ * <li>all current capture group boundaries (including the number of the last matched group, if
+ * tracked)</li>
  * <li>all current quantifier loop counters</li>
  * <li>all saved indices for zero-width checks in quantifiers</li>
+ * <li>all saved capture groups for zero-width checks in quantifiers</li>
  * </ul>
  * The backtracker state is written to the stack in the order given above, so one stack frame looks
  * like this:
  *
  * <pre>
- * sp    sp+1      sp+2           sp+2+ncg           sp+2+ncg+nq
- * |     |         |              |                  |
- * v     v         v              v                  v
- * --------------------------------------------------------------------------
- * |index|nfa_state|capture_groups|quantifiers_counts|zero_width_quantifiers|
- * --------------------------------------------------------------------------
+ * sp    sp+1      sp+2           sp+2+ncg           sp+2+ncg+nq                   sp+2+ncg+nq+nzwq
+ * |     |         |              |                  |                             |
+ * v     v         v              v                  v                             v
+ * ----------------------------------------------------------------------------------------------------------
+ * |index|nfa_state|capture_groups|quantifiers_counts|zero_width_quantifier_indices|zero_width_quantifier_CG|
+ * ----------------------------------------------------------------------------------------------------------
  *
- * frame size: 2 + n_capture_groups*2 + n_quantifiers + n_zero_width_quantifiers
+ * frame size: 2 + n_capture_groups*2 [+ 1 last_group] + n_quantifiers + n_zero_width_quantifiers + zero_width_quantifier_CG_length
  * </pre>
  */
 public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLocals {

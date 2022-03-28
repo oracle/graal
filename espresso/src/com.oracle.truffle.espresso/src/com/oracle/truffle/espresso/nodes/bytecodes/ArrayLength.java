@@ -106,7 +106,7 @@ public abstract class ArrayLength {
                 }
                 return (int) bufferLength;
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -129,7 +129,7 @@ public abstract class ArrayLength {
                 }
                 return (int) arrayLength;
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }

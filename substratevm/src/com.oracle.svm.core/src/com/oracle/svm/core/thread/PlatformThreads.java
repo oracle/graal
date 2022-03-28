@@ -31,9 +31,17 @@ import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,7 +65,11 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
@@ -483,14 +495,56 @@ public abstract class PlatformThreads {
         FetchApplicationThreadsOperation operation = new FetchApplicationThreadsOperation(threads);
         operation.enqueue();
 
+        Set<ExecutorService> pools = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<ExecutorService> poolsWithNonDaemons = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : threads) {
-            if (thread == Thread.currentThread()) {
+            if (thread == null || thread == Thread.currentThread()) {
                 continue;
             }
-            if (thread != null) {
-                Log.noopLog().string("  interrupting: ").string(thread.getName()).newline().flush();
-                thread.interrupt();
+
+            trace.string("  interrupting: ").string(thread.getName()).newline();
+            try {
+                thread.interrupt(); // not final and subclasses can unexpectedly throw
+            } catch (Throwable t) {
+                trace.string(" threw (ignored): ").exception(t);
             }
+            trace.newline().flush();
+
+            /*
+             * Pool worker threads ignore interrupts unless their pool is shutting down. We try to
+             * get their pool and shut it down, but are defensive and do so only for pool classes we
+             * know (shutdown methods can be overridden) and only if all of a pool's threads are
+             * daemons (which is the default for ForkJoinPool; for ThreadPoolExecutor, it depends on
+             * its ThreadFactory). For consistency, we still interrupt each individual thread above,
+             * especially if we end up not shutting down its pool if we find a non-daemon thread.
+             */
+            Set<ExecutorService> set = thread.isDaemon() ? pools : poolsWithNonDaemons;
+            if (thread instanceof ForkJoinWorkerThread) {
+                // read field "pool" directly to bypass getPool(), which is not final
+                ForkJoinPool pool = SubstrateUtil.cast(thread, Target_java_util_concurrent_ForkJoinWorkerThread.class).pool;
+                if (pool != null && pool.getClass() == ForkJoinPool.class) {
+                    set.add(pool);
+                }
+            } else {
+                Runnable target = toTarget(thread).target;
+                if (Target_java_util_concurrent_ThreadPoolExecutor_Worker.class.isInstance(target)) {
+                    ThreadPoolExecutor executor = SubstrateUtil.cast(target, Target_java_util_concurrent_ThreadPoolExecutor_Worker.class).executor;
+                    if (executor != null && (executor.getClass() == ThreadPoolExecutor.class || executor.getClass() == ScheduledThreadPoolExecutor.class)) {
+                        set.add(executor);
+                    }
+                }
+            }
+        }
+
+        pools.removeAll(poolsWithNonDaemons);
+        for (ExecutorService pool : pools) {
+            trace.string("  shutting down: ").object(pool);
+            try {
+                pool.shutdownNow();
+            } catch (Throwable t) {
+                trace.string(" threw (ignored): ").exception(t);
+            }
+            trace.newline().flush();
         }
 
         final boolean result = waitForTearDown();
@@ -950,4 +1004,16 @@ public abstract class PlatformThreads {
             readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
         }
     }
+}
+
+@TargetClass(value = ThreadPoolExecutor.class, innerClass = "Worker")
+final class Target_java_util_concurrent_ThreadPoolExecutor_Worker {
+    @Alias @TargetElement(name = "this$0") //
+    ThreadPoolExecutor executor;
+}
+
+@TargetClass(ForkJoinWorkerThread.class)
+final class Target_java_util_concurrent_ForkJoinWorkerThread {
+    @Alias //
+    ForkJoinPool pool;
 }

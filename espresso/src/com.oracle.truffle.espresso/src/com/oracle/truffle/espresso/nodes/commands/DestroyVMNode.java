@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.commands;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -48,6 +49,7 @@ public final class DestroyVMNode extends RootNode {
         assert frame.getArguments().length == 0;
         EspressoContext context = EspressoContext.get(this);
         context.destroyVM(true); // Throws an exit exception.
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 }

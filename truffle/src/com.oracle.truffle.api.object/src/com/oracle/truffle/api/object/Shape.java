@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -567,7 +567,7 @@ public abstract class Shape {
      *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)} or
      *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape defineProperty(Object key, Object value, int flags, LocationFactory locationFactory);
 
     /**
@@ -584,7 +584,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated use {@link #getPropertyList()} instead
      */
-    @Deprecated
+    @Deprecated(since = "19.3")
     public abstract List<Property> getPropertyList(Pred<Property> filter);
 
     /**
@@ -612,7 +612,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated use {@link #getKeyList()} instead
      */
-    @Deprecated
+    @Deprecated(since = "19.3")
     public abstract List<Object> getKeyList(Pred<Property> filter);
 
     /**
@@ -665,7 +665,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated no replacement, do not rely on a specific parent shape
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape getParent();
 
     /**
@@ -681,7 +681,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#removeKey} to remove properties from an object.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape removeProperty(Property property);
 
     /**
@@ -690,7 +690,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#put} to replace properties in an object.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape replaceProperty(Property oldProperty, Property newProperty);
 
     /**
@@ -705,7 +705,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated no replacement, returns 0
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract int getId();
 
     /**
@@ -746,7 +746,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated no replacement
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape append(Property oldProperty);
 
     /**
@@ -770,7 +770,7 @@ public abstract class Shape {
      * @see #getDynamicType()
      * @deprecated Deprecated since 20.3.0. Replaced by {@link #getDynamicType()}.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
     public abstract ObjectType getObjectType();
 
     /**
@@ -820,7 +820,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated since 21.1. You can get the shape's layout class using {@link #getLayoutClass()}.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     @SuppressWarnings("deprecation")
     public abstract Layout getLayout();
 
@@ -849,7 +849,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated the result of this method may change at any time
      */
-    @Deprecated
+    @Deprecated(since = "19.3")
     public abstract boolean hasTransitionWithKey(Object key);
 
     /**
@@ -858,7 +858,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated no replacement
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape createSeparateShape(Object sharedData);
 
     /**
@@ -876,7 +876,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated It is unnecessary to call this method, it has no effect and always returns this.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape reservePrimitiveExtensionArray();
 
     /**
@@ -912,7 +912,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated no replacement
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract boolean isRelated(Shape other);
 
     /**
@@ -1008,7 +1008,7 @@ public abstract class Shape {
         }
 
         /** @since 0.8 or earlier */
-        @Deprecated
+        @Deprecated(since = "19.3")
         protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
 
         /**
@@ -1020,7 +1020,7 @@ public abstract class Shape {
          * @param value the initial value this location is going to be assigned
          * @since 0.8 or earlier
          */
-        @Deprecated
+        @Deprecated(since = "20.2")
         public final Location locationForValue(Object value) {
             return locationForValue(value, false, value != null);
         }
@@ -1034,7 +1034,7 @@ public abstract class Shape {
          * @deprecated use {@link #locationForType(Class, EnumSet)} or
          *             {@link Shape#defineProperty(Object, Object, int)} instead
          */
-        @Deprecated
+        @Deprecated(since = "19.3")
         public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
             assert value != null || !modifiers.contains(LocationModifier.NonNull);
             return locationForValue(value, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
@@ -1106,7 +1106,7 @@ public abstract class Shape {
      * @deprecated all methods that use this interface are deprecated; use
      *             {@link java.util.function.Predicate} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.3")
     public interface Pred<T> {
         /**
          * Evaluates this predicate on the given argument.

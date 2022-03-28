@@ -363,7 +363,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             parameterAnnotations[i] = registerAnnotationValues(metaAccess, parameterAnnotations[i]);
         }
         if (isMethod && annotationDefault != null) {
-            registerAnnotationValue(annotationDefault.getClass(), annotationDefault);
+            registerAnnotationValue(getAnnotationEncodingType(annotationDefault), annotationDefault);
         }
         typeAnnotations = registerTypeAnnotationValues(metaAccess, typeAnnotations);
         if (reflectParameters != null) {
@@ -417,7 +417,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
                 parameterAnnotations[i] = registerAnnotationValues(metaAccess, parameterAnnotations[i]);
             }
             if (isMethod && annotationDefault != null) {
-                registerAnnotationValue(annotationDefault.getClass(), annotationDefault);
+                registerAnnotationValue(getAnnotationEncodingType(annotationDefault), annotationDefault);
             }
             if (reflectParameters != null) {
                 for (ReflectParameterMetadata parameter : reflectParameters) {
@@ -1024,12 +1024,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             return null;
         }
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess(), true);
-        Class<?> type = value.getClass();
-        if (Proxy.isProxyClass(type)) {
-            assert type.getInterfaces().length == 1;
-            type = type.getInterfaces()[0];
-        }
-        encodeValue(buf, value, type);
+        encodeValue(buf, value, getAnnotationEncodingType(value));
         return buf.toArray();
     }
 
@@ -1161,6 +1156,17 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         } else {
             throw GraalError.shouldNotReachHere(type.toString());
         }
+    }
+
+    private static Class<?> getAnnotationEncodingType(Object value) {
+        Class<?> type = value.getClass();
+        if (Proxy.isProxyClass(type)) {
+            assert type.getInterfaces().length == 1;
+            type = type.getInterfaces()[0];
+        } else if (value instanceof Enum<?>) {
+            type = ((Enum<?>) value).getDeclaringClass();
+        }
+        return type;
     }
 
     private byte[] encodeTypeAnnotations(TypeAnnotation[] annotations) {

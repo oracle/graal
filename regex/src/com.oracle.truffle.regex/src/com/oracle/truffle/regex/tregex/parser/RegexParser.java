@@ -46,8 +46,6 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
-import java.util.Map;
-
 public interface RegexParser {
 
     /**
@@ -72,5 +70,5 @@ public interface RegexParser {
      * had no named capture groups, returns null. This method has to be called after calling
      * {@link #parse}.
      */
-    Map<String, Integer> getNamedCaptureGroups();
+    AbstractRegexObject getNamedCaptureGroups();
 }

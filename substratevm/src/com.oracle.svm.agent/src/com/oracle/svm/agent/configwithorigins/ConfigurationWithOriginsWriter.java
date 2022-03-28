@@ -30,14 +30,15 @@ import java.util.List;
 
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.configure.config.conditional.HumanReadableConfigurationWithOrigins;
 
-public class ConfigurationWithOriginsWriter extends ConfigurationWithOriginsTracer implements TracingResultWriter {
+public class ConfigurationWithOriginsWriter implements TracingResultWriter {
 
     public static final String CONFIG_WITH_ORIGINS_SUFFIX = "-origins.txt";
+    private final ConfigurationWithOriginsTracer tracer;
 
-    public ConfigurationWithOriginsWriter(TraceProcessor processor, MethodInfoRecordKeeper methodInfoRecordKeeper) {
-        super(processor, methodInfoRecordKeeper);
+    public ConfigurationWithOriginsWriter(ConfigurationWithOriginsTracer tracer) {
+        this.tracer = tracer;
     }
 
     @Override
@@ -53,6 +54,6 @@ public class ConfigurationWithOriginsWriter extends ConfigurationWithOriginsTrac
     @Override
     public List<Path> writeToDirectory(Path directoryPath) throws IOException {
         return ConfigurationSet.writeConfiguration(configFile -> directoryPath.resolve(configFile.getFileName(CONFIG_WITH_ORIGINS_SUFFIX)),
-                        configFile -> new HumanReadableConfigurationWithOrigins(rootNode, configFile));
+                        configFile -> new HumanReadableConfigurationWithOrigins(tracer.getRootNode(), configFile));
     }
 }

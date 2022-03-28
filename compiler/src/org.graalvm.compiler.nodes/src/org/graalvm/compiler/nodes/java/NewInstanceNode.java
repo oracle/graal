@@ -29,6 +29,7 @@ import java.util.Collections;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -60,7 +61,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
 
     protected NewInstanceNode(NodeClass<? extends NewInstanceNode> c, ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
         super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), fillContents, stateBefore);
-        assert !type.isArray() && !type.isInterface() && !type.isPrimitive() && !type.isAbstract() : type;
+        GraalError.guarantee(!type.isArray() && !type.isInterface() && !type.isPrimitive() && !type.isAbstract(), "Cannot instantiate type %s", type);
         this.instanceClass = type;
     }
 

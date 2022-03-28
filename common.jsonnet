@@ -129,6 +129,10 @@
 
   linux_amd64::               self.linux               + self.amd64,
   darwin_amd64::              self.darwin              + self.amd64,
+  darwin_aarch64::            self.darwin              + self.aarch64 + {
+      # only needed until GR-22580 is resolved?
+      python_version: 3,
+  },
   windows_amd64::             self.windows             + self.amd64,
   windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
   linux_aarch64::             self.linux               + self.aarch64,

@@ -101,7 +101,7 @@ public final class BootstrapMethodsAttribute extends Attribute {
                         args[i] = meta.boxFloat(pool.floatAt(argAt(i)));
                         break;
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere();
                 }
             }

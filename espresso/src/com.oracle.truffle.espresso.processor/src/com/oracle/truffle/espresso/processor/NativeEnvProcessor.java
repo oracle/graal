@@ -228,7 +228,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                             headerMessage + " must be annotated with @Inject", element);
         }
 
-        List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
+        List<TypeElement> allowedTypes = Arrays.asList(espressoLanguage, meta, substitutionProfiler, espressoContext);
         boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
         if (unsupportedType) {
             String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
@@ -469,6 +469,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             invoke.addBodyLine(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0));
         }
+        setEspressoContextVar(invoke, helper);
         switch (h.jniNativeSignature[0]) {
             case VOID:
                 invoke.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
@@ -498,6 +499,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             for (String type : parameterTypes) {
                 invokeDirect.addBodyLine(extractArg(argIndex++, type, false, 0));
             }
+            setEspressoContextVar(invokeDirect, helper);
             if (h.jniNativeSignature[0] == NativeType.VOID) {
                 invokeDirect.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
                 invokeDirect.addBodyLine("return ", STATIC_OBJECT_NULL, ';');

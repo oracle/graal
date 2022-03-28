@@ -11,6 +11,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Limited support for \G anchors in Ruby regular expressions.
 * Dropped sticky flag from Python regular expressions.
 * Added support for non-recursive subexpression calls in Ruby regular expressions.
+* Added support for atomic groups and possessive quantifiers in Ruby regular expressions by using the backtracking.
 
 ## Version 22.0.0
 

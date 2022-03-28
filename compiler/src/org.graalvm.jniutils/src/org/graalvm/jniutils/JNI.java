@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
@@ -616,6 +617,9 @@ public final class JNI {
     public interface ExceptionCheck extends CFunctionPointer {
         @InvokeCFunctionPointer
         boolean call(JNIEnv env);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        boolean callNoTransition(JNIEnv env);
     }
 
     public interface ExceptionClear extends CFunctionPointer {
@@ -626,6 +630,9 @@ public final class JNI {
     public interface ExceptionDescribe extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        void callNoTransition(JNIEnv env);
     }
 
     public interface ExceptionOccurred extends CFunctionPointer {
@@ -636,6 +643,9 @@ public final class JNI {
     public interface FindClass extends CFunctionPointer {
         @InvokeCFunctionPointer
         JClass call(JNIEnv env, CCharPointer name);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JClass callNoTransition(JNIEnv env, CCharPointer name);
     }
 
     public interface DefineClass extends CFunctionPointer {
@@ -691,6 +701,9 @@ public final class JNI {
     public interface GetMethodID extends CFunctionPointer {
         @InvokeCFunctionPointer
         JMethodID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JMethodID callNoTransition(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
     }
 
     public interface GetObjectArrayElement extends CFunctionPointer {
@@ -786,6 +799,9 @@ public final class JNI {
     public interface NewObjectA extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JObject callNoTransition(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
     public interface NewObjectArray extends CFunctionPointer {
@@ -941,6 +957,9 @@ public final class JNI {
     public interface Throw extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JThrowable throwable);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        int callNoTransition(JNIEnv env, JThrowable throwable);
     }
 
     public interface GetDirectBufferAddress extends CFunctionPointer {

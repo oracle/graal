@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -75,6 +76,10 @@ public abstract class RegexASTVisitor {
 
     protected abstract void leave(LookAheadAssertion assertion);
 
+    protected abstract void visit(AtomicGroup atomicGroup);
+
+    protected abstract void leave(AtomicGroup atomicGroup);
+
     protected abstract void visit(CharacterClass characterClass);
 
     protected void doVisit(RegexASTNode cur) {
@@ -88,6 +93,8 @@ public abstract class RegexASTVisitor {
             visit((LookBehindAssertion) cur);
         } else if (cur instanceof LookAheadAssertion) {
             visit((LookAheadAssertion) cur);
+        } else if (cur instanceof AtomicGroup) {
+            visit((AtomicGroup) cur);
         } else if (cur instanceof CharacterClass) {
             visit((CharacterClass) cur);
         } else if (cur instanceof BackReference) {
@@ -108,6 +115,8 @@ public abstract class RegexASTVisitor {
             leave((LookBehindAssertion) cur);
         } else if (cur instanceof LookAheadAssertion) {
             leave((LookAheadAssertion) cur);
+        } else if (cur instanceof AtomicGroup) {
+            leave((AtomicGroup) cur);
         } else {
             throw CompilerDirectives.shouldNotReachHere();
         }

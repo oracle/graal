@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class maintains the system properties at run time.
@@ -123,7 +124,7 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.name", this::userName);
         lazyRuntimeValues.put("user.home", this::userHome);
         lazyRuntimeValues.put("user.dir", this::userDir);
-        lazyRuntimeValues.put("java.io.tmpdir", this::tmpDir);
+        lazyRuntimeValues.put("java.io.tmpdir", this::javaIoTmpDir);
         lazyRuntimeValues.put("java.library.path", this::javaLibraryPath);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
 
@@ -249,13 +250,13 @@ public abstract class SystemPropertiesSupport {
         return cachedUserDir;
     }
 
-    private String cachedtmpDir;
+    private String cachedJavaIoTmpdir;
 
-    String tmpDir() {
-        if (cachedtmpDir == null) {
-            cachedtmpDir = tmpdirValue();
+    String javaIoTmpDir() {
+        if (cachedJavaIoTmpdir == null) {
+            cachedJavaIoTmpdir = javaIoTmpdirValue();
         }
-        return cachedtmpDir;
+        return cachedJavaIoTmpdir;
     }
 
     private String cachedJavaLibraryPath;
@@ -275,7 +276,13 @@ public abstract class SystemPropertiesSupport {
 
     protected abstract String userDirValue();
 
-    protected abstract String tmpdirValue();
+    protected String javaIoTmpdirValue() {
+        return tmpdirValue();
+    }
+
+    protected String tmpdirValue() {
+        throw VMError.unimplemented();
+    }
 
     protected String javaLibraryPathValue() {
         /* Default implementation. */

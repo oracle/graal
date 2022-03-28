@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -161,7 +162,6 @@ public final class GCImpl implements GC {
             if (outOfMemory) {
                 throw OUT_OF_MEMORY_ERROR;
             }
-            doReferenceHandlingInRegularThread();
         }
     }
 
@@ -218,7 +218,7 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            long startTicks = JfrGCEvents.getTicks();
+            long startTicks = JfrTicks.elapsedTicks();
             try {
                 outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
                 if (outOfMemory) {
@@ -909,7 +909,7 @@ public final class GCImpl implements GC {
                 if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
                     throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);
                 }
-                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, greyToBlackObjRefVisitor);
+                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, greyToBlackObjRefVisitor, null);
             } else {
                 /*
                  * This is a deoptimized frame. The DeoptimizedFrame object is stored in the frame,
@@ -1160,13 +1160,6 @@ public final class GCImpl implements GC {
     private void finishCollection() {
         assert collectionInProgress;
         collectionInProgress = false;
-    }
-
-    // This method will be removed as soon as possible, see GR-36676.
-    static void doReferenceHandlingInRegularThread() {
-        if (ReferenceHandler.useRegularJavaThread() && !VMOperation.isInProgress() && PlatformThreads.isCurrentAssigned()) {
-            doReferenceHandling();
-        }
     }
 
     /**

@@ -273,6 +273,9 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         return size;
     }
 
+    private static final Consumer<OptimizedAssumptionDependency> DISCARD_DEPENDENCY = (e) -> {
+    };
+
     /**
      * Registers some dependent code with this assumption.
      *
@@ -285,7 +288,15 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      * (e.g., the compiler) must ensure the dependent code is never executed.
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
-        if (isValid && name != Lazy.ALWAYS_VALID_NAME) {
+        if (isValid) {
+            if (this.name == Lazy.ALWAYS_VALID_NAME) {
+                /*
+                 * An ALWAYS_VALID assumption does not need registration, as they are by definition
+                 * always valid. If they attempted to get invalidated an error is thrown, so we can
+                 * just discard the dependency.
+                 */
+                return DISCARD_DEPENDENCY;
+            }
             if (size >= 2 * sizeAfterLastRemove) {
                 removeInvalidEntries();
             }

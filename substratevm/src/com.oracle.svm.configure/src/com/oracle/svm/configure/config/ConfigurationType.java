@@ -96,6 +96,7 @@ public class ConfigurationType implements JsonPrintable {
     private boolean allPublicClasses;
     private boolean allDeclaredFields;
     private boolean allPublicFields;
+    private boolean unsafeAllocated;
     private ConfigurationMemberAccessibility allDeclaredMethodsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicMethodsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allDeclaredConstructorsAccess = ConfigurationMemberAccessibility.NONE;
@@ -269,6 +270,7 @@ public class ConfigurationType implements JsonPrintable {
         allPublicClasses = flagPredicate.test(allPublicClasses, other.allPublicClasses);
         allDeclaredFields = flagPredicate.test(allDeclaredFields, other.allDeclaredFields);
         allPublicFields = flagPredicate.test(allPublicFields, other.allPublicFields);
+        unsafeAllocated = flagPredicate.test(unsafeAllocated, other.unsafeAllocated);
         allDeclaredMethodsAccess = accessCombiner.apply(allDeclaredMethodsAccess, other.allDeclaredMethodsAccess);
         allPublicMethodsAccess = accessCombiner.apply(allPublicMethodsAccess, other.allPublicMethodsAccess);
         allDeclaredConstructorsAccess = accessCombiner.apply(allDeclaredConstructorsAccess, other.allDeclaredConstructorsAccess);
@@ -373,6 +375,10 @@ public class ConfigurationType implements JsonPrintable {
         allPublicClasses = true;
     }
 
+    public void setUnsafeAllocated() {
+        this.unsafeAllocated = true;
+    }
+
     public synchronized void setAllDeclaredFields() {
         allDeclaredFields = true;
         removeFields(ConfigurationMemberDeclaration.DECLARED);
@@ -430,6 +436,8 @@ public class ConfigurationType implements JsonPrintable {
         optionallyPrintJsonBoolean(writer, allPublicMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllPublicMethods");
         optionallyPrintJsonBoolean(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllDeclaredConstructors");
         optionallyPrintJsonBoolean(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllPublicConstructors");
+        optionallyPrintJsonBoolean(writer, unsafeAllocated, "unsafeAllocated");
+
         if (fields != null) {
             writer.append(',').newline().quote("fields").append(':');
             JsonPrinter.printCollection(writer, fields.entrySet(), Map.Entry.comparingByKey(), ConfigurationType::printField);

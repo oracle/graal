@@ -129,6 +129,10 @@
     {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + s.save_as_json + c.mach5_target,
     {name: "weekly-compiler-test-labsjdk-11-darwin-amd64"} +            s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
 
+    # Darwin AArch64
+    {name: "gate-compiler-test-labsjdk-17-darwin-aarch64"} +            s.test +           c.labsjdk17 +      c.darwin_aarch64 + t("1:00:00") + s.save_as_json,
+    {name: "weekly-compiler-test-labsjdk-11-darwin-aarch64"} +          s.test +           c.labsjdk11 +      c.darwin_aarch64 + s.weekly,
+
     # Windows AMD64
     {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"] + s.save_as_json + c.mach5_target,
     {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + s.save_as_json + c.mach5_target,

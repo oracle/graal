@@ -49,6 +49,8 @@ public class StampFactory {
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false, false);
     private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true, false);
     private static final Stamp positiveInt = forInteger(JavaKind.Int, 0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE);
+    private static final Stamp nonZeroInt = IntegerStamp.create(32, JavaKind.Int.getMinValue(), JavaKind.Int.getMaxValue(), 0, CodeUtil.mask(JavaKind.Int.getStackKind().getBitCount()), false);
+    private static final Stamp nonZeroLong = IntegerStamp.create(64, JavaKind.Long.getMinValue(), JavaKind.Long.getMaxValue(), 0, CodeUtil.mask(JavaKind.Long.getStackKind().getBitCount()), false);
     private static final Stamp booleanTrue = forInteger(JavaKind.Boolean, -1, -1, 1, 1);
     private static final Stamp booleanFalse = forInteger(JavaKind.Boolean, 0, 0, 0, 0);
     private static final Stamp rawPointer = new RawPointerStamp();
@@ -124,6 +126,14 @@ public class StampFactory {
 
     public static Stamp positiveInt() {
         return positiveInt;
+    }
+
+    public static Stamp nonZeroInt() {
+        return nonZeroInt;
+    }
+
+    public static Stamp nonZeroLong() {
+        return nonZeroLong;
     }
 
     public static Stamp empty(JavaKind kind) {

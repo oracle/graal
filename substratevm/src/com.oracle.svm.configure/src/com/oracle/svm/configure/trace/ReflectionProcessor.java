@@ -256,6 +256,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
+            case "allocateInstance": {
+                configuration.getOrCreateType(condition, clazz).setUnsafeAllocated();
+                break;
+            }
             default:
                 System.err.println("Unsupported reflection method: " + function);
         }

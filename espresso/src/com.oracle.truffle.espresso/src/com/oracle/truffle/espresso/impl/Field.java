@@ -230,7 +230,9 @@ public class Field extends Member<Type> implements FieldRef {
             case Long: return getLong(obj, forceVolatile);
             case Double: return getDouble(obj, forceVolatile);
             case Object: return getObject(obj, forceVolatile);
-            default: throw EspressoError.shouldNotReachHere();
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -251,7 +253,9 @@ public class Field extends Member<Type> implements FieldRef {
             case Long: setLong(obj, (long) value, forceVolatile); break;
             case Double: setDouble(obj, (double) value, forceVolatile); break;
             case Object: setObject(obj, value, forceVolatile); break;
-            default: throw EspressoError.shouldNotReachHere();
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }

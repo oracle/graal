@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ForeignArrayUtils {
     private ForeignArrayUtils() {
-        CompilerDirectives.transferToInterpreter();
         throw EspressoError.shouldNotReachHere("Must not instantiate the utils class");
     }
 
@@ -47,7 +46,7 @@ public final class ForeignArrayUtils {
         try {
             return interop.readArrayElement(array.rawForeignObject(), index);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("readArrayElement on a non-array foreign object", e);
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();

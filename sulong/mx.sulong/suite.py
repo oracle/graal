@@ -1125,6 +1125,7 @@ suite = {
         "bitcodeformat/hello-darwin-link.bundle",
         "bitcodeformat/hello-windows-compile-fembed-bitcode.o",
         "bitcodeformat/hello-windows-link-fembed-bitcode.exe",
+        "bitcodeformat/KERNEL32.dll",
       ],
       "buildEnv": {
         "SUITE_CPPFLAGS": "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",

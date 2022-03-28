@@ -59,6 +59,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
 
 public class SubstrateUtil {
@@ -377,5 +378,25 @@ public class SubstrateUtil {
             }
         }
         return false;
+    }
+
+    public static int arrayTypeDimension(Class<?> clazz) {
+        int dimension = 0;
+        Class<?> componentType = clazz;
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+            dimension++;
+        }
+        return dimension;
+    }
+
+    public static int arrayTypeDimension(ResolvedJavaType arrayType) {
+        int dimension = 0;
+        ResolvedJavaType componentType = arrayType;
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+            dimension++;
+        }
+        return dimension;
     }
 }
