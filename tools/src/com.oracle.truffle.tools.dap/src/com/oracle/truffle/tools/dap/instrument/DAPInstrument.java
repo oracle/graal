@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,6 @@ public final class DAPInstrument extends TruffleInstrument {
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
 
     private OptionValues options;
-    private volatile boolean waitForClose = false;
 
     static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", (address) -> {
         if (address.isEmpty() || address.equals("true")) {
@@ -81,6 +80,8 @@ public final class DAPInstrument extends TruffleInstrument {
     @Option(help = "Requested maximum length of the Socket queue of incoming connections (default: unspecified).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
+    private DebugProtocolServerImpl dapServer;
+
     @Override
     protected void onCreate(Env env) {
         options = env.getOptions();
@@ -91,36 +92,14 @@ public final class DAPInstrument extends TruffleInstrument {
 
     @Override
     protected void onFinalize(Env env) {
-        if (waitForClose) {
-            PrintWriter info = new PrintWriter(env.out());
-            info.println("Waiting for the debugger client to disconnect...");
-            info.flush();
-            waitForClose();
+        if (dapServer != null) {
+            dapServer.dispose();
         }
     }
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new DAPInstrumentOptionDescriptors();
-    }
-
-    private synchronized void setWaitForClose() {
-        waitForClose = true;
-    }
-
-    public synchronized void waitForClose() {
-        while (waitForClose) {
-            try {
-                wait();
-            } catch (InterruptedException ex) {
-                break;
-            }
-        }
-    }
-
-    private synchronized void notifyClose() {
-        waitForClose = false;
-        notifyAll();
     }
 
     private void launchServer(TruffleInstrument.Env env, PrintWriter info, PrintWriter err) {
@@ -133,13 +112,9 @@ public final class DAPInstrument extends TruffleInstrument {
             final int port = socketAddress.getPort();
             final ExecutionContext context = new ExecutionContext(env, info, err, options.get(Internal), options.get(Initialization));
             final ServerSocket serverSocket = new ServerSocket(port, options.get(SocketBacklogSize), socketAddress.getAddress());
-            DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization)).start(serverSocket, () -> {
-                setWaitForClose();
-            }).thenRun(() -> {
-                notifyClose();
-            }).exceptionally(throwable -> {
+            dapServer = DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization));
+            dapServer.start(serverSocket).exceptionally(throwable -> {
                 throwable.printStackTrace(err);
-                notifyClose();
                 return null;
             });
         } catch (ThreadDeath td) {
