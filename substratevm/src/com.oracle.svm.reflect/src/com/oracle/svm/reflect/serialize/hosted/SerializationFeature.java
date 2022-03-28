@@ -136,7 +136,10 @@ public class SerializationFeature implements Feature {
 
     @SuppressWarnings("try")
     private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, DebugContext debug) {
-        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
+                        .method(method)
+                        .recordInlinedMethods(false)
+                        .build();
         try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
             HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
