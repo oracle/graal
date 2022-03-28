@@ -916,7 +916,7 @@ public class NativeImage {
         }
     }
 
-    void handleClassPathAttribute(Path jarFilePath, Attributes mainAttributes) {
+    void handleClassPathAttribute(LinkedHashSet<Path> destination, Path jarFilePath, Attributes mainAttributes) {
         String classPathValue = mainAttributes.getValue("Class-Path");
         /* Missing Class-Path Attribute is tolerable */
         if (classPathValue != null) {
@@ -927,7 +927,7 @@ public class NativeImage {
                     manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
                 }
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
-                addImageClasspathEntry(imageClasspath, manifestClassPath, false);
+                addImageClasspathEntry(destination, manifestClassPath, false);
             }
         }
     }
@@ -1559,7 +1559,7 @@ public class NativeImage {
 
         if (!imageClasspath.contains(classpathEntry) && !customImageClasspath.contains(classpathEntry)) {
             destination.add(classpathEntry);
-            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
+            processManifestMainAttributes(classpathEntry, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
             processClasspathNativeImageMetaInf(classpathEntry);
         }
     }
