@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: reference-manual
+toc_group: embedding
 link_title: Embedding Reference
 permalink: /reference-manual/embed-languages/
 ---
