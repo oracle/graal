@@ -187,6 +187,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (boolean) getUncached().execute(popBoolean, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -196,6 +197,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (byte) getUncached().execute(popByte, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -205,6 +207,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (char) getUncached().execute(popChar, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -214,6 +217,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (short) getUncached().execute(popShort, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -223,6 +227,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (int) getUncached().execute(popInt, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -232,6 +237,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (float) getUncached().execute(popFloat, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -241,6 +247,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (double) getUncached().execute(popDouble, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -250,6 +257,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (long) getUncached().execute(popLong, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -257,8 +265,15 @@ public final class JniEnv extends NativeEnv {
         @Override
         public Object popObject() {
             try {
+                Object ret = getUncached().execute(popObject, nativePointer);
                 @Handle(StaticObject.class)
-                long handle = (long) getUncached().execute(popObject, nativePointer);
+                long handle = 0;
+                if (getUncached().isPointer(ret)) {
+                    /* due to GR-37169 it can be any pointer type, not just a long in nfi-llvm */
+                    handle = getUncached().asPointer(ret);
+                } else {
+                    handle = (long) ret;
+                }
                 TruffleObject result = getHandles().get(Math.toIntExact(handle));
                 if (result instanceof StaticObject) {
                     return result;
@@ -270,10 +285,12 @@ public final class JniEnv extends NativeEnv {
                         // figure out just what is happening here.
                         return StaticObject.NULL;
                     } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.unimplemented("non null native pointer in JniEnv");
                     }
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -281,7 +298,7 @@ public final class JniEnv extends NativeEnv {
 
     public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature) {
         VarArgs varargs = new VarArgsImpl(varargsPtr);
-        int paramCount = Signatures.parameterCount(signature, false);
+        int paramCount = Signatures.parameterCount(signature);
         Object[] args = new Object[paramCount];
         for (int i = 0; i < paramCount; ++i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
@@ -297,7 +314,7 @@ public final class JniEnv extends NativeEnv {
                 case Double  : args[i] = varargs.popDouble();  break;
                 case Object  : args[i] = varargs.popObject();  break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
             }
             // @formatter:on
@@ -380,7 +397,8 @@ public final class JniEnv extends NativeEnv {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Cannot dispose Espresso native interface");
         }
         assert jniEnvPtr == null;
     }
@@ -395,7 +413,7 @@ public final class JniEnv extends NativeEnv {
                 }
                 cachedSizeMax = result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -1683,7 +1701,7 @@ public final class JniEnv extends NativeEnv {
             System.exit(1);
             throw EspressoError.shouldNotReachHere();
         }
-        throw new EspressoError(msg);
+        throw EspressoError.fatal(msg);
     }
 
     // endregion Exception handling
@@ -1883,6 +1901,7 @@ public final class JniEnv extends NativeEnv {
                 case Long    : SetLongArrayRegion(array, 0, length, bufPtr);    break;
                 case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr);  break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -2187,7 +2206,8 @@ public final class JniEnv extends NativeEnv {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Method/constructor not found ", method);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Method/constructor not found " + method);
     }
 
     /**
@@ -2213,7 +2233,8 @@ public final class JniEnv extends NativeEnv {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Field not found ", field);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Field not found " + field);
     }
 
     /**
@@ -2243,6 +2264,7 @@ public final class JniEnv extends NativeEnv {
         } else if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor)) {
             guestMethod = Method.getHostReflectiveConstructorRoot(method, getMeta());
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
         guestMethod.getDeclaringKlass().initialize();
@@ -2528,6 +2550,7 @@ public final class JniEnv extends NativeEnv {
             case Void    : // fall through
             case Illegal : // fall through
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
@@ -2554,6 +2577,7 @@ public final class JniEnv extends NativeEnv {
                 case Long    : SetLongArrayRegion(array, 0, length, carrayPtr);    break;
                 case Double  : SetDoubleArrayRegion(array, 0, length, carrayPtr);  break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -2699,7 +2723,7 @@ public final class JniEnv extends NativeEnv {
         try {
             String dotName = name.replace('/', '.');
             guestClass = (StaticObject) getMeta().java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
-            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
+            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null", dotName);
         } catch (EspressoException e) {
             profiler.profile(5);
             if (InterpreterToVM.instanceOf(e.getGuestException(), meta.java_lang_ClassNotFoundException)) {

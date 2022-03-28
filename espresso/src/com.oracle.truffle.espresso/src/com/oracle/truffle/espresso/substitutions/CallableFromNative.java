@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -90,6 +91,7 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
      *            there is no need to un-handlify.
      */
     public Object invokeDirect(Object env, Object[] args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Native method should not be reachable for java substitution");
     }
 }

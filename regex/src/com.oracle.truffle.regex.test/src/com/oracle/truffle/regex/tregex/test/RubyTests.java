@@ -421,4 +421,82 @@ public class RubyTests extends RegexTestBase {
         testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
         testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
     }
+
+    @Test
+    public void atomicGroups() {
+        test("(?>foo)(?>bar)", "", "foobar", 0, true, 0, 6);
+        test("(?>foo*)obar", "", "foooooooobar", 0, false);
+
+        // quantifiers on atomic groups
+        test("\\A\\s*([0-9]+(?>\\.[0-9a-zA-Z]+)*(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)?\\s*\\z", "", "0.a", 0, true, 0, 3, 0, 3, -1, -1, -1, -1);
+    }
+
+    @Test
+    public void quantifiersOnLookarounds() {
+        // CRuby doesn't rerun looped lookaround assertions, even though they could be updating the
+        // state on each run. Currently, TRegex does the same on the examples below.
+
+        // ?
+        test("(?<=(a))?", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))?", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))?", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // *
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // +
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // {2}
+        test("(?<=(a)){2}", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a)){2}", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a)){2}", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a)){2}", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // {3}
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+    }
+
+    @Test
+    public void possessiveQuantifiers() {
+        test("fooA++bar", "", "fooAAAbar", 0, true, 0, 9);
+        test("fooA++Abar", "", "fooAAAbar", 0, false);
+        test("fooA?+Abar", "", "fooAAAbar", 0, false);
+        test("fooA*+Abar", "", "fooAAAbar", 0, false);
+
+        // Intervals cannot be possessive, the + is treated as another quantifier
+        test("foo(A{0,1}+)Abar", "", "fooAAAbar", 0, true, 0, 9, 3, 5);
+    }
+
+    @Test
+    public void backreferencesHomonymousCaptureGroups() {
+        // Homonymous capture groups can be referenced using backreferences.
+        test("(?<x>a)\\k<x>(?<x>a)", "", "aaa", 0, true, 0, 3, 0, 1, 2, 3);
+        // Named forward references are not allowed.
+        expectSyntaxError("(\\k<x>|(?<x>a))+", "", "undefined name <x> reference");
+        // A named backreference can only use the values matched by capture groups that precede
+        // it lexically (i.e. named forward references do not work).
+        test("(?<x>.)((?<y>\\k<x>)|(?<x>a))+", "", "-aa", 0, true, 0, 3, 0, 1, -1, -1, 2, 3);
+        // A named backreference can match the contents of any (preceding) capture groups that has
+        // the same name.
+        test("(?<x>a)?(?<x>b)?\\k<x>", "", "bb", 0, true, 0, 2, -1, -1, 0, 1);
+        test("(?<x>a)?(?<x>b)?\\k<x>", "", "aa", 0, true, 0, 2, 0, 1, -1, -1);
+        // Lexical order, not index of match nor length of match, determines the priority of
+        // choosing the referent.
+        test("(?=a(?<x>ab))(?<x>a)ab\\k<x>", "", "aabab", 0, true, 0, 4, 1, 3, 0, 1);
+        test("(?<x>a)ab(?<=a(?<x>ab))\\k<x>", "", "aabab", 0, true, 0, 5, 0, 1, 1, 3);
+        // When the higher priority referent cannot be matched, the next highest is tried.
+        // This is currently broken in CRuby (https://bugs.ruby-lang.org/issues/18631).
+        test("(?<x>a)ab(?<=a(?<x>ab))\\k<x>", "", "aaba", 0, true, 0, 4, 0, 1, 1, 3);
+    }
 }

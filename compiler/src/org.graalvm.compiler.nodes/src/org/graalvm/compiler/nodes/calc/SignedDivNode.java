@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -65,7 +67,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroCheck(), view);
+        return canonical(this, forX, forY, getZeroGuard(), view, this.canDeoptimize() ? tool.divisionOverflowIsJVMSCompliant() : true);
     }
 
     /**
@@ -78,6 +80,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view) {
+        return canonical(self, forX, forY, zeroCheck, view, self == null ? false : !self.canDeoptimize());
+    }
+
+    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view, boolean divisionOverflowIsJVMSCompliant) {
         Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
         Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
         if (forX.isConstant() && forY.isConstant()) {
@@ -110,6 +116,13 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             }
         }
 
+        if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
+            if (!yStamp.contains(0) && divisionIsJVMSCompliant(forX, forY, divisionOverflowIsJVMSCompliant)) {
+                return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck, divisionOverflowIsJVMSCompliant);
+            }
+        }
+
         if (self != null && self.next() instanceof SignedDivNode) {
             NodeClass<?> nodeClass = self.getNodeClass();
             if (self.next().getClass() == self.getClass() && nodeClass.equalInputs(self, self.next()) && self.valueEquals(self.next())) {
@@ -118,6 +131,35 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         }
 
         return self != null ? self : new SignedDivNode(forX, forY, zeroCheck);
+    }
+
+    /**
+     * Determines if {@code dividend / divisor} complies with the JVM specification for {@code idiv}
+     * and {@code ldiv}. From {@jvms 6.5} for {@code idiv}:
+     *
+     * <pre>
+     * There is one special case that does not satisfy this rule: if the dividend is the
+     * negative integer of largest possible magnitude for the int type, and the divisor
+     * is -1, then overflow occurs, and the result is equal to the dividend. Despite the
+     * overflow, no exception is thrown in this case.
+     * </pre>
+     *
+     * @param platformIsCompliant true iff the target platform complies with the JVM specification
+     *            for the overflow case of {@code Integer.MIN_VALUE / -1} and
+     *            {@code Long.MIN_VALUE / -1}
+     *
+     * @return true iff {@code platformIsCompliant == true} or the stamps of {@code dividend}
+     *         {@code divisor} excludes the possibility of the problematic overflow case
+     */
+    public static boolean divisionIsJVMSCompliant(ValueNode dividend, ValueNode divisor, boolean platformIsCompliant) {
+        if (platformIsCompliant) {
+            return true;
+        }
+        IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
+        IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
+        assert dividendStamp.getBits() == divisorStamp.getBits();
+        long minValue = NumUtil.minValue(dividendStamp.getBits());
+        return !(dividendStamp.contains(minValue) && divisorStamp.contains(-1));
     }
 
     public static ValueNode canonical(ValueNode forX, long c, NodeView view) {

@@ -34,28 +34,16 @@ import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
-        if (ReferenceHandlerThread.isSupported()) {
-            int useReferenceHandlerThread = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
-            int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
-            return IsolateArgumentParser.getBooleanOptionValue(useReferenceHandlerThread) && IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
-        }
-        return false;
-    }
-
-    public static boolean useRegularJavaThread() {
-        int useReferenceHandlerThread = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
         int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
-        return (!ReferenceHandlerThread.isSupported() || !IsolateArgumentParser.getBooleanOptionValue(useReferenceHandlerThread)) &&
-                        IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
+        return ReferenceHandlerThread.isSupported() && IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
     }
 
     public static boolean isExecutedManually() {
-        int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
-        return !IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
+        return !useDedicatedThread();
     }
 
     public static void processPendingReferencesInRegularThread() {
-        assert !useDedicatedThread();
+        assert isExecutedManually();
 
         /*
          * We might be running in a user thread that is close to a stack overflow, so enable the

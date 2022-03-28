@@ -24,7 +24,10 @@ package com.oracle.truffle.espresso.processor;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -43,6 +46,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
@@ -214,6 +218,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
     TypeElement javaType;
     private static final String JAVA_TYPE = "com.oracle.truffle.espresso.substitutions.JavaType";
 
+    TypeElement espressoLanguage;
+    private static final String ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
+
     TypeElement meta;
     private static final String META = "com.oracle.truffle.espresso.meta.Meta";
 
@@ -235,19 +242,24 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
     static final String IMPORT_STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
+    static final String IMPORT_ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
     static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
     static final String IMPORT_ESPRESSO_CONTEXT = "com.oracle.truffle.espresso.runtime.EspressoContext";
     static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 
-    static final String CONTEXT = "EspressoContext.get(this)";
-    static final String CONTEXT_META = "EspressoContext.get(this).getMeta()";
-    static final String META_TYPE = "Meta";
+    static final String ESPRESSO_LANGUAGE_SIMPLE_NAME = "EspressoLanguage";
+    static final String ESPRESSO_CONTEX_SIMPLE_NAME = "EspressoContext";
+    static final String META_SIMPLE_NAME = "Meta";
+
+    static final String ESPRESSO_CONTEXT_VAR = "context";
+    static final String ESPRESSO_CONTEXT_SETTER = String.format("%s %s = %s.get(this);", ESPRESSO_CONTEX_SIMPLE_NAME, ESPRESSO_CONTEXT_VAR, ESPRESSO_CONTEX_SIMPLE_NAME);
+
+    static final String ESPRESSO_LANGUAGE_FROM_ESPRESSO_CONTEXT = String.format("%s.getLanguage()", ESPRESSO_CONTEXT_VAR);
+    static final String META_FROM_ESPRESSO_CONTEXT = String.format("%s.getMeta()", ESPRESSO_CONTEXT_VAR);
 
     static final String PROFILE_CLASS = "SubstitutionProfiler";
     static final String PROFILE_ARG_CALL = "this";
-
-    static final String ESPRESSO_CONTEXT_CLASS = "EspressoContext ";
 
     static final String CREATE = "create";
 
@@ -257,6 +269,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String ARG_NAME = "arg";
 
     static final String SAFEPOINT_POLL = "com.oracle.truffle.api.TruffleSafepoint.poll(this);";
+
+    enum InjectableType {
+        LANGUAGE,
+        META,
+        CONTEXT,
+        PROFILE
+    }
+
+    private final Map<InjectableType, TypeMirror> injectableTypeMirrors = new IdentityHashMap<>();
 
     public static NativeType classToType(TypeKind typeKind) {
         // @formatter:off
@@ -315,10 +336,17 @@ public abstract class EspressoProcessor extends BaseProcessor {
         noSafepoint = getTypeElement(NO_SAFEPOINT);
         staticObject = getTypeElement(STATIC_OBJECT);
         javaType = getTypeElement(JAVA_TYPE);
+        espressoLanguage = getTypeElement(ESPRESSO_LANGUAGE);
         meta = getTypeElement(META);
         espressoContext = getTypeElement(ESPRESSO_CONTEXT);
         substitutionProfiler = getTypeElement(SUBSTITUTION_PROFILER);
         truffleNode = getTypeElement(TRUFFLE_NODE);
+
+        injectableTypeMirrors.put(InjectableType.LANGUAGE, espressoLanguage.asType());
+        injectableTypeMirrors.put(InjectableType.META, meta.asType());
+        injectableTypeMirrors.put(InjectableType.CONTEXT, espressoContext.asType());
+        injectableTypeMirrors.put(InjectableType.PROFILE, substitutionProfiler.asType());
+
         processImpl(roundEnv);
         done = true;
         return false;
@@ -380,28 +408,21 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return executeMethod;
     }
 
-    boolean hasInjectedParameter(ExecutableElement method, TypeMirror supportedType) {
+    List<InjectableType> getInjectedTypes(ExecutableElement method) {
+        List<InjectableType> injectedTypes = new ArrayList<>();
         List<? extends VariableElement> params = method.getParameters();
+        Types typeUtils = env().getTypeUtils();
         for (VariableElement e : params) {
-            if (getAnnotation(e.asType(), inject) != null) {
-                if (env().getTypeUtils().isSameType(e.asType(), supportedType)) {
-                    return true;
+            TypeMirror eType = e.asType();
+            if (getAnnotation(eType, inject) != null) {
+                for (InjectableType injectableType : InjectableType.values()) {
+                    if (typeUtils.isSameType(eType, injectableTypeMirrors.get(injectableType))) {
+                        injectedTypes.add(injectableType);
+                    }
                 }
             }
         }
-        return false;
-    }
-
-    boolean hasProfileInjection(ExecutableElement method) {
-        return hasInjectedParameter(method, substitutionProfiler.asType());
-    }
-
-    boolean hasMetaInjection(ExecutableElement method) {
-        return hasInjectedParameter(method, meta.asType());
-    }
-
-    boolean hasContextInjection(ExecutableElement method) {
-        return hasInjectedParameter(method, espressoContext.asType());
+        return injectedTypes;
     }
 
     boolean skipsSafepoint(Element target) {
@@ -480,19 +501,32 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return result;
     }
 
+    static void setEspressoContextVar(MethodBuilder methodBuilder, SubstitutionHelper helper) {
+        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+            methodBuilder.addBodyLine(EspressoProcessor.ESPRESSO_CONTEXT_SETTER);
+        }
+    }
+
     /**
      * Injects the meta information in the substitution call.
      */
     static boolean appendInvocationMetaInformation(StringBuilder str, boolean first, SubstitutionHelper helper) {
         boolean f = first;
-        if (helper.hasMetaInjection) {
-            f = injectMeta(str, f);
-        }
-        if (helper.hasProfileInjection) {
-            f = injectProfile(str, f);
-        }
-        if (helper.hasContextInjection) {
-            f = injectContext(str, f);
+        for (InjectableType injectedType : helper.injectedTypes) {
+            switch (injectedType) {
+                case LANGUAGE:
+                    f = injectLanguage(str, f);
+                    break;
+                case META:
+                    f = injectMeta(str, f);
+                    break;
+                case CONTEXT:
+                    f = injectContext(str, f);
+                    break;
+                case PROFILE:
+                    f = injectProfile(str, f);
+                    break;
+            }
         }
         return f;
     }
@@ -523,14 +557,21 @@ public abstract class EspressoProcessor extends BaseProcessor {
         for (String param : parameterTypes) {
             linkSignature.addParam(param);
         }
-        if (helper.hasMetaInjection) {
-            linkSignature.addParam(META_TYPE);
-        }
-        if (helper.hasProfileInjection) {
-            linkSignature.addParam(PROFILE_CLASS);
-        }
-        if (helper.hasContextInjection) {
-            linkSignature.addParam(ESPRESSO_CONTEXT_CLASS);
+        for (InjectableType injectedType : helper.injectedTypes) {
+            switch (injectedType) {
+                case LANGUAGE:
+                    linkSignature.addParam(ESPRESSO_LANGUAGE_SIMPLE_NAME);
+                    break;
+                case META:
+                    linkSignature.addParam(META_SIMPLE_NAME);
+                    break;
+                case CONTEXT:
+                    linkSignature.addParam(ESPRESSO_CONTEX_SIMPLE_NAME);
+                    break;
+                case PROFILE:
+                    linkSignature.addParam(PROFILE_CLASS);
+                    break;
+            }
         }
 
         javadocBuilder.addGeneratedByLine(linkSignature);
@@ -629,9 +670,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return isTrivialMethod;
     }
 
+    static boolean injectLanguage(StringBuilder str, boolean first) {
+        checkFirst(str, first);
+        str.append(ESPRESSO_LANGUAGE_FROM_ESPRESSO_CONTEXT);
+        return false;
+    }
+
     static boolean injectMeta(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(CONTEXT_META);
+        str.append(META_FROM_ESPRESSO_CONTEXT);
         return false;
     }
 
@@ -643,7 +690,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectContext(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(CONTEXT);
+        str.append(ESPRESSO_CONTEXT_VAR);
         return false;
     }
 
@@ -664,7 +711,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
 
-        if (helper.hasMetaInjection || helper.hasContextInjection) {
+        if (helper.hasLanguageInjection) {
+            expectedImports.add(IMPORT_ESPRESSO_LANGUAGE);
+        }
+        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
         if (helper.hasMetaInjection && !helper.isNodeTarget()) {
@@ -686,7 +736,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
-        if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
+        if (helper.isNodeTarget() || helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
             generateChildInstanceField(substitutorClass, helper);
         }
 

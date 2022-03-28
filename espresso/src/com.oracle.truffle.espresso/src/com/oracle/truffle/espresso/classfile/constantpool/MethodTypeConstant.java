@@ -50,7 +50,7 @@ public interface MethodTypeConstant extends PoolConstant {
 
     static StaticObject signatureToMethodType(Symbol<Symbol.Type>[] signature, Klass accessingKlass, boolean failWithBME, Meta meta) {
         Symbol<Symbol.Type> rt = Signatures.returnType(signature);
-        int pcount = Signatures.parameterCount(signature, false);
+        int pcount = Signatures.parameterCount(signature);
 
         StaticObject[] ptypes = new StaticObject[pcount];
         StaticObject rtype;

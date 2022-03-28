@@ -264,6 +264,7 @@ public final class Target_java_lang_reflect_Array {
             profiler.profile(4);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere(e);
     }
 

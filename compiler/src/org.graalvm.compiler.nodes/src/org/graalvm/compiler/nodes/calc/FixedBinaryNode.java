@@ -53,4 +53,14 @@ public abstract class FixedBinaryNode extends DeoptimizingFixedWithNextNode impl
     public ValueNode getY() {
         return y;
     }
+
+    public void setX(ValueNode x) {
+        updateUsages(this.x, x);
+        this.x = x;
+    }
+
+    public void setY(ValueNode y) {
+        updateUsages(this.y, y);
+        this.y = y;
+    }
 }

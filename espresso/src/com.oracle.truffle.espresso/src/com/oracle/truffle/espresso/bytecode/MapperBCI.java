@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.bytecode;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -96,6 +97,7 @@ public class MapperBCI extends Node {
         if (res >= 0) {
             return res;
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -167,6 +168,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
     }
 
     @Override
+    protected void visit(AtomicGroup atomicGroup) {
+    }
+
+    @Override
     protected void visit(CharacterClass characterClass) {
     }
 
@@ -184,6 +189,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
+    }
+
+    @Override
+    protected void leave(AtomicGroup atomicGroup) {
     }
 
     private boolean advance(RegexASTVisitorIterable iterable) {

@@ -383,4 +383,13 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     public boolean supportsRounding() {
         return getLowerer().supportsRounding();
     }
+
+    @Override
+    public boolean divisionOverflowIsJVMSCompliant() {
+        if (getLowerer() != null) {
+            return getLowerer().divisionOverflowIsJVMSCompliant();
+        }
+        // prevent accidental floating of divs if we dont know the target arch
+        return false;
+    }
 }

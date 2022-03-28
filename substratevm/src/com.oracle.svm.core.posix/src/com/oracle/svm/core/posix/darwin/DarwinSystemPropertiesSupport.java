@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import com.oracle.svm.core.headers.LibC;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
@@ -47,7 +48,7 @@ import com.oracle.svm.core.posix.headers.darwin.Foundation;
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
-    protected String tmpdirValue() {
+    protected String javaIoTmpdirValue() {
         /* Darwin has a per-user temp dir */
         int buflen = Limits.PATH_MAX();
         CCharPointer tmpPath = StackValue.get(buflen);
@@ -56,8 +57,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
             return CTypeConversion.toJavaString(tmpPath);
         } else {
             /*
-             * Default as defined in JDK source/jdk/src/solaris/native/java/lang/java_props_md.c
-             * line 135.
+             * Default as defined in JDK src/java.base/unix/native/libjava/java_props_md.c line 90.
              */
             return "/var/tmp";
         }
@@ -95,14 +95,34 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
 
         Foundation.NSOperatingSystemVersion osVersion = StackValue.get(Foundation.NSOperatingSystemVersion.class);
         Foundation.operatingSystemVersion(osVersion);
-        if (osVersion.isNull()) {
-            return osVersionValue = "Unknown";
-        } else {
+        if (osVersion.isNonNull()) {
             long major = osVersion.getMajorVersion();
             long minor = osVersion.getMinorVersion();
             long patch = osVersion.getPatchVersion();
-            return osVersionValue = major + "." + minor + "." + patch;
+            if (major == 10 && minor >= 16 && patch == 0) {
+                // Read *real* ProductVersion
+                CCharPointer osVersionStr = Foundation.systemVersionPlatform();
+                if (osVersionStr.isNonNull()) {
+                    osVersionValue = CTypeConversion.toJavaString(osVersionStr);
+                    LibC.free(osVersionStr);
+                    return osVersionValue;
+                }
+            } else {
+                if (patch == 0) {
+                    return osVersionValue = major + "." + minor;
+                } else {
+                    return osVersionValue = major + "." + minor + "." + patch;
+                }
+            }
         }
+        // Fallback
+        CCharPointer osVersionStr = Foundation.systemVersionPlatformFallback();
+        if (osVersionStr.isNonNull()) {
+            osVersionValue = CTypeConversion.toJavaString(osVersionStr);
+            LibC.free(osVersionStr);
+            return osVersionValue;
+        }
+        return osVersionValue = "Unknown";
     }
 }
 

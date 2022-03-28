@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -93,7 +93,7 @@ public final class LLVMTCKLanguageProvider implements LanguageProvider {
             vals.add(createSnippet(context, charSource, "val", "'a'", TypeDescriptor.NUMBER));
 
             Source nullSource = createSource(nativeSourcePath + "/value_null.bc");
-            vals.add(createSnippet(context, nullSource, "val", "NULL", TypeDescriptor.NULL));
+            vals.add(createSnippet(context, nullSource, "val", "NULL", TypeDescriptor.intersection(TypeDescriptor.NULL, TypeDescriptor.NATIVE_POINTER)));
 
             return Collections.unmodifiableList(vals);
         } catch (IOException ioe) {

@@ -174,8 +174,10 @@ public abstract class RegexTestBase {
             sb.append(", ");
             sb.append(result.invokeMember("getEnd", i).asInt());
         }
-        sb.append(", ");
-        sb.append(result.getMember("lastGroup").asInt());
+        if (captureGroupBoundsAndLastGroup.length % 2 == 1) {
+            sb.append(", ");
+            sb.append(result.getMember("lastGroup").asInt());
+        }
         Assert.fail(sb.append("]").toString());
     }
 }

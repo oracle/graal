@@ -274,7 +274,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public static NativeSignature buildJniNativeSignature(Symbol<Type>[] signature) {
         NativeType returnType = NativeAccess.kindToNativeType(Signatures.returnKind(signature));
-        int argCount = Signatures.parameterCount(signature, false);
+        int argCount = Signatures.parameterCount(signature);
 
         // Prepend JNIEnv* and class|receiver.
         NativeType[] parameterTypes = new NativeType[argCount + 2];
@@ -448,7 +448,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @TruffleBoundary
     public Object invokeWithConversions(Object self, Object... args) {
         getContext().getJNI().clearPendingException();
-        assert args.length == Signatures.parameterCount(getParsedSignature(), false);
+        assert args.length == Signatures.parameterCount(getParsedSignature());
         // assert !isStatic() || ((StaticObject) self).isStatic();
 
         final Object[] filteredArgs;
@@ -478,11 +478,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Object invokeDirect(Object self, Object... args) {
         getContext().getJNI().clearPendingException();
         if (isStatic()) {
-            assert args.length == Signatures.parameterCount(getParsedSignature(), false);
+            assert args.length == Signatures.parameterCount(getParsedSignature());
             getDeclaringKlass().safeInitialize();
             return getCallTarget().call(args);
         } else {
-            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
+            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
             Object[] fullArgs = new Object[args.length + 1];
             System.arraycopy(args, 0, fullArgs, 1, args.length);
             fullArgs[0] = self;
@@ -532,7 +532,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Klass[] resolveParameterKlasses() {
         // TODO(peterssen): Use resolved signature.
         final Symbol<Type>[] signature = getParsedSignature();
-        int paramCount = Signatures.parameterCount(signature, false);
+        int paramCount = Signatures.parameterCount(signature);
         Klass[] paramsKlasses = paramCount > 0 ? new Klass[paramCount] : Klass.EMPTY_ARRAY;
         for (int i = 0; i < paramCount; ++i) {
             Symbol<Type> paramType = Signatures.parameterType(signature, i);
@@ -552,7 +552,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public int getParameterCount() {
-        return Signatures.parameterCount(getParsedSignature(), false);
+        return Signatures.parameterCount(getParsedSignature());
     }
 
     public int getArgumentCount() {
@@ -604,7 +604,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return false;
         }
         Symbol<Type>[] signature = getParsedSignature();
-        if (Signatures.parameterCount(signature, false) != 1) {
+        if (Signatures.parameterCount(signature) != 1) {
             return false;
         }
         if (Signatures.parameterType(signature, 0) != Type.java_lang_Object_array) {

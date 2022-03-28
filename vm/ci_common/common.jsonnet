@@ -522,6 +522,7 @@ local devkits = common_json.devkits;
 
   deploy_graalvm_base_darwin_amd64: {
     run: vm.collect_profiles + [
+      ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -537,6 +538,7 @@ local devkits = common_json.devkits;
 
   deploy_graalvm_installables_darwin_amd64: {
     run: [
+      ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       $.mx_vm_installables + $.maven_deploy_sdk_components,
@@ -629,18 +631,18 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java11_linux_amd64: vm.vm_linux_amd64_java_11 + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'post-merge-deploy-vm-java11-linux-amd64'},
-  deploy_vm_java17_linux_amd64: vm.vm_linux_amd64_java_17 + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'post-merge-deploy-vm-java17-linux-amd64'},
+  deploy_vm_java11_linux_amd64: vm.vm_java_11_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'post-merge-deploy-vm-java11-linux-amd64'},
+  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'post-merge-deploy-vm-java17-linux-amd64'},
 
   # Linux/AARCH64
   deploy_vm_java11_linux_aarch64: vm.vm_java_11 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64 + {name: 'daily-deploy-vm-java11-linux-aarch64'},
   deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64 + {name: 'daily-deploy-vm-java17-linux-aarch64'},
 
   # Darwin/AMD64
-  deploy_vm_base_java11_darwin_amd64: vm.vm_java_11 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64 + {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
-  deploy_vm_installable_java11_darwin_amd64: vm.vm_java_11 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64 + {name: 'daily-deploy-vm-installable-java11-darwin-amd64'},
-  deploy_vm_base_java17_darwin_amd64: vm.vm_java_17 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64 + {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
-  deploy_vm_installable_java17_darwin_amd64: vm.vm_java_17 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64 + {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
+  deploy_vm_base_java11_darwin_amd64: vm.vm_java_11_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64 + {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
+  deploy_vm_installable_java11_darwin_amd64: vm.vm_java_11_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64 + {name: 'daily-deploy-vm-installable-java11-darwin-amd64'},
+  deploy_vm_base_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64 + {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
+  deploy_vm_installable_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64 + {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
 
   # Darwin/AARCH64
   deploy_vm_base_java11_darwin_aarch64: vm.vm_java_11 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64 + {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},

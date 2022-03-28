@@ -76,6 +76,11 @@ public abstract class InstanceOf extends Node {
             return InstanceOf.create(superType, true);
         }
 
+        @Specialization(guards = "superType == maybeSubtype")
+        boolean doSame(@SuppressWarnings("unused") Klass maybeSubtype, @SuppressWarnings("unused") Klass superType) {
+            return true;
+        }
+
         @SuppressWarnings("unused")
         @Specialization(guards = "superType == cachedSuperType", limit = "LIMIT")
         boolean doCached(Klass maybeSubType, Klass superType,
@@ -97,11 +102,6 @@ public abstract class InstanceOf extends Node {
      * @param useInlineCache uses an inline cache, then fallback to specialized nodes.
      */
     public static InstanceOf create(Klass superType, boolean useInlineCache) {
-        // Prefer an inline cache for non-trivial checks.
-        if (useInlineCache) {
-            return InstanceOfFactory.InlineCacheNodeGen.create(superType);
-        }
-
         // Cheap checks first.
         if (superType.isJavaLangObject()) {
             return ObjectClass.INSTANCE;
@@ -112,6 +112,11 @@ public abstract class InstanceOf extends Node {
 
         if (!superType.isArray() && superType.isFinalFlagSet()) {
             return new FinalClass(superType);
+        }
+
+        // Prefer an inline cache for non-trivial checks.
+        if (useInlineCache) {
+            return InstanceOfFactory.InlineCacheNodeGen.create(superType);
         }
 
         if (superType.isInstanceClass()) {
@@ -157,6 +162,11 @@ public abstract class InstanceOf extends Node {
         public boolean execute(Klass maybeSubtype) {
             // Faster than: return maybeSubtype.isPrimitive();
             return !(maybeSubtype instanceof PrimitiveKlass);
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
         }
     }
 
@@ -324,6 +334,11 @@ public abstract class InstanceOf extends Node {
 
         protected InlineCache(Klass superType) {
             this.superType = superType;
+        }
+
+        @Specialization(guards = "superType == maybeSubtype")
+        boolean doSame(@SuppressWarnings("unused") Klass maybeSubtype) {
+            return true;
         }
 
         @Specialization(guards = "cachedMaybeSubtype == maybeSubtype", limit = "LIMIT", assumptions = {"redefineAssumption"})

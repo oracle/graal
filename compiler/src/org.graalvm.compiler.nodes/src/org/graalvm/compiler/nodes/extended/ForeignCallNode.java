@@ -74,20 +74,14 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
                     ForeignCallSignature signature, ValueNode... arguments) {
         ForeignCallDescriptor descriptor = foreignCalls.getDescriptor(signature);
-        return doIntrinsify(b, returnStamp, descriptor, arguments, false);
+        return finishIntrinsification(b, returnStamp, new ForeignCallNode(descriptor, arguments));
     }
 
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        return doIntrinsify(b, returnStamp, descriptor, arguments, false);
+        return finishIntrinsification(b, returnStamp, new ForeignCallNode(descriptor, arguments));
     }
 
-    static boolean doIntrinsify(GraphBuilderContext b, Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode[] arguments, boolean withException) {
-        ForeignCall node;
-        if (withException) {
-            node = new ForeignCallWithExceptionNode(descriptor, arguments);
-        } else {
-            node = new ForeignCallNode(descriptor, arguments);
-        }
+    public static boolean finishIntrinsification(GraphBuilderContext b, Stamp returnStamp, ForeignCall node) {
         node.asNode().setStamp(returnStamp);
 
         /*

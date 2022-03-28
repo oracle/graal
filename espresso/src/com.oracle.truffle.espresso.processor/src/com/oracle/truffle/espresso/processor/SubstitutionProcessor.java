@@ -184,7 +184,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                             headerMessage + " must be annotated with @Inject", element);
         }
 
-        List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
+        List<TypeElement> allowedTypes = Arrays.asList(espressoLanguage, meta, substitutionProfiler, espressoContext);
         boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
         if (unsupportedType) {
             String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
@@ -630,6 +630,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", castTo(ARGS_NAME + "[" + argIndex + "]", argType), ";");
             argIndex++;
         }
+        setEspressoContextVar(invoke, helper);
         if (h.returnType.equals("V")) {
             invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim());
             invoke.addBodyLine("return StaticObject.NULL;");

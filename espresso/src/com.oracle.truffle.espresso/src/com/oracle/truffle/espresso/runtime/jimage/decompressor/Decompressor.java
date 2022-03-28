@@ -61,7 +61,7 @@ public final class Decompressor {
                 if (decompressor == null) {
                     String pluginName = provider.getString(header.getDecompressorNameOffset());
                     if (pluginName == null) {
-                        throw new EspressoError("Decompressor plugin name not found");
+                        throw EspressoError.shouldNotReachHere("Decompressor plugin name not found");
                     }
                     ByteBuffer storedContent = header.getStoredContent(provider);
                     Properties props = null;
@@ -75,12 +75,12 @@ public final class Decompressor {
                             // See jdk.internal.util.xml.impl.ReaderUTF8
                             props.loadFromXML(stream);
                         } catch (IOException e) {
-                            throw new EspressoError("Error while loading decompressor properties", e);
+                            throw EspressoError.shouldNotReachHere("Error while loading decompressor properties", e);
                         }
                     }
                     decompressor = ResourceDecompressorRepository.newResourceDecompressor(props, pluginName);
                     if (decompressor == null) {
-                        throw new EspressoError("Plugin not found: " + pluginName);
+                        throw EspressoError.shouldNotReachHere("Plugin not found: " + pluginName);
                     }
                     pluginsCache.put(header.getDecompressorNameOffset(), decompressor);
                 }

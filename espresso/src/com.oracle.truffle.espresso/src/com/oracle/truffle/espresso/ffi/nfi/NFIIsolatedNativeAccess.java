@@ -107,6 +107,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
             assert InteropLibrary.getUncached().isPointer(result);
             return result;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -165,7 +166,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
                 }
                 return result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -232,7 +233,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         try {
             uncachedInterop.execute(ctypeInit);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }

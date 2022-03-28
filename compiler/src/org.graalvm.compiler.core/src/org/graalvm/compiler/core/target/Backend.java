@@ -29,7 +29,10 @@ import java.util.ArrayList;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.alloc.DefaultCodeEmissionOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
@@ -114,6 +117,13 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *            registers whose names appear in this array
      */
     public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo);
+
+    /**
+     * Creates a new instance of a code emission ordering computation.
+     */
+    public <T extends AbstractBlockBase<T>> CodeEmissionOrder<T> newBlockOrder(int originalBlockCount, T startBlock) {
+        return new DefaultCodeEmissionOrder<>(originalBlockCount, startBlock);
+    }
 
     /**
      * Turns a Graal {@link CompilationResult} into a {@link CompiledCode} object that can be passed
