@@ -4,6 +4,7 @@ toc_group: reference-manual
 link_title: Enterprise Sandbox Resource Limits
 permalink: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
+
 ## Enterprise Sandbox Resource Limits
 
 GraalVM Enterprise provides the experimental Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
