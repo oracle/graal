@@ -30,6 +30,9 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
@@ -42,25 +45,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
 
-public class ClassLoaderSupportImpl extends ClassLoaderSupport {
+class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
-    private final AbstractNativeImageClassLoaderSupport classLoaderSupport;
+    private final NativeImageClassLoaderSupport classLoaderSupport;
     private final ClassLoader imageClassLoader;
 
-    protected ClassLoaderSupportImpl(AbstractNativeImageClassLoaderSupport classLoaderSupport) {
+    private final Map<String, Set<Module>> packageToModules;
+
+    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         this.imageClassLoader = classLoaderSupport.getClassLoader();
+        packageToModules = new HashMap<>();
+        buildPackageToModulesMap(classLoaderSupport);
     }
 
     @Override
@@ -70,6 +81,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
+        /* Collect resources from modules */
+        NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
+                        .flatMap(moduleLayer -> moduleLayer.configuration().modules().stream())
+                        .forEach(resolvedModule -> collectResourceFromModule(resourceCollector, resolvedModule));
+
+        /* Collect remaining resources from classpath */
         for (Path classpathFile : classLoaderSupport.classpath()) {
             try {
                 if (Files.isDirectory(classpathFile)) {
@@ -83,7 +100,29 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, AbstractNativeImageClassLoaderSupport support) throws IOException {
+    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
+        ModuleReference moduleReference = resolvedModule.reference();
+        try (ModuleReader moduleReader = moduleReference.open()) {
+            String moduleName = resolvedModule.name();
+            List<String> foundResources = moduleReader.list()
+                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName))
+                            .collect(Collectors.toList());
+
+            for (String resName : foundResources) {
+                Optional<InputStream> content = moduleReader.open(resName);
+                if (content.isEmpty()) {
+                    continue;
+                }
+                try (InputStream is = content.get()) {
+                    resourceCollector.addResource(moduleName, resName, is, false);
+                }
+            }
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static void scanDirectory(Path root, ResourceCollector collector, NativeImageClassLoaderSupport support) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -159,7 +198,68 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     @Override
-    public List<ResourceBundle> getResourceBundle(String bundleName, Locale locale) {
-        return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
+    public List<ResourceBundle> getResourceBundle(String bundleSpec, Locale locale) {
+        String[] specParts = bundleSpec.split(":", 2);
+        String moduleName;
+        String bundleName;
+        if (specParts.length > 1) {
+            moduleName = specParts[0];
+            bundleName = specParts[1];
+        } else {
+            moduleName = null;
+            bundleName = specParts[0];
+        }
+        String packageName = packageName(bundleName);
+        Set<Module> modules;
+        if (moduleName != null) {
+            modules = classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet());
+        } else {
+            modules = packageToModules.getOrDefault(packageName, Collections.emptySet());
+        }
+        if (modules.isEmpty()) {
+            /* If bundle is not located in any module get it via classloader (from ALL_UNNAMED) */
+            return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
+        }
+        ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
+        for (Module module : modules) {
+            ModuleSupport.exportAndOpenPackageToClass(module.getName(), packageName, false, ClassLoaderSupportImpl.class);
+            resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+        }
+        return resourceBundles;
+    }
+
+    private static String packageName(String bundleName) {
+        int classSep = bundleName.replace('/', '.').lastIndexOf('.');
+        if (classSep == -1) {
+            return ""; /* unnamed package */
+        }
+        return bundleName.substring(0, classSep);
+    }
+
+    private void buildPackageToModulesMap(NativeImageClassLoaderSupport cls) {
+        for (ModuleLayer layer : NativeImageClassLoaderSupport.allLayers(cls.moduleLayerForImageBuild)) {
+            for (Module module : layer.modules()) {
+                for (String packageName : module.getDescriptor().packages()) {
+                    addToPackageNameModules(module, packageName);
+                }
+            }
+        }
+    }
+
+    private void addToPackageNameModules(Module moduleName, String packageName) {
+        Set<Module> prevValue = packageToModules.get(packageName);
+        if (prevValue == null) {
+            /* Mostly packageName is only used in a single module */
+            packageToModules.put(packageName, Collections.singleton(moduleName));
+        } else if (prevValue.size() == 1) {
+            /* Transition to HashSet - happens rarely */
+            HashSet<Module> newValue = new HashSet<>();
+            newValue.add(prevValue.iterator().next());
+            newValue.add(moduleName);
+            packageToModules.put(packageName, newValue);
+        } else if (prevValue.size() > 1) {
+            /* Add to exiting HashSet - happens rarely */
+            prevValue.add(moduleName);
+        }
     }
 }
