@@ -143,9 +143,6 @@ public final class LLVMContext {
     // Symbols are added to the tail globalscope
     private LLVMScopeChain tailGlobalScopeChain;
 
-    // we are not able to clean up ThreadLocals properly, so we are using maps instead
-    private final Map<Thread, LLVMPointer> tls = new ConcurrentHashMap<>();
-
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;

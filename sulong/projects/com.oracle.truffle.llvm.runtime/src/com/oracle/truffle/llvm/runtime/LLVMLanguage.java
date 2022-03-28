@@ -214,14 +214,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMPointer[] sections = new LLVMPointer[10];
         LLVMGlobalContainer[][] managedSections;
         final WeakReference<Thread> thread;
-        boolean isFinalized;
+        boolean isDisposed;
         LLVMStack stack;
         LLVMPointer localStorage;
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
             this.thread = new WeakReference<>(thread);
-            isFinalized = false;
+            isDisposed = false;
         }
 
         public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
@@ -239,12 +239,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             return sections[index];
         }
 
-        public void setFinalized() {
-            isFinalized = true;
+        public void setDisposed() {
+            isDisposed = true;
         }
 
-        public boolean isFinalized() {
-            return isFinalized;
+        public boolean isDisposed() {
+            return isDisposed;
         }
 
         public LLVMPointer getThreadLocalStorage() {
@@ -256,6 +256,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public void setThreadLocalStorage(LLVMPointer value) {
             localStorage = value;
+        }
+
+        public void removeThreadLocalStorage() {
+            localStorage = null;
         }
 
         public LLVMStack getLLVMStack() {
@@ -528,13 +532,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public void freeThreadLocalGlobal(LLVMThreadLocalValue threadLocalValue) {
         if (threadLocalValue != null) {
             synchronized (threadLocalValue) {
-                if (!threadLocalValue.isFinalized()) {
+                if (!threadLocalValue.isDisposed()) {
                     for (LLVMPointer section : threadLocalValue.sections) {
                         if (section != null) {
                             freeOpNode.execute(section);
                         }
                     }
-                    threadLocalValue.setFinalized();
+                    threadLocalValue.setDisposed();
                 }
             }
         }
@@ -724,7 +728,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
 
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
-        if (!threadLocalValue.isFinalized()) {
+        threadLocalValue.removeThreadLocalStorage();
+        if (!threadLocalValue.isDisposed()) {
             freeThreadLocalGlobal(threadLocalValue);
         }
 
