@@ -520,8 +520,9 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_darwin_amd64: {
-    run: vm.collect_profiles() + [
+    run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
+    ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -550,9 +551,10 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_darwin_aarch64: {
-    run: vm.collect_profiles() + [
+    run: [
       # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
       ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
+    ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -581,8 +583,9 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_windows_amd64: {
-    run: vm.collect_profiles() + [
+    run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
+    ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
