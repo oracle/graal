@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
@@ -46,13 +47,23 @@ import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Represents java.lang.StringLatin1.inflate methods.
+ *
+ * <ul>
+ * <li>void inflate(byte[] src, int srcOff, char[] dst, int dstOff, int len)
+ * <li>void inflate(byte[] src, int srcOff, byte[] dst, int dstOff, int len)
+ * </ul>
+ */
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN, cyclesRationale = "depends on length")
-public final class AMD64StringLatin1InflateNode extends FixedWithNextNode
+public final class StringLatin1InflateNode extends FixedWithNextNode
                 implements LIRLowerable, MultiMemoryKill, MemoryAccess {
 
-    public static final NodeClass<AMD64StringLatin1InflateNode> TYPE = NodeClass.create(AMD64StringLatin1InflateNode.class);
+    public static final NodeClass<StringLatin1InflateNode> TYPE = NodeClass.create(StringLatin1InflateNode.class);
 
+    /** pointer to src[srcOff]. */
     @Input private ValueNode src;
+    /** pointer to dst[dstOff]. */
     @Input private ValueNode dst;
     @Input private ValueNode len;
 
@@ -60,13 +71,7 @@ public final class AMD64StringLatin1InflateNode extends FixedWithNextNode
 
     @OptionalInput(Memory) private MemoryKill lla; // Last access location registered.
 
-    // java.lang.StringLatin1.inflate([BI[CII)V
-    //
-    // void inflate(byte[] src, int src_indx, char[] dst, int dst_indx, int len)
-    //
-    // Represented as a graph node by:
-
-    public AMD64StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind writeKind) {
+    public StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind writeKind) {
         super(TYPE, StampFactory.forVoid());
         this.src = src;
         this.dst = dst;
