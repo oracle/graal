@@ -63,7 +63,9 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @BeforeClass
     public static void setUp() {
-        createPermanentBailoutNode().getCallTarget().call();
+        if (SubprocessTestUtils.isSubprocess()) {
+            createPermanentBailoutNode().getCallTarget().call();
+        }
     }
 
     @Test
