@@ -65,7 +65,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeChild
 public abstract class SLUnboxNode extends SLExpressionNode {
 
-    static final int LIMIT = 5;
+    public static final int LIMIT = 5;
 
     @Specialization
     public static TruffleString fromString(String value,

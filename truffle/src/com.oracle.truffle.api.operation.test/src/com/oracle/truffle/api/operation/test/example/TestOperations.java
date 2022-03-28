@@ -1,7 +1,6 @@
 package com.oracle.truffle.api.operation.test.example;
 
 import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -71,12 +72,12 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @NodeChild("nameNode")
 public abstract class SLReadPropertyNode extends SLExpressionNode {
 
-    static final int LIBRARY_LIMIT = 3;
+    public static final int LIBRARY_LIMIT = 3;
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object readArray(Object receiver, Object index,
-                    @Cached("this") Node node,
-                    @Cached("$bci") int bci,
+                    @Bind("this") Node node,
+                    @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
@@ -89,8 +90,8 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(limit = "LIBRARY_LIMIT")
     public static Object readSLObject(SLObject receiver, Object name,
-                    @Cached("this") Node node,
-                    @Cached("$bci") int bci,
+                    @Bind("this") Node node,
+                    @Bind("$bci") int bci,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
         TruffleString nameTS = toTruffleStringNode.execute(name);
@@ -104,8 +105,8 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
     public static Object readObject(Object receiver, Object name,
-                    @Cached("this") Node node,
-                    @Cached("$bci") int bci,
+                    @Bind("this") Node node,
+                    @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {
         try {

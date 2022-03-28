@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -63,7 +64,7 @@ public abstract class SLLogicalNotNode extends SLExpressionNode {
     }
 
     @Fallback
-    public static Object typeError(Object value, @Cached("this") Node node, @Cached("$bci") int bci) {
+    public static Object typeError(Object value, @Bind("this") Node node, @Bind("$bci") int bci) {
         throw SLException.typeError(node, bci, value);
     }
 

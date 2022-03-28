@@ -148,7 +148,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.endSource();
 
         OperationsNode node = b.build();
-        functions.put(name, node.getCallTarget());
+        functions.put(name, node.createRootNode().getCallTarget());
 
         return null;
     }

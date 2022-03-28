@@ -235,6 +235,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement fldBci = new CodeVariableElement(context.getType(int.class), "bci");
         typBuilderImpl.add(fldBci);
 
+        CodeVariableElement fldNumChildNodes = new CodeVariableElement(context.getType(int.class), "numChildNodes");
+        typBuilderImpl.add(fldNumChildNodes);
+
         CodeVariableElement fldBuiltNodes = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), types.OperationsNode), "builtNodes");
         typBuilderImpl.add(fldBuiltNodes);
         {
@@ -282,6 +285,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.curStack = fldCurStack;
         vars.exteptionHandlers = fldExceptionHandlers;
         vars.keepingInstrumentation = fldKeepInstrumentation;
+        vars.numChildNodes = fldNumChildNodes;
 
         {
             CodeExecutableElement metReset = new CodeExecutableElement(
@@ -294,6 +298,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("super.reset()");
 
             b.startAssign(fldBci).string("0").end();
+            b.startAssign(fldNumChildNodes).string("0").end();
             b.startAssign(fldCurStack).string("0").end();
             b.startAssign(fldMaxStack).string("0").end();
             if (FLAG_NODE_AST_PRINTING) {
@@ -359,6 +364,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startGroup().string("maxLocals + 1").end();
             b.string("bcCopy");
             b.string("cpCopy");
+            b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
             b.string("handlers");
             b.string("getInstrumentTrees()");
             b.end(2);
@@ -378,6 +384,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startGroup().string("maxLocals + 1").end();
             b.string("bcCopy");
             b.string("cpCopy");
+            b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
             b.string("handlers");
             b.end(2);
 

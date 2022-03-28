@@ -465,4 +465,20 @@ public abstract class Instruction {
     protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
         return null;
     }
+
+    public String dumpInfo() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append("\n");
+
+        sb.append("  Inputs:\n");
+        for (InputType type : inputs) {
+            sb.append("    ").append(type).append("\n");
+        }
+        sb.append("  Results:\n");
+        for (ResultType type : results) {
+            sb.append("    ").append(type).append("\n");
+        }
+
+        return sb.toString();
+    }
 }

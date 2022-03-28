@@ -109,7 +109,7 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLInvokeOperation {
         @Specialization
-        public static Object execute(Object function, @Variadic Object[] argumentValues, @Cached("this") Node node, @Cached("$bci") int bci, @CachedLibrary(limit = "3") InteropLibrary library) {
+        public static Object execute(Object function, @Variadic Object[] argumentValues, @Bind("this") Node node, @Bind("$bci") int bci, @CachedLibrary(limit = "3") InteropLibrary library) {
             try {
                 return library.execute(function, argumentValues);
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {

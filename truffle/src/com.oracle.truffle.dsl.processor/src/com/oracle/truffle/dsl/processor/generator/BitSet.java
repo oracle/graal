@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -55,6 +56,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
@@ -397,6 +399,9 @@ public class BitSet {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         builder.tree(createReference(frameState)).string(" = ");
+        if (type.getKind() == TypeKind.BYTE) {
+            builder.cast(type);
+        }
         builder.startParantheses();
         builder.tree(createReference(frameState));
         builder.string(" | (");

@@ -55,6 +55,7 @@ public abstract class Operation {
         public CodeVariableElement curStack;
         public CodeVariableElement maxStack;
         public CodeVariableElement keepingInstrumentation;
+        public CodeVariableElement numChildNodes;
     }
 
     public int minimumChildren() {

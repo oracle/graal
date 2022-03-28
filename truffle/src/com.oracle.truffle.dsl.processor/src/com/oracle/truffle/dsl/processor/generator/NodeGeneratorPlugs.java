@@ -2,34 +2,33 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.model.CacheExpression;
+import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.Parameter;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
-public class NodeGeneratorPlugs {
-    public String transformNodeMethodName(String name) {
-        return name;
-    }
+public interface NodeGeneratorPlugs {
+    String transformNodeMethodName(String name);
 
-    public String transformNodeInnerTypeName(String name) {
-        return name;
-    }
+    String transformNodeInnerTypeName(String name);
 
-    public void addNodeCallParameters(CodeTreeBuilder builder) {
-    }
+    void addNodeCallParameters(CodeTreeBuilder builder);
 
-    public int getMaxStateBits(int defaultValue) {
-        return defaultValue;
-    }
+    int getMaxStateBits(int defaultValue);
 
-    public TypeMirror getBitSetType(TypeMirror defaultType) {
-        return defaultType;
-    }
+    TypeMirror getBitSetType(TypeMirror defaultType);
 
-    public CodeTree createBitSetReference(BitSet bits) {
-        return CodeTreeBuilder.singleString("this." + bits.getName() + "_");
-    }
+    CodeTree createBitSetReference(BitSet bits);
 
-    public CodeTree transformValueBeforePersist(CodeTree tree) {
-        return tree;
-    }
+    CodeTree transformValueBeforePersist(CodeTree tree);
+
+    CodeTree createSpecializationFieldReference(SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType);
+
+    CodeTree createNodeFieldReference(NodeExecutionData execution, String nodeFieldName, boolean forRead);
+
+    CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead);
+
 }

@@ -16,15 +16,16 @@ import org.junit.runners.JUnit4;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.operation.OperationsNode;
+import com.oracle.truffle.api.operation.OperationsRootNode;
 import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-@RunWith(JUnit4.class)
 public class TestOperationsParserTest {
 
     private static class Tester {
         private final OperationsNode node;
+        private final OperationsRootNode rootNode;
 
         Tester(String src, boolean withSourceInfo) {
             Source s = Source.newBuilder("test", src, "test").build();
@@ -34,6 +35,7 @@ public class TestOperationsParserTest {
             } else {
                 node = TestOperationsBuilder.parse(null, s)[0];
             }
+            rootNode = node.createRootNode();
             System.out.println(node.dump());
         }
 
@@ -42,7 +44,7 @@ public class TestOperationsParserTest {
         }
 
         public Tester test(Object expectedResult, Object... arguments) {
-            Object result = node.getCallTarget().call(arguments);
+            Object result = rootNode.getCallTarget().call(arguments);
             Assert.assertEquals(expectedResult, result);
             return this;
         }
@@ -56,8 +58,11 @@ public class TestOperationsParserTest {
     @Test
     public void testAdd() {
         new Tester("(return (add (arg 0) (arg 1)))")//
+                        .then(x -> System.out.println(x.dump())) //
                         .test(42L, 20L, 22L) //
+                        .then(x -> System.out.println(x.dump())) //
                         .test("foobar", "foo", "bar") //
+                        .then(x -> System.out.println(x.dump())) //
                         .test(100L, 120L, -20L);
     }
 

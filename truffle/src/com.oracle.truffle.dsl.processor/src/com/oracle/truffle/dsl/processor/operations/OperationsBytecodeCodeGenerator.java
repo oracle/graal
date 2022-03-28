@@ -21,6 +21,7 @@ import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -31,8 +32,12 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.CacheExpression;
+import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
 
@@ -79,6 +84,10 @@ public class OperationsBytecodeCodeGenerator {
         CodeVariableElement fldConsts = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(Object.class)), "consts");
         GeneratorUtils.addCompilationFinalAnnotation(fldConsts, 1);
         builderBytecodeNodeType.add(fldConsts);
+
+        CodeVariableElement fldChildren = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.Node), "children");
+        fldChildren.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Children));
+        builderBytecodeNodeType.add(fldChildren);
 
         CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
         GeneratorUtils.addCompilationFinalAnnotation(fldHandlers, 1);
@@ -127,7 +136,8 @@ public class OperationsBytecodeCodeGenerator {
                 CustomInstruction cinstr = (CustomInstruction) instr;
 
                 final SingleOperationData soData = cinstr.getData();
-                final List<BitSet> bitSets = new ArrayList<>();
+                final List<Object> additionalData = new ArrayList<>();
+                final List<CustomInstruction.DataKind> additionalDataKinds = new ArrayList<>();
 
                 NodeGeneratorPlugs plugs = new NodeGeneratorPlugs() {
                     @Override
@@ -157,10 +167,12 @@ public class OperationsBytecodeCodeGenerator {
 
                     @Override
                     public CodeTree createBitSetReference(BitSet bits) {
-                        int index = bitSets.indexOf(bits);
+                        int index = additionalData.indexOf(bits);
                         if (index == -1) {
-                            index = bitSets.size();
-                            bitSets.add(bits);
+                            index = additionalData.size();
+                            additionalData.add(bits);
+
+                            additionalDataKinds.add(DataKind.BITS);
                         }
 
                         return CodeTreeBuilder.createBuilder().variable(fldBc).string("[$bci + " + cinstr.lengthWithoutState() + " + " + index + "]").build();
@@ -169,6 +181,67 @@ public class OperationsBytecodeCodeGenerator {
                     @Override
                     public CodeTree transformValueBeforePersist(CodeTree tree) {
                         return CodeTreeBuilder.createBuilder().cast(new CodeTypeMirror(TypeKind.BYTE)).startParantheses().tree(tree).end().build();
+                    }
+
+                    private CodeTree createArrayReference(Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild, String kind) {
+                        if (refObject == null) {
+                            throw new IllegalArgumentException("refObject is null");
+                        }
+
+                        int index = additionalData.indexOf(refObject);
+
+                        if (index == -1) {
+                            index = additionalData.size();
+                            additionalData.add(refObject);
+                            additionalData.add(null);
+
+                            additionalDataKinds.add(isChild ? DataKind.CHILD : DataKind.CONST);
+                            additionalDataKinds.add(DataKind.CONTINUATION);
+                        }
+
+                        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+                        if (doCast) {
+                            b.startParantheses();
+                            b.cast(castTarget);
+                        }
+
+                        VariableElement targetField;
+                        if (isChild) {
+                            targetField = fldChildren;
+                        } else {
+                            targetField = fldConsts;
+                        }
+
+                        b.variable(targetField).string("[");
+                        b.startCall("LE_BYTES", "getShort");
+                        b.variable(fldBc);
+                        b.string("$bci + " + cinstr.lengthWithoutState() + " + " + index);
+                        b.end();
+                        b.string("]");
+
+                        if (doCast) {
+                            b.end();
+                        }
+
+                        return b.build();
+                    }
+
+                    @Override
+                    public CodeTree createSpecializationFieldReference(SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType) {
+                        Object refObject = useSpecializationClass ? s : fieldName;
+                        return createArrayReference(refObject, fieldType != null, fieldType, false, "spec-field");
+                    }
+
+                    @Override
+                    public CodeTree createNodeFieldReference(NodeExecutionData execution, String nodeFieldName, boolean forRead) {
+                        return createArrayReference(execution, forRead, execution.getNodeType(), true, "node-field");
+                    }
+
+                    public CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead) {
+                        Object refObject = sharedName != null ? sharedName : cache;
+                        boolean isChild = ElementUtils.isAssignable(cache.getParameter().getType(), types.Node);
+                        return createArrayReference(refObject, forRead, cache.getParameter().getType(), isChild, "cache");
                     }
                 };
                 NodeCodeGenerator generator = new NodeCodeGenerator();
@@ -224,7 +297,7 @@ public class OperationsBytecodeCodeGenerator {
                 }
 
                 cinstr.setExecuteMethod(uncExec);
-                cinstr.setAdditionalStateBytes(bitSets.size());
+                cinstr.setDataKinds(additionalDataKinds.toArray(new DataKind[additionalDataKinds.size()]));
             }
         }
 
@@ -640,6 +713,23 @@ public class OperationsBytecodeCodeGenerator {
             b.startCall("this", "getSourceSectionAtBciImpl");
             b.variable(pBci);
             b.end(2);
+        }
+
+        {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.startJavadoc();
+
+            for (Instruction instr : m.getInstructions()) {
+                for (String s : instr.dumpInfo().split("\n")) {
+                    b.string(s);
+                    b.newLine();
+                }
+                b.string(" ");
+                b.newLine();
+            }
+
+            b.end();
+            builderBytecodeNodeType.setDocTree(b.build());
         }
 
         return builderBytecodeNodeType;

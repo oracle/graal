@@ -16,7 +16,7 @@ public class TestLanguage extends TruffleLanguage<TestContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         OperationsNode[] nodes = TestOperationsBuilder.parse(this, request.getSource());
-        return nodes[nodes.length - 1].getCallTarget();
+        return nodes[nodes.length - 1].createRootNode().getCallTarget();
     }
 }
 

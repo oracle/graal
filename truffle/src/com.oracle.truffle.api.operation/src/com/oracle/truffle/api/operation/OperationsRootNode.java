@@ -9,7 +9,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class OperationsRootNode extends RootNode implements InstrumentableNode {
 
-    private final OperationsNode node;
+    @Child private OperationsNode node;
 
     OperationsRootNode(OperationsNode node) {
         super(node.language, node.createFrameDescriptor());
@@ -47,16 +47,24 @@ public class OperationsRootNode extends RootNode implements InstrumentableNode {
         return true;
     }
 
-    public WrapperNode createWrapper(final ProbeNode probe) {
-        return new WrapperNode() {
-            public Node getDelegateNode() {
-                return OperationsRootNode.this;
-            }
+    private class OperationsWrapperNode extends Node implements WrapperNode {
+        private final ProbeNode probe;
 
-            public ProbeNode getProbeNode() {
-                return probe;
-            }
-        };
+        OperationsWrapperNode(ProbeNode probe) {
+            this.probe = probe;
+        }
+
+        public Node getDelegateNode() {
+            return OperationsRootNode.this;
+        }
+
+        public ProbeNode getProbeNode() {
+            return probe;
+        }
+    }
+
+    public WrapperNode createWrapper(final ProbeNode probe) {
+        return new OperationsWrapperNode(probe);
     }
 
 }

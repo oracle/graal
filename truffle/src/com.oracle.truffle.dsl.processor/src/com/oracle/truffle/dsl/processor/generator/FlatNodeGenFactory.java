@@ -447,15 +447,18 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static String accessNodeField(NodeExecutionData execution) {
+    private CodeTree accessNodeField(NodeExecutionData execution) {
+        if (plugs != null) {
+            return plugs.createNodeFieldReference(execution, nodeFieldName(execution), true);
+        }
         if (execution.getChild() == null || execution.getChild().needsGeneratedField()) {
-            return "this." + nodeFieldName(execution);
+            return CodeTreeBuilder.singleString("this." + nodeFieldName(execution));
         } else {
             String access = "super." + execution.getChild().getName();
             if (execution.hasChildArrayIndex()) {
                 access += "[" + execution.getChildArrayIndex() + "]";
             }
-            return access;
+            return CodeTreeBuilder.singleString(access);
         }
     }
 
@@ -945,11 +948,11 @@ public class FlatNodeGenFactory {
                  */
                 boolean cachedLibrary = cache.isCachedLibrary();
                 if (cachedLibrary) {
-                    builder.startIf().tree(createCacheReference(innerFrameState, specialization, cache)).instanceOf(aotProviderType).end().startBlock();
+                    builder.startIf().tree(createCacheReference(innerFrameState, specialization, cache, true)).instanceOf(aotProviderType).end().startBlock();
                 }
                 if (NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType()) || cachedLibrary) {
                     builder.startAssert().startStaticCall(types.NodeUtil, "assertRecursion");
-                    builder.tree(createCacheReference(innerFrameState, specialization, cache));
+                    builder.tree(createCacheReference(innerFrameState, specialization, cache, true));
                     /*
                      * We allow a single recursion level only for AOT preparation. It is important
                      * that we only assert recursion for @Cached fields as regular AST children can
@@ -963,7 +966,7 @@ public class FlatNodeGenFactory {
                     builder.startStatement();
                     builder.string("(");
                     builder.cast(aotProviderType);
-                    builder.tree(createCacheReference(innerFrameState, specialization, cache));
+                    builder.tree(createCacheReference(innerFrameState, specialization, cache, true));
                     builder.string(")");
                     builder.string(".prepareForAOT(language, root)");
                     builder.end();
@@ -1026,7 +1029,7 @@ public class FlatNodeGenFactory {
                 builder.startBlock();
                 for (CacheExpression cache : resetCaches) {
                     builder.startStatement();
-                    builder.tree(createCacheReference(frameState, specialization, cache));
+                    builder.tree(createCacheReference(frameState, specialization, cache, true));
                     builder.string(".reset()");
                     builder.end();
                 }
@@ -1058,7 +1061,7 @@ public class FlatNodeGenFactory {
                         break;
                     }
                     builder.startStatement();
-                    builder.tree(createCacheReference(frameState, specialization, cache)).string(" = null");
+                    builder.tree(createCacheReference(frameState, specialization, cache, false)).string(" = null");
                     builder.end();
                 }
             }
@@ -1190,7 +1193,7 @@ public class FlatNodeGenFactory {
                         builder.staticReference(createLibraryConstant(constants, cache.getParameter().getType()));
                         builder.startCall(".getUncached").end();
                     } else {
-                        builder.tree(createCacheReference(frameState, specialization, cache));
+                        builder.tree(createCacheReference(frameState, specialization, cache, true));
                     }
                     builder.end();
                 }
@@ -2355,7 +2358,7 @@ public class FlatNodeGenFactory {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
             if (child != null && !frameState.getMode().isUncached()) {
-                builder.string(accessNodeField(execution));
+                builder.tree(accessNodeField(execution));
             } else {
                 builder.string("null");
             }
@@ -2798,7 +2801,12 @@ public class FlatNodeGenFactory {
             CreateCastData createCast = node.findCast(execution.getChild().getName());
 
             builder.startStatement();
-            builder.string("this.").string(nodeFieldName(execution)).string(" = ");
+            if (plugs != null) {
+                builder.tree(plugs.createNodeFieldReference(execution, nodeFieldName(execution), false));
+            } else {
+                builder.string("this.").string(nodeFieldName(execution));
+            }
+            builder.string(" = ");
 
             String name = childValues.get(node.getChildren().indexOf(execution.getChild()));
             CodeTree accessor;
@@ -2985,12 +2993,12 @@ public class FlatNodeGenFactory {
                 if (child.getCardinality().isMany()) {
                     builder.startReturn().startNewArray((ArrayType) child.getOriginalType(), null);
                     for (NodeExecutionData execution : executions) {
-                        builder.string(accessNodeField(execution));
+                        builder.tree(accessNodeField(execution));
                     }
                     builder.end().end();
                 } else {
                     for (NodeExecutionData execution : executions) {
-                        builder.startReturn().string(accessNodeField(execution)).end();
+                        builder.startReturn().tree(accessNodeField(execution)).end();
                         break;
                     }
                 }
@@ -3109,7 +3117,7 @@ public class FlatNodeGenFactory {
     }
 
     private CodeTree callChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
-        return callMethod(frameState, CodeTreeBuilder.singleString(accessNodeField(execution)), method.getMethod(), bindExecuteMethodParameters(execution, method, frameState));
+        return callMethod(frameState, accessNodeField(execution), method.getMethod(), bindExecuteMethodParameters(execution, method, frameState));
     }
 
     private CodeTree callUncachedChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
@@ -3339,7 +3347,7 @@ public class FlatNodeGenFactory {
                     if (var != null) {
                         bindings[i] = var.createReference();
                     } else {
-                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter));
+                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter), true);
                     }
                     bindingTypes[i] = parameter.getType();
                 } else {
@@ -4014,12 +4022,18 @@ public class FlatNodeGenFactory {
         if (usedBoundaryNames.contains(boundaryMethodName)) {
             boundaryMethodName = boundaryMethodName + (boundaryIndex++);
         }
+
+        if (plugs != null) {
+            boundaryMethodName = plugs.transformNodeMethodName(boundaryMethodName);
+        }
+
         usedBoundaryNames.add(boundaryMethodName);
 
         String includeFrameParameter = null;
         if (specialization != null && specialization.getFrame() != null) {
             includeFrameParameter = FRAME_VALUE;
         }
+
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
         GeneratorUtils.mergeSupressWarnings(boundaryMethod, "static-method");
         multiState.addParametersTo(frameState, boundaryMethod);
@@ -4214,7 +4228,7 @@ public class FlatNodeGenFactory {
                 if (types.Profile != null && ElementUtils.isAssignable(cache.getParameter().getType(), types.Profile)) {
                     CodeTreeBuilder b = builder.create();
                     b.startStatement();
-                    b.tree(createCacheReference(frameState, specialization, cache));
+                    b.tree(createCacheReference(frameState, specialization, cache, true));
                     b.string(".disable()");
                     b.end();
                     triples.add(new IfTriple(null, null, b.build()));
@@ -4240,7 +4254,14 @@ public class FlatNodeGenFactory {
             builder.tree(exclude.createSet(frameState, excludesArray, true, true));
             for (SpecializationData excludes : excludesArray) {
                 if (useSpecializationClass(excludes)) {
-                    builder.statement("this." + createSpecializationFieldName(excludes) + " = null");
+                    if (plugs != null) {
+                        builder.startStatement();
+                        builder.tree(plugs.createSpecializationFieldReference(excludes, null, true, null));
+                        builder.string(" = null");
+                        builder.end();
+                    } else {
+                        builder.statement("this." + createSpecializationFieldName(excludes) + " = null");
+                    }
                 }
             }
             builder.tree((multiState.createSet(frameState, excludesArray, false, false)));
@@ -4320,7 +4341,11 @@ public class FlatNodeGenFactory {
         builder.end();
         builder.end();
         builder.startStatement();
-        builder.string("this.", createSpecializationFieldName(specialization));
+        if (plugs != null) {
+            builder.tree(plugs.createSpecializationFieldReference(specialization, null, true, null));
+        } else {
+            builder.string("this.", createSpecializationFieldName(specialization));
+        }
         builder.string(" = ");
         builder.tree(ref);
         builder.end();
@@ -4355,7 +4380,12 @@ public class FlatNodeGenFactory {
                 }
                 initBuilder.startNew(typeName);
                 if (specialization.getMaximumNumberOfInstances() > 1) {
-                    initBuilder.string(createSpecializationFieldName(specialization));
+                    if (plugs != null) {
+                        initBuilder.tree(plugs.createSpecializationFieldReference(specialization, null, useSpecializationClass,
+                                        new GeneratedTypeMirror("", createSpecializationTypeName(specialization))));
+                    } else {
+                        initBuilder.string(createSpecializationFieldName(specialization));
+                    }
                 }
                 initBuilder.end(); // new
                 if (isNode) {
@@ -4887,7 +4917,7 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
+            CodeTree cacheReference = createCacheReference(frameState, specialization, cache, false);
             if (cache.isUsedInGuard() && !cache.isEagerInitialize() && sharedCaches.containsKey(cache) &&
                             !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
@@ -5171,7 +5201,7 @@ public class FlatNodeGenFactory {
             CodeTree ref;
             if (localVariable == null) {
                 CacheExpression cache = specialization.findCache(resolvedParameter);
-                ref = createCacheReference(frameState, specialization, cache);
+                ref = createCacheReference(frameState, specialization, cache, true);
             } else {
                 ref = localVariable.createReference();
             }
@@ -5189,14 +5219,19 @@ public class FlatNodeGenFactory {
     }
 
     private CodeTree createSpecializationFieldReference(FrameState frameState, SpecializationData s, String fieldName) {
+        boolean useSpecializationClass = useSpecializationClass(s);
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        if (useSpecializationClass(s)) {
+        if (useSpecializationClass) {
             String localName = createSpecializationLocalName(s);
             LocalVariable var = frameState.get(localName);
             if (var != null) {
                 builder.string(localName);
             } else {
-                builder.string("this.", createSpecializationFieldName(s));
+                if (plugs != null) {
+                    builder.tree(plugs.createSpecializationFieldReference(s, fieldName, true, new GeneratedTypeMirror("", createSpecializationTypeName(s))));
+                } else {
+                    builder.string("this.", createSpecializationFieldName(s));
+                }
             }
         } else {
             builder.string("this");
@@ -5208,7 +5243,7 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createCacheReference(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
+    private CodeTree createCacheReference(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean forRead) {
         if (cache == null) {
             return CodeTreeBuilder.singleString("null /* cache not resolved */");
         }
@@ -5220,7 +5255,9 @@ public class FlatNodeGenFactory {
             } else {
                 String sharedName = sharedCaches.get(cache);
                 CodeTree ref;
-                if (sharedName != null) {
+                if (plugs != null) {
+                    ref = plugs.createCacheReference(specialization, cache, sharedName, forRead);
+                } else if (sharedName != null) {
                     ref = CodeTreeBuilder.createBuilder().string("this.").string(sharedName).build();
                 } else {
                     String cacheFieldName = createFieldName(specialization, cache.getParameter());

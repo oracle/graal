@@ -29,6 +29,7 @@ import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
+    private static final Set<Modifier> MOD_STATIC_FINAL = Set.of(Modifier.STATIC, Modifier.FINAL);
     private final OperationsData parentData;
 
     public SingleOperationParser(OperationsData parentData) {
@@ -135,9 +136,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             // add all the constants
             for (VariableElement el : ElementFilter.fieldsIn(proxyType.getEnclosedElements())) {
                 if (el.getModifiers().containsAll(Set.of(Modifier.STATIC, Modifier.FINAL))) {
-                    CodeVariableElement cel = new CodeVariableElement(Set.of(Modifier.STATIC, Modifier.FINAL), el.asType(), el.getSimpleName().toString());
-                    cel.createInitBuilder().staticReference(el);
-                    clonedType.add(cel);
+                    // CodeVariableElement cel = new CodeVariableElement(MOD_STATIC_FINAL,
+                    // el.asType(), el.getSimpleName().toString());
+                    // cel.createInitBuilder().staticReference(el);
+                    // clonedType.add(cel);
+                    clonedType.add(el);
                 }
             }
         }

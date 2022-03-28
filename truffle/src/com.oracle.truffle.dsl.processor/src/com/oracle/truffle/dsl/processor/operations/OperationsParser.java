@@ -78,7 +78,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             return data;
         }
 
-        data.setTracing(true);
+        // data.setTracing(true);
 
         if (data.hasErrors()) {
             return data;

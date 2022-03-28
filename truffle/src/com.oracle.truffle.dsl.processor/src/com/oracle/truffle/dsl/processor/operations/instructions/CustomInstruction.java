@@ -1,18 +1,27 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public class CustomInstruction extends Instruction {
+    public enum DataKind {
+        BITS,
+        CONST,
+        CHILD,
+        CONTINUATION
+    }
+
     private final SingleOperationData data;
     private ExecutableElement executeMethod;
-    private int stateBytes = -1;
+    private DataKind[] dataKinds = null;
 
     public SingleOperationData getData() {
         return data;
@@ -53,8 +62,35 @@ public class CustomInstruction extends Instruction {
 
         int lengthWithoutState = lengthWithoutState();
 
-        for (int i = 0; i < stateBytes; i++) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + (lengthWithoutState + i) + "] = 0").end();
+        for (int i = 0; i < dataKinds.length; i++) {
+            CodeTree index = b.create().variable(vars.bci).string(" + " + lengthWithoutState + " + " + i).build();
+            switch (dataKinds[i]) {
+                case BITS:
+                    b.startStatement();
+                    b.variable(vars.bc).string("[").tree(index).string("] = 0");
+                    b.end();
+                    break;
+                case CHILD:
+                    b.startStatement();
+                    b.startCall("LE_BYTES", "putShort");
+                    b.variable(vars.bc);
+                    b.tree(index);
+                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).variable(vars.numChildNodes).string("++").end();
+                    b.end();
+                    break;
+                case CONST:
+                    b.startStatement();
+                    b.startCall("LE_BYTES", "putShort");
+                    b.variable(vars.bc);
+                    b.tree(index);
+                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).startCall(vars.consts, "reserve").end(2);
+                    b.end();
+                    break;
+                case CONTINUATION:
+                    break;
+            }
+
+            b.end();
         }
 
         return b.build();
@@ -94,14 +130,31 @@ public class CustomInstruction extends Instruction {
 
     @Override
     public int getAdditionalStateBytes() {
-        if (stateBytes == -1) {
+        if (dataKinds == null) {
             throw new UnsupportedOperationException("state bytes not yet initialized");
         }
 
-        return stateBytes;
+        return dataKinds.length;
     }
 
-    public void setAdditionalStateBytes(int size) {
-        stateBytes = size;
+    public void setDataKinds(DataKind[] dataKinds) {
+        this.dataKinds = dataKinds;
+    }
+
+    @Override
+    public String dumpInfo() {
+        StringBuilder sb = new StringBuilder(super.dumpInfo());
+
+        sb.append("  Additional Data:\n");
+        int ofs = -1;
+        for (DataKind kind : dataKinds) {
+            ofs += 1;
+            if (kind == DataKind.CONTINUATION) {
+                continue;
+            }
+            sb.append("    ").append(ofs).append(" ").append(kind).append("\n");
+        }
+
+        return sb.toString();
     }
 }

@@ -75,7 +75,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @NodeChild("valueNode")
 public abstract class SLWritePropertyNode extends SLExpressionNode {
 
-    static final int LIBRARY_LIMIT = 3;
+    public static final int LIBRARY_LIMIT = 3;
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeArray(Object receiver, Object index, Object value,
