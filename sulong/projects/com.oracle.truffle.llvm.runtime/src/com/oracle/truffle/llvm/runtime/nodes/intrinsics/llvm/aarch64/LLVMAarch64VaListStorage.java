@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -571,7 +571,6 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             vaList.fpSaveArea = new RegSaveArea(vaList.realArguments, fpIdx, Aarch64BitVarArgs.FP_STEP, Aarch64BitVarArgs.FP_LIMIT);
             vaList.fpSaveAreaPtr = LLVMManagedPointer.create(vaList.fpSaveArea);
             vaList.overflowArgArea = new OverflowArgArea(overflowArgs, overflowAreaArgOffsets, overflowArea, oi);
-
             vaList.allocateNativeAreas(stackAllocationNode, frame);
         }
 
@@ -622,7 +621,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                     @Cached NativeProfiledMemMove memMove,
-                    @Cached BranchProfile nativizedProfile) {
+                    @Cached BranchProfile nativizedProfile,
+                    @Cached StackAllocationNode stackAllocationNode) {
 
         if (isNativized()) {
             nativizedProfile.enter();
@@ -651,11 +651,20 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
-        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
+        if (stackAllocationNode.isAOT()) {
+            allocateNativeOverflowAreaSlowPath(stackAllocationNode, frame);
+        } else {
+            this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
+        }
         this.gpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.GP_LIMIT, frame);
         gpSaveAreaNativePtr = gpSaveAreaNativePtr.increment(Aarch64BitVarArgs.GP_LIMIT);
         this.fpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.FP_LIMIT, frame);
         fpSaveAreaNativePtr = fpSaveAreaNativePtr.increment(Aarch64BitVarArgs.FP_LIMIT);
+    }
+
+    @TruffleBoundary
+    private void allocateNativeOverflowAreaSlowPath(StackAllocationNode stackAllocationNode, Frame frame) {
+        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
     }
 
     private static void initNativeVAList(LLVMI32OffsetStoreNode gpOffsetStore, LLVMI32OffsetStoreNode fpOffsetStore, LLVMPointerOffsetStoreNode overflowArgAreaStore,
