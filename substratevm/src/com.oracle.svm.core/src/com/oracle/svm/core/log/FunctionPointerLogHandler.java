@@ -142,7 +142,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    public static boolean isVMOption(CCharPointer optionString) {
+    public static boolean isJniVMOption(CCharPointer optionString) {
         return LibC.strcmp(optionString, LOG_OPTION.get()) == 0 ||
                         LibC.strcmp(optionString, FATAL_LOG_OPTION.get()) == 0 ||
                         LibC.strcmp(optionString, FLUSH_LOG_OPTION.get()) == 0 ||
@@ -156,7 +156,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
      * @param extraInfo value of the {@code javaVMOption.extraInfo} field
      * @return {@code true} iff the option was consumed by this method
      */
-    public static boolean parseVMOption(CCharPointer optionString, WordPointer extraInfo) {
+    public static boolean parseJniVMOption(CCharPointer optionString, WordPointer extraInfo) {
         if (LibC.strcmp(optionString, LOG_OPTION.get()) == 0) {
             handler(optionString).logFunctionPointer = (LogFunctionPointer) extraInfo;
             return true;
@@ -185,7 +185,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     /**
      * Notifies that {@code JNI_CreateJavaVM} has finished parsing all {@code JavaVMOption}s.
      */
-    public static void afterParsingVMOptions() {
+    public static void afterParsingJniVMOptions() {
         LogHandler handler = ImageSingletons.lookup(LogHandler.class);
         if (handler == null || !(handler instanceof FunctionPointerLogHandler)) {
             return;

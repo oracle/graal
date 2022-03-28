@@ -72,6 +72,8 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
             params.setVersion(4);
+            params.setIgnoreUnrecognizedArguments(false);
+            params.setExitWhenArgumentParsingFails(false);
 
             if (MemoryProtectionProvider.isAvailable()) {
                 try {
@@ -85,24 +87,28 @@ public final class IsolateSupportImpl implements IsolateSupport {
             }
 
             // Prepare argc and argv.
-            List<String> args = parameters.getArguments();
-            int argc = args.size();
-            params.setArgc(argc);
-            params.setArgv(WordFactory.nullPointer());
-            params.setIgnoreUnrecognizedArguments(false);
-            params.setExitWhenArgumentParsingFails(false);
+            int argc = 0;
+            CCharPointerPointer argv = WordFactory.nullPointer();
 
-            // TEMP (chaeubl): is this correct regarding the 1st argument?
+            List<String> args = parameters.getArguments();
             CTypeConversion.CCharPointerHolder[] pointerHolders = null;
-            if (argc > 0) {
-                CCharPointerPointer argv = UnmanagedMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc));
-                pointerHolders = new CTypeConversion.CCharPointerHolder[argc];
-                for (int i = 0; i < argc; i++) {
+            if (!args.isEmpty()) {
+                int isolateArgCount = args.size();
+
+                // Internally, we use C-style arguments, i.e., the first argument is reserved for
+                // the name of the binary. We use null when isolates are created manually.
+                argc = isolateArgCount + 1;
+                argv = UnmanagedMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc));
+                argv.write(0, WordFactory.nullPointer());
+
+                pointerHolders = new CTypeConversion.CCharPointerHolder[isolateArgCount];
+                for (int i = 0; i < isolateArgCount; i++) {
                     CTypeConversion.CCharPointerHolder ph = pointerHolders[i] = CTypeConversion.toCString(args.get(i));
-                    argv.write(i, ph.get());
+                    argv.write(i + 1, ph.get());
                 }
-                params.setArgv(argv);
             }
+            params.setArgc(argc);
+            params.setArgv(argv);
 
             // Try to create the isolate.
             IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);

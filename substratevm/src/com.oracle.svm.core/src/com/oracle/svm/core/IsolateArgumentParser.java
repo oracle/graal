@@ -160,7 +160,8 @@ public class IsolateArgumentParser {
         }
 
         CLongPointer numericValue = StackValue.get(Long.BYTES);
-        for (int i = 0; i < argc; i++) {
+        // Ignore the first argument as it represents the executable file name.
+        for (int i = 1; i < argc; i++) {
             CCharPointer arg = argv.read(i);
             if (arg.isNonNull()) {
                 CCharPointer tail = matchPrefix(arg);

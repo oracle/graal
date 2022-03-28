@@ -213,7 +213,7 @@ final class JNIInvocationInterface {
          */
         @CEntryPoint(name = "JNI_CreateJavaVM", include = CEntryPoint.NotIncludedAutomatically.class)
         @CEntryPointOptions(prologue = JNICreateJavaVMPrologue.class, publishAs = Publish.SymbolOnly)
-        static int JNI_CreateJavaVM(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
+        static int JNI_CreateJavaVM(@SuppressWarnings("unused") JNIJavaVMPointer vmBuf, @SuppressWarnings("unused") JNIEnvironmentPointer penv, @SuppressWarnings("unused") JNIJavaVMInitArgs vmArgs) {
             return JNIErrors.JNI_OK();
         }
 
@@ -362,7 +362,7 @@ final class JNIInvocationInterface {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         static boolean isSpecialVMOption(CCharPointer str) {
             // NOTE: could check version, extra options (-verbose etc.), hooks etc.
-            return FunctionPointerLogHandler.isVMOption(str) || isJavaVmId(str);
+            return FunctionPointerLogHandler.isJniVMOption(str) || isJavaVmId(str);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -403,10 +403,10 @@ final class JNIInvocationInterface {
                 if (isJavaVmId(optionString)) {
                     javaVmIdPointer = option.getExtraInfo();
                 } else {
-                    FunctionPointerLogHandler.parseVMOption(optionString, option.getExtraInfo());
+                    FunctionPointerLogHandler.parseJniVMOption(optionString, option.getExtraInfo());
                 }
             }
-            FunctionPointerLogHandler.afterParsingVMOptions();
+            FunctionPointerLogHandler.afterParsingJniVMOptions();
             return javaVmIdPointer;
         }
     }

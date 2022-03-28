@@ -107,7 +107,7 @@ public class JavaMainWrapper {
         public List<String> getInputArguments() {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             if (args.getArgv().isNonNull() && args.getArgc() > 0) {
-                String[] unmodifiedArgs = SubstrateUtil.getArgs(args.getArgc(), args.getArgv());
+                String[] unmodifiedArgs = SubstrateUtil.convertCToJavaArgs(args.getArgc(), args.getArgv());
                 List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
 
                 if (mainArgs != null) {

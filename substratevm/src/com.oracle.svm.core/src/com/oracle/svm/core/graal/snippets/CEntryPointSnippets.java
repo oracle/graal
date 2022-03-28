@@ -299,7 +299,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 exitWhenArgumentParsingFails = parameters.getExitWhenArgumentParsingFails();
             }
 
-            String[] args = SubstrateUtil.getArgs(parameters.getArgc(), parameters.getArgv());
+            String[] args = SubstrateUtil.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
             try {
                 args = RuntimeOptionParser.parseAndConsumeAllOptions(args, ignoreUnrecognized);
             } catch (IllegalArgumentException e) {
