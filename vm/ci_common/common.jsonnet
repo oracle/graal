@@ -583,13 +583,13 @@ local devkits = common_json.devkits;
   deploy_graalvm_base_windows_amd64: {
     run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
-      $.mx_vm_common + ['graalvm-show'],
-      $.mx_vm_common + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
+      $.mx_vm_common + vm.vm_profiles + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + vm.check_graalvm_base_build + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
-      $.mx_vm_common + $.maven_deploy_sdk_base,
+      $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
     notify_groups:: ['deploy'],
