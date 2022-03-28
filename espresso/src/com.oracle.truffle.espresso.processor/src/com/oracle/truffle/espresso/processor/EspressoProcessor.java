@@ -711,14 +711,16 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
 
-        if (helper.hasLanguageInjection) {
-            expectedImports.add(IMPORT_ESPRESSO_LANGUAGE);
-        }
         if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
-        if (helper.hasMetaInjection && !helper.isNodeTarget()) {
-            expectedImports.add(IMPORT_META);
+        if (!helper.isNodeTarget()) {
+            if (helper.hasLanguageInjection) {
+                expectedImports.add(IMPORT_ESPRESSO_LANGUAGE);
+            }
+            if (helper.hasMetaInjection) {
+                expectedImports.add(IMPORT_META);
+            }
         }
         expectedImports.add(IMPORT_COLLECT);
 
