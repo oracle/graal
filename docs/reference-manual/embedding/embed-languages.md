@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: reference-manual
+toc_group: embedding
 link_title: Embedding Reference
 permalink: /reference-manual/embed-languages/
 ---
@@ -492,7 +492,7 @@ public class Main {
 }
 ```
 
-In this code: 
+In this code:
 - `import org.graalvm.polyglot.*` imports the base API for the Polyglot API.
 - `Engine.create()` creates a new engine instance with the default configuration.
 - `Source.create()` creates a source object for the expression “21 + 21”
@@ -532,7 +532,7 @@ public class Main {
 }
 ```
 
-In this code: 
+In this code:
 - `Context.newBuilder().allowAllAccess(true).build()` builds a new outer context with all privileges.
 - `outer.eval` evaluates a JavaScript snippet in the outer context.
 - `inner = Java.type('org.graalvm.polyglot.Context').create()` the first JS script line looks up the Java host type Context and creates a new inner context instance with no privileges (default).
