@@ -18,88 +18,132 @@ To replicate the steps in this guide, [create a compute VM instance and connect 
 
 ## Install GraalVM Enterprise
 
-For convenient installation, GraalVM Enterprise RPMs have been made available in the OCI YUM repository.
+For convenience, GraalVM Enterpriise RPMs are available in the Oracle YUM repository. 
+Each RPM is self-contained and will automatically pull in all the required dependencies.
+
 That means that OCI customers can use the GraalVM Enterprise environment in their cloud instances by installing it with `yum` - a package-management utility for the Linux operating systems.
 
-For demonstration purposes, a demo-instance of the **VM.Standard.E4.Flex** shape with the **Oracle Linux 7.9** pre-built image was created.
-The following SSH command is then used to connect to a Linux instance from a Unix-style system:
-```shell
-ssh -i .ssh/id_rsa opc@INSTANCE_PUBLIC_IP
-```
+The following instructions have been tested on an OCI Compute Instance with **Oracle Linux 7.9** and **VM.Standard.E4.Flex** with 1 OCPU and 16 GB RAM.
+Use the following command to connect to the OCI Compute Instance from a Unix-style system:
 
-In this instance, `.ssh/id_rsa` is the full path and name of the file containing the private SSH key, `opc` is the default name for the Oracle Linux image, and `INSTANCE_PUBLIC_IP` is the instance IP address provisioned from the console.
+   ```shell
+   ssh -i .ssh/id_rsa opc@INSTANCE_PUBLIC_IP
+   ```
+
+The `.ssh/id_rsa` part is the full path and name of the file containing the private SSH key, `opc` is the default name for the Oracle Linux image, and `INSTANCE_PUBLIC_IP` is the instance IP address provisioned from the console.
 For more details, refer to the [Connecting to Your Linux Instance Using SSH](https://docs.cloud.oracle.com/iaas/Content/GSG/Tasks/testingconnection.htm) tutorial.
 
 1. Having connected to the instance, verify which GraalVM Enterprise RPMs are available for the installation, narrowing down the search to the latest release, and Java 11.
 
    ```shell
-   yum check-update
    sudo yum provides graalvm21-ee-11-jdk
    ```
    The resulting list includes both current and previous versions of all of the core package and additional features.
 
 2. Find the appropriate RPM package name, and install GraalVM Enterprise with `sudo yum install <package_name>`.
-For example, to install the latest version of "Oracle GraalVM Enterprise Edition JDK11 Java Development Kit", run:
+For example, to install "Oracle GraalVM Enterprise Edition JDK11 Java Development Kit", run:
 
    ```shell
    sudo yum install graalvm21-ee-11-jdk
    ```
-   The dependent packages, e.g., `libpolyglot`, `llvm` and so on, will also be resolved.
+   Confirm if the installed package size is okay by typing `yes` at the prompt. 
+   It will install the latest version of **graalvm21-ee-11-jdk** which includes the JVM runtime with the Graal compiler.
 
-   ![See the resolved dependencies for GraalVM Enterprise](dependencies-resolved.png)
+   After the installation, the GraalVM Enterprise binary is placed in _/usr/lib64/graalvm_. You can check this with:
 
-   After the installation, the GraalVM Enterprise binary is placed in _/usr/lib64/graalvm_.
-
-3. Set up environment variables to point to the GraalVM Enterprise directory. 
-
-   - Configure the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to GraalVM Enterprise for this SSH session with the following commands:
    ```shell
-   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm21-ee-java11" >> ~/.bashrc
-   echo "export PATH='$JAVA_HOME'/bin:'$PATH' " >> ~/.bashrc
+   ls /usr/lib64/graalvm
    ```
+
+3. Configure environment variables to point to the GraalVM Enterprise installation for this SSH session. After the installation, the package files are placed in the `/usr/lib64/graalvm` directory, and binaries in `bin` accordingly.
+
+   - Set the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to GraalVM Enterprise with the following commands:
+
+      ```shell
+      echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm21-ee-java11" >> ~/.bashrc
+      ```
+      
+      ```shell
+      echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
+      ```
    - Activate this change:
-   ```shell
-   source ~/.bashrc
-   ```
-   - Verify the values of  `PATH` and `JAVA_HOME` to check if the change was successful:
-   ```shell
-   echo $JAVA_HOME
-   echo $PATH
-   ```
 
-Now you have a ready-to-go VM instance with GraalVM Enterprise installed and ready to use.
+      ```shell
+      source ~/.bashrc
+      ```
+
+   - Verify the values of `PATH` and `JAVA_HOME`:
+
+      ```shell
+      echo $JAVA_HOME
+      echo $PATH
+      ```
+   - Run the following command to confirm the version of GraalVM Enterprise JDK installed:
+
+      ```shell
+      java -version
+      ```
+
+Now you have a ready-to-go VM instance with GraalVM Enterprise installed.
 
 ## Install Additional Features
 
-1. Check what additional features are available for your current GraalVM Enterprise version:
+GraalVM Enterprise consists of different features and components - JDK, Native Image, Python runtime, Node.js runtime, LLVM toolchain, etc. - each of which can be installed separately or as an add-on to an existing component. 
+See [Distribution Components List](https://docs.oracle.com/en/graalvm/enterprise/22/docs/overview/architecture/#distribution-components-list) for more information.
+
+To add additional features to GraalVM Enterprise, use the `yum install <package_name>` command. 
+
+1. Check what additional features are available for your current GraalVM Enterprise installation:
 
    ```shell
-   yum check-update
    sudo yum provides graalvm21*
    ```
-
-2. Look up the necessary RPM package name and add it to GraalVM Enterprise with the `yum install <package_name> command` command.
-For example, to install [Native Image](../../../reference-manual/native-image/README.md), which is a technology to turn your Java application into a standalone native executable, run this command:
+   The printed list is enormous. If you are interested in a particular component, for example, the Python runtime, narrow down the search providing the exact package name:
 
    ```shell
-   sudo yum install graalvm21-ee-11-native-image
+   sudo yum provides graalvm21-ee-11-python*
    ```
-   All required dependencies will be automatically installed:
 
-   ![See the resolved dependencies for GraalVM Enterprise Native Image](ni-dependencies-resolved.png)
+2. Install the component to GraalVM Enterprise with the `yum install <package_name> command` command. To install the Python runtime, run:
 
-> **Note:** To add Native Image to GraalVM Enterprise on Oracle Linux 8, currently run these commands:
    ```shell
-   sudo yum update -y oraclelinux-release-el8
-   sudo yum config-manager --set-enabled ol8_codeready_builder
-   sudo yum install graalvm21-ee-11-native-image
+   sudo yum install graalvm21-ee-11-python
    ```
-   For Linux images with `dnf` or `microdnf` default package managers, run:
+   Confirm if the installed package size is okay by typing `yes` at the prompt.
+
+### Install Native Image
+
+[Native Image](../../../reference-manual/native-image/README.md) is a technology to turn your Java application into a standalone native executable and has to be installed to GraalVM Enterprise core installation.
+
+
+1. Search for Native Image PRMs available for your installation: 
+
    ```shell
-   dnf update -y oraclelinux-release-el8
-   dnf --enablerepo ol8_codeready_builder
-   dnf install graalvm21-ee-11-native-image
+   sudo yum provides graalvm21-ee-11-native-image*
    ```
+2. Install Native Image using the `yum install <package_name> command` command. All required dependencies will be automatically resolved.
+
+   - On Oracle Linux 7.9, run:
+      ```shell
+      sudo yum install graalvm21-ee-11-native-image
+      ```
+      Confirm if the installed package size is okay by typing `yes` at the prompt.
+
+   - On Oracle Linux 8, run these commands one by one:
+      ```shell
+      sudo yum update -y oraclelinux-release-el8
+      sudo yum config-manager --set-enabled ol8_codeready_builder
+      sudo yum install graalvm21-ee-11-native-image
+      ```
+      Confirm if the installed package size is okay by typing `yes` at the prompt.
+      
+   - On Oracle Linux 8 with `dnf` or `microdnf` default package managers, run these commands one by one:
+      ```shell
+      dnf update -y oraclelinux-release-el8
+      dnf --enablerepo ol8_codeready_builder
+      dnf install graalvm21-ee-11-native-image
+      ```
+      Confirm if the installed package size is okay by typing `yes` at the prompt.
 
 ## Update GraalVM Enterprise
 
@@ -122,11 +166,13 @@ The **graalvm21-ee-11-jdk** package is installed alongside **graalvm20-ee-8-jdk*
 
 ### Note on `yum upgrade`
 
-The `yum upgrade` command can be used to update on the same year package line, for example, to upgrade from GraalVM Enterprise 21.3.0 to version 21.3.1 when this RPM package becomes available:
+The `yum upgrade` command can be used to update on the same year package line, for example, to upgrade from GraalVM Enterprise 21.3.3 to version 21.3.4 when this RPM package becomes available:
 
    ```shell
    sudo yum upgrade graalvm21-ee-11-jdk
    ```
+   Confirm if the installed package size is okay by typing `yes` at the prompt.
+   If there are no newer package available, you will see the `No packages marked for update` message.
 
 It will update the whole system and remove the obsolete GraalVM Enterprise installation.
 

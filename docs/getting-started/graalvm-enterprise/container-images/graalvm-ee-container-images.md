@@ -13,10 +13,10 @@ The following images are available:
 
 | Image Name      | Description                                        
 ------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| [**jdk-ee**](https://container-registry.oracle.com/ords/ocr/ba/graalvm/jdk-ee)          | A compact image containing the GraalVM Enterprise JDK. |
-| [**native-image-ee**](https://container-registry.oracle.com/ords/ocr/ba/graalvm/native-image-ee) | A compact image which includes the GraalVM Enterprise `native-image` utility and JDK |
-| [**enterprise**](https://container-registry.oracle.com/ords/ocr/ba/graalvm/enterprise)      | Provides the GraalVM Enterprise JDK along with the `gu` (Graal Updater) utility to enable installation of additional features. |
-| [**nodejs-ee**](https://container-registry.oracle.com/ords/ocr/ba/graalvm/nodejs-ee)       | Includes the Node.js runtime and the GraalVM Enterprise JDK. |
+| **jdk-ee**          | A compact image containing the GraalVM Enterprise JDK. |
+| **native-image-ee** | A compact image which includes the GraalVM Enterprise `native-image` utility and JDK |
+| **enterprise**      | Provides the GraalVM Enterprise JDK along with the `gu` (Graal Updater) utility to enable installation of additional features. |
+| **nodejs-ee**       | Includes the Node.js runtime and the GraalVM Enterprise JDK. |
 
 ## Images Tagging Structure and Availability
 

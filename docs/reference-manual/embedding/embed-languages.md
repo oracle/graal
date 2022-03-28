@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: reference-manual
+toc_group: embedding
 link_title: Embedding Reference
 permalink: /reference-manual/embed-languages/
 ---
@@ -19,7 +19,6 @@ permalink: /reference-manual/embed-languages/
 * [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
-* [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -514,7 +513,7 @@ public class Main {
 }
 ```
 
-In this code: 
+In this code:
 - `import org.graalvm.polyglot.*` imports the base API for the Polyglot API.
 - `Engine.create()` creates a new engine instance with the default configuration.
 - `Source.create()` creates a source object for the expression “21 + 21”
@@ -554,7 +553,7 @@ public class Main {
 }
 ```
 
-In this code: 
+In this code:
 - `Context.newBuilder().allowAllAccess(true).build()` builds a new outer context with all privileges.
 - `outer.eval` evaluates a JavaScript snippet in the outer context.
 - `inner = Java.type('org.graalvm.polyglot.Context').create()` the first JS script line looks up the Java host type Context and creates a new inner context instance with no privileges (default).
@@ -631,6 +630,3 @@ In this code:
 - The `statements(true)` filters execution listeners to statements only.
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
-
-<!-- Configure Sandbox Resource Limits -->
-{% include_relative sandbox-options.md %}
