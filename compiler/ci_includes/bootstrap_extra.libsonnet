@@ -1,4 +1,4 @@
-# Bootstrap tasks specific to the Graal CE.
+# Bootstrap tasks specific to the Graal CE
 {
   local c = import '../../common.jsonnet',
   local g = import '../ci_common/gate.jsonnet',
