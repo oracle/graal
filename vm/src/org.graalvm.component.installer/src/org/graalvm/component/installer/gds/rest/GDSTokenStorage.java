@@ -103,8 +103,10 @@ public class GDSTokenStorage {
         token = getFileToken();
         if (SystemUtils.nonBlankString(token)) {
             tokenSource = Source.FIL;
+            return token;
         }
-        return token;
+        tokenSource = Source.NON;
+        return null;
     }
 
     private String getCmdToken() {
