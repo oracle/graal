@@ -192,9 +192,16 @@ public class GDSChannel extends GraalChannelBase {
         if (!SystemUtils.nonBlankString(token)) {
             String email = MailStorage.checkEmailAddress(receiveEmailAddress(), fb);
             token = getConnector().sendVerificationEmail(email, licensePath, null);
+            saveToken(token);
             fb.output("PROMPT_VerifyEmailAddressEntry", email);
             fb.acceptLine(false);
+        } else {
+            saveToken(token);
         }
+        return token;
+    }
+
+    private void saveToken(String token) {
         fb.output("MSG_ObtainedToken", token);
         try {
             tokenStorage.setToken(token);
@@ -202,7 +209,6 @@ public class GDSChannel extends GraalChannelBase {
         } catch (IOException ex) {
             fb.error("WARN_CannotSaveToken", ex, tokenStorage.getPropertiesPath());
         }
-        return token;
     }
 
     @Override
