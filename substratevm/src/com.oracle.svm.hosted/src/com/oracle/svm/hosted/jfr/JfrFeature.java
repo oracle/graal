@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.jfr.JfrGCNames;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrChunkWriter;
 import com.oracle.svm.core.jfr.JfrFrameTypeSerializer;
+import com.oracle.svm.core.jfr.JfrGCNames;
 import com.oracle.svm.core.jfr.JfrGlobalMemory;
 import com.oracle.svm.core.jfr.JfrManager;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;

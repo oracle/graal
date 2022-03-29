@@ -24,24 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import org.junit.Test;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-public class TestGCEvents extends JfrTest {
+import java.io.IOException;
+
+public class VMOperationConstantPoolParser extends ConstantPoolParser {
+
     @Override
-    public String[] getTestedEvents() {
-        return new String[]{
-                        "jdk.GarbageCollection",
-                        "jdk.GCPhasePause",
-                        "jdk.GCPhasePauseLevel1",
-                        "jdk.GCPhasePauseLevel2",
-                        "jdk.ExecuteVMOperation"
-        };
-    }
-
-    @Test
-    public void test() throws Exception {
-        System.gc();
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfVMOperationTypes = input.readInt();
+        for (int i = 0; i < numberOfVMOperationTypes; i++) {
+            addFoundId(input.readInt()); // Id.
+            Assert.assertFalse("VMOperation type is empty!", input.readUTF().isEmpty());
+        }
     }
 }

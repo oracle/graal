@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.heap.VMOperationInfos;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.IsolateThread;
@@ -153,7 +154,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         JfrChangeEpochOperation op = new JfrChangeEpochOperation();
         op.enqueue();
 
-        /**
+        /*
          * After changing the epoch, all subsequently triggered JFR events will be recorded into the
          * data structures of the new epoch. This guarantees that the data in the old epoch can be
          * persisted to a file without a safepoint.
@@ -366,7 +367,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private class JfrChangeEpochOperation extends JavaVMOperation {
         protected JfrChangeEpochOperation() {
-            super("JFR change epoch", SystemEffect.SAFEPOINT);
+            super(VMOperationInfos.get(JfrChangeEpochOperation.class, "JFR change epoch", SystemEffect.SAFEPOINT));
         }
 
         @Override

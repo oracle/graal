@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -103,7 +104,17 @@ class DumpAllStacks implements SignalHandler {
 
     @Override
     public void handle(Signal arg0) {
-        JavaVMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
+        DumpAllStacksOperation vmOp = new DumpAllStacksOperation();
+        vmOp.enqueue();
+    }
+
+    private static class DumpAllStacksOperation extends JavaVMOperation {
+        DumpAllStacksOperation() {
+            super(VMOperationInfos.get(DumpAllStacksOperation.class, "Dump all stacks", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
             Log log = Log.log();
             log.string("Full thread dump:").newline().newline();
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
@@ -119,29 +130,29 @@ class DumpAllStacks implements SignalHandler {
                 }
             }
             log.flush();
-        });
-    }
+        }
 
-    private static void dumpStack(Log log, IsolateThread vmThread) {
-        Thread javaThread = PlatformThreads.fromVMThread(vmThread);
-        if (javaThread != null) {
-            log.character('"').string(javaThread.getName()).character('"');
-            log.string(" #").signed(javaThread.getId());
-            if (javaThread.isDaemon()) {
-                log.string(" daemon");
+        private static void dumpStack(Log log, IsolateThread vmThread) {
+            Thread javaThread = PlatformThreads.fromVMThread(vmThread);
+            if (javaThread != null) {
+                log.character('"').string(javaThread.getName()).character('"');
+                log.string(" #").signed(javaThread.getId());
+                if (javaThread.isDaemon()) {
+                    log.string(" daemon");
+                }
+            } else {
+                log.string("(no Java thread)");
             }
-        } else {
-            log.string("(no Java thread)");
-        }
-        log.string(" tid=0x").zhex(vmThread.rawValue());
-        if (javaThread != null) {
-            log.string(" state=").string(javaThread.getState().name());
-        }
-        log.newline();
+            log.string(" tid=0x").zhex(vmThread.rawValue());
+            if (javaThread != null) {
+                log.string(" state=").string(javaThread.getState().name());
+            }
+            log.newline();
 
-        log.indent(true);
-        JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
-        log.indent(false);
+            log.indent(true);
+            JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
+            log.indent(false);
+        }
     }
 }
 
@@ -172,10 +183,20 @@ class DumpRuntimeCompilation implements SignalHandler {
 
     @Override
     public void handle(Signal arg0) {
-        JavaVMOperation.enqueueBlockingSafepoint("DumpRuntimeCompilation", () -> {
+        DumpRuntimeCompiledMethodsOperation vmOp = new DumpRuntimeCompiledMethodsOperation();
+        vmOp.enqueue();
+    }
+
+    private static class DumpRuntimeCompiledMethodsOperation extends JavaVMOperation {
+        DumpRuntimeCompiledMethodsOperation() {
+            super(VMOperationInfos.get(DumpRuntimeCompiledMethodsOperation.class, "Dump runtime compiled methods", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
             Log log = Log.log();
             SubstrateDiagnostics.dumpRuntimeCompilation(log);
             log.flush();
-        });
+        }
     }
 }
