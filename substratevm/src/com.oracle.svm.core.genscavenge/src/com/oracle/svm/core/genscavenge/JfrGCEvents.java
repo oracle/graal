@@ -32,24 +32,25 @@ import com.oracle.svm.core.heap.GCCause;
 
 class JfrGCEvents {
     public static long startGCPhasePause() {
-        if (!hasJfrSupport()) {
-            return 0;
+        if (hasJfrSupport()) {
+            return jfrSupport().startGCPhasePause();
         }
-        return jfrSupport().startGCPhasePause();
-    }
-
-    public static void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
-        if (!hasJfrSupport() || start == 0) {
-            return;
-        }
-        jfrSupport().emitGarbageCollectionEvent(gcEpoch, cause, start);
+        return 0;
     }
 
     public static void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long start) {
-        if (!hasJfrSupport() || start == 0) {
-            return;
+        if (hasJfrSupport()) {
+            int level = jfrSupport().stopGCPhasePause();
+            if (start != 0) {
+                jfrSupport().emitGCPhasePauseEvent(gcEpoch, level, name, start);
+            }
         }
-        jfrSupport().emitGCPhasePauseEvent(gcEpoch, name, start);
+    }
+
+    public static void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
+        if (hasJfrSupport() && start != 0) {
+            jfrSupport().emitGarbageCollectionEvent(gcEpoch, cause, start);
+        }
     }
 
     @Fold
