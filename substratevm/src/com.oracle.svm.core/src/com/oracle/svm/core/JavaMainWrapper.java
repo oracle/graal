@@ -107,7 +107,7 @@ public class JavaMainWrapper {
         public List<String> getInputArguments() {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             if (args.getArgv().isNonNull() && args.getArgc() > 0) {
-                String[] unmodifiedArgs = SubstrateUtil.getArgs(args.getArgc(), args.getArgv());
+                String[] unmodifiedArgs = SubstrateUtil.convertCToJavaArgs(args.getArgc(), args.getArgv());
                 List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
 
                 if (mainArgs != null) {
@@ -271,9 +271,11 @@ public class JavaMainWrapper {
         @Uninterruptible(reason = "prologue")
         public static void enter(int paramArgc, CCharPointerPointer paramArgv) {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
-            args.setVersion(3);
+            args.setVersion(4);
             args.setArgc(paramArgc);
             args.setArgv(paramArgv);
+            args.setIgnoreUnrecognizedArguments(false);
+            args.setExitWhenArgumentParsingFails(true);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
             if (code != CEntryPointErrors.NO_ERROR) {
