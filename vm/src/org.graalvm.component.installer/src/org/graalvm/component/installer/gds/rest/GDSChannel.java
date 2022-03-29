@@ -218,6 +218,11 @@ public class GDSChannel extends GraalChannelBase {
             public String getLicenseType() {
                 return null;
             }
+
+            @Override
+            public String getLicenseID() {
+                return null;
+            }
         };
     }
 
