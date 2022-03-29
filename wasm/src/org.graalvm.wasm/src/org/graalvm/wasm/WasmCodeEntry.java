@@ -160,6 +160,10 @@ public final class WasmCodeEntry {
     public static boolean injectTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex, boolean condition) {
         int sum = profileArray[counterIndex];
         int t = profileArray[profileIndex];
+        // Clamp probability to 1.0
+        if (t > sum) {
+            t = sum;
+        }
         boolean val = condition;
         if (val) {
             if (t == 0) {
