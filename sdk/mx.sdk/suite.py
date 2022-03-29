@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -145,59 +145,59 @@ suite = {
       ],
     },
     "LLVM_ORG" : {
-      "version" : "12.0.1-4-g44c3fb5080-bgbcb1638df0",
+      "version" : "14.0.3-2-g772a7a659e-bg2a0c641bdc",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "1ee6ef327b913d55dd63d6b9f387d3cc6dfb9b8f",
+            "sha1" : "3f8368a757d120acaa26af869cd949feef7e0b45",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "4b46fff741736e137307ccba3ee30695413c9a34",
+            "sha1" : "3879a5ee4ffb60f401bbce50eeb730959d84d485",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "8eb3596b43dd797f0f28d7d285a1c89e41c8da46",
+            "sha1" : "86b83e2711c049f8c4ee5931b311ca89dd3d8b1d",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
-            "sha1" : "5f08d4829bbd4baf5a5693553fc246e9c81cd7ce",
+            "sha1" : "20dc6bc995bca5ac378c5164d3ab59f7f416361f",
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "sha1" : "b50a564269b5c9b5012a3a87d7b1ab9862d24693",
+            "sha1" : "b3554be8882e24b3daf65960f6e0d495866612e7",
           }
         },
         "<others>": {
-            "<others>": {
-                "optional": True,
-            }
+          "<others>": {
+            "optional": True,
+          }
         },
       },
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "12.0.1-4-g44c3fb5080-bgbcb1638df0",
+      "version" : "14.0.3-2-g772a7a659e-bg2a0c641bdc",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "3e210e06347e5cac68f0b46eb0bd5b268e8a45ed",
+      "sha1" : "91a5278d6fd6dae34e34a4d40a7089f21f7fb7e1",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "12.0.1-4-g44c3fb5080-bgbcb1638df0",
+      "version" : "14.0.3-2-g772a7a659e-bg2a0c641bdc",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "4c762d9d1172d18912ebb18a9f549936c76e7c80",
+      "sha1" : "f5bee8ba84b91a329c62ae5754f171b99ddcfd4b",
       "license" : "Apache-2.0-LLVM",
-      },
+    },
   },
   "projects" : {
     "org.graalvm.options" : {
