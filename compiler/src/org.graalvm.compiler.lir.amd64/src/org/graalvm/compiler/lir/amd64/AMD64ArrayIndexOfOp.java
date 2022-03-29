@@ -117,9 +117,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     @Temp({REG}) Value[] vectorCompareVal;
     @Temp({REG}) Value[] vectorArray;
 
-    private AMD64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, AVXSize maxVectorSize, int constOffset, int nValues, LIRGeneratorTool tool,
+    private AMD64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, int constOffset, int nValues, LIRGeneratorTool tool,
                     Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value searchValue1, Value searchValue2, Value searchValue3, Value searchValue4) {
-        super(TYPE, AVXSize.YMM, maxVectorSize);
+        super(TYPE, tool, AVXSize.YMM);
         this.valueKind = valueKind;
         this.arrayIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
         this.arrayBaseOffset = arrayBaseOffset;
@@ -165,7 +165,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         return registers;
     }
 
-    public static AMD64ArrayIndexOfOp movParamsAndCreate(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, AVXSize maxVectorSize, LIRGeneratorTool tool,
+    public static AMD64ArrayIndexOfOp movParamsAndCreate(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, LIRGeneratorTool tool,
                     Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
 
         int nValues = searchValues.length;
@@ -192,7 +192,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         } else {
             constOffset = -1;
         }
-        return new AMD64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, maxVectorSize, constOffset, nValues, tool,
+        return new AMD64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, constOffset, nValues, tool,
                         result, regArray, regOffset, regLength, regFromIndex, regSearchValue1, regSearchValue2, regSearchValue3, regSearchValue4);
     }
 
@@ -255,7 +255,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // check if vector load is in bounds
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.LessEqual, runVectorized, false);
 
-        if (AVXSize.YMM.fitsWithin(vectorSize)) {
+        if (supportsAVX2AndYMM()) {
             // region is too short for YMM vectors, try XMM
             Label[] xmmFound = {new Label()};
             // index = fromIndex (+ 1 if findTwoConsecutive) + XMM vector size

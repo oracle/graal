@@ -40,7 +40,6 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -72,8 +71,8 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) protected Value maskValue1;
     @Temp({REG, ILLEGAL}) protected Value maskValue2;
 
-    public AMD64HasNegativesOp(LIRGeneratorTool tool, Value result, Value array, Value length, AVXSize maxVectorSize) {
-        super(TYPE, useAVX512(tool) ? ZMM : YMM, maxVectorSize);
+    public AMD64HasNegativesOp(LIRGeneratorTool tool, Value result, Value array, Value length) {
+        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? ZMM : YMM);
 
         this.resultValue = result;
         this.originArrayValue = array;
@@ -120,7 +119,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
         // len == 0
         masm.testlAndJcc(len, len, ConditionFlag.Zero, labelFalse, false);
 
-        if (ZMM.fitsWithin(vectorSize)) {
+        if (supportsAVX512VLBWAndZMM() && supports(crb.target, CPUFeature.BMI2)) {
             Label labelTest64Loop = new Label();
             Label labelTestTail = new Label();
 
@@ -164,7 +163,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
         } else {
             masm.movl(result, len);
 
-            if (YMM.fitsWithin(vectorSize)) {
+            if (supportsAVX2AndYMM()) {
                 // With AVX2, use 32-byte vector compare
                 Label labelCompareWideVectors = new Label();
                 Label labelCompareTail = new Label();

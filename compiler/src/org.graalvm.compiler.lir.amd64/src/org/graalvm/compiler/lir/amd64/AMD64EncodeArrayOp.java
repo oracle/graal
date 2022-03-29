@@ -39,7 +39,6 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -83,8 +82,8 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
     private final CharsetName charset;
 
-    public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset, AVXSize maxVectorSize) {
-        super(TYPE, YMM, maxVectorSize);
+    public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
+        super(TYPE, tool, YMM);
 
         this.resultValue = result;
         this.originSrcValue = src;
@@ -141,14 +140,14 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
         masm.leaq(dst, new AMD64Address(dst, len, Scale.Times1));
         masm.negq(len);
 
-        if (YMM.fitsWithin(vectorSize) || masm.supports(CPUFeature.SSE4_2)) {
+        if (supportsAVX2AndYMM() || masm.supports(CPUFeature.SSE4_2)) {
             Label labelCopy8Chars = new Label();
             Label labelCopy8CharsExit = new Label();
             Label labelChars16Check = new Label();
             Label labelCopy16Chars = new Label();
             Label labelCopy16CharsExit = new Label();
 
-            if (YMM.fitsWithin(vectorSize)) {
+            if (supportsAVX2AndYMM()) {
                 Label labelChars32Check = new Label();
                 Label labelCopy32Chars = new Label();
                 Label labelCopy32CharsExit = new Label();
@@ -183,7 +182,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
             masm.bind(labelCopy16Chars);
 
-            if (YMM.fitsWithin(vectorSize)) {
+            if (supportsAVX2AndYMM()) {
                 masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Scale.Times2, -32));
                 masm.vptest(vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);

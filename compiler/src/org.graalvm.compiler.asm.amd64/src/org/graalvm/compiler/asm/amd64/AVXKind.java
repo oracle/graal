@@ -30,6 +30,7 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 
+import org.graalvm.compiler.asm.VectorSize;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -40,7 +41,7 @@ import jdk.vm.ci.meta.Value;
  */
 public final class AVXKind {
 
-    public enum AVXSize {
+    public enum AVXSize implements VectorSize {
         DWORD,
         QWORD,
         XMM,

@@ -42,10 +42,13 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ComplexVectorOp> TYPE = LIRInstructionClass.create(AMD64ComplexVectorOp.class);
 
     protected final AVXSize vectorSize;
+    protected final TargetDescription targetDescription;
 
-    public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, AVXSize maxUsedVectorSize, AVXSize maxSupportedVectorSize) {
+    public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, LIRGeneratorTool tool, AVXSize maxUsedVectorSize) {
         super(c);
 
+        this.targetDescription = tool.target();
+        AVXSize maxSupportedVectorSize = (AVXSize) tool.getMaxVectorSize();
         assert isXMMOrGreater(maxUsedVectorSize) && isXMMOrGreater(maxSupportedVectorSize);
 
         if (maxUsedVectorSize.fitsWithin(maxSupportedVectorSize)) {
@@ -53,10 +56,6 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         } else {
             this.vectorSize = maxSupportedVectorSize;
         }
-    }
-
-    public static boolean useAVX512(LIRGeneratorTool tool) {
-        return supports(tool.target(), CPUFeature.AVX512VL) && supports(tool.target(), CPUFeature.AVX512BW) && supports(tool.target(), CPUFeature.BMI2);
     }
 
     private static boolean isXMMOrGreater(AVXSize size) {
@@ -123,6 +122,22 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
 
     public static boolean supports(TargetDescription target, CPUFeature cpuFeature) {
         return ((AMD64) target.arch).getFeatures().contains(cpuFeature);
+    }
+
+    public static boolean supportsAVX512VLBW(TargetDescription target) {
+        return supports(target, CPUFeature.AVX512VL) && supports(target, CPUFeature.AVX512BW);
+    }
+
+    protected boolean supportsAVX2AndYMM() {
+        return AVXSize.YMM.fitsWithin(vectorSize) && supports(targetDescription, CPUFeature.AVX2);
+    }
+
+    protected boolean supportsAVX512VLBWAndZMM() {
+        return AVXSize.ZMM.fitsWithin(vectorSize) && supportsAVX512VLBW(targetDescription);
+    }
+
+    protected boolean supportsBMI2() {
+        return supports(targetDescription, CPUFeature.BMI2);
     }
 
     @Override

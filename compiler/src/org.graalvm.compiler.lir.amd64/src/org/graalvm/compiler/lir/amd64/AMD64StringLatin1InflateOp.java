@@ -67,8 +67,8 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value vtmp1;
     @Temp({REG}) private Value rtmp2;
 
-    public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, int useAVX3Threshold, AVXSize maxVectorSize, Value src, Value dst, Value len) {
-        super(TYPE, useAVX512(tool) ? AVXSize.ZMM : AVXSize.YMM, maxVectorSize);
+    public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, int useAVX3Threshold, Value src, Value dst, Value len) {
+        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.YMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
@@ -122,7 +122,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
         assert len.number != tmp2.number;
 
         masm.movl(tmp2, len);
-        if (AVXSize.ZMM.fitsWithin(vectorSize)) {
+        if (supportsAVX512VLBWAndZMM() && supportsBMI2()) {
             Label labelCopy32Loop = new Label();
             Label labelCopyTail = new Label();
             Register tmp3Aliased = len;

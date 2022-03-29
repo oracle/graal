@@ -123,7 +123,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected AVXSize getMaxVectorSize() {
+    public AVXSize getMaxVectorSize() {
         int maxVectorSize = config.maxVectorSize;
         if (supports(CPUFeature.AVX512VL)) {
             if (maxVectorSize < 0 || maxVectorSize >= 64) {

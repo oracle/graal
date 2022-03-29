@@ -121,9 +121,9 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) private Value vectorTemp3;
 
     private AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AVXSize maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode,
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AMD64MacroAssembler.ExtendMode extendMode,
                     int constOffset1, int constOffset2, int constLength) {
-        super(TYPE, AVXSize.YMM, maxVectorSize);
+        super(TYPE, tool, AVXSize.YMM);
 
         this.kind1 = kind1;
         this.kind2 = kind2;
@@ -179,7 +179,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     }
 
     public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB, JavaKind strideMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AVXSize maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode) {
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
 
         RegisterValue regArrayA = REG_ARRAY_A.asValue(arrayA.getValueKind());
         RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA == null ? LIRKind.value(AMD64Kind.QWORD) : offsetA.getValueKind());
@@ -202,7 +202,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
         return new AMD64ArrayEqualsOp(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask,
                         result, regArrayA, regOffsetA, regArrayB, regOffsetB, regMask, regLength,
-                        maxVectorSize, extendMode, constOffset(offsetA), constOffset(offsetB), LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
+                        extendMode, constOffset(offsetA), constOffset(offsetB), LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
     }
 
     private static int constOffset(Value offset) {

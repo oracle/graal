@@ -584,7 +584,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RegisterValue cnt2 = AMD64.rdx.asValue(length2.getValueKind());
         emitMove(cnt1, length1);
         emitMove(cnt2, length2);
-        append(new AMD64ArrayCompareToOp(this, getAVX3Threshold(), kind1, kind2, array1BaseOffset, array2BaseOffset, raxRes, array1, array2, cnt1, cnt2, getMaxVectorSize()));
+        append(new AMD64ArrayCompareToOp(this, getAVX3Threshold(), kind1, kind2, array1BaseOffset, array2BaseOffset, raxRes, array1, array2, cnt1, cnt2));
         Variable result = newVariable(resultKind);
         emitMove(result, raxRes);
         return result;
@@ -593,30 +593,28 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitArrayRegionCompareTo(JavaKind strideA, JavaKind strideB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayRegionCompareToOp.movParamsAndCreate(this, strideA, strideB, result, arrayA, offsetA, arrayB, offsetB, length, getMaxVectorSize(), ZERO_EXTEND));
+        append(AMD64ArrayRegionCompareToOp.movParamsAndCreate(this, strideA, strideB, result, arrayA, offsetA, arrayB, offsetB, length, ZERO_EXTEND));
         return result;
     }
 
     @Override
     public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, null, array2, null, null, length, getMaxVectorSize(), ZERO_EXTEND));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, null, array2, null, null, length, ZERO_EXTEND));
         return result;
     }
 
     @Override
     public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, offset1, array2, offset2, null, length, getMaxVectorSize(),
-                        ZERO_EXTEND));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, offset1, array2, offset2, null, length, ZERO_EXTEND));
         return result;
     }
 
     @Override
     public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind1, kind2, kind2, array1BaseOffset, array2BaseOffset, 0, result, array1, offset1, array2, offset2, null, length, getMaxVectorSize(),
-                        ZERO_EXTEND));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind1, kind2, kind2, array1BaseOffset, array2BaseOffset, 0, result, array1, offset1, array2, offset2, null, length, ZERO_EXTEND));
         return result;
     }
 
@@ -625,34 +623,34 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                     Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind1, kind2, kindMask, array1BaseOffset, array2BaseOffset, maskBaseOffset, result, array1, offset1, array2, offset2, mask, length,
-                        getMaxVectorSize(), ZERO_EXTEND));
+                        ZERO_EXTEND));
         return result;
     }
 
     @Override
     public void emitArrayCopyWithConversion(JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
-        append(AMD64ArrayCopyWithConversionsOp.movParamsAndCreate(this, strideSrc, strideDst, arraySrc, offsetSrc, arrayDst, offsetDst, length, getMaxVectorSize(), ZERO_EXTEND));
+        append(AMD64ArrayCopyWithConversionsOp.movParamsAndCreate(this, strideSrc, strideDst, arraySrc, offsetSrc, arrayDst, offsetDst, length, ZERO_EXTEND));
     }
 
     @Override
     public Variable emitCalcStringAttributes(Object opObj, Value array, Value offset, Value length, boolean isValid) {
         AMD64CalcStringAttributesOp.Op op = (AMD64CalcStringAttributesOp.Op) opObj;
         Variable result = newVariable(LIRKind.value(op == AMD64CalcStringAttributesOp.Op.UTF_8 || op == AMD64CalcStringAttributesOp.Op.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
-        append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, op, array, offset, length, result, getMaxVectorSize(), isValid));
+        append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, op, array, offset, length, result, isValid));
         return result;
     }
 
     @Override
     public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset, getMaxVectorSize()));
+        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
         return result;
     }
 
     @Override
     public Variable emitHasNegatives(Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length), getMaxVectorSize()));
+        append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
         return result;
     }
 
@@ -663,7 +661,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     /**
      * Return the maximum size of vector registers used in SSE/AVX instructions.
      */
-    protected AVXSize getMaxVectorSize() {
+    @Override
+    public AVXSize getMaxVectorSize() {
         if (supports(AMD64.CPUFeature.AVX512VL)) {
             return AVXSize.ZMM;
         }
@@ -684,7 +683,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex,
                     Value... searchValues) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayIndexOfOp.movParamsAndCreate(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, getMaxVectorSize(), this, result, arrayPointer, arrayOffset, arrayLength, fromIndex,
+        append(AMD64ArrayIndexOfOp.movParamsAndCreate(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, this, result, arrayPointer, arrayOffset, arrayLength, fromIndex,
                         searchValues));
         return result;
     }
@@ -699,7 +698,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rdst, dst);
         emitMove(rlen, len);
 
-        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), getMaxVectorSize(), rsrc, rdst, rlen));
+        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), rsrc, rdst, rlen));
     }
 
     @Override
@@ -715,7 +714,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         LIRKind reskind = LIRKind.value(AMD64Kind.DWORD);
         RegisterValue rres = AMD64.rax.asValue(reskind);
 
-        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), getMaxVectorSize(), rres, rsrc, rdst, rlen));
+        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), rres, rsrc, rdst, rlen));
 
         Variable res = newVariable(reskind);
         emitMove(res, rres);

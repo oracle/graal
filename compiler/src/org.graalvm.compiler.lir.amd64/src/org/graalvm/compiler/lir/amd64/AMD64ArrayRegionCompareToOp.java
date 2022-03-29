@@ -115,8 +115,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) private Value vectorTemp2;
 
     private AMD64ArrayRegionCompareToOp(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, AVXSize maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode) {
-        super(TYPE, YMM, maxVectorSize);
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
+        super(TYPE, tool, YMM);
 
         this.strideA = strideA;
         this.strideB = strideB;
@@ -162,12 +162,10 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
      * @param offsetB byte offset to be added to {@code arrayB}. Must include the array base offset!
      * @param length length (number of array slots in respective array's stride) of the region to
      *            compare.
-     * @param maxVectorSize JVM vector size limit in bytes. A negative limit is interpreted as no
-     *            limit.
      * @param extendMode integer extension mode for {@code arrayB}.
      */
     public static AMD64ArrayRegionCompareToOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, AVXSize maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode) {
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArrayA = REG_ARRAY_A.asValue(arrayA.getValueKind());
         RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA.getValueKind());
         RegisterValue regArrayB = REG_ARRAY_B.asValue(arrayB.getValueKind());
@@ -178,7 +176,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         tool.emitConvertNullToZero(regArrayB, arrayB);
         tool.emitMove(regOffsetB, offsetB);
         tool.emitMove(regLength, length);
-        return new AMD64ArrayRegionCompareToOp(tool, strideA, strideB, result, regArrayA, regOffsetA, regArrayB, regOffsetB, regLength, maxVectorSize, extendMode);
+        return new AMD64ArrayRegionCompareToOp(tool, strideA, strideB, result, regArrayA, regOffsetA, regArrayB, regOffsetB, regLength, extendMode);
     }
 
     @Override
@@ -300,7 +298,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.subq(result, tmp);
         masm.jmpb(returnLabel);
 
-        if (YMM.fitsWithin(vectorSize)) {
+        if (supportsAVX2AndYMM()) {
             // region is too small for YMM vectors, try XMM
             masm.bind(xmmTail);
             masm.cmplAndJcc(result, getElementsPerVector(XMM), ConditionFlag.Less, scalarTail, true);

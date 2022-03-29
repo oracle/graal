@@ -75,8 +75,8 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value vtmp4;
     @Temp({REG}) private Value rtmp5;
 
-    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, AVXSize maxVectorSize, Value res, Value src, Value dst, Value len) {
-        super(TYPE, useAVX512(tool) ? AVXSize.ZMM : AVXSize.XMM, maxVectorSize);
+    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
+        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
@@ -148,7 +148,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
         // Save length for return.
         masm.push(len);
 
-        if (useAVX3Threshold == 0 && AVXSize.ZMM.fitsWithin(vectorSize)) {
+        if (useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM() && supportsBMI2()) {
             Label labelCopy32Loop = new Label();
             Label labelCopyLoopTail = new Label();
             Label labelBelowThreshold = new Label();

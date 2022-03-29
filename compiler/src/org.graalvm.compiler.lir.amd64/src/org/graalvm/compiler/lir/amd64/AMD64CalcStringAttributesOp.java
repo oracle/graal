@@ -201,8 +201,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value[] temp;
     @Temp({REG}) private Value[] vectorTemp;
 
-    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, Op op, Value array, Value offset, Value length, Value result, AVXSize maxVectorSize, boolean assumeValid) {
-        super(TYPE, YMM, maxVectorSize);
+    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, Op op, Value array, Value offset, Value length, Value result, boolean assumeValid) {
+        super(TYPE, tool, YMM);
         this.op = op;
         this.assumeValid = assumeValid;
 
@@ -272,14 +272,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * @param length length of the array region to consider, scaled to {@link Op#stride}.
      * @param assumeValid assume that the string is encoded correctly.
      */
-    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, Op op, Value array, Value byteOffset, Value length, Value result, AVXSize maxVectorSize, boolean assumeValid) {
+    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, Op op, Value array, Value byteOffset, Value length, Value result, boolean assumeValid) {
         RegisterValue regArray = REG_ARRAY.asValue(array.getValueKind());
         RegisterValue regOffset = REG_OFFSET.asValue(byteOffset.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
         tool.emitConvertNullToZero(regArray, array);
         tool.emitMove(regOffset, byteOffset);
         tool.emitMove(regLength, length);
-        return new AMD64CalcStringAttributesOp(tool, op, regArray, regOffset, regLength, result, maxVectorSize, assumeValid);
+        return new AMD64CalcStringAttributesOp(tool, op, regArray, regOffset, regLength, result, assumeValid);
     }
 
     @Override
@@ -339,7 +339,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         emitPTestLoop(crb, asm, arr, len, vecArray, vecMask, returnLatin1);
         emitPTestTail(asm, vectorSize, arr, lengthTail, vecArray, vecMask, null, returnLatin1, returnAscii, false);
 
-        if (useYMM()) {
+        if (supportsAVX2AndYMM()) {
             // tail for 16 - 31 bytes
             asm.bind(tailLessThan32);
             asm.cmplAndJcc(lengthTail, elementsPerVector(XMM), Less, tailLessThan16, true);
@@ -390,7 +390,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private void vectorLoopPrologue(AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Label tailLessThan32, Label tailLessThan16, boolean isShortJump) {
         asm.andl(lengthTail, vectorLength - 1);
-        asm.andlAndJcc(len, -vectorLength, Zero, useYMM() ? tailLessThan32 : tailLessThan16, isShortJump);
+        asm.andlAndJcc(len, -vectorLength, Zero, supportsAVX2AndYMM() ? tailLessThan32 : tailLessThan16, isShortJump);
 
         asm.leaq(arr, new AMD64Address(arr, len, scale));
         asm.negq(len);
@@ -487,7 +487,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         emitPTestLoop(crb, asm, arr, len, vecArray, vecMaskBMP, returnBMP);
         emitPTestTail(asm, vectorSize, arr, lengthTail, vecArray, vecMaskBMP, latin1TailCmp, returnBMP, returnLatin1);
 
-        if (useYMM()) {
+        if (supportsAVX2AndYMM()) {
             // tail for 16 - 31 bytes
             bmpTail(asm, arr, lengthTail, vecArray, vecMaskAscii, vecMaskBMP, tailLessThan32, tailLessThan16, returnBMP, returnLatin1, returnAscii);
         }
@@ -759,7 +759,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
             asm.jmp(returnValid);
 
-            if (useYMM()) {
+            if (supportsAVX2AndYMM()) {
                 // special case: array is too short for YMM, try XMM
                 // no loop, because the array is guaranteed to be smaller that 2 XMM registers
                 asm.bind(tailLessThan32);
@@ -899,7 +899,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.bind(tailLessThan32);
             Register tmp2 = asRegister(temp[1]);
 
-            if (useYMM()) {
+            if (supportsAVX2AndYMM()) {
                 asm.cmplAndJcc(lengthTail, 16, Less, tailLessThan16, true);
                 loadLessThan32IntoYMMOrdered(crb, asm, xmmTailShuffleMask, arr, lengthTail, tmp, vecArray, vecTmp1, vecTmp2);
                 asm.jmp(tailSingleVector);
@@ -1005,7 +1005,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private void loadTailIntoYMMOrdered(CompilationResultBuilder crb, AMD64MacroAssembler asm, DataSection.Data xmmTailShuffleMask,
                     Register arr, Register lengthTail, Register vecArray, Register tmp, Register vecTmp1, Register vecTmp2) {
-        if (useYMM()) {
+        if (supportsAVX2AndYMM()) {
             Label lessThan16 = new Label();
             Label done = new Label();
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(xmmTailShuffleMask));
@@ -1109,7 +1109,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.movdq(vecArray, new AMD64Address(arr));
         asm.movdq(vecTmp1, new AMD64Address(arr, lengthTail, scale, -8));
         asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
-        pandU(asm, vectorSize, vecTmp1, new AMD64Address(tmp, lengthTail, scale, useYMM() ? XMM.getBytes() : 0), vecTmp2);
+        pandU(asm, vectorSize, vecTmp1, new AMD64Address(tmp, lengthTail, scale, supportsAVX2AndYMM() ? XMM.getBytes() : 0), vecTmp2);
         movlhps(asm, vecArray, vecTmp1);
     }
 
@@ -1143,7 +1143,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // array is between 4 and 7 bytes long, load it into a YMM register via two DWORD loads
         asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
         asm.movl(tmp2, new AMD64Address(arr, lengthTail, scale, -4));
-        asm.andq(tmp2, new AMD64Address(tmp, lengthTail, scale, (useYMM() ? XMM.getBytes() : 0) + 8));
+        asm.andq(tmp2, new AMD64Address(tmp, lengthTail, scale, (supportsAVX2AndYMM() ? XMM.getBytes() : 0) + 8));
         asm.movl(tmp, new AMD64Address(arr));
         asm.shlq(tmp2, 32);
         asm.orq(tmp, tmp2);
@@ -1155,7 +1155,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private byte[] getStaticLUT(byte[] table) {
         assert table.length == XMM.getBytes();
-        if (useYMM()) {
+        if (supportsAVX2AndYMM()) {
             byte[] ret = Arrays.copyOf(table, table.length * 2);
             System.arraycopy(table, 0, ret, table.length, table.length);
             return ret;
@@ -1354,7 +1354,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.jmp(returnValidOrBroken);
         }
 
-        if (useYMM()) {
+        if (supportsAVX2AndYMM()) {
             // special case: array is too short for YMM, try XMM
             // no loop, because the array is guaranteed to be smaller that 2 XMM registers
             asm.bind(tailLessThan32);
@@ -1584,7 +1584,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.jmp(returnAstral);
 
-        if (useYMM()) {
+        if (supportsAVX2AndYMM()) {
             // special case: array is too short for YMM, try XMM
             // no loop, because the array is guaranteed to be smaller that 2 XMM registers
             asm.bind(tailLessThan32);
@@ -1641,10 +1641,6 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         ptest(asm, vectorSize, vecArrayDst, vecArrayDst);
         // return CR_BROKEN if any invalid character was present
         asm.jcc(NotZero, returnBroken, isShortJmp);
-    }
-
-    private boolean useYMM() {
-        return YMM.fitsWithin(vectorSize);
     }
 
     private static void alignLoopHead(CompilationResultBuilder crb, AMD64MacroAssembler asm) {

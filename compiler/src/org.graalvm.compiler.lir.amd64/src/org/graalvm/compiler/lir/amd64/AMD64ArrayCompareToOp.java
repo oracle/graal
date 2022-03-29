@@ -79,8 +79,8 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
 
     public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2,
-                    Value length1, Value length2, AVXSize maxVectorSize) {
-        super(TYPE, AVXSize.ZMM, maxVectorSize);
+                    Value length1, Value length2) {
+        super(TYPE, tool, AVXSize.ZMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
@@ -199,7 +199,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             stride = 8;
         }
 
-        if (AVXSize.YMM.fitsWithin(vectorSize) && masm.supports(CPUFeature.SSE4_2)) {
+        if (supportsAVX2AndYMM() && masm.supports(CPUFeature.SSE4_2)) {
             Register vec1 = asRegister(vectorTemp1, AMD64Kind.DOUBLE);
 
             Label labelCompareWideVectors = new Label();
@@ -281,7 +281,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.bind(labelCompareWideVectorsLoop);
 
             // trying 64 bytes fast loop
-            if (useAVX3Threshold == 0 && AVXSize.ZMM.fitsWithin(vectorSize) && masm.supports((CPUFeature.AVX512BW))) {
+            if (useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM()) {
                 masm.cmplAndJcc(cnt2, stride2x2, ConditionFlag.Below, labelCompareWideVectorsLoopAVX2, true);
                 // cnt2 holds the vector, not-zero means we cannot subtract by 0x40
                 masm.testlAndJcc(cnt2, stride2x2 - 1, ConditionFlag.NotZero, labelCompareWideVectorsLoopAVX2, true);
@@ -469,7 +469,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         }
         masm.jmpb(labelDone);
 
-        if (AVXSize.ZMM.fitsWithin(vectorSize) && masm.supports(CPUFeature.AVX512BW)) {
+        if (supportsAVX512VLBWAndZMM()) {
             masm.bind(labelCompareWideVectorsLoopFailed);
 
             masm.kmovq(cnt1, k7);
