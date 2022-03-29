@@ -88,6 +88,9 @@
 #define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
 
+#define NMT_ARG_NAME "XX:NativeMemoryTracking"
+#define NMT_ENV_NAME "NMT_LEVEL_"
+
 #if defined (__linux__)
     #include <dlfcn.h>
     #include <stdlib.h>
@@ -95,6 +98,8 @@
     #include <limits.h>
     #include <unistd.h>
     #include <errno.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
 #elif defined (__APPLE__)
     #include <dlfcn.h>
     #include <stdlib.h>
@@ -103,12 +108,17 @@
     #include <errno.h>
     #include <mach-o/dyld.h>
     #include <sys/syslimits.h>
+    #include <sys/stat.h>
 #elif defined (_WIN32)
     #include <windows.h>
     #include <libloaderapi.h>
     #include <cstdlib>
     #include <process.h>
     #include <errno.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #define getpid _getpid
+    #define stat _stat
 #else
     #error platform not supported or undefined
 #endif
@@ -118,8 +128,11 @@ extern char **environ;
 bool debug = false;
 bool relaunch = false;
 
-// platform-independent environment setter
+/* platform-independent environment setter */
 int setenv(std::string key, std::string value) {
+    if (debug) {
+        std::cout << "Setting env variable " << key << "=" << value << std::endl;
+    }
     #if defined (_WIN32)
         if(_putenv_s(key.c_str(), value.c_str()) == -1) {
             std::cerr << "_putenv_s failed" << std::endl;
@@ -134,7 +147,13 @@ int setenv(std::string key, std::string value) {
     return 0;
 }
 
-// get the path to the current executable
+/* check if file exists */
+bool exists(std::string filename) {
+    struct stat buffer;
+    return (stat(filename.c_str(), &buffer) == 0);
+}
+
+/* get the path to the current executable */
 std::string exe_path() {
     #if defined (__linux__)
         char *realPath = realpath("/proc/self/exe", NULL);
@@ -152,7 +171,7 @@ std::string exe_path() {
     return p;
 }
 
-// get the directory of the current executable
+/* get the directory of the current executable */
 std::string exe_directory() {
     char *path = strdup(exe_path().c_str());
     #if defined (_WIN32)
@@ -170,7 +189,8 @@ std::string exe_directory() {
     return exeDir;
 }
 
-// load the language library (either native library or libjvm) and return a pointer to the JNI_CreateJavaVM function
+/* load the language library (either native library or libjvm) and return a
+ * pointer to the JNI_CreateJavaVM function */
 CreateJVM load_vm_lib(std::string liblangPath) {
     if (debug) {
         std::cout << "Loading library " << liblangPath << std::endl;
@@ -211,11 +231,11 @@ void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, st
     }
 }
 
-// parse the VM arguments that should be passed to JNI_CreateJavaVM
+/* parse the VM arguments that should be passed to JNI_CreateJavaVM */
 void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs, bool jvmMode) {
     std::vector<std::string> vmArgs;
 
-    // check if vm args have been set on relaunch already
+    /* check if vm args have been set on relaunch already */
     int vmArgCount = 0;
     char *vmArgInfo = getenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS");
     if (vmArgInfo != NULL) {
@@ -225,21 +245,21 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", "");
     }
 
-    // set optional vm args from LanguageLibraryConfig.option_vars
+    /* set optional vm args from LanguageLibraryConfig.option_vars */
     #ifdef LAUNCHER_OPTION_VARS
         const char *launcherOptionVars[] = LAUNCHER_OPTION_VARS;
     #endif
 
-    // in JVM mode, set org.graalvm.launcher.class system property
+    /* set org.graalvm.launcher.class system property - only needed for jvm mode */
     if (jvmMode) {
         vmArgs.push_back("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
     }
 
-    // construct classpath
+    /* construct classpath - only needed for jvm mode */
     std::stringstream cp;
     cp << "-Djava.class.path=";
     if (jvmMode) {
-        // add the launcher classpath
+        /* add the launcher classpath */
         const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
         int launcherCpCnt = sizeof(launcherCpEntries) / sizeof(*launcherCpEntries);
         for (int i = 0; i < launcherCpCnt; i++) {
@@ -250,14 +270,14 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         }
     }
 
-    // handle CLI arguments
+    /* handle CLI arguments */
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {
             parse_vm_option(&vmArgs, &cp, std::string(argv[i]));
         }
     }
 
-    // handle relaunch arguments
+    /* handle relaunch arguments */
     else {
         if (debug) {
             std::cout << "Relaunch environment variable detected" << std::endl;
@@ -272,12 +292,12 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 break;
             }
             parse_vm_option(&vmArgs, &cp, std::string(cur));
-            // clean up env variable
+            /* clean up env variable */
             setenv(envKey, "");
         }
     }
 
-    // handle optional vm args from LanguageLibraryConfig.option_vars
+    /* handle optional vm args from LanguageLibraryConfig.option_vars */
     #ifdef LAUNCHER_OPTION_VARS
     for (int i = 0; i < sizeof(launcherOptionVars)/sizeof(char*); i++) {
         char *optionVar = getenv(launcherOptionVars[i]);
@@ -300,8 +320,8 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     }
     #endif
 
+    /* set classpath argument - only needed for jvm mode */
     if (jvmMode) {
-        // set classpath argument
         vmArgs.push_back(cp.str());
     }
 
@@ -311,6 +331,14 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     for(const auto& arg: vmArgs) {
         if (debug) {
             std::cout << "Setting VM argument " << arg << std::endl;
+        }
+        /* env variable for native memory tracking (NMT), obsolete with JDK 18 */
+        size_t nmtPos = arg.find(NMT_ARG_NAME);
+        if (nmtPos != std::string::npos) {
+            nmtPos += sizeof(NMT_ARG_NAME);
+            std::string val = arg.substr(nmtPos);
+            std::string pid = std::to_string(getpid());
+            setenv(std::string(NMT_ENV_NAME) + pid, val);
         }
         curOpt->optionString = strdup(arg.c_str());
         curOpt++;
@@ -322,24 +350,19 @@ int main(int argc, char *argv[]) {
     std::string exeDir = exe_directory();
     char* jvmModeEnv = getenv("GRAALVM_LAUNCHER_FORCE_JVM");
     bool jvmMode = (jvmModeEnv && (strcmp(jvmModeEnv, "true") == 0));
-    CreateJVM createVM = NULL;
+
+    std::string libPath = vm_path(exeDir, jvmMode);
+
+    /* check if the VM library exists */
     if (!jvmMode) {
-        std::string libPath = vm_path(exeDir, false);
-        createVM = load_vm_lib(libPath);
-        if (!createVM) {
-            // fall back to loading jvm
+        if (!exists(libPath)) {
+            /* switch to JVM mode */
+            libPath = vm_path(exeDir, true);
             jvmMode = true;
         }
     }
-    if (jvmMode) {
-        std::string libPath = vm_path(exeDir, true);
-        createVM = load_vm_lib(libPath);
-        if (!createVM) {
-            std::cerr << "Could not load JVM." << std::endl;
-            return -1;
-        }
-    }
 
+    /* parse VM args */
     JavaVM *vm;
     JNIEnv *env;
     JavaVMInitArgs vmInitArgs;
@@ -348,13 +371,21 @@ int main(int argc, char *argv[]) {
     vmInitArgs.version = JNI_VERSION_1_8;
     vmInitArgs.ignoreUnrecognized = true;
 
+    /* load VM library - after parsing arguments s.t. NMT
+     * tracking variable is already set */
+    CreateJVM createVM = load_vm_lib(libPath);
+    if (!createVM) {
+        std::cerr << "Could not load JVM." << std::endl;
+        return -1;
+    }
+
     int res = createVM(&vm, (void**)&env, &vmInitArgs);
     if (res != JNI_OK) {
         std::cerr << "Creation of the VM failed." << std::endl;
         return -1;
     }
 
-    // free the allocated vm arguments
+    /* free the allocated vm arguments */
     for (int i = 0; i < vmInitArgs.nOptions; i++) {
         free(vmInitArgs.options[i].optionString);
     }
@@ -401,14 +432,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // backup native args
+    /* backup native args */
     char** argv_native = argv;
     int argc_native = argc;
 
     argv++;
     argc--;
 
-    // create args string array
+    /* create args string array */
     jobjectArray args = env->NewObjectArray(argc, byteArrayClass, NULL);
     for (int i = 0; i < argc; i++) {
         int arraySize = strlen(argv[i]);
@@ -427,7 +458,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // invoke launcher entry point
+    /* invoke launcher entry point */
     env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native, relaunch);
     jthrowable t = env->ExceptionOccurred();
     if (t) {
@@ -470,7 +501,7 @@ int main(int argc, char *argv[]) {
                     env->ExceptionDescribe();
                     return -1;
                 }
-                // set environment variables
+                /* set environment variables for relaunch vm arguments */
                 std::stringstream key;
                 key << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
                 std::string arg(vmArg);
@@ -478,10 +509,10 @@ int main(int argc, char *argv[]) {
                     return -1;
                 }
             }
-            // relaunch with correct VM arguments
+            /* relaunch with correct VM arguments */
             std::string path = exe_path();
             execve(path.c_str(), argv_native, environ);
-            // if we reach here, execve failed for sure
+            /* if we reach here, execve failed for sure */
             perror("execve failed");
             return -1;
         }
