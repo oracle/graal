@@ -1157,10 +1157,14 @@ public class ContextAPITest extends AbstractPolyglotTest {
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 return new RootNode(this.languageInstance) {
                     @Override
-                    @TruffleBoundary
                     public Object execute(VirtualFrame frame) {
-                        assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
+                        executeSlowPath();
                         return true;
+                    }
+
+                    @TruffleBoundary
+                    private void executeSlowPath() {
+                        assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
                     }
                 }.getCallTarget();
             }
