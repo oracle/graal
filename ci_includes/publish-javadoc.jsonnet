@@ -28,14 +28,6 @@
       ["cd", ".."],
       ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/graalvm-website.git"]],
       ["cd", "graalvm-website"],
-      # dev-only
-      ["rm", "-rf", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
-      ["git", "status" ],
-      ["unzip", "-o", "-d", "sdk", "$GRAAL_REPO/sdk/javadoc.zip"],
-      ["unzip", "-o", "-d", "truffle", "$GRAAL_REPO/truffle/javadoc.zip"],
-      ["unzip", "-o", "-d", "tools", "$GRAAL_REPO/tools/javadoc.zip"],
-      ["unzip", "-o", "-d", "graphio", "$GRAAL_REPO/compiler/graphio-javadoc.zip"],
-      ["git", "add", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
       # dev or release
       ["set-export", "GRAAL_VERSION", "22.1"],
       ["rm", "-rf", "$GRAAL_VERSION/javadoc"],
