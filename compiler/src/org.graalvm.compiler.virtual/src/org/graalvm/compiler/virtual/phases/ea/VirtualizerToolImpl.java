@@ -55,7 +55,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Forwards calls from {@link VirtualizerTool} to the actual {@link PartialEscapeBlockState}.
  */
-public class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTool, CanonicalizerTool {
+class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTool, CanonicalizerTool {
 
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
@@ -63,7 +63,7 @@ public class VirtualizerToolImpl extends CoreProvidersDelegate implements Virtua
     private final DebugContext debug;
     private ConstantNode illegalConstant;
 
-    public VirtualizerToolImpl(CoreProviders providers, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug) {
+    VirtualizerToolImpl(CoreProviders providers, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug) {
         super(providers);
         this.closure = closure;
         this.assumptions = assumptions;
