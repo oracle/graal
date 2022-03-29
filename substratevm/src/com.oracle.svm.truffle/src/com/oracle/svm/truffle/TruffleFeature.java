@@ -501,7 +501,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     }
 
     private void initializeMethodBlocklist(MetaAccessProvider metaAccess, FeatureAccess featureAccess) {
-        blocklistMethod(metaAccess, Object.class, "clone");
         blocklistMethod(metaAccess, Object.class, "equals", Object.class);
         blocklistMethod(metaAccess, Object.class, "hashCode");
         blocklistMethod(metaAccess, Object.class, "toString");
