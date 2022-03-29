@@ -628,6 +628,17 @@ public interface Frame {
     }
 
     /**
+     * Checks whether the given indexed slot is static.
+     *
+     * @param slot the slot of the local variable
+     * @since 22.2
+     */
+    default boolean isStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Clears the given indexed slot in the frame. Writing over a previously cleared slot is still
      * allowed. Subsequent reads to this slot, unless re-written to, will fail with
      * {@link FrameSlotTypeException}.
@@ -671,10 +682,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static read access to a local variable of type {@link Object}. Since this method does not
      * perform any type checks, language implementations have to guarantee that the variable in the
      * given slot is of type {@link Object}.
@@ -689,10 +696,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     *
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static write access to a local variable of type {@link Object}. Since this method does not
      * update the internal type information for this slot, language implementations have to track
      * this information.
@@ -707,10 +710,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     *
-     * Do not mix static and dynamic methods in the same language implementation.
-     *
      * Static read access to a local variable of type byte. Since this method does not perform any
      * type checks, language implementations have to guarantee that the variable in the given slot
      * can be interpreted as type byte.
@@ -725,10 +724,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     *
      * Static write access to a local variable of type byte. Since this method does not update the
      * internal type information for this slot, language implementations have to track this
      * information.
@@ -743,10 +738,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static read access to a local variable of type boolean. Since this method does not perform
      * any type checks, language implementations have to guarantee that the variable in the given
      * slot can be interpreted as type boolean.
@@ -761,10 +752,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static write access to a local variable of type boolean. Since this method does not update
      * the internal type information for this slot, language implementations have to track this
      * information.
@@ -779,10 +766,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static read access to a local variable of type int. Since this method does not perform any
      * type checks, language implementations have to guarantee that the variable in the given slot
      * can be interpreted as type int.
@@ -797,10 +780,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static write access to a local variable of type int. Since this method does not update the
      * internal type information for this slot, language implementations have to track this
      * information.
@@ -815,10 +794,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static read access to a local variable of type long. Since this method does not perform any
      * type checks, language implementations have to guarantee that the variable in the given slot
      * can be interpreted as type long.
@@ -833,10 +808,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static write access to a local variable of type long. Since this method does not update the
      * internal type information for this slot, language implementations have to track this
      * information.
@@ -851,10 +822,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static read access to a local variable of type float. Since this method does not perform any
      * type checks, language implementations have to guarantee that the variable in the given slot
      * can be interpreted as type float.
@@ -869,10 +836,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static write access to a local variable of type float. Since this method does not update the
      * internal type information for this slot, language implementations have to track this
      * information.
@@ -887,10 +850,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static read access to a local variable of type double. Since this method does not perform any
      * type checks, language implementations have to guarantee that the variable in the given slot
      * can be interpreted as type double.
@@ -905,10 +864,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Static write access to a local variable of type double. Since this method does not update the
      * internal type information for this slot, language implementations have to track this
      * information.
@@ -923,10 +878,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     *
-     * Do not mix static and dynamic methods in the same language implementation.
-     *
      * Copies a primitive value from one slot to another. Since this method does not perform any
      * type checks, language implementations have to guarantee that the variable at the source slot
      * is a primitive value.
@@ -941,10 +892,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Copies an object from one slot to another. Since this method does not perform any type
      * checks, language implementations have to guarantee that the variable at the source slot is an
      * {@link Object}.
@@ -959,10 +906,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Clears the primitive value at the given slot in the frame. Writing over a previously cleared
      * slot is still allowed. Subsequent reads to the slot, unless re-written to, will not give any
      * guarantees about the returned value.
@@ -986,10 +929,6 @@ public interface Frame {
     }
 
     /**
-     * Requires {@link FrameDescriptor#useStatic()} to be true for this frame.
-     * 
-     * Do not mix static and dynamic methods in the same language implementation.
-     * 
      * Clears the {@link Object} at the given slot in the frame. Writing over a previously cleared
      * slot is still allowed. Subsequent reads to the slot, unless re-written to, will not give any
      * guarantees about the returned value.

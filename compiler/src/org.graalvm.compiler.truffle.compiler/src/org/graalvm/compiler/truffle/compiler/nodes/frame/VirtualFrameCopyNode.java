@@ -42,14 +42,14 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
     private final int targetSlotIndex;
 
-    private final boolean useStatic;
-    private final boolean usePrimitive;
+    private final boolean staticAccess;
+    private final boolean primitiveAccess;
 
-    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, boolean useStatic, boolean usePrimitive) {
+    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, boolean staticAccess, boolean primitiveAccess) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type);
         this.targetSlotIndex = targetSlotIndex;
-        this.useStatic = useStatic;
-        this.usePrimitive = usePrimitive;
+        this.staticAccess = staticAccess;
+        this.primitiveAccess = primitiveAccess;
     }
 
     public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
@@ -69,9 +69,9 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectVirtual.entryCount() && frameSlotIndex < primitiveVirtual.entryCount()) {
                 if (targetSlotIndex < tagVirtual.entryCount() && targetSlotIndex < objectVirtual.entryCount() && targetSlotIndex < primitiveVirtual.entryCount()) {
-                    if (useStatic) {
+                    if (staticAccess) {
                         // Copy the value without updating the slot kind.
-                        if (usePrimitive) {
+                        if (primitiveAccess) {
                             tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                         } else {
                             tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));

@@ -73,6 +73,12 @@ import com.oracle.truffle.api.impl.TVMCI;
  */
 @SuppressWarnings("deprecation")
 public final class FrameDescriptor implements Cloneable {
+    /*
+     * Changing these constants implies changes in NewFrameNodes.java as well:
+     */
+    public static final int NO_STATIC_MODE = 1;
+    public static final int ALL_STATIC_MODE = 2;
+    public static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
 
     private final Object defaultValue;
     private final ArrayList<FrameSlot> slots = new ArrayList<>();
@@ -80,7 +86,6 @@ public final class FrameDescriptor implements Cloneable {
     @CompilationFinal private volatile Assumption version;
     private EconomicMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
     @CompilationFinal private volatile int size;
-    private final boolean useStatic;
 
     @CompilationFinal(dimensions = 1) private final byte[] indexedSlotTags;
     @CompilationFinal(dimensions = 1) private final Object[] indexedSlotNames;
@@ -90,6 +95,8 @@ public final class FrameDescriptor implements Cloneable {
     private volatile BitSet disabledAuxiliarySlots;
 
     private final Object descriptorInfo;
+
+    private final int staticMode;
 
     /**
      * Number of entries (starting at index 0) that need to be allocated to encompass all active
@@ -136,19 +143,19 @@ public final class FrameDescriptor implements Cloneable {
         this.indexedSlotNames = null;
         this.indexedSlotInfos = null;
         this.descriptorInfo = null;
-        this.useStatic = false;
+        this.staticMode = NO_STATIC_MODE;
 
         this.defaultValue = defaultValue;
         newVersion(this);
     }
 
-    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info, boolean useStatic) {
+    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info, int staticMode) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.indexedSlotTags = indexedSlotTags;
         this.indexedSlotNames = indexedSlotNames;
         this.indexedSlotInfos = indexedSlotInfos;
         this.descriptorInfo = info;
-        this.useStatic = useStatic;
+        this.staticMode = staticMode;
 
         this.defaultValue = defaultValue;
         newVersion(this);
@@ -220,6 +227,7 @@ public final class FrameDescriptor implements Cloneable {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         Objects.requireNonNull(identifier, "identifier");
         Objects.requireNonNull(kind, "kind");
+        assert kind != FrameSlotKind.Static : "Cannot use static slots here";
         synchronized (this) {
             if (identifierToSlotMap.containsKey(identifier)) {
                 throw new IllegalArgumentException("duplicate frame slot: " + identifier);
@@ -377,6 +385,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     private void setFrameSlotKindSlow(FrameSlot frameSlot, FrameSlotKind kind) {
+        assert kind != FrameSlotKind.Static : "Cannot use static slots here";
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
             assert checkFrameSlotOwnershipUnsafe(frameSlot);
@@ -535,7 +544,7 @@ public final class FrameDescriptor implements Cloneable {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
             FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, indexedSlotTags == null ? null : indexedSlotTags.clone(),
-                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo, useStatic);
+                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo, staticMode);
             for (int i = 0; i < slots.size(); i++) {
                 FrameSlot slot = slots.get(i);
                 clonedFrameDescriptor.addFrameSlot(slot.getIdentifier(), slot.getInfo(), FrameSlotKind.Illegal);
@@ -709,6 +718,8 @@ public final class FrameDescriptor implements Cloneable {
      * @since 22.0
      */
     public void setSlotKind(int slot, FrameSlotKind kind) {
+        assert (indexedSlotTags[slot] == FrameSlotKind.Static.tag && kind == FrameSlotKind.Static) ||
+                        (indexedSlotTags[slot] != FrameSlotKind.Static.tag && kind != FrameSlotKind.Static) : "Cannot switch between static and non-static slot kind";
         if (indexedSlotTags[slot] != kind.tag) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             indexedSlotTags[slot] = kind.tag;
@@ -853,12 +864,12 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * @return true, if the language implementation exclusively uses the static frame methods.
+     * @return the current static mode in the frame descriptor
      *
      * @since 22.2
      */
-    public boolean useStatic() {
-        return useStatic;
+    public int getStaticMode() {
+        return staticMode;
     }
 
     /**
@@ -896,7 +907,7 @@ public final class FrameDescriptor implements Cloneable {
         private Object[] infos;
         private int size;
         private Object descriptorInfo;
-        private boolean useStatic;
+        private int staticMode;
 
         private Builder(int capacity) {
             this.tags = new byte[capacity];
@@ -943,6 +954,7 @@ public final class FrameDescriptor implements Cloneable {
             Arrays.fill(tags, size, size + count, kind.tag);
             int newIndex = size;
             size += count;
+            staticMode |= (kind == FrameSlotKind.Static ? ALL_STATIC_MODE : NO_STATIC_MODE);
             return newIndex;
         }
 
@@ -975,6 +987,7 @@ public final class FrameDescriptor implements Cloneable {
             tags[size] = kind.tag;
             int newIndex = size;
             size++;
+            staticMode |= (kind == FrameSlotKind.Static ? ALL_STATIC_MODE : NO_STATIC_MODE);
             return newIndex;
         }
 
@@ -994,18 +1007,6 @@ public final class FrameDescriptor implements Cloneable {
         }
 
         /**
-         * Defines that a language implementation using this frame descriptor exclusively accesses
-         * the frame via the static frame methods. Using this option with the dynamic frame methods
-         * can lead to unexpected results.
-         * 
-         * @since 22.2
-         */
-        public Builder useStatic() {
-            this.useStatic = true;
-            return this;
-        }
-
-        /**
          * Uses the data provided to this builder to create a new {@link FrameDescriptor}.
          *
          * @return the newly created {@link FrameDescriptor}
@@ -1013,7 +1014,7 @@ public final class FrameDescriptor implements Cloneable {
          */
         public FrameDescriptor build() {
             return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo,
-                            useStatic);
+                            staticMode != 0 ? staticMode : 1);
         }
     }
 }

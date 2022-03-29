@@ -360,6 +360,12 @@ class ReadOnlyFrame implements Frame {
 
     @Override
     @TruffleBoundary
+    public boolean isStatic(int slot) {
+        return delegate.isStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
     public void clear(int slot) {
         throw newReadonlyAssertionError();
     }

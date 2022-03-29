@@ -45,13 +45,13 @@ import jdk.vm.ci.meta.JavaKind;
 public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
     public static final NodeClass<VirtualFrameClearNode> TYPE = NodeClass.create(VirtualFrameClearNode.class);
 
-    private final boolean useStatic;
-    private final boolean usePrimitive;
+    private final boolean staticAccess;
+    private final boolean primitiveAccess;
 
-    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type, boolean useStatic, boolean usePrimitive) {
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type, boolean staticAccess, boolean primitiveAccess) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag, type);
-        this.useStatic = useStatic;
-        this.usePrimitive = usePrimitive;
+        this.staticAccess = staticAccess;
+        this.primitiveAccess = primitiveAccess;
     }
 
     public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type) {
@@ -69,9 +69,9 @@ public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements V
             VirtualObjectNode primitiveVirtual = (VirtualObjectNode) primitiveAlias;
             if (frameSlotIndex < tagVirtual.entryCount()) {
                 boolean success;
-                if (useStatic) {
+                if (staticAccess) {
                     // Clear the slot without updating the slot kind.
-                    if (usePrimitive) {
+                    if (primitiveAccess) {
                         success = tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
                     } else {
                         success = tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
