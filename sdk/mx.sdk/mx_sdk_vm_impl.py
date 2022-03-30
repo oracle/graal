@@ -2680,6 +2680,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
         # path from langauge launcher to jars
         _cp = [relpath(x, start=_exe_dir) for x in _cp]
+        if mx.is_windows():
+            _cp = [x.replace('\\', '\\\\') for x in _cp]
         _dynamic_cflags += [
             '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
             '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
@@ -2689,7 +2691,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if mx.is_windows():
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
-            _cp = [x.replace('\\', '\\\\') for x in _cp]
         else:
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
