@@ -78,6 +78,10 @@ public abstract class OptionOrigin {
             }
             throw VMError.shouldNotReachHere("Unsupported OptionOrigin: " + origin);
         }
+        if (originURI.getScheme() == null) {
+            /* @argument files use path as origin */
+            return commandLineOptionOriginSingleton;
+        }
         switch (originURI.getScheme()) {
             case "jar":
                 return new JarOptionOrigin(originURI);
