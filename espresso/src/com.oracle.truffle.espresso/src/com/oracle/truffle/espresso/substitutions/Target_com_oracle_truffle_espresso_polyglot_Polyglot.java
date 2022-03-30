@@ -106,10 +106,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass())) {
+            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass(getMeta()))) {
                 return value;
             }
-            return castImpl.execute(getContext(), targetClass.getMirrorKlass(), value);
+            return castImpl.execute(getContext(), targetClass.getMirrorKlass(getMeta()), value);
         }
     }
 

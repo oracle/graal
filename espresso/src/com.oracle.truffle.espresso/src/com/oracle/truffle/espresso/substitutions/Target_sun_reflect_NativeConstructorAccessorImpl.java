@@ -35,7 +35,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
     public static @JavaType(Object.class) StaticObject newInstance0(@JavaType(Constructor.class) StaticObject constructor, @JavaType(Object[].class) StaticObject args0,
                     @Inject EspressoLanguage language, @Inject Meta meta) {
-        Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass();
+        Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass(meta);
         klass.safeInitialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
             throw meta.throwException(meta.java_lang_InstantiationException);

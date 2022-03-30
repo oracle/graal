@@ -103,7 +103,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             Field field = Field.getReflectiveFieldRoot(ref, meta);
             plantResolvedField(self, field, getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self)), meta);
             // Finish the job
-            Klass fieldKlass = meta.java_lang_reflect_Field_class.getObject(ref).getMirrorKlass();
+            Klass fieldKlass = meta.java_lang_reflect_Field_class.getObject(ref).getMirrorKlass(meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(self, fieldKlass.mirror());
         } else if (targetKlass.getType() == Type.java_lang_reflect_Constructor) {
             Method target = Method.getHostReflectiveConstructorRoot(ref, meta);
@@ -153,7 +153,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     profiler.profile(3);
                     throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
-                Klass holder = clazz.getMirrorKlass();
+                Klass holder = clazz.getMirrorKlass(meta);
                 int slot = (int) (((long) meta.HIDDEN_VMINDEX.getHiddenObject(self)) - Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
                 boolean isStatic = (flags & ACC_STATIC) != 0;
                 Field f;
@@ -250,13 +250,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         Klass caller = null;
         if (!StaticObject.isNull(originalCaller)) {
-            caller = originalCaller.getMirrorKlass();
+            caller = originalCaller.getMirrorKlass(meta);
             if (caller == null) {
                 return -1;
             }
         }
 
-        return findMemberNames(defc.getMirrorKlass(), name, sig, matchFlags, caller, skip, results);
+        return findMemberNames(defc.getMirrorKlass(meta), name, sig, matchFlags, caller, skip, results);
     }
 
     @SuppressWarnings("unused")
@@ -296,7 +296,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitution
     public static @JavaType(Object.class) StaticObject staticFieldBase(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
                     @Inject Meta meta) {
-        return meta.java_lang_invoke_MemberName_clazz.getObject(self).getMirrorKlass().getStatics();
+        return meta.java_lang_invoke_MemberName_clazz.getObject(self).getMirrorKlass(meta).getStatics();
     }
 
     @Substitution
@@ -442,7 +442,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             if (StaticObject.isNull(clazz)) {
                 return StaticObject.NULL;
             }
-            Klass resolutionKlass = clazz.getMirrorKlass();
+            Klass resolutionKlass = clazz.getMirrorKlass(meta);
 
             Field flagField = meta.java_lang_invoke_MemberName_flags;
             int flags = flagField.getInt(memberName);
@@ -482,7 +482,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
             }
 
-            Klass callerKlass = StaticObject.isNull(caller) ? null : caller.getMirrorKlass();
+            Klass callerKlass = StaticObject.isNull(caller) ? null : caller.getMirrorKlass(meta);
 
             boolean doAccessChecks = callerKlass != null;
             boolean doConstraintsChecks = (callerKlass != null && ((lookupMode & LM_UNCONDITIONAL) == 0));

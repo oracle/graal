@@ -1170,10 +1170,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return ((ObjectKlass) this).lookupFieldTableImpl(slot);
         } else if (this instanceof ArrayKlass) {
             // Arrays extend j.l.Object, which shouldn't have any declared instance fields.
-            assert getMeta().java_lang_Object == getSuperKlass();
-            assert getMeta().java_lang_Object.getDeclaredFields().length == 0;
-            // Always null?
-            return getMeta().java_lang_Object.lookupFieldTable(slot);
+            return null;
         }
         // Unreachable?
         assert this instanceof PrimitiveKlass;

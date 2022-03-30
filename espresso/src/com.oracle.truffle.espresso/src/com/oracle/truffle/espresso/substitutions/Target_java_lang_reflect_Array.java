@@ -82,7 +82,7 @@ public final class Target_java_lang_reflect_Array {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwNullPointerException();
         }
-        Klass component = componentType.getMirrorKlass();
+        Klass component = componentType.getMirrorKlass(meta);
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
@@ -124,7 +124,7 @@ public final class Target_java_lang_reflect_Array {
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwNullPointerException();
         }
-        Klass component = componentType.getMirrorKlass();
+        Klass component = componentType.getMirrorKlass(meta);
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }

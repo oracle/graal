@@ -168,6 +168,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
+    @TruffleBoundary // Host Thread.setPriority inlines too deeply.
     public static void setPriority0(@JavaType(Thread.class) StaticObject self, int newPriority,
                     @Inject EspressoContext context) {
         // Priority is set in the guest field in Thread.setPriority().
