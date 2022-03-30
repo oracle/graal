@@ -962,14 +962,14 @@ abstract class AbstractBridgeGenerator {
 
         CodeBuilder write(TypeElement te) {
             Element teEnclosing = te.getEnclosingElement();
-            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing) && !isInScope(te)) {
+            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing) && !isElementVisible(te)) {
                 toImport.add(te);
             }
             return write(te.getSimpleName());
         }
 
-        private boolean isInScope(TypeElement te) {
-            return scope != null && scope.isInScope(te, types);
+        private boolean isElementVisible(TypeElement te) {
+            return scope != null && scope.isElementVisible(te, types);
         }
 
         private static boolean isJavaLang(Element element) {
@@ -1092,15 +1092,15 @@ abstract class AbstractBridgeGenerator {
                 this.parent = parent;
             }
 
-            boolean isInScope(TypeElement type, Types types) {
+            boolean isElementVisible(TypeElement type, Types types) {
                 Element owner = type.getEnclosingElement();
                 if (owner.getKind().isClass() || owner.getKind().isInterface()) {
-                    return isInScopeImpl((TypeElement) owner, types);
+                    return isElementVisibleImpl((TypeElement) owner, types);
                 }
                 return false;
             }
 
-            private boolean isInScopeImpl(TypeElement owner, Types types) {
+            private boolean isElementVisibleImpl(TypeElement owner, Types types) {
                 if (isInherited(owner, (TypeElement) ((DeclaredType) types.erasure(superClass)).asElement(), types)) {
                     return true;
                 }
@@ -1110,7 +1110,7 @@ abstract class AbstractBridgeGenerator {
                     }
                 }
                 if (parent != null) {
-                    return parent.isInScopeImpl(owner, types);
+                    return parent.isElementVisibleImpl(owner, types);
                 }
                 return false;
             }

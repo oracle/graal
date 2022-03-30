@@ -50,7 +50,7 @@ public interface BinaryMarshaller<T> {
      * pre-allocate the {@link BinaryOutput}'s buffer.
      */
     default int inferSize(@SuppressWarnings("unused") T object) {
-        return 32;
+        return Long.BYTES;
     }
 
     /**
