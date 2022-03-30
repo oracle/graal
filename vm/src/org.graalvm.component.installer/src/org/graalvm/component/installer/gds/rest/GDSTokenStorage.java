@@ -83,7 +83,7 @@ public class GDSTokenStorage {
             try (InputStream is = Files.newInputStream(propertiesPath)) {
                 properties.load(is);
             } catch (IOException ex) {
-                feedback.error("ERR_CouldNotLoadGDS", ex, propertiesPath, ex.getLocalizedMessage());
+                feedback.error("ERR_CouldNotLoadToken", ex, propertiesPath, ex.getLocalizedMessage());
             }
         }
         return properties;
