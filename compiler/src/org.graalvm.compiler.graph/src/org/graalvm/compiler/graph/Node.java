@@ -1647,7 +1647,7 @@ public abstract class Node implements Cloneable, Formattable {
      * {@link NodeSize} value. If the node size is static please use {@link NodeInfo#size()}.
      *
      * NOTE: When overriding this method, make sure that *all* field reads are null checked (even if
-     * Java semantics seemingly make the value of the field non-null). This is necessary because of
+     * Java semantics seemingly make the value of the field non-null). This is necessary because
      * node size estimates are needed even during graph decoding which, for some nodes, first
      * reflectively creates a stub and then later, reflectively, populates its fields. This method
      * could be invoked between these two points. For this reason, when overriding this method
