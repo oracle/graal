@@ -135,7 +135,7 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
 
     @Override
     public boolean isInstrumentable() {
-        return true;
+        return false;
     }
 
     public WrapperNode createWrapper(ProbeNode probe) {

@@ -41,6 +41,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
     private static final boolean FLAG_NODE_AST_PRINTING = false;
+    private static final boolean ENABLE_INSTRUMENTATION = false;
 
     /**
      * Creates the builder class itself. This class only contains abstract methods, the builder
@@ -199,10 +200,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             builderBytecodeNodeType = bcg.createBuilderBytecodeNode();
             typBuilderImpl.add(builderBytecodeNodeType);
         }
-        {
-            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "InstrumentableBytecodeNode", m, true);
+        if (ENABLE_INSTRUMENTATION) {
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl,
+                            simpleName + "InstrumentableBytecodeNode", m, true);
             builderInstrBytecodeNodeType = bcg.createBuilderBytecodeNode();
             typBuilderImpl.add(builderInstrBytecodeNodeType);
+        } else {
+            builderInstrBytecodeNodeType = null;
         }
 
         CodeVariableElement fldOperationData = new CodeVariableElement(types.BuilderOperationData, "operationData");
@@ -352,28 +356,30 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.statement("OperationsNode result");
 
-            b.startIf().variable(fldKeepInstrumentation).end();
-            b.startBlock();
+            if (ENABLE_INSTRUMENTATION) {
+                b.startIf().variable(fldKeepInstrumentation).end();
+                b.startBlock();
 
-            b.startAssign("result");
-            b.startNew(builderInstrBytecodeNodeType.asType());
-            b.variable(fldLanguage);
-            b.variable(fldParseContext);
-            b.string("nodeName");
-            b.string("isInternal");
-            b.string("sourceInfo");
-            b.string("sources");
-            b.variable(fldNodeNumber);
-            b.variable(fldMaxStack);
-            b.startGroup().string("maxLocals + 1").end();
-            b.string("bcCopy");
-            b.string("cpCopy");
-            b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
-            b.string("handlers");
-            b.string("getInstrumentTrees()");
-            b.end(2);
+                b.startAssign("result");
+                b.startNew(builderInstrBytecodeNodeType.asType());
+                b.variable(fldLanguage);
+                b.variable(fldParseContext);
+                b.string("nodeName");
+                b.string("isInternal");
+                b.string("sourceInfo");
+                b.string("sources");
+                b.variable(fldNodeNumber);
+                b.variable(fldMaxStack);
+                b.startGroup().string("maxLocals + 1").end();
+                b.string("bcCopy");
+                b.string("cpCopy");
+                b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
+                b.string("handlers");
+                // b.string("getInstrumentTrees()");
+                b.end(2);
 
-            b.end().startElseBlock();
+                b.end().startElseBlock();
+            }
 
             b.startAssign("result");
             b.startNew(builderBytecodeNodeType.asType());
@@ -392,7 +398,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("handlers");
             b.end(2);
 
-            b.end();
+            if (ENABLE_INSTRUMENTATION) {
+                b.end();
+            }
 
             b.startStatement();
             b.startCall(fldBuiltNodes, "add");
@@ -425,6 +433,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startSwitch().string("data.operationId").end();
             b.startBlock();
 
+            vars.operationData = parData;
+
             for (Operation op : m.getOperations()) {
                 CodeTree leaveCode = op.createLeaveCode(vars);
                 if (leaveCode == null) {
@@ -440,6 +450,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.end();
 
             }
+
+            vars.operationData = fldOperationData;
 
             b.end();
 
@@ -615,7 +627,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                     if (op.name.equals("Instrumentation")) {
                         // this needs to be placed here, at the very start
                         // of the begin/end methods
-                        b.startIf().string("!").variable(vars.keepingInstrumentation).end();
+                        b.startIf();
+                        if (ENABLE_INSTRUMENTATION) {
+                            b.string("!").variable(vars.keepingInstrumentation);
+                        } else {
+                            b.string("true");
+                        }
+                        b.end();
                         b.startBlock();
                         b.returnStatement();
                         b.end();
@@ -657,7 +675,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                     if (op.name.equals("Instrumentation")) {
                         // this needs to be placed here, at the very start
                         // of the begin/end methods
-                        b.startIf().string("!").variable(vars.keepingInstrumentation).end();
+                        b.startIf();
+                        if (ENABLE_INSTRUMENTATION) {
+                            b.string("!").variable(vars.keepingInstrumentation);
+                        } else {
+                            b.string("true");
+                        }
+                        b.end();
                         b.startBlock();
                         b.returnStatement();
                         b.end();

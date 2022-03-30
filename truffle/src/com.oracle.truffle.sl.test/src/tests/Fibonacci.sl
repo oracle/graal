@@ -19,6 +19,14 @@ function fib(num) {
 
 function main() {  
   i = 1;
+  j = 1;
+  while (i < 100000) {
+  	fib(10 + j);
+  	j = j + 1;
+  	if (j == 10) {
+  		j = 1;
+  	}
+  }
   while (i <= 10) {
     println(i + ": " + fib(i));
     i = i + 1;

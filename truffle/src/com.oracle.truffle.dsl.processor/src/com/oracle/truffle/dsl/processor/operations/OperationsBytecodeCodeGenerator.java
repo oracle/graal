@@ -576,7 +576,7 @@ public class OperationsBytecodeCodeGenerator {
                 b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
-                for (int i = 0; i < 4; i++) {
+                for (int i = 0; i < 16; i++) {
                     if (i < op.length()) {
                         b.statement("sb.append(String.format(\"%02x \", bc[bci + " + i + "]))");
                     } else {
@@ -584,7 +584,7 @@ public class OperationsBytecodeCodeGenerator {
                     }
                 }
 
-                b.statement("sb.append(\"" + op.name + " \")");
+                b.statement("sb.append(\"" + op.name + " ".repeat(op.name.length() < 32 ? 32 - op.name.length() : 0) + " \")");
 
                 for (int i = 0; i < op.inputs.length; i++) {
                     if (i != 0) {
