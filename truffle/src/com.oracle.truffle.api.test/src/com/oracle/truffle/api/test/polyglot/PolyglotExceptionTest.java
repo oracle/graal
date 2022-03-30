@@ -427,6 +427,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         }
 
         @Override
+        @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
             return execute(node, env, contextArguments, frameArguments);
         }
@@ -434,9 +435,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testGuestStackOverflowResourceLimit() {
-        // Compilation expects permanent bailout: Too deep inlining, override
-        // CompilationFailureAction to Silent
-        try (Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.CompilationFailureAction", "Silent").build()) {
+        try (Context c = Context.create()) {
             assertFails(() -> evalTestLanguage(c, GuestStackOverflowLanguage.class, "test"), PolyglotException.class, (e) -> {
                 assertTrue(e.isResourceExhausted());
                 assertFalse(e.isInternalError());
