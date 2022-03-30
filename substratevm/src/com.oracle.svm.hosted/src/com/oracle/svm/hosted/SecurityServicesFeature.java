@@ -173,7 +173,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     private Map<String, Set<Service>> availableServices;
 
     /** All providers deemed to be used by this feature. */
-    private final Set<Provider> usedProviders = new HashSet<>();
+    private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
 
     /** Providers marked as used by the user. */
     private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
@@ -684,8 +684,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     private void registerProvider(Provider provider) {
-        if (!usedProviders.contains(provider)) {
-            usedProviders.add(provider);
+        if (usedProviders.add(provider)) {
             registerForReflection(provider.getClass());
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
             provider.entrySet();
