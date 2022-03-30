@@ -38,8 +38,12 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalPointer;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugThreadLocalGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -232,6 +236,23 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
             }
         }
         return new LLDBGlobalConstant(global);
+    }
+
+    @Specialization
+    protected LLVMDebugValue fromThreadLocalGlobal(LLVMDebugThreadLocalGlobalVariable value,
+                    @Cached BranchProfile exception) {
+        LLVMThreadLocalSymbol global = value.getDescriptor();
+        LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(getContext().getSymbol(global, exception)).getObject();
+        long offset = pointer.getOffset();
+        LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(global.getBitcodeID(exception));
+        LLVMPointer target = base.increment(offset);
+        if (LLVMManagedPointer.isInstance(target)) {
+            final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
+            if (LLDBSupport.pointsToObjectAccess(LLVMManagedPointer.cast(target))) {
+                return new LLDBMemoryValue(managedPointer);
+            }
+        }
+        return new LLDBThreadLocalGlobalConstant(global);
     }
 
     @Fallback

@@ -491,6 +491,7 @@ final class ParserDriver {
                                 function.getIndex(), false, parserResult.getRuntime().getFile().getPath(), function.isExternalWeak()));
             }
         }
+        // TODO (PLi): also add external thread local globals.
         for (GlobalVariable global : parserResult.getExternalGlobals()) {
             if (!fileScope.contains(global.getName())) {
                 fileScope.register(
