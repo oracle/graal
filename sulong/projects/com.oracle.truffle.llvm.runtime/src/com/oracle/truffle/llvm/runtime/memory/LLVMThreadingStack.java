@@ -71,7 +71,7 @@ public final class LLVMThreadingStack {
     }
 
     private static LLVMStack getCurrentStack() {
-        return LLVMLanguage.get(null).contextThreadLocal.get(Thread.currentThread()).getLLVMStack();
+        return LLVMLanguage.get(null).contextThreadLocal.get().getLLVMStack();
     }
 
     @TruffleBoundary
@@ -81,7 +81,7 @@ public final class LLVMThreadingStack {
         if (currentThread == mainThread) {
             mainThreadStack = s;
         }
-        LLVMLanguage.get(null).contextThreadLocal.get(currentThread).setLLVMStack(s);
+        LLVMLanguage.get(null).contextThreadLocal.get().setLLVMStack(s);
         return s;
     }
 
