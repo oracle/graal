@@ -468,15 +468,19 @@ public abstract class LoopTransformations {
         ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(0.01, trueSucc));
     }
 
+    /**
+     * Inject a new frequency for the condition dominating the given loop exit path. This
+     * calculation will act as if the given loop exit is the only exit of the loop.
+     */
     public static void adaptCountedLoopExitProbability(AbstractBeginNode lex, double newFrequency) {
-        double d = Math.abs(1D - newFrequency);
-        if (d <= 1D) {
+        double probability = 1.0D - 1.0D / newFrequency;
+        if (probability <= 0D) {
             setSingleVisitedLoopFrequencySplitProbability(lex);
             return;
         }
         IfNode ifNode = ((IfNode) lex.predecessor());
         boolean trueSucc = ifNode.trueSuccessor() == lex;
-        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected((newFrequency - 1) / newFrequency, trueSucc));
+        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(probability, trueSucc));
     }
 
     public static class PreMainPostResult {

@@ -121,6 +121,11 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         return condition;
     }
 
+    public void setProbability(ValueNode probability) {
+        updateUsages(this.probability, probability);
+        this.probability = probability;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (condition.isConstant()) {
