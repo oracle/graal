@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.gen;
 
+import org.graalvm.compiler.asm.VectorSize;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -344,4 +345,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * {@code isPreSync == true}) or following (if {@code isPreSync == false}) memory writes.
      */
     void emitCacheWritebackSync(boolean isPreSync);
+
+    /**
+     * Returns the maximum size of vector registers.
+     */
+    default VectorSize getMaxVectorSize() {
+        throw GraalError.unimplemented("Max vector size is not specified on this architecture");
+    }
 }

@@ -51,6 +51,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
@@ -58,12 +59,10 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -75,7 +74,7 @@ import jdk.vm.ci.meta.Value;
  * {@code char[]}) with on-the-fly sign- or zero-extension.
  */
 @Opcode("ARRAY_EQUALS")
-public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
+public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AMD64ArrayEqualsOp.class);
 
     private static final Register REG_ARRAY_A = rsi;
@@ -98,7 +97,6 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     private final Scale array2IndexScale;
     private final Scale arrayMaskIndexScale;
     private final Scale maxScale;
-    private final AVXKind.AVXSize vectorSize;
     private final AMD64MacroAssembler.ExtendMode extendMode;
 
     @Def({REG}) private Value resultValue;
@@ -123,9 +121,9 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) private Value vectorTemp3;
 
     private AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, int maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode,
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AMD64MacroAssembler.ExtendMode extendMode,
                     int constOffset1, int constOffset2, int constLength) {
-        super(TYPE);
+        super(TYPE, tool, AVXSize.YMM);
 
         this.kind1 = kind1;
         this.kind2 = kind2;
@@ -145,7 +143,6 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         this.arrayMaskIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kindMask)));
         this.maxScale = array1IndexScale.value > array2IndexScale.value ? array1IndexScale : array2IndexScale;
         assert arrayMaskIndexScale.value <= maxScale.value;
-        this.vectorSize = ((AMD64) tool.target().arch).getFeatures().contains(CPUFeature.AVX2) && (maxVectorSize < 0 || maxVectorSize >= 32) ? AVXKind.AVXSize.YMM : AVXKind.AVXSize.XMM;
 
         this.resultValue = result;
         this.array1Value = this.array1ValueTemp = arrayA;
@@ -169,8 +166,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         }
 
         // We only need the vector temporaries if we generate SSE code.
-        if (supportsSSE41(tool.target())) {
-            LIRKind lirKind = LIRKind.value(vectorSize == AVXKind.AVXSize.YMM ? AMD64Kind.V256_BYTE : AMD64Kind.V128_BYTE);
+        if (supports(tool.target(), CPUFeature.SSE4_1)) {
+            LIRKind lirKind = LIRKind.value(getVectorKind(JavaKind.Byte));
             this.vectorTemp1 = tool.newVariable(lirKind);
             this.vectorTemp2 = tool.newVariable(lirKind);
             this.vectorTemp3 = withMask() ? tool.newVariable(lirKind) : Value.ILLEGAL;
@@ -182,7 +179,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     }
 
     public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB, JavaKind strideMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, int maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode) {
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
 
         RegisterValue regArrayA = REG_ARRAY_A.asValue(arrayA.getValueKind());
         RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA == null ? LIRKind.value(AMD64Kind.QWORD) : offsetA.getValueKind());
@@ -205,7 +202,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         }
         return new AMD64ArrayEqualsOp(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask,
                         result, regArrayA, regOffsetA, regArrayB, regOffsetB, regMask, regLength,
-                        maxVectorSize, extendMode, constOffset(offsetA), constOffset(offsetB), LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
+                        extendMode, constOffset(offsetA), constOffset(offsetB), LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
     }
 
     private static int constOffset(Value offset) {
@@ -221,8 +218,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         return -1;
     }
 
-    private boolean canGenerateConstantLengthCompare(TargetDescription target) {
-        return isLengthConstant() && kind1.isNumericInteger() && (kind1 == kind2 || getElementsPerVector(AVXKind.AVXSize.XMM) <= constantLength()) && supportsSSE41(target);
+    private boolean canGenerateConstantLengthCompare() {
+        return isLengthConstant() && kind1.isNumericInteger() && (kind1 == kind2 || getElementsPerVector(AVXSize.XMM) <= constantLength());
     }
 
     private boolean isOffset1Constant() {
@@ -271,7 +268,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         if (withMask()) {
             masm.leaq(mask, new AMD64Address(mask, maskBaseOffset));
         }
-        if (canGenerateConstantLengthCompare(crb.target)) {
+        if (canGenerateConstantLengthCompare() && masm.supports(CPUFeature.SSE4_1)) {
             emitConstantLengthArrayCompareBytes(crb, masm, falseLabel);
         } else {
             Register length = asRegister(lengthValue);
@@ -296,7 +293,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     private void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
                     Register result, Register array1, Register array2, Register mask, Register length,
                     Label trueLabel, Label falseLabel) {
-        if (supportsSSE41(crb.target)) {
+        if (masm.supports(CPUFeature.SSE4_1)) {
             emitVectorCompare(crb, masm, result, array1, array2, mask, length, trueLabel, falseLabel);
         }
         if (kind1 == kind2 && kind1 == kindMask) {
@@ -308,23 +305,12 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     }
 
     /**
-     * Returns if the underlying AMD64 architecture supports SSE 4.1 instructions.
-     *
-     * @param target target description of the underlying architecture
-     * @return true if the underlying architecture supports SSE 4.1
-     */
-    static boolean supportsSSE41(TargetDescription target) {
-        AMD64 arch = (AMD64) target.arch;
-        return arch.getFeatures().contains(CPUFeature.SSE4_1);
-    }
-
-    /**
      * Emits code that uses SSE4.1/AVX1 128-bit (16-byte) or AVX2 256-bit (32-byte) vector compares.
      */
     private void emitVectorCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
                     Register result, Register array1, Register array2, Register mask, Register length,
                     Label trueLabel, Label falseLabel) {
-        assert supportsSSE41(crb.target);
+        assert masm.supports(CPUFeature.SSE4_1);
 
         Register vector1 = asRegister(vectorTemp1);
         Register vector2 = asRegister(vectorTemp2);
@@ -401,40 +387,40 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.movl(length, result);
     }
 
-    private int getElementsPerVector(AVXKind.AVXSize vSize) {
+    private int getElementsPerVector(AVXSize vSize) {
         return vSize.getBytes() >> Math.max(array1IndexScale.log2, array2IndexScale.log2);
     }
 
-    private void emitVectorLoad1(AMD64MacroAssembler asm, Register dst, Register src, int displacement, AVXKind.AVXSize size) {
+    private void emitVectorLoad1(AMD64MacroAssembler asm, Register dst, Register src, int displacement, AVXSize size) {
         emitVectorLoad1(asm, dst, src, Register.None, displacement, size);
     }
 
-    private void emitVectorLoad2(AMD64MacroAssembler asm, Register dst, Register src, int displacement, AVXKind.AVXSize size) {
+    private void emitVectorLoad2(AMD64MacroAssembler asm, Register dst, Register src, int displacement, AVXSize size) {
         emitVectorLoad2(asm, dst, src, Register.None, displacement, size);
     }
 
-    private void emitVectorLoad1(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, AVXKind.AVXSize size) {
+    private void emitVectorLoad1(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, AVXSize size) {
         emitVectorLoad(asm, dst, src, index, displacement, array1IndexScale, size);
     }
 
-    private void emitVectorLoad2(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, AVXKind.AVXSize size) {
+    private void emitVectorLoad2(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, AVXSize size) {
         emitVectorLoad(asm, dst, src, index, displacement, array2IndexScale, size);
     }
 
-    private void emitVectorLoadMask(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, AVXKind.AVXSize size) {
+    private void emitVectorLoadMask(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, AVXSize size) {
         emitVectorLoad(asm, dst, src, index, displacement, arrayMaskIndexScale, size);
     }
 
-    private void emitVectorLoad(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, Scale scale, AVXKind.AVXSize size) {
+    private void emitVectorLoad(AMD64MacroAssembler asm, Register dst, Register src, Register index, int displacement, Scale scale, AVXSize size) {
         AMD64Address address = new AMD64Address(src, index, scale, displacement);
         if (scale.value < maxScale.value) {
-            if (size == AVXKind.AVXSize.YMM) {
+            if (size == AVXSize.YMM) {
                 AMD64MacroAssembler.loadAndExtendAVX(asm, size, extendMode, dst, maxScale, address, scale);
             } else {
                 AMD64MacroAssembler.loadAndExtendSSE(asm, extendMode, dst, maxScale, address, scale);
             }
         } else {
-            if (size == AVXKind.AVXSize.YMM) {
+            if (size == AVXSize.YMM) {
                 asm.vmovdqu(dst, address);
             } else {
                 asm.movdqu(dst, address);
@@ -768,9 +754,9 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         Register vector2 = asRegister(vectorTemp2);
         Register vector3 = withMask() ? asRegister(vectorTemp3) : null;
         Register tmp = asRegister(lengthValue);
-        AVXKind.AVXSize vSize = vectorSize;
+        AVXSize vSize = vectorSize;
         if (constantLength() < getElementsPerVector(vectorSize)) {
-            vSize = AVXKind.AVXSize.XMM;
+            vSize = AVXSize.XMM;
         }
         int elementsPerVector = getElementsPerVector(vSize);
         if (elementsPerVector > constantLength()) {
@@ -783,7 +769,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                 emitOrBytes(asm, tmp, new AMD64Address(maskPtr, 0), movScale);
             }
             emitXorBytes(asm, tmp, new AMD64Address(arrayPtr2), movScale);
-            asm.jccb(AMD64Assembler.ConditionFlag.NotZero, noMatch);
+            asm.jccb(ConditionFlag.NotZero, noMatch);
             if (byteLength > movScale.value) {
                 movSZx(asm, movScale, extendMode, tmp, new AMD64Address(arrayPtr1, byteLength - movScale.value));
                 if (withMask()) {
@@ -816,9 +802,9 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                 }
                 pxor(asm, vSize, vector1, vector2);
                 ptest(asm, vSize, vector1);
-                asm.jccb(AMD64Assembler.ConditionFlag.NotZero, noMatch);
+                asm.jccb(ConditionFlag.NotZero, noMatch);
                 if (vectorCount > 1) {
-                    asm.addqAndJcc(tmp, elementsPerVector, AMD64Assembler.ConditionFlag.NotZero, loopBegin, true);
+                    asm.addqAndJcc(tmp, elementsPerVector, ConditionFlag.NotZero, loopBegin, true);
                 }
             }
             if (tailCount > 0) {
@@ -831,7 +817,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                 }
                 pxor(asm, vSize, vector1, vector2);
                 ptest(asm, vSize, vector1);
-                asm.jccb(AMD64Assembler.ConditionFlag.NotZero, noMatch);
+                asm.jccb(ConditionFlag.NotZero, noMatch);
             }
         }
     }
@@ -859,10 +845,5 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             default:
                 throw new IllegalStateException();
         }
-    }
-
-    @Override
-    public boolean needsClearUpperVectorRegisters() {
-        return true;
     }
 }

@@ -29,6 +29,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPACKUSWB;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPOR;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -37,7 +39,6 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -46,22 +47,21 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 5498,
-          lineEnd   = 5656,
+          lineStart = 5483,
+          lineEnd   = 5641,
           commit    = "2920ce54874c404126d9fd6bfbebee5f3da27dae",
           sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
-public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
+public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64EncodeArrayOp> TYPE = LIRInstructionClass.create(AMD64EncodeArrayOp.class);
 
     @Def({REG}) private Value resultValue;
@@ -83,7 +83,7 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
     private final CharsetName charset;
 
     public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
-        super(TYPE);
+        super(TYPE, tool, YMM);
 
         this.resultValue = result;
         this.originSrcValue = src;
@@ -94,7 +94,7 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
         this.dstValue = tool.newVariable(dst.getValueKind());
         this.lenValue = tool.newVariable(length.getValueKind());
 
-        LIRKind lirKind = LIRKind.value(((AMD64) tool.target().arch).getFeatures().contains(AMD64.CPUFeature.AVX2) ? AMD64Kind.V256_BYTE : AMD64Kind.V128_BYTE);
+        LIRKind lirKind = LIRKind.value(getVectorKind(JavaKind.Byte));
         this.vectorTempValue1 = tool.newVariable(lirKind);
         this.vectorTempValue2 = tool.newVariable(lirKind);
         this.vectorTempValue3 = tool.newVariable(lirKind);
@@ -104,23 +104,6 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
 
         this.charset = charset;
         assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1;
-    }
-
-    private static boolean supportsSSE42(TargetDescription target) {
-        return supports(target, CPUFeature.SSE4_2);
-    }
-
-    private static boolean supportsAVX(TargetDescription target) {
-        return supports(target, CPUFeature.AVX);
-    }
-
-    private static boolean supportsAVX2(TargetDescription target) {
-        return supports(target, CPUFeature.AVX2);
-    }
-
-    public static boolean supports(TargetDescription target, AMD64.CPUFeature feature) {
-        AMD64 arch = (AMD64) target.arch;
-        return arch.getFeatures().contains(feature);
     }
 
     @Override
@@ -157,31 +140,31 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
         masm.leaq(dst, new AMD64Address(dst, len, Scale.Times1));
         masm.negq(len);
 
-        if (supportsAVX2(crb.target) || supportsSSE42(crb.target)) {
+        if (supportsAVX2AndYMM() || masm.supports(CPUFeature.SSE4_2)) {
             Label labelCopy8Chars = new Label();
             Label labelCopy8CharsExit = new Label();
             Label labelChars16Check = new Label();
             Label labelCopy16Chars = new Label();
             Label labelCopy16CharsExit = new Label();
 
-            if (supportsAVX2(crb.target)) {
+            if (supportsAVX2AndYMM()) {
                 Label labelChars32Check = new Label();
                 Label labelCopy32Chars = new Label();
                 Label labelCopy32CharsExit = new Label();
 
                 masm.movl(temp5, mask); // create mask to test for Unicode chars in vector
                 masm.movdl(vectorTemp1, temp5);
-                masm.emit(VPBROADCASTD, vectorTemp1, vectorTemp1, AVXSize.YMM);
+                masm.emit(VPBROADCASTD, vectorTemp1, vectorTemp1, YMM);
                 masm.jmp(labelChars32Check);
 
                 masm.bind(labelCopy32Chars);
                 masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -64));
                 masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -32));
-                masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, AVXSize.YMM);
+                masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, YMM);
                 masm.vptest(vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
-                masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, AVXSize.YMM);
-                masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, AVXSize.YMM);
+                masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, YMM);
+                masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, YMM);
                 masm.vmovdqu(new AMD64Address(dst, len, Scale.Times1, -32), vectorTemp4);
 
                 masm.bind(labelChars32Check);
@@ -189,7 +172,8 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
 
                 masm.bind(labelCopy32CharsExit);
                 masm.subqAndJcc(len, 16, ConditionFlag.Greater, labelCopy16CharsExit, true);
-            } else if (supportsSSE42(crb.target)) {
+            } else {
+                // generate SSE4_2 compatible code
                 masm.movl(temp5, mask); // create mask to test for Unicode chars in vector
                 masm.movdl(vectorTemp1, temp5);
                 masm.pshufd(vectorTemp1, vectorTemp1, 0);
@@ -198,17 +182,17 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
 
             masm.bind(labelCopy16Chars);
 
-            if (supportsAVX2(crb.target)) {
+            if (supportsAVX2AndYMM()) {
                 masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Scale.Times2, -32));
                 masm.vptest(vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
-                masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, AVXSize.YMM);
-                masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, AVXSize.YMM);
+                masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, YMM);
+                masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, YMM);
             } else {
-                if (supportsAVX(crb.target)) {
+                if (masm.supports(CPUFeature.AVX)) {
                     masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
                     masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
-                    masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, AVXSize.XMM);
+                    masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, XMM);
                 } else {
                     masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
                     masm.por(vectorTemp2, vectorTemp3);
@@ -254,10 +238,5 @@ public final class AMD64EncodeArrayOp extends AMD64LIRInstruction {
         masm.addq(result, len);
 
         masm.bind(labelDone);
-    }
-
-    @Override
-    public boolean needsClearUpperVectorRegisters() {
-        return true;
     }
 }

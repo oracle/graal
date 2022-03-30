@@ -29,40 +29,31 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMV
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp.supports;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-// @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 3376,
-          lineEnd   = 3592,
-          commit    = "fb17a8ece0a3593c51a8be60533916bf70778a93",
-          sha1      = "bb0a5ceba73bfeeec91bd96f738a48b5275ac51e")
-// @formatter:on
 @Opcode("AMD64_HAS_NEGATIVES")
-public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
+public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64HasNegativesOp> TYPE = LIRInstructionClass.create(AMD64HasNegativesOp.class);
 
     @Def({REG}) private Value resultValue;
@@ -81,7 +72,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value maskValue2;
 
     public AMD64HasNegativesOp(LIRGeneratorTool tool, Value result, Value array, Value length) {
-        super(TYPE);
+        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? ZMM : YMM);
 
         this.resultValue = result;
         this.originArrayValue = array;
@@ -92,25 +83,17 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
 
         this.tmpValue1 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
 
-        LIRKind lirKind = LIRKind.value(supportsAVX2(tool.target()) ? AMD64Kind.V256_BYTE : AMD64Kind.V128_BYTE);
+        LIRKind lirKind = LIRKind.value(getVectorKind(JavaKind.Byte));
         this.vecValue1 = tool.newVariable(lirKind);
         this.vecValue2 = tool.newVariable(lirKind);
 
-        if (supportsAVX3(tool.target())) {
+        if (ZMM.fitsWithin(vectorSize)) {
             this.maskValue1 = tool.newVariable(LIRKind.value(AMD64Kind.MASK64));
             this.maskValue2 = tool.newVariable(LIRKind.value(AMD64Kind.MASK64));
         } else {
             this.maskValue1 = Value.ILLEGAL;
             this.maskValue2 = Value.ILLEGAL;
         }
-    }
-
-    private static boolean supportsAVX2(TargetDescription target) {
-        return supports(target, CPUFeature.AVX2);
-    }
-
-    private static boolean supportsAVX3(TargetDescription target) {
-        return supports(target, CPUFeature.AVX512VL);
     }
 
     @Override
@@ -136,7 +119,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
         // len == 0
         masm.testlAndJcc(len, len, ConditionFlag.Zero, labelFalse, false);
 
-        if (supportsAVX3(crb.target) && supports(crb.target, CPUFeature.AVX512BW) && supports(crb.target, CPUFeature.BMI2)) {
+        if (supportsAVX512VLBWAndZMM() && supports(crb.target, CPUFeature.BMI2)) {
             Label labelTest64Loop = new Label();
             Label labelTestTail = new Label();
 
@@ -180,7 +163,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
         } else {
             masm.movl(result, len);
 
-            if (supportsAVX2(crb.target)) {
+            if (supportsAVX2AndYMM()) {
                 // With AVX2, use 32-byte vector compare
                 Label labelCompareWideVectors = new Label();
                 Label labelCompareTail = new Label();
@@ -196,7 +179,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
 
                 masm.movl(tmp1, 0x80808080); // create mask to test for Unicode chars in vector
                 masm.movdl(vec2, tmp1);
-                masm.emit(VPBROADCASTD, vec2, vec2, AVXSize.YMM);
+                masm.emit(VPBROADCASTD, vec2, vec2, YMM);
 
                 masm.bind(labelCompareWideVectors);
                 masm.vmovdqu(vec1, new AMD64Address(ary1, len, Scale.Times1));
@@ -214,7 +197,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
                 masm.bind(labelCompareTail); // len is zero
                 masm.movl(len, result);
                 // Fallthru to tail compare
-            } else if (supports(crb.target, CPUFeature.SSE4_2)) {
+            } else if (masm.supports(CPUFeature.SSE4_2)) {
                 // With SSE4.2, use double quad vector compare
                 Label labelCompareWideVectors = new Label();
                 Label labelCompareTail = new Label();
@@ -285,10 +268,5 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
 
         // That's it
         masm.bind(labelDone);
-    }
-
-    @Override
-    public boolean needsClearUpperVectorRegisters() {
-        return true;
     }
 }

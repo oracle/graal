@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
@@ -1348,10 +1349,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public static boolean isAVX(AMD64MacroAssembler asm) {
-        return asm.supports(AMD64.CPUFeature.AVX);
+        return asm.supports(CPUFeature.AVX);
     }
 
     public static boolean isAVX(AMD64 arch) {
-        return arch.getFeatures().contains(AMD64.CPUFeature.AVX);
+        return arch.getFeatures().contains(CPUFeature.AVX);
     }
 }

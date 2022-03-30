@@ -73,7 +73,7 @@ public final class VerifyMaxRegisterSizePhase extends FinalCodeAnalysisPhase {
     @SuppressWarnings("unused")
     protected void verifyOperands(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         if (isRegister(value)) {
-            assert value.getPlatformKind().getSizeInBytes() <= maxVectorSize : "value " + value + " exceeds MaxVectorSize " + maxVectorSize;
+            assert value.getPlatformKind().getSizeInBytes() <= maxVectorSize : "value " + value + " exceeds MaxVectorSize " + maxVectorSize + " at " + instruction;
         }
     }
 }
