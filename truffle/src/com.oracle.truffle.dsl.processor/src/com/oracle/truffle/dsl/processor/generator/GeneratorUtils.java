@@ -102,9 +102,13 @@ public class GeneratorUtils {
     }
 
     public static CodeTree createPartialEvaluationConstant(VariableElement variable) {
+        return createPartialEvaluationConstant(variable.getSimpleName().toString());
+    }
+
+    public static CodeTree createPartialEvaluationConstant(String variable) {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "partialEvaluationConstant").variable(variable).end().end();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "partialEvaluationConstant").string(variable).end().end();
         return builder.build();
     }
 

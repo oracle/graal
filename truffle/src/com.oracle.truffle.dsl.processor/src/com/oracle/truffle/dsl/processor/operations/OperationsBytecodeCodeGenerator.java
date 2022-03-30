@@ -366,9 +366,10 @@ public class OperationsBytecodeCodeGenerator {
 
             b.startIf().variable(varSp).string(" < maxLocals + VALUES_OFFSET").end();
             b.startBlock();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
-
             b.end();
+
             b.startSwitch().string("curOpcode").end();
             b.startBlock();
 
@@ -482,11 +483,16 @@ public class OperationsBytecodeCodeGenerator {
                 vars.results = null;
             }
 
-            b.caseDefault().startCaseBlock().tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered")).end();
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered"));
+            b.end();
 
             b.end(); // switch block
 
             b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
+
+            b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
 
             if (m.isTracing()) {
                 b.startStatement().startCall(fldTracer, "traceException");
@@ -498,7 +504,10 @@ public class OperationsBytecodeCodeGenerator {
             b.startFor().string("int handlerIndex = 0; handlerIndex < " + fldHandlers.getName() + ".length; handlerIndex++").end();
             b.startBlock();
 
+            b.tree(GeneratorUtils.createPartialEvaluationConstant("handlerIndex"));
+
             b.declaration(types.BuilderExceptionHandler, "handler", fldHandlers.getName() + "[handlerIndex]");
+
             b.startIf().string("handler.startBci > bci || handler.endBci <= bci").end();
             b.statement("continue");
 
@@ -519,6 +528,7 @@ public class OperationsBytecodeCodeGenerator {
 
             b.end(); // catch block
 
+            b.tree(GeneratorUtils.createPartialEvaluationConstant(varNextBci));
             b.statement("bci = nextBci");
             b.end(); // while block
 

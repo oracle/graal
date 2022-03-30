@@ -67,4 +67,9 @@ public class OperationsRootNode extends RootNode implements InstrumentableNode {
         return new OperationsWrapperNode(probe);
     }
 
+    @Override
+    public String toString() {
+        return "root " + getName();
+    }
+
 }

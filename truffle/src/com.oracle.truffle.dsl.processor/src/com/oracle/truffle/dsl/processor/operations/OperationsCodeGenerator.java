@@ -165,12 +165,16 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("reset()");
         }
 
-        DeclaredType byteArraySupportType = context.getDeclaredType("com.oracle.truffle.api.memory.ByteArraySupport");
-        CodeVariableElement leBytes = new CodeVariableElement(
-                        MOD_PRIVATE_STATIC_FINAL,
-                        byteArraySupportType, "LE_BYTES");
-        leBytes.createInitBuilder().startStaticCall(byteArraySupportType, "littleEndian").end();
-        typBuilderImpl.add(leBytes);
+        {
+            String bytesSupportClass = "com.oracle.truffle.api.operation.OperationsBytesSupport";
+            // String bytesSupportClass = "com.oracle.truffle.api.memory.ByteArraySupport";
+            DeclaredType byteArraySupportType = context.getDeclaredType(bytesSupportClass);
+            CodeVariableElement leBytes = new CodeVariableElement(
+                            MOD_PRIVATE_STATIC_FINAL,
+                            byteArraySupportType, "LE_BYTES");
+            leBytes.createInitBuilder().startStaticCall(byteArraySupportType, "littleEndian").end();
+            typBuilderImpl.add(leBytes);
+        }
 
         for (Operation op : m.getOperationsContext().operations) {
             CodeVariableElement fldId = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(int.class), "OP_" + OperationGeneratorUtils.toScreamCase(op.name));
