@@ -2122,6 +2122,12 @@ def _format_properties(data):
     ) + "\n"
 
 
+def _get_component_stability(component):
+    if _src_jdk_version > 11:
+        return "experimental"
+    return component.stability
+
+
 def _gen_gu_manifest(components, formatter, bundled=False):
     main_component = _get_main_component(components)
     version = _suite.release_version()
@@ -2138,9 +2144,7 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                               and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability is not None:
-        stability = main_component.stability
-        if _src_jdk_version > 11:
-            stability = "experimental"
+        stability = _get_component_stability(main_component)
         manifest["x-GraalVM-Stability-Level"] = stability
         if stability in ("experimental", "earlyadopter", "supported"):
             # set x-GraalVM-Stability for backward compatibility when possible
