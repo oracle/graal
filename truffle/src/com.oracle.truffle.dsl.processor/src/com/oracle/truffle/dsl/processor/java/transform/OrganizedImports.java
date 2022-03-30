@@ -186,7 +186,7 @@ public final class OrganizedImports {
                 b.append("?");
             }
 
-            if (i < typeArguments.size() - 1) {
+            if (i < parameters.size() - 1) {
                 b.append(", ");
             }
         }

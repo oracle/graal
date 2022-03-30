@@ -179,7 +179,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
 
         TypeCheckData check = typeSystem.getCheck(type);
         if (check == null) {
-            builder.instanceOf(content, ElementUtils.boxType(typeSystem.getContext(), type));
+            builder.instanceOf(content, ElementUtils.eraseGenericTypes(ElementUtils.boxType(typeSystem.getContext(), type)));
         } else {
             builder.startStaticCall(typeSystem.getTemplateType().asType(), check.getMethodName()).tree(content).end();
         }

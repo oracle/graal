@@ -66,11 +66,11 @@ public class SLOperations {
         @Specialization
         public static Object perform(
                         VirtualFrame frame,
-                        Map<?, ?> functions,
+                        Map<TruffleString, RootCallTarget> functions,
                         @Bind("this") Node node) {
-            SLContext.get(node).getFunctionRegistry().register((Map<TruffleString, RootCallTarget>) functions);
+            SLContext.get(node).getFunctionRegistry().register(functions);
 
-            RootCallTarget main = (RootCallTarget) functions.get(SLStrings.MAIN);
+            RootCallTarget main = functions.get(SLStrings.MAIN);
 
             if (main != null) {
                 return main.call(frame.getArguments());

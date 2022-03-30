@@ -610,11 +610,11 @@ public class ElementUtils {
     }
 
     private static String getWildcardName(WildcardType type) {
-        StringBuilder b = new StringBuilder();
+        StringBuilder b = new StringBuilder("?");
         if (type.getExtendsBound() != null) {
-            b.append("? extends ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" extends ").append(getSimpleName(type.getExtendsBound()));
         } else if (type.getSuperBound() != null) {
-            b.append("? super ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" super ").append(getSimpleName(type.getSuperBound()));
         }
         return b.toString();
     }
