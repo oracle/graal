@@ -99,9 +99,12 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLFunctionLiteralOperation {
         @Specialization
-        public static Object execute(TruffleString functionName, @Bind("this") Node node) {
-            Object res = SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
-            return res;
+        public static Object execute(TruffleString functionName, @Bind("this") Node node, @Cached("lookupFunction(functionName, node)") Object result) {
+            return result;
+        }
+
+        static Object lookupFunction(TruffleString functionName, Node node) {
+            return SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
         }
     }
 

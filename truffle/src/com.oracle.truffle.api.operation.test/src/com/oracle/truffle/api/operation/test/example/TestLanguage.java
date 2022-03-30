@@ -5,7 +5,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.operation.OperationsNode;
 
-@Registration(id = "test", name = "test")
+@Registration(id = "test-operations", name = "test-operations")
 public class TestLanguage extends TruffleLanguage<TestContext> {
 
     @Override

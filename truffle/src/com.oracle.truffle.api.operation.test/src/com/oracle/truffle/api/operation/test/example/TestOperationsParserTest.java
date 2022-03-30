@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.OperationsRootNode;
 import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
@@ -25,7 +26,7 @@ public class TestOperationsParserTest {
         private final OperationsRootNode rootNode;
 
         Tester(String src, boolean withSourceInfo) {
-            Source s = Source.newBuilder("test", src, "test").build();
+            Source s = Source.newBuilder("test-operations", src, "test").build();
 
             if (withSourceInfo) {
                 node = TestOperationsBuilder.parseWithSourceInfo(null, s)[0];
@@ -51,31 +52,87 @@ public class TestOperationsParserTest {
         }
     }
 
+    private static OperationsNode parse(Consumer<TestOperationsBuilder> builder) {
+        return TestOperationsBuilder.parse(null, builder)[0];
+    }
+
     @Test
     public void testAdd() {
-        new Tester("(return (add (arg 0) (arg 1)))")//
-                        .test(42L, 20L, 22L) //
-                        .test("foobar", "foo", "bar") //
-                        .test(100L, 120L, -20L);
+        OperationsNode node = parse(b -> {
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAddOperation();
+            b.endReturn();
+        });
+
+        RootCallTarget root = node.createRootNode().getCallTarget();
+
+        Assert.assertEquals(42L, 20L, 22L);
+        Assert.assertEquals("foobar", "foo", "bar");
+        Assert.assertEquals(100L, 120L, -20L);
     }
 
     @Test
     public void testMax() {
-        new Tester("(if (less (arg 0) (arg 1)) (return (arg 1)) (return (arg 0)))") //
-                        .test(42L, 42L, 13L) //
-                        .test(42L, 42L, 13L) //
-                        .test(42L, 42L, 13L) //
-                        .test(42L, 13L, 42L);
+        OperationsNode node = parse(b -> {
+            b.beginIfThenElse();
+
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endLessThanOperation();
+
+            b.beginReturn();
+            b.emitLoadArgument(1);
+            b.endReturn();
+
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+
+            b.endIfThenElse();
+        });
+
+        RootCallTarget root = node.createRootNode().getCallTarget();
+
+        Assert.assertEquals(42L, 42L, 13L);
+        Assert.assertEquals(42L, 42L, 13L);
+        Assert.assertEquals(42L, 42L, 13L);
+        Assert.assertEquals(42L, 13L, 42L);
     }
 
     @Test
     public void testIfThen() {
-        new Tester("(do (if (less (arg 0) 0) (return 0)) (return (arg 0)))") //
-                        .test(0L, -2L) //
-                        .test(0L, -1L) //
-                        .test(0L, 0L) //
-                        .test(1L, 1L) //
-                        .test(2L, 2L);
+        OperationsNode node = parse(b -> {
+            b.beginIfThen();
+
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(0L);
+            b.endLessThanOperation();
+
+            b.beginReturn();
+            b.emitConstObject(0L);
+            b.endReturn();
+
+            b.endIfThen();
+
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+
+            b.build();
+        });
+
+        RootCallTarget root = node.createRootNode().getCallTarget();
+
+        Assert.assertEquals(0L, root.call(-2L));
+        Assert.assertEquals(0L, root.call(-1L));
+        Assert.assertEquals(0L, root.call(0L));
+        Assert.assertEquals(1L, root.call(1L));
+        Assert.assertEquals(2L, root.call(2L));
     }
 
     @Test
@@ -138,9 +195,9 @@ public class TestOperationsParserTest {
                    + "    (fail)))";
         //@formatter:on
 
-        Context context = Context.create("test");
+        Context context = Context.create("test-operations");
         try {
-            context.eval(org.graalvm.polyglot.Source.newBuilder("test", src, "test").build());
+            context.eval(org.graalvm.polyglot.Source.newBuilder("test-operations", src, "test-operations").build());
             fail();
         } catch (PolyglotException ex) {
             Assert.assertEquals(4, ex.getStackTrace()[0].getLineNumber());
@@ -184,11 +241,11 @@ public class TestOperationsParserTest {
 
     @Test
     public void testCompilation() {
-        Context context = Context.create("test");
+        Context context = Context.create("test-operations");
 
-        Value v = context.parse("test", "(return (add (arg 0) (arg 1)))");
-        for (int i = 0; i < 100000; i++) {
-            v.execute(1L, 2L);
+        Value v = context.parse("test-operations", "(return (add (arg 0) (arg 1)))");
+        for (long i = 0; i < 1000000; i++) {
+            v.execute(i, 1L);
         }
 
         Assert.assertEquals(Value.asValue(7L), v.execute(3L, 4L));

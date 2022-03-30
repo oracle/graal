@@ -1,5 +1,9 @@
 package com.oracle.truffle.api.operation.test.example;
 
+import java.util.function.Consumer;
+
+import org.junit.Assert;
+
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
@@ -21,9 +25,18 @@ public class TestOperations {
         }
     }
 
-    public static void parse(TestLanguage language, Source source, TestOperationsBuilder builder) {
-        TestLanguageAst ast = new TestLanguageParser(source).parse();
-        new TestLanguageBackend(builder).buildRoot(source, ast);
+    public static void parse(TestLanguage language, Object input, TestOperationsBuilder builder) {
+        if (input instanceof Source) {
+            Source source = (Source) input;
+            TestLanguageAst ast = new TestLanguageParser(source).parse();
+            new TestLanguageBackend(builder).buildRoot(source, ast);
+        } else if (input instanceof Consumer<?>) {
+            @SuppressWarnings("unchecked")
+            Consumer<TestOperationsBuilder> callback = (Consumer<TestOperationsBuilder>) input;
+            callback.accept(builder);
+        } else {
+            Assert.fail("invalid parser");
+        }
     }
 
     @Operation

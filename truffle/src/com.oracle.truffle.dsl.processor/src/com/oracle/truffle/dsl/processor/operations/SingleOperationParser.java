@@ -128,10 +128,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         clonedType.add(metExecute);
 
-        if (ElementUtils.findAnnotationMirror(clonedType, types.GenerateUncached) == null) {
-            clonedType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
-        }
-
         if (proxyType != null) {
             // add all the constants
             for (VariableElement el : ElementFilter.fieldsIn(proxyType.getEnclosedElements())) {
