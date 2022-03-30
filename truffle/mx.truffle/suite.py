@@ -302,6 +302,7 @@ suite = {
       "javaCompliance" : "11+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
+      "testProject" : True,
       "jacoco" : "exclude",
     },
 
@@ -1345,6 +1346,7 @@ suite = {
          "com.oracle.truffle.api.instrumentation.test",
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.strings.test",
+         "com.oracle.truffle.api.operation.test",
          "com.oracle.truffle.object.basic.test",
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",

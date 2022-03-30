@@ -3,18 +3,15 @@ package com.oracle.truffle.api.operation.test.example;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
-import com.oracle.truffle.api.TruffleStackTrace;
-import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.OperationsRootNode;
 import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
@@ -36,7 +33,6 @@ public class TestOperationsParserTest {
                 node = TestOperationsBuilder.parse(null, s)[0];
             }
             rootNode = node.createRootNode();
-            System.out.println(node.dump());
         }
 
         Tester(String src) {
@@ -58,11 +54,8 @@ public class TestOperationsParserTest {
     @Test
     public void testAdd() {
         new Tester("(return (add (arg 0) (arg 1)))")//
-                        .then(x -> System.out.println(x.dump())) //
                         .test(42L, 20L, 22L) //
-                        .then(x -> System.out.println(x.dump())) //
                         .test("foobar", "foo", "bar") //
-                        .then(x -> System.out.println(x.dump())) //
                         .test(100L, 120L, -20L);
     }
 
@@ -187,5 +180,17 @@ public class TestOperationsParserTest {
 
         new Tester(src, true).test(3L);
         ExecutionTracer.get().dump();
+    }
+
+    @Test
+    public void testCompilation() {
+        Context context = Context.create("test");
+
+        Value v = context.parse("test", "(return (add (arg 0) (arg 1)))");
+        for (int i = 0; i < 100000; i++) {
+            v.execute(1L, 2L);
+        }
+
+        Assert.assertEquals(Value.asValue(7L), v.execute(3L, 4L));
     }
 }

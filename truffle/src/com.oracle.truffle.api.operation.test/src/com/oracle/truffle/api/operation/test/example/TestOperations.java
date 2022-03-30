@@ -23,7 +23,6 @@ public class TestOperations {
 
     public static void parse(TestLanguage language, Source source, TestOperationsBuilder builder) {
         TestLanguageAst ast = new TestLanguageParser(source).parse();
-        System.out.println(ast);
         new TestLanguageBackend(builder).buildRoot(source, ast);
     }
 
