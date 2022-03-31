@@ -46,7 +46,7 @@ public class JNIRegistrationAWTSupport implements Feature {
     private static final boolean IS_OPENJDK = Optional.ofNullable(Services.getSavedProperties().get("java.vm.name")).orElse("").startsWith("OpenJDK");
 
     @Override
-    public void beforeImageWrite(BeforeImageWriteAccess access) {
+    public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
         if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
@@ -75,15 +75,6 @@ public class JNIRegistrationAWTSupport implements Feature {
                             "JNU_ThrowOutOfMemoryError",
                             "getEncodingFromLangID",
                             "getJavaIDFromLangID");
-            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                /* Force otherwise unused symbols necessary for the java.dll shim ... */
-                linkerInvocation.addNativeLinkerOption("/include:JDK_LoadSystemLibrary");
-                linkerInvocation.addNativeLinkerOption("/include:getEncodingFromLangID");
-                linkerInvocation.addNativeLinkerOption("/include:getJavaIDFromLangID");
-                /* ... and add a Windows library that is pulled in as a side effect. */
-                linkerInvocation.addNativeLinkerOption("shell32.lib");
-                return linkerInvocation;
-            });
         }
         if (jniRegistrationSupport.isRegisteredLibrary("dcpr") && JavaVersionUtil.JAVA_SPEC == 8) {
             jniRegistrationSupport.addJavaShimExports(
@@ -117,6 +108,20 @@ public class JNIRegistrationAWTSupport implements Feature {
                             "JNU_CallMethodByName",
                             "JNU_CallStaticMethodByName",
                             "JNU_NewObjectByName");
+        }
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
+            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+                /*
+                 * Add a Windows library that is pulled in as a side effect of exporting the
+                 * `getEncodingFromLangID` and `getJavaIDFromLangID` symbols.
+                 */
+                linkerInvocation.addNativeLinkerOption("shell32.lib");
+                return linkerInvocation;
+            });
         }
     }
 }
