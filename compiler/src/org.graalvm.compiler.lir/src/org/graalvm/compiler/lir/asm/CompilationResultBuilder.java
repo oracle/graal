@@ -30,6 +30,9 @@ import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAl
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,13 +48,16 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.ImplicitLIRFrameState;
 import org.graalvm.compiler.lir.LIR;
@@ -574,6 +580,18 @@ public class CompilationResultBuilder {
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         AbstractBlockBase<?> previousBlock = null;
+        Writer dumpBBInfoWriter = null;
+        if (DebugOptions.DumpBBRelativePCAndFreq.getValue(options)) {
+            try {
+// final String blockDirectory =
+// PathUtilities.createDirectories(PathUtilities.getPath(DebugOptions.DumpPath.getValue(options),
+// "blocks_info"));
+                final String dumpBBInfoPath = PathUtilities.getPath(debug.getDumpPath("", true), "block_info");
+                dumpBBInfoWriter = new FileWriter(dumpBBInfoPath);
+            } catch (IOException e) {
+                throw debug.handle(e);
+            }
+        }
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
             if (b != null) {
@@ -583,10 +601,27 @@ public class CompilationResultBuilder {
                     StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
                     label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
                 }
+                int pcBBStart = asm.position();
                 emitBlock(b);
+                int pcBBEnd = asm.position();
+                if (dumpBBInfoWriter != null) {
+                    try {
+                        // b.getId(),pcBBStart,pcBBEnd,b.getRelativeFrequency()
+                        dumpBBInfoWriter.write(b.getId() + "," + pcBBStart + "," + pcBBEnd + "," + b.getRelativeFrequency() + "\n");
+                    } catch (IOException e) {
+                        throw debug.handle(e);
+                    }
+                }
                 previousBlock = b;
             }
             currentBlockIndex++;
+        }
+        if (dumpBBInfoWriter != null) {
+            try {
+                dumpBBInfoWriter.close();
+            } catch (IOException e) {
+                throw debug.handle(e);
+            }
         }
         this.lir = null;
         this.currentBlockIndex = 0;

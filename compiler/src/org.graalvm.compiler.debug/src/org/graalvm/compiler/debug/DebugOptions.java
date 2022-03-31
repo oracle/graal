@@ -144,6 +144,9 @@ public class DebugOptions {
     @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
 
+    @Option(help ="Enable dumping basic blocks reative PC and frequencies", type = OptionType.Debug)
+    public static final OptionKey<Boolean> DumpBBRelativePCAndFreq = new OptionKey<>(false);
+
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
