@@ -443,7 +443,6 @@ public final class NonmovableArrays {
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
             return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
@@ -454,7 +453,6 @@ public final class NonmovableArrays {
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
         if (array.isNonNull()) {
             assert startIndex >= 0 && count <= lengthOf(array) - startIndex;

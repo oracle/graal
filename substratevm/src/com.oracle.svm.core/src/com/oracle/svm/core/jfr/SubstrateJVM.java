@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -493,6 +493,16 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isEnabled(JfrEvent event) {
         return eventSettings[(int) event.getId()].isEnabled();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setLarge(long eventTypeId, boolean large) {
+        eventSettings[(int) eventTypeId].setLarge(large);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isLarge(JfrEvent event) {
+        return eventSettings[(int) event.getId()].isLarge();
     }
 
     /** See {@link JVM#setThreshold}. */

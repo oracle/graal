@@ -30,6 +30,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
@@ -48,7 +49,8 @@ public class ThreadEndEvent {
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putThread(data, isolateThread);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
     }
 }

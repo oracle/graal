@@ -50,17 +50,29 @@ public class ExecuteVMOperationEvent {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ExecuteVMOperation)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.ExecuteVMOperation.getId());
-            JfrNativeEventWriter.putLong(data, startTicks);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
-            JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, vmOperation.getId() + 1); // id starts with 1
-            JfrNativeEventWriter.putBoolean(data, vmOperation.getCausesSafepoint());
-            JfrNativeEventWriter.putBoolean(data, vmOperation.isBlocking());
-            JfrNativeEventWriter.putThread(data, requestingThread);
-            JfrNativeEventWriter.putLong(data, vmOperation.getCausesSafepoint() ? Safepoint.Master.singleton().getSafepointId().rawValue() : 0);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.ExecuteVMOperation);
+            if (!emitExecuteVMOperationEvent(data, vmOperation, requestingThread, startTicks, isLarge) &&
+                            !isLarge) {
+                if (emitExecuteVMOperationEvent(data, vmOperation, requestingThread, startTicks, true)) {
+                    SubstrateJVM.get().setLarge(JfrEvent.ExecuteVMOperation.getId(), true);
+                }
+            }
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitExecuteVMOperationEvent(JfrNativeEventWriterData data, VMOperation vmOperation,
+                    IsolateThread requestingThread, long startTicks, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.ExecuteVMOperation.getId());
+        JfrNativeEventWriter.putLong(data, startTicks);
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
+        JfrNativeEventWriter.putEventThread(data);
+        JfrNativeEventWriter.putLong(data, vmOperation.getId() + 1); // id starts with 1
+        JfrNativeEventWriter.putBoolean(data, vmOperation.getCausesSafepoint());
+        JfrNativeEventWriter.putBoolean(data, vmOperation.isBlocking());
+        JfrNativeEventWriter.putThread(data, requestingThread);
+        JfrNativeEventWriter.putLong(data, vmOperation.getCausesSafepoint() ? Safepoint.Master.singleton().getSafepointId().rawValue() : 0);
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 }

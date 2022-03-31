@@ -66,16 +66,26 @@ public class EndChunkNativePeriodicEvents extends Event {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.InitialEnvironmentVariable)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-
+            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.InitialEnvironmentVariable);
             for (StringEntry env : envs) {
-                JfrNativeEventWriter.beginEventWrite(data, false);
-                JfrNativeEventWriter.putLong(data, JfrEvent.InitialEnvironmentVariable.getId());
-                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-                JfrNativeEventWriter.putString(data, env.key);
-                JfrNativeEventWriter.putString(data, env.value);
-                JfrNativeEventWriter.endEventWrite(data, false);
+                if (!emitInitialEnvironmentVariable(data, env, isLarge) && !isLarge) {
+                    if (emitInitialEnvironmentVariable(data, env, true)) {
+                        isLarge = true;
+                        SubstrateJVM.get().setLarge(JfrEvent.InitialEnvironmentVariable.getId(), true);
+                    }
+                }
             }
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitInitialEnvironmentVariable(JfrNativeEventWriterData data, StringEntry env, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.InitialEnvironmentVariable.getId());
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+        JfrNativeEventWriter.putString(data, env.key);
+        JfrNativeEventWriter.putString(data, env.value);
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -83,16 +93,26 @@ public class EndChunkNativePeriodicEvents extends Event {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.InitialSystemProperty)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-
+            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.InitialSystemProperty);
             for (StringEntry systemProperty : systemProperties) {
-                JfrNativeEventWriter.beginEventWrite(data, false);
-                JfrNativeEventWriter.putLong(data, JfrEvent.InitialSystemProperty.getId());
-                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-                JfrNativeEventWriter.putString(data, systemProperty.key);
-                JfrNativeEventWriter.putString(data, systemProperty.value);
-                JfrNativeEventWriter.endEventWrite(data, false);
+                if (!emitInitialSystemProperty(data, systemProperty, isLarge) && !isLarge) {
+                    if (emitInitialSystemProperty(data, systemProperty, true)) {
+                        isLarge = true;
+                        SubstrateJVM.get().setLarge(JfrEvent.InitialSystemProperty.getId(), true);
+                    }
+                }
             }
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitInitialSystemProperty(JfrNativeEventWriterData data, StringEntry systemProperty, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.InitialSystemProperty.getId());
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+        JfrNativeEventWriter.putString(data, systemProperty.key);
+        JfrNativeEventWriter.putString(data, systemProperty.value);
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -101,13 +121,23 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.ClassLoadingStatistics.getId());
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, loadedClassCount);
-            JfrNativeEventWriter.putLong(data, unloadedClassCount);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.ClassLoadingStatistics);
+            if (!emitClassLoadingStatistics0(data, loadedClassCount, unloadedClassCount, isLarge) && !isLarge) {
+                if (emitClassLoadingStatistics0(data, loadedClassCount, unloadedClassCount, true)) {
+                    SubstrateJVM.get().setLarge(JfrEvent.ClassLoadingStatistics.getId(), true);
+                }
+            }
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitClassLoadingStatistics0(JfrNativeEventWriterData data, long loadedClassCount, long unloadedClassCount, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.ClassLoadingStatistics.getId());
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+        JfrNativeEventWriter.putLong(data, loadedClassCount);
+        JfrNativeEventWriter.putLong(data, unloadedClassCount);
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -116,18 +146,28 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.JVMInformation.getId());
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putString(data, jvmInformation.getJvmName());
-            JfrNativeEventWriter.putString(data, jvmInformation.getJvmVersion());
-            JfrNativeEventWriter.putString(data, jvmInformation.getJvmArguments());
-            JfrNativeEventWriter.putString(data, jvmInformation.getJvmFlags());
-            JfrNativeEventWriter.putString(data, jvmInformation.getJavaArguments());
-            JfrNativeEventWriter.putLong(data, jvmInformation.getJvmStartTime());
-            JfrNativeEventWriter.putLong(data, jvmInformation.getJvmPid());
-            JfrNativeEventWriter.endEventWrite(data, false);
+            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.JVMInformation);
+            if (!emitJVMInformation0(data, jvmInformation, isLarge) && !isLarge) {
+                if (emitJVMInformation0(data, jvmInformation, true)) {
+                    SubstrateJVM.get().setLarge(JfrEvent.JVMInformation.getId(), true);
+                }
+            }
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitJVMInformation0(JfrNativeEventWriterData data, JVMInformation jvmInformation, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.JVMInformation.getId());
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+        JfrNativeEventWriter.putString(data, jvmInformation.getJvmName());
+        JfrNativeEventWriter.putString(data, jvmInformation.getJvmVersion());
+        JfrNativeEventWriter.putString(data, jvmInformation.getJvmArguments());
+        JfrNativeEventWriter.putString(data, jvmInformation.getJvmFlags());
+        JfrNativeEventWriter.putString(data, jvmInformation.getJavaArguments());
+        JfrNativeEventWriter.putLong(data, jvmInformation.getJvmStartTime());
+        JfrNativeEventWriter.putLong(data, jvmInformation.getJvmPid());
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -136,12 +176,22 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.OSInformation.getId());
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putString(data, osVersion);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.OSInformation);
+            if (!emitOSInformation0(data, osVersion, isLarge) && !isLarge) {
+                if (emitOSInformation0(data, osVersion, true)) {
+                    SubstrateJVM.get().setLarge(JfrEvent.OSInformation.getId(), true);
+                }
+            }
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitOSInformation0(JfrNativeEventWriterData data, String osVersion, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.OSInformation.getId());
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+        JfrNativeEventWriter.putString(data, osVersion);
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 
     private static StringEntry[] getEnvironmentVariables() {

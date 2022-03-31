@@ -65,7 +65,21 @@ public class SafepointBeginEvent {
             JfrNativeEventWriter.putLong(data, safepointId.rawValue());
             JfrNativeEventWriter.putInt(data, numJavaThreads);
             JfrNativeEventWriter.putInt(data, 0); // jniCriticalThreadCount
-            JfrNativeEventWriter.endEventWrite(data, false);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static boolean emitEvent(JfrNativeEventWriterData data, UnsignedWord safepointId, int numJavaThreads, long startTicks, boolean isLarge) {
+        JfrNativeEventWriter.beginEventWrite(data, isLarge);
+        JfrNativeEventWriter.putLong(data, JfrEvent.SafepointBegin.getId());
+        JfrNativeEventWriter.putLong(data, startTicks);
+        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
+        JfrNativeEventWriter.putEventThread(data);
+        JfrNativeEventWriter.putLong(data, safepointId.rawValue());
+        JfrNativeEventWriter.putInt(data, numJavaThreads);
+        JfrNativeEventWriter.putInt(data, 0); // jniCriticalThreadCount
+        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 }

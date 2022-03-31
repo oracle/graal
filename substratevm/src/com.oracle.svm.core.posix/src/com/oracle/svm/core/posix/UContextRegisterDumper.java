@@ -60,11 +60,13 @@ public interface UContextRegisterDumper extends RegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default PointerBase getSP(Context context) {
         return getSP((ucontext_t) context);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default PointerBase getIP(Context context) {
         return getIP((ucontext_t) context);
     }

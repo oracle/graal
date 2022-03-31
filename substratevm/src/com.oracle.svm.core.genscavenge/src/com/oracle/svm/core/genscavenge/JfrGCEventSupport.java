@@ -81,7 +81,8 @@ class JfrGCEventSupport {
             JfrNativeEventWriter.putLong(data, cause.getId());
             JfrNativeEventWriter.putLong(data, pauseTime);  // sum of pause
             JfrNativeEventWriter.putLong(data, pauseTime);  // longest pause
-            JfrNativeEventWriter.endEventWrite(data, false);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
     }
 
@@ -100,7 +101,8 @@ class JfrGCEventSupport {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue());
             JfrNativeEventWriter.putString(data, name);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
     }
 

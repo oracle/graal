@@ -58,7 +58,9 @@ public class SafepointEndEvent {
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTick);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, safepointId.rawValue());
-            JfrNativeEventWriter.endEventWrite(data, false);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
     }
+
 }

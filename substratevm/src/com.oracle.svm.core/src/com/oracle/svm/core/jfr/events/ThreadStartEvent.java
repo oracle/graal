@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr.events;
 import com.oracle.svm.core.jfr.JfrEvent;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
@@ -51,7 +52,8 @@ public class ThreadStartEvent {
             JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ThreadStart.getId(), 0));
             JfrNativeEventWriter.putThread(data, isolateThread);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
-            JfrNativeEventWriter.endEventWrite(data, false);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
     }
 }
