@@ -369,7 +369,7 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
+    public static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
         return StartedByCurrentIsolate.getAddress(thread).readByte(0) != 0;
     }
 
