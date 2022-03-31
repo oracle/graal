@@ -4,6 +4,7 @@
 
   compiler:: {
     default_jvm_config:: "graal-core",
+    libgraal_jvm_config:: "graal-core-libgraal",
     libgraal_env_file:: "libgraal",
     vm_suite:: "vm",
     compiler_suite:: "compiler",

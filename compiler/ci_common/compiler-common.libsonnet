@@ -108,7 +108,7 @@
     platform:: "libgraal",
     environment+: {
       "JVM": "server",
-      "JVM_CONFIG": config.compiler.default_jvm_config + "-libgraal",
+      "JVM_CONFIG": config.compiler.libgraal_jvm_config,
       "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
       "MX_ENV_PATH": config.compiler.libgraal_env_file
     }

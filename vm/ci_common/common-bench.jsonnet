@@ -157,7 +157,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
         "--js-vm=graal-js",
         "--js-vm-config=default",
         "--jvm=server",
-        "--jvm-config=" + repo_config.compiler.default_jvm_config + "-libgraal-no-truffle-bg-comp",
+        "--jvm-config=" + repo_config.compiler.libgraal_jvm_config + "-no-truffle-bg-comp",
         "-XX:+CITime"],
       self.upload
     ],
