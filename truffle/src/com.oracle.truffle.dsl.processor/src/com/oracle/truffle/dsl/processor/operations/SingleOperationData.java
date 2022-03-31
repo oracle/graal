@@ -16,7 +16,7 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 public class SingleOperationData extends Template {
-    private final String name;
+    private String name;
     private MethodProperties mainProperties;
     private NodeData nodeData;
     private OperationsData parent;
@@ -107,6 +107,10 @@ public class SingleOperationData extends Template {
 
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Set<TypeMirror> getThrowDeclarations() {

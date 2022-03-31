@@ -230,6 +230,7 @@ public class TruffleTypes {
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
+    public static final String OperationProxy_Name = "com.oracle.truffle.api.operation.OperationProxy";
     public static final String OperationsBuilder_Name = "com.oracle.truffle.api.operation.OperationsBuilder";
     public static final String OperationsConstantPool_Name = "com.oracle.truffle.api.operation.OperationsConstantPool";
     public static final String OperationsNode_Name = "com.oracle.truffle.api.operation.OperationsNode";
@@ -247,6 +248,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
     public final DeclaredType OperationLabel = c.getDeclaredTypeOptional(OperationLabel_Name);
+    public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
     public final DeclaredType OperationsBuilder = c.getDeclaredTypeOptional(OperationsBuilder_Name);
     public final DeclaredType OperationsConstantPool = c.getDeclaredTypeOptional(OperationsConstantPool_Name);
     public final DeclaredType OperationsNode = c.getDeclaredTypeOptional(OperationsNode_Name);

@@ -149,13 +149,13 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         OperationsNode node = b.build();
 
-        try {
-            System.out.println("----------------------------------------------");
-            System.out.printf(" Node: %s%n", name);
-            System.out.println(node.dump());
-            System.out.println("----------------------------------------------");
-        } catch (Exception ignored) {
-        }
+        // try {
+        // System.out.println("----------------------------------------------");
+        // System.out.printf(" Node: %s%n", name);
+        // System.out.println(node.dump());
+        // System.out.println("----------------------------------------------");
+        // } catch (Exception ignored) {
+        // }
 
         functions.put(name, node.createRootNode().getCallTarget());
 

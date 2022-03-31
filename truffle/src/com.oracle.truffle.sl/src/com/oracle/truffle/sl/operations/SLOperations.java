@@ -18,6 +18,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -43,6 +44,18 @@ import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations
+@TypeSystemReference(SLTypes.class)
+@OperationProxy(SLAddNode.class)
+@OperationProxy(SLDivNode.class)
+@OperationProxy(SLEqualNode.class)
+@OperationProxy(SLLessOrEqualNode.class)
+@OperationProxy(SLLessThanNode.class)
+@OperationProxy(SLLogicalNotNode.class)
+@OperationProxy(SLMulNode.class)
+@OperationProxy(SLReadPropertyNode.class)
+@OperationProxy(SLSubNode.class)
+@OperationProxy(SLWritePropertyNode.class)
+@OperationProxy(SLUnboxNode.class)
 public class SLOperations {
 
     public static void parse(SLLanguage language, Source source, SLOperationsBuilder builder) {
@@ -80,26 +93,11 @@ public class SLOperations {
         }
     }
 
-    @Operation(proxyNode = SLAddNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLAddOperation {
-    }
-
-    @Operation(proxyNode = SLDivNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLDivOperation {
-    }
-
-    @Operation(proxyNode = SLEqualNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLEqualOperation {
-    }
-
     @Operation
     @TypeSystemReference(SLTypes.class)
     public static class SLFunctionLiteralOperation {
         @Specialization
-        public static Object execute(TruffleString functionName, @Bind("this") Node node, @Cached("lookupFunction(functionName, node)") Object result) {
+        public static Object execute(TruffleString functionName, @Cached("lookupFunction(functionName, this)") Object result) {
             return result;
         }
 
@@ -120,46 +118,6 @@ public class SLOperations {
                 throw SLUndefinedNameException.undefinedFunction(node, bci, function);
             }
         }
-    }
-
-    @Operation(proxyNode = SLLessOrEqualNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLLessOrEqualOperation {
-    }
-
-    @Operation(proxyNode = SLLessThanNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLLessThanOperation {
-    }
-
-    @Operation(proxyNode = SLLogicalNotNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLLogicalNotOperation {
-    }
-
-    @Operation(proxyNode = SLMulNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLMulOperation {
-    }
-
-    @Operation(proxyNode = SLReadPropertyNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLReadPropertyOperation {
-    }
-
-    @Operation(proxyNode = SLSubNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLSubOperation {
-    }
-
-    @Operation(proxyNode = SLWritePropertyNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLWritePropertyOperation {
-    }
-
-    @Operation(proxyNode = SLUnboxNode.class)
-    @TypeSystemReference(SLTypes.class)
-    public static class SLUnboxOperation {
     }
 
     @Operation

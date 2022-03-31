@@ -1,16 +1,25 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
+import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class OperationsParser extends AbstractParser<OperationsData> {
@@ -51,12 +60,23 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             data.setParseContext(languageType, contextType, parseMethod);
         }
 
-        boolean hasSome = false;
-        for (Element inner : typeElement.getEnclosedElements()) {
-            if (!(inner instanceof TypeElement)) {
-                continue;
-            }
+        List<TypeElement> operationTypes = new ArrayList<>(ElementFilter.typesIn(typeElement.getEnclosedElements()));
+        List<AnnotationMirror> opProxies = ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy);
 
+        for (AnnotationMirror mir : opProxies) {
+            DeclaredType tgtType = (DeclaredType) ElementUtils.getAnnotationValue(mir, "value").getValue();
+
+            SingleOperationData opData = new SingleOperationParser(data, (TypeElement) tgtType.asElement()).parse(null, null);
+
+            if (opData != null) {
+                data.addOperationData(opData);
+            } else {
+                data.addError("Could not generate operation: " + tgtType.asElement().getSimpleName());
+            }
+        }
+
+        boolean hasSome = false;
+        for (TypeElement inner : operationTypes) {
             if (ElementUtils.findAnnotationMirror(inner, types.Operation) == null) {
                 continue;
             }
@@ -69,6 +89,10 @@ public class OperationsParser extends AbstractParser<OperationsData> {
                 data.addOperationData(opData);
             } else {
                 data.addError("Could not generate operation: " + inner.getSimpleName());
+            }
+
+            if (inner instanceof CodeTypeElement) {
+                opData.redirectMessagesOnGeneratedElements(data);
             }
 
         }

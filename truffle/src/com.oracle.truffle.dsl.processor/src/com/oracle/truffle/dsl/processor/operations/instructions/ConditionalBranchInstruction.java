@@ -3,6 +3,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
@@ -26,8 +27,10 @@ public class ConditionalBranchInstruction extends Instruction {
         b.startIf().variable(vars.inputs[1]).end();
         b.startBlock();
         b.startAssign(vars.results[0]).variable(vars.bci).string(" + " + length()).end();
+        b.statement("continue loop");
         b.end().startElseBlock();
         b.startAssign(vars.results[0]).variable(vars.inputs[0]).end();
+        b.statement("continue loop");
         b.end();
 
         return b.build();

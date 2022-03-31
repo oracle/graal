@@ -416,7 +416,7 @@ public class OperationsBytecodeCodeGenerator {
                             break;
                         case BRANCH:
                             hasBranch = true;
-                            varResults[i] = varNextBci;
+                            varResults[i] = varBci;
                             break;
                         case RETURN:
                             hasReturn = true;
@@ -466,14 +466,10 @@ public class OperationsBytecodeCodeGenerator {
 
                     b.end(2);
                 }
-
-                if (!hasBranch) {
-                    b.startAssign(varNextBci).variable(varBci).string(" + " + op.length()).end();
-                }
-
                 if (hasReturn) {
                     b.statement("break loop");
-                } else {
+                } else if (!hasBranch) {
+                    b.startAssign(varNextBci).variable(varBci).string(" + " + op.length()).end();
                     b.statement("break");
                 }
 

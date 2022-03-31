@@ -19,6 +19,7 @@ public class BranchInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startAssign(vars.results[0]).variable(vars.inputs[0]).end();
+        b.statement("continue loop");
 
         return b.build();
     }
