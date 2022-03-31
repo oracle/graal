@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -613,6 +614,54 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }
         return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
+    }
+
+    public boolean canTransformToDFA() {
+        boolean couldCalculateLastGroup = !getOptions().getFlavor().usesLastGroupResultField() || !getProperties().hasCaptureGroupsInLookAroundAssertions();
+        return getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
+                        getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
+                        !(getRoot().hasBackReferences() ||
+                                        getProperties().hasLargeCountedRepetitions() ||
+                                        getProperties().hasNegativeLookAheadAssertions() ||
+                                        getProperties().hasNonLiteralLookBehindAssertions() ||
+                                        getProperties().hasNegativeLookBehindAssertions() ||
+                                        getRoot().hasQuantifiers() ||
+                                        getProperties().hasAtomicGroups()) &&
+                        couldCalculateLastGroup;
+    }
+
+    @TruffleBoundary
+    public String canTransformToDFAFailureReason() {
+        StringJoiner sb = new StringJoiner(", ");
+        if (getNumberOfNodes() > TRegexOptions.TRegexMaxParseTreeSizeForDFA) {
+            sb.add(String.format("Parser tree has too many nodes: %d (threshold: %d)", getNumberOfNodes(), TRegexOptions.TRegexMaxParseTreeSizeForDFA));
+        }
+        if (getNumberOfCaptureGroups() > TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA) {
+            sb.add(String.format("regex has too many capture groups: %d (threshold: %d)", getNumberOfCaptureGroups(), TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA));
+        }
+        if (getRoot().hasBackReferences()) {
+            sb.add("regex has back-references");
+        }
+        if (getProperties().hasLargeCountedRepetitions()) {
+            sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",
+                            TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC, TRegexOptions.TRegexQuantifierUnrollThresholdGroup));
+        }
+        if (getProperties().hasNegativeLookAheadAssertions()) {
+            sb.add("regex has negative look-ahead assertions");
+        }
+        if (getProperties().hasNegativeLookBehindAssertions()) {
+            sb.add("regex has negative look-behind assertions");
+        }
+        if (getProperties().hasNonLiteralLookBehindAssertions()) {
+            sb.add("regex has non-literal look-behind assertions");
+        }
+        if (getRoot().hasQuantifiers()) {
+            sb.add("could not unroll all quantifiers");
+        }
+        if (getProperties().hasAtomicGroups()) {
+            sb.add("regex has atomic groups");
+        }
+        return sb.toString();
     }
 
     @TruffleBoundary
