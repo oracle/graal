@@ -30,6 +30,7 @@ import java.util.Properties;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -121,23 +122,14 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.ClassLoadingStatistics);
-            if (!emitClassLoadingStatistics0(data, loadedClassCount, unloadedClassCount, isLarge) && !isLarge) {
-                if (emitClassLoadingStatistics0(data, loadedClassCount, unloadedClassCount, true)) {
-                    SubstrateJVM.get().setLarge(JfrEvent.ClassLoadingStatistics.getId(), true);
-                }
-            }
+            JfrNativeEventWriter.beginEventWrite(data, false);
+            JfrNativeEventWriter.putLong(data, JfrEvent.ClassLoadingStatistics.getId());
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+            JfrNativeEventWriter.putLong(data, loadedClassCount);
+            JfrNativeEventWriter.putLong(data, unloadedClassCount);
+            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
+            assert written.aboveThan(0);
         }
-    }
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static boolean emitClassLoadingStatistics0(JfrNativeEventWriterData data, long loadedClassCount, long unloadedClassCount, boolean isLarge) {
-        JfrNativeEventWriter.beginEventWrite(data, isLarge);
-        JfrNativeEventWriter.putLong(data, JfrEvent.ClassLoadingStatistics.getId());
-        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-        JfrNativeEventWriter.putLong(data, loadedClassCount);
-        JfrNativeEventWriter.putLong(data, unloadedClassCount);
-        return JfrNativeEventWriter.endEventWrite(data, isLarge).aboveThan(0);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
