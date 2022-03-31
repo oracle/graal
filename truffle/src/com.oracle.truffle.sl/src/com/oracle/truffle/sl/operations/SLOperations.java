@@ -3,11 +3,9 @@ package com.oracle.truffle.sl.operations;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -16,7 +14,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.operation.GenerateOperations;
@@ -101,7 +99,9 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLFunctionLiteralOperation {
         @Specialization
-        public static Object execute(TruffleString functionName, @Cached("lookupFunction(functionName, this)") Object result) {
+        public static Object execute(
+                        @SuppressWarnings("unused") TruffleString functionName,
+                        @Cached("lookupFunction(functionName, this)") Object result) {
             return result;
         }
 
@@ -113,13 +113,12 @@ public class SLOperations {
     @Operation
     @TypeSystemReference(SLTypes.class)
     public static class SLInvokeOperation {
-        @Specialization(guards = {"function.getCallTarget() == callTarget"})
+        @Specialization
         public static Object executeSL(
                         SLFunction function,
                         @Variadic Object[] argumentValues,
-                        @Cached("function.getCallTarget()") RootCallTarget callTarget,
-                        @Cached("create(callTarget)") DirectCallNode dcn) {
-            return dcn.call(argumentValues);
+                        @Cached IndirectCallNode callNode) {
+            return callNode.call(function.getCallTarget(), argumentValues);
         }
 
         @Specialization

@@ -1,13 +1,15 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import java.util.List;
+
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
@@ -22,6 +24,8 @@ public class CustomInstruction extends Instruction {
     private final SingleOperationData data;
     private ExecutableElement executeMethod;
     private DataKind[] dataKinds = null;
+    private int numChildNodes;
+    private int numConsts;
 
     public SingleOperationData getData() {
         return data;
@@ -62,6 +66,10 @@ public class CustomInstruction extends Instruction {
 
         int lengthWithoutState = lengthWithoutState();
 
+        b.lineComment("additionalData  = " + dataKinds.length + " bytes: " + List.of(dataKinds));
+        b.lineComment("  numChildNodes = " + numChildNodes);
+        b.lineComment("  numConsts     = " + numConsts);
+
         for (int i = 0; i < dataKinds.length; i++) {
             CodeTree index = b.create().variable(vars.bci).string(" + " + lengthWithoutState + " + " + i).build();
             switch (dataKinds[i]) {
@@ -75,7 +83,7 @@ public class CustomInstruction extends Instruction {
                     b.startCall("LE_BYTES", "putShort");
                     b.variable(vars.bc);
                     b.tree(index);
-                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).variable(vars.numChildNodes).string("++").end();
+                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).variable(vars.numChildNodes).end();
                     b.end();
                     break;
                 case CONST:
@@ -91,6 +99,14 @@ public class CustomInstruction extends Instruction {
             }
 
             b.end();
+        }
+
+        for (int i = 1; i < numConsts; i++) {
+            b.startStatement().startCall(vars.consts, "reserve").end(2);
+        }
+
+        if (numChildNodes > 0) {
+            b.startStatement().variable(vars.numChildNodes).string(" += " + numChildNodes).end();
         }
 
         return b.build();
@@ -156,5 +172,13 @@ public class CustomInstruction extends Instruction {
         }
 
         return sb.toString();
+    }
+
+    public void setNumChildNodes(int numChildNodes) {
+        this.numChildNodes = numChildNodes;
+    }
+
+    public void setNumConsts(int numConsts) {
+        this.numConsts = numConsts;
     }
 }

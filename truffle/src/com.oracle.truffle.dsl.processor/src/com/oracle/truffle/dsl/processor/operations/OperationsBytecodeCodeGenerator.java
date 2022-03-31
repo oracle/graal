@@ -36,8 +36,8 @@ import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
 
@@ -50,6 +50,9 @@ public class OperationsBytecodeCodeGenerator {
     private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
     private final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+
+    private final static Object MARKER_CHILD = new Object();
+    private final static Object MARKER_CONST = new Object();
 
     private static final String DSL_METHOD_PREFIX = "execute_";
     private static final String DSL_CLASS_PREFIX = "Execute_";
@@ -137,7 +140,10 @@ public class OperationsBytecodeCodeGenerator {
 
                 final SingleOperationData soData = cinstr.getData();
                 final List<Object> additionalData = new ArrayList<>();
-                final List<CustomInstruction.DataKind> additionalDataKinds = new ArrayList<>();
+                final List<DataKind> additionalDataKinds = new ArrayList<>();
+
+                final List<Object> childIndices = new ArrayList<>();
+                final List<Object> constIndices = new ArrayList<>();
 
                 NodeGeneratorPlugs plugs = new NodeGeneratorPlugs() {
                     @Override
@@ -188,15 +194,22 @@ public class OperationsBytecodeCodeGenerator {
                             throw new IllegalArgumentException("refObject is null");
                         }
 
-                        int index = additionalData.indexOf(refObject);
+                        List<Object> refList = isChild ? childIndices : constIndices;
+                        int index = refList.indexOf(refObject);
+                        int baseIndex = additionalData.indexOf(isChild ? MARKER_CHILD : MARKER_CONST);
 
                         if (index == -1) {
-                            index = additionalData.size();
-                            additionalData.add(refObject);
-                            additionalData.add(null);
+                            if (baseIndex == -1) {
+                                baseIndex = additionalData.size();
+                                additionalData.add(isChild ? MARKER_CHILD : MARKER_CONST);
+                                additionalData.add(null);
 
-                            additionalDataKinds.add(isChild ? DataKind.CHILD : DataKind.CONST);
-                            additionalDataKinds.add(DataKind.CONTINUATION);
+                                additionalDataKinds.add(isChild ? DataKind.CHILD : DataKind.CONST);
+                                additionalDataKinds.add(DataKind.CONTINUATION);
+                            }
+
+                            index = refList.size();
+                            refList.add(refObject);
                         }
 
                         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
@@ -216,9 +229,9 @@ public class OperationsBytecodeCodeGenerator {
                         b.variable(targetField).string("[");
                         b.startCall("LE_BYTES", "getShort");
                         b.variable(fldBc);
-                        b.string("$bci + " + cinstr.lengthWithoutState() + " + " + index);
+                        b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
                         b.end();
-                        b.string("]");
+                        b.string(" + " + index + "]");
 
                         if (doCast) {
                             b.end();
@@ -298,6 +311,8 @@ public class OperationsBytecodeCodeGenerator {
 
                 cinstr.setExecuteMethod(uncExec);
                 cinstr.setDataKinds(additionalDataKinds.toArray(new DataKind[additionalDataKinds.size()]));
+                cinstr.setNumChildNodes(childIndices.size());
+                cinstr.setNumConsts(constIndices.size());
             }
         }
 
