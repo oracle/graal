@@ -1356,10 +1356,12 @@ public class LLVMInteropTest {
             Value a = strlenFunction.execute(new char[]{'a'});
             Value abcd = strlenFunction.execute(new char[]{'a', 'b', 'c', 'd'});
             Value abcdWithTerminator = strlenFunction.execute(new char[]{'a', 'b', 'c', 'd', '\0'});
+            Value abcdWithEmbeddedTerminator = strlenFunction.execute(new char[]{'a', 'b', 'c', '\0', 'd'});
             Assert.assertEquals(0, nullString.asInt());
             Assert.assertEquals(1, a.asInt());
             Assert.assertEquals(4, abcd.asInt());
-            Assert.assertEquals(5, abcdWithTerminator.asInt());
+            Assert.assertEquals(4, abcdWithTerminator.asInt());
+            Assert.assertEquals(3, abcdWithEmbeddedTerminator.asInt());
         }
     }
 
