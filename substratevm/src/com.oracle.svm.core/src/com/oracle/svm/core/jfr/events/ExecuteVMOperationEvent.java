@@ -51,7 +51,6 @@ public class ExecuteVMOperationEvent {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ExecuteVMOperation)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvent.ExecuteVMOperation.getId());
             JfrNativeEventWriter.putLong(data, startTicks);
