@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class BaseEspressoStatementNode extends Node implements InstrumentableNode {
+public abstract class EspressoBaseStatementNode extends Node implements InstrumentableNode {
 
     public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
         // only here to satisfy wrapper generation
@@ -54,7 +54,7 @@ public abstract class BaseEspressoStatementNode extends Node implements Instrume
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
-        return new BaseEspressoStatementNodeWrapper(this, probe);
+        return new EspressoBaseStatementNodeWrapper(this, probe);
     }
 
     public final BytecodeNode getBytecodeNode() {

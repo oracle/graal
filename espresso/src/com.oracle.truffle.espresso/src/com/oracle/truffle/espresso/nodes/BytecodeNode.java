@@ -2828,7 +2828,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     static final class InstrumentationSupport extends Node {
         static final int NO_STATEMENT = -1;
 
-        @Children private final BaseEspressoStatementNode[] statementNodes;
+        @Children private final EspressoBaseStatementNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
         private final EspressoContext context;
@@ -2848,7 +2848,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 Arrays.fill(seenLines, -1);
                 int maxSeenLine = -1;
 
-                this.statementNodes = new BaseEspressoStatementNode[entries.size()];
+                this.statementNodes = new EspressoBaseStatementNode[entries.size()];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
 
                 for (int i = 0; i < entries.size(); i++) {
@@ -2994,7 +2994,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (statementNodes == null || index < 0) {
                 return null;
             }
-            BaseEspressoStatementNode node = statementNodes[index];
+            EspressoBaseStatementNode node = statementNodes[index];
             if (!(node instanceof WrapperNode)) {
                 return null;
             }
