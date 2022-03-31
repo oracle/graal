@@ -162,9 +162,7 @@ public final class JavaStackWalker {
 
         DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
         if (deoptFrame == null) {
-            lookupCodeInfoInterruptible(info, walk.getPossiblyStaleIP(), queryResult);
-            /* Frame could have been deoptimized during interruptible lookup above, check again. */
-            deoptFrame = Deoptimizer.checkDeoptimized(sp);
+            CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, walk.getPossiblyStaleIP()), queryResult);
         }
 
         return continueWalk(walk, queryResult, deoptFrame);
@@ -224,11 +222,6 @@ public final class JavaStackWalker {
         }
     }
 
-    @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
-    private static void lookupCodeInfoInterruptible(CodeInfo codeInfo, CodePointer ip, SimpleCodeInfoQueryResult queryResult) {
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
-    }
-
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fatally fail.", calleeMustBe = false)
     public static RuntimeException reportUnknownFrameEncountered(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
         Log log = Log.log().string("Stack walk must walk only frames of known code:");
@@ -247,7 +240,16 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static <T> boolean walkCurrentThread(Pointer startSP, ParameterizedStackFrameVisitor<T> visitor, T data) {
-        CodePointer startIP = FrameAccess.singleton().readReturnAddress(startSP);
+        return walkCurrentThread(startSP, FrameAccess.singleton().readReturnAddress(startSP), visitor, data);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    public static <T> boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor<T> visitor) {
+        return walkCurrentThread(startSP, startIP, visitor, null);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    public static <T> boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor<T> visitor, T data) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         initWalk(walk, startSP, startIP);
         return doWalk(walk, visitor, data);
