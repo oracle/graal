@@ -399,7 +399,10 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
 
     @Override
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        return original.getDeclaredAnnotation(annotationClass);
+        if (annotationClass == LambdaFormHiddenMethod.class) {
+            return annotationClass.cast(LambdaFormHiddenMethod.Holder.INSTANCE);
+        }
+        return null;
     }
 
     @Override
@@ -409,7 +412,7 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return original.getDeclaredAnnotations();
+        return LambdaFormHiddenMethod.Holder.ARRAY;
     }
 
     public ResolvedJavaType getOriginal() {
