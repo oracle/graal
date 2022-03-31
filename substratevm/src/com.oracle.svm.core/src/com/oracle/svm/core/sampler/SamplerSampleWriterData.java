@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+
+package com.oracle.svm.core.sampler;
 
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -30,44 +31,44 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
 /**
- * A data structure that holds the mutable state of a {@link JfrNativeEventWriter}. Typically, it is
+ * A data structure that holds the mutable state of a {@link SamplerSampleWriter}. Typically, it is
  * allocated on the stack.
  */
 @RawStructure
-public interface JfrNativeEventWriterData extends PointerBase {
+interface SamplerSampleWriterData extends PointerBase {
     /**
-     * Gets the JfrBuffer that data will be written to.
+     * Gets the buffer that data will be written to.
      */
     @RawField
-    JfrBuffer getJfrBuffer();
+    SamplerBuffer getSamplerBuffer();
 
     /**
-     * Sets the JfrBuffer that data will be written to.
+     * Sets the buffer that data will be written to.
      */
     @RawField
-    void setJfrBuffer(JfrBuffer value);
+    void setSamplerBuffer(SamplerBuffer buffer);
 
     /**
-     * Gets the start position for the current event write.
+     * Gets the start position for the current sample write.
      */
     @RawField
     Pointer getStartPos();
 
     /**
-     * Sets the start position for the current event write.
+     * Sets the start position for the current sample write.
      */
     @RawField
     void setStartPos(Pointer value);
 
     /**
-     * Gets the current position of the event write. This position is moved forward as data is
-     * written for an event
+     * Gets the current position of the sample write. This position is moved forward as data is
+     * written for a sample.
      */
     @RawField
     Pointer getCurrentPos();
 
     /**
-     * Sets the current position of the event write.
+     * Sets the current position of the sample write.
      */
     @RawField
     void setCurrentPos(Pointer value);

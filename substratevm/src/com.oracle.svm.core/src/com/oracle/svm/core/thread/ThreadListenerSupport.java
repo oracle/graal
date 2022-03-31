@@ -65,7 +65,7 @@ public class ThreadListenerSupport {
 
     @Uninterruptible(reason = "Force that all listeners are uninterruptible.")
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
-        for (int i = 0; i < listeners.length; i++) {
+        for (int i = listeners.length - 1; i >= 0; i--) {
             listeners[i].afterThreadExit(isolateThread, javaThread);
         }
     }

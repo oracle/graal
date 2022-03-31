@@ -115,6 +115,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getThreadCount() {
         return threadCount.get();
     }
