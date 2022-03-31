@@ -30,13 +30,13 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -58,7 +58,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * </ul>
  */
 @NodeInfo(shortName = "INVOKEVIRTUAL")
-public abstract class InvokeVirtual extends Node {
+public abstract class InvokeVirtual extends EspressoNode {
 
     final Method resolutionSeed;
 
@@ -83,7 +83,7 @@ public abstract class InvokeVirtual extends Node {
 
     @ImportStatic({InvokeVirtual.class, Utils.class})
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
 
         final Method resolutionSeed;
 
@@ -96,7 +96,7 @@ public abstract class InvokeVirtual extends Node {
         public abstract Object execute(Object[] args);
 
         @ImportStatic(Utils.class)
-        abstract static class LazyDirectCallNode extends Node {
+        abstract static class LazyDirectCallNode extends EspressoNode {
 
             final Method.MethodVersion resolvedMethod;
 
@@ -202,7 +202,7 @@ public abstract class InvokeVirtual extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "INVOKEVIRTUAL dynamic")
-    public abstract static class Dynamic extends Node {
+    public abstract static class Dynamic extends EspressoNode {
 
         protected static final int LIMIT = 4;
 
@@ -219,7 +219,7 @@ public abstract class InvokeVirtual extends Node {
 
         @GenerateUncached
         @NodeInfo(shortName = "INVOKEVIRTUAL dynamic !nullcheck")
-        public abstract static class WithoutNullCheck extends Node {
+        public abstract static class WithoutNullCheck extends EspressoNode {
 
             protected static final int LIMIT = 4;
 

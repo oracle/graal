@@ -31,39 +31,21 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoScope;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class EspressoInstrumentableNode extends Node implements BciProvider, InstrumentableNode, ContextAccess {
+public abstract class EspressoInstrumentableNode extends EspressoNode implements BciProvider, InstrumentableNode {
 
     public abstract Object execute(VirtualFrame frame);
 
     public abstract Method getMethod();
-
-    @Override
-    public final EspressoContext getContext() {
-        /*
-         * WARNING: this returns the **current**, thread-local, context; not a context associated
-         * with this node.
-         */
-        return EspressoContext.get(this);
-    }
-
-    @Override
-    public final EspressoLanguage getLanguage() {
-        return EspressoLanguage.get(this);
-    }
 
     @Override
     public final boolean isInstrumentable() {

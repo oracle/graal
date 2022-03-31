@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -51,11 +50,6 @@ public final class InvokeHandleNode extends QuickNode {
     private final int parameterCount;
     private final JavaKind rKind;
     private final boolean returnsPrimitiveType;
-
-    @Override
-    public EspressoLanguage getLanguage() {
-        return EspressoLanguage.get(this);
-    }
 
     public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
         super(top, curBCI);

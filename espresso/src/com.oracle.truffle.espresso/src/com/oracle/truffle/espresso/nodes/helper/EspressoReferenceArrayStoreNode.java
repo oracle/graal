@@ -25,15 +25,15 @@ package com.oracle.truffle.espresso.nodes.helper;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOfFactory;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class EspressoReferenceArrayStoreNode extends Node {
+public final class EspressoReferenceArrayStoreNode extends EspressoNode {
 
     @Child InstanceOf.Dynamic instanceOfDynamic;
     @CompilationFinal boolean noOutOfBoundEx = true;

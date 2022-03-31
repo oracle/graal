@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
@@ -42,6 +41,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -59,7 +59,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * </p>
  */
 @NodeInfo(shortName = "INVOKEINTERFACE")
-public abstract class InvokeInterface extends Node {
+public abstract class InvokeInterface extends EspressoNode {
 
     final Method resolutionSeed;
 
@@ -84,7 +84,7 @@ public abstract class InvokeInterface extends Node {
 
     @ImportStatic({InvokeInterface.class, Utils.class})
     @NodeInfo(shortName = "INVOKEINTERFACE !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
 
         protected static final int LIMIT = 8;
 
@@ -184,7 +184,7 @@ public abstract class InvokeInterface extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "INVOKEINTERFACE dynamic")
-    public abstract static class Dynamic extends Node {
+    public abstract static class Dynamic extends EspressoNode {
 
         protected static final int LIMIT = 4;
 
@@ -201,7 +201,7 @@ public abstract class InvokeInterface extends Node {
 
         @GenerateUncached
         @NodeInfo(shortName = "INVOKEINTERFACE dynamic !nullcheck")
-        public abstract static class WithoutNullCheck extends Node {
+        public abstract static class WithoutNullCheck extends EspressoNode {
 
             protected static final int LIMIT = 4;
 

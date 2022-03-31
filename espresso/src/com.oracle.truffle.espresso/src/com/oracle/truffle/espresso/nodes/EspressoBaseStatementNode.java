@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class EspressoBaseStatementNode extends Node implements InstrumentableNode {
+public abstract class EspressoBaseStatementNode extends EspressoNode implements InstrumentableNode {
 
     public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
         // only here to satisfy wrapper generation

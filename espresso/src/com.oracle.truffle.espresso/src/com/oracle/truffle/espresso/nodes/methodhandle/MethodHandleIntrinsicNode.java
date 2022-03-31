@@ -23,17 +23,15 @@
 
 package com.oracle.truffle.espresso.nodes.methodhandle;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Top of the method handle intrinsic behavior implementation hierarchy.
  */
-public abstract class MethodHandleIntrinsicNode extends Node implements ContextAccess {
+public abstract class MethodHandleIntrinsicNode extends EspressoNode {
     protected static final DebugCounter hits = DebugCounter.create("MH cache hits");
     protected static final DebugCounter miss = DebugCounter.create("MH cache miss");
 
@@ -48,11 +46,6 @@ public abstract class MethodHandleIntrinsicNode extends Node implements ContextA
      */
     public Method getMethod() {
         return method;
-    }
-
-    @Override
-    public final EspressoContext getContext() {
-        return method.getContext();
     }
 
     public boolean inliningEnabled() {

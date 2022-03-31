@@ -31,21 +31,20 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class AbstractGetFieldNode extends Node implements ContextAccess {
+public abstract class AbstractGetFieldNode extends EspressoNode {
     final Field field;
 
     final String fieldName;
@@ -56,16 +55,6 @@ public abstract class AbstractGetFieldNode extends Node implements ContextAccess
         this.field = field;
         this.fieldName = getField().getNameAsString();
         this.slotCount = getField().getKind().getSlotCount();
-    }
-
-    @Override
-    public final EspressoContext getContext() {
-        return EspressoContext.get(this);
-    }
-
-    @Override
-    public final EspressoLanguage getLanguage() {
-        return EspressoLanguage.get(this);
     }
 
     Field getField() {

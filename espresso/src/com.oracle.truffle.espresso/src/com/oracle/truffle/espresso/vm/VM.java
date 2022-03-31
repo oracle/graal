@@ -106,7 +106,6 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.EntryTable;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -173,7 +172,7 @@ import sun.misc.Unsafe;
  * - for new VM methods (/ex: upgrading from java 8 to 11), updating include/jvm.h
  */
 @GenerateNativeEnv(target = VmImpl.class, reachableForAutoSubstitution = true)
-public final class VM extends NativeEnv implements ContextAccess {
+public final class VM extends NativeEnv {
 
     private final @Pointer TruffleObject disposeMokapotContext;
 

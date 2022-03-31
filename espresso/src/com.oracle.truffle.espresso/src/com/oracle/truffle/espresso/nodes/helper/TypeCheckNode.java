@@ -28,11 +28,10 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -51,14 +50,10 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 @SuppressWarnings("unused")
 @GenerateUncached
-public abstract class TypeCheckNode extends Node implements ContextAccess {
+public abstract class TypeCheckNode extends EspressoNode {
     protected static final int LIMIT = 4;
 
     public abstract boolean executeTypeCheck(Klass typeToCheck, Klass k);
-
-    public final EspressoContext getContext() {
-        return EspressoContext.get(this);
-    }
 
     @Specialization(guards = "typeToCheck == k")
     protected boolean typeCheckEquals(Klass typeToCheck, Klass k) {

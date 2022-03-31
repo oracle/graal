@@ -29,13 +29,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -55,7 +54,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateUncached
 @NodeInfo(shortName = "FALOAD")
-public abstract class FloatArrayLoad extends Node {
+public abstract class FloatArrayLoad extends EspressoNode {
 
     public abstract float execute(StaticObject receiver, int index);
 
@@ -68,19 +67,11 @@ public abstract class FloatArrayLoad extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "FALOAD !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
         public abstract float execute(StaticObject receiver, int index);
-
-        protected final EspressoContext getContext() {
-            return EspressoContext.get(this);
-        }
-
-        protected final EspressoLanguage getLanguage() {
-            return EspressoLanguage.get(this);
-        }
 
         @Specialization(guards = "array.isEspressoObject()")
         float doEspresso(StaticObject array, int index,

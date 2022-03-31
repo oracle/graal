@@ -258,7 +258,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -2825,7 +2824,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
     }
 
-    static final class InstrumentationSupport extends Node {
+    static final class InstrumentationSupport extends EspressoNode {
         static final int NO_STATEMENT = -1;
 
         @Children private final EspressoBaseStatementNode[] statementNodes;

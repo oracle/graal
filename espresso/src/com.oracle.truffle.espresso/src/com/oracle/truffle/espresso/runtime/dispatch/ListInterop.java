@@ -36,7 +36,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -44,6 +43,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNodeGen;
@@ -113,7 +113,7 @@ public final class ListInterop extends IterableInterop {
     }
 
     @GenerateUncached
-    abstract static class ListGet extends Node {
+    abstract static class ListGet extends EspressoNode {
         static final int LIMIT = 3;
 
         public Object listGet(StaticObject receiver, long index, BranchProfile error) throws InvalidArrayIndexException {
@@ -152,7 +152,7 @@ public final class ListInterop extends IterableInterop {
     }
 
     @GenerateUncached
-    abstract static class ListSet extends Node {
+    abstract static class ListSet extends EspressoNode {
         static final int LIMIT = 3;
 
         public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException {

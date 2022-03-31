@@ -31,19 +31,18 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class AbstractSetFieldNode extends Node implements ContextAccess {
+public abstract class AbstractSetFieldNode extends EspressoNode {
     final Field field;
     final String fieldName;
     static final int CACHED_LIBRARY_LIMIT = 3;
@@ -51,16 +50,6 @@ public abstract class AbstractSetFieldNode extends Node implements ContextAccess
     AbstractSetFieldNode(Field field) {
         this.field = field;
         this.fieldName = field.getNameAsString();
-    }
-
-    @Override
-    public final EspressoContext getContext() {
-        return EspressoContext.get(this);
-    }
-
-    @Override
-    public final EspressoLanguage getLanguage() {
-        return EspressoLanguage.get(this);
     }
 
     public abstract void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex);

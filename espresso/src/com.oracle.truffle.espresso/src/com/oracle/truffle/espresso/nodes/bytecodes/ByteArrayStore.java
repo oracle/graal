@@ -31,12 +31,12 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -68,7 +68,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateUncached
 @NodeInfo(shortName = "BASTORE")
-public abstract class ByteArrayStore extends Node {
+public abstract class ByteArrayStore extends EspressoNode {
 
     public abstract void execute(StaticObject receiver, int index, byte value);
 
@@ -82,18 +82,10 @@ public abstract class ByteArrayStore extends Node {
     @GenerateUncached
     @ImportStatic(Utils.class)
     @NodeInfo(shortName = "BASTORE !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
         static final int LIMIT = 2;
 
         public abstract void execute(StaticObject receiver, int index, byte value);
-
-        protected final EspressoContext getContext() {
-            return EspressoContext.get(this);
-        }
-
-        protected final EspressoLanguage getLanguage() {
-            return EspressoLanguage.get(this);
-        }
 
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, byte value,
