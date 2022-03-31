@@ -1835,7 +1835,7 @@ public class FlatNodeGenFactory {
 
         boolean isExecutableInUncached = effectiveEvaluatedCount != node.getExecutionCount() && !node.getChildren().isEmpty();
         if (!isExecutableInUncached) {
-            method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+            GeneratorUtils.addBoundaryOrTransferToInterpreter(method, builder);
         }
 
         if (forType.getMethod() != null) {
@@ -2886,7 +2886,7 @@ public class FlatNodeGenFactory {
                     CodeTree uncachedNode = DSLExpressionGenerator.write(child.getUncachedExpression(), null, null);
                     builder.startReturn().tree(uncachedNode).end();
                 } else {
-                    method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+                    GeneratorUtils.addBoundaryOrTransferToInterpreter(method, null);
                     builder.tree(GeneratorUtils.createShouldNotReachHere("This getter method cannot be used for uncached node versions as it requires child nodes to be present."));
                 }
             } else {
@@ -3930,9 +3930,9 @@ public class FlatNodeGenFactory {
         frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, includeFrameParameter,
                         createSpecializationLocalName(specialization));
 
-        boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         boundaryMethod.getThrownTypes().addAll(parentMethod.getThrownTypes());
         innerBuilder = boundaryMethod.createBuilder();
+        GeneratorUtils.addBoundaryOrTransferToInterpreter(boundaryMethod, innerBuilder);
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);
         builder.startReturn().startCall("this", boundaryMethod);
         multiState.addReferencesTo(frameState, builder);

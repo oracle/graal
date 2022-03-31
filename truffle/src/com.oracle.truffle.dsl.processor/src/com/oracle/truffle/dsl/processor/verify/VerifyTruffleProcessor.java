@@ -132,6 +132,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
         try {
             TruffleTypes types = context.getTypes();
             TypeElement virtualFrameType = ElementUtils.castTypeElement(types.VirtualFrame);
+            TypeElement frameType = ElementUtils.castTypeElement(types.Frame);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_TruffleBoundary))) {
                 scope = element;
@@ -144,7 +145,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
                     for (VariableElement parameter : method.getParameters()) {
                         Element paramType = processingEnv.getTypeUtils().asElement(parameter.asType());
-                        if (paramType != null && paramType.equals(virtualFrameType)) {
+                        if (paramType != null && (paramType.equals(virtualFrameType) || paramType.equals(frameType))) {
                             errorMessage(element, "Method %s cannot be annotated with @%s and have a parameter of type %s", method.getSimpleName(),
                                             types.CompilerDirectives_TruffleBoundary.asElement().getSimpleName().toString(),
                                             paramType.getSimpleName());
