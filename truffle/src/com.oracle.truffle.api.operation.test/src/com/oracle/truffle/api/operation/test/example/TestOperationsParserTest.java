@@ -11,7 +11,6 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.OperationsRootNode;
@@ -65,13 +64,15 @@ public class TestOperationsParserTest {
             b.emitLoadArgument(1);
             b.endAddOperation();
             b.endReturn();
+
+            b.build();
         });
 
         RootCallTarget root = node.createRootNode().getCallTarget();
 
-        Assert.assertEquals(42L, 20L, 22L);
-        Assert.assertEquals("foobar", "foo", "bar");
-        Assert.assertEquals(100L, 120L, -20L);
+        Assert.assertEquals(42L, root.call(20L, 22L));
+        Assert.assertEquals("foobar", root.call("foo", "bar"));
+        Assert.assertEquals(100L, root.call(120L, -20L));
     }
 
     @Test
@@ -93,14 +94,16 @@ public class TestOperationsParserTest {
             b.endReturn();
 
             b.endIfThenElse();
+
+            b.build();
         });
 
         RootCallTarget root = node.createRootNode().getCallTarget();
 
-        Assert.assertEquals(42L, 42L, 13L);
-        Assert.assertEquals(42L, 42L, 13L);
-        Assert.assertEquals(42L, 42L, 13L);
-        Assert.assertEquals(42L, 13L, 42L);
+        Assert.assertEquals(42L, root.call(42L, 13L));
+        Assert.assertEquals(42L, root.call(42L, 13L));
+        Assert.assertEquals(42L, root.call(42L, 13L));
+        Assert.assertEquals(42L, root.call(13L, 42L));
     }
 
     @Test
@@ -162,8 +165,36 @@ public class TestOperationsParserTest {
                    + "    (return 1))"
                    + "  (return 0))";
         //@formatter:on
+        OperationsNode node = parse(b -> {
+            b.beginTryCatch(0);
 
-        new Tester(src).test(0L, 1L).test(1L, -1L);
+            b.beginIfThen();
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(0L);
+            b.endLessThanOperation();
+
+            b.emitThrowOperation();
+
+            b.endIfThen();
+
+            b.beginReturn();
+            b.emitConstObject(1L);
+            b.endReturn();
+
+            b.endTryCatch();
+
+            b.beginReturn();
+            b.emitConstObject(0L);
+            b.endReturn();
+
+            b.build();
+        });
+
+        RootCallTarget root = node.createRootNode().getCallTarget();
+
+        Assert.assertEquals(1L, root.call(-1L));
+        Assert.assertEquals(0L, root.call(1L));
     }
 
     @Test
@@ -181,8 +212,8 @@ public class TestOperationsParserTest {
     public void testContextEval() {
         String src = "(return (add 1 2))";
 
-        Context context = Context.create("test");
-        long result = context.eval("test", src).asLong();
+        Context context = Context.create("test-operations");
+        long result = context.eval("test-operations", src).asLong();
         Assert.assertEquals(3, result);
     }
 

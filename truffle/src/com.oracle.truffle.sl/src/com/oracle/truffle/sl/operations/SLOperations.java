@@ -3,9 +3,11 @@ package com.oracle.truffle.sl.operations;
 import java.util.Collections;
 import java.util.Map;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -14,6 +16,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.operation.GenerateOperations;
@@ -39,6 +42,7 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.parser.operations.SLOperationsVisitor;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
@@ -109,8 +113,22 @@ public class SLOperations {
     @Operation
     @TypeSystemReference(SLTypes.class)
     public static class SLInvokeOperation {
+        @Specialization(guards = {"function.getCallTarget() == callTarget"})
+        public static Object executeSL(
+                        SLFunction function,
+                        @Variadic Object[] argumentValues,
+                        @Cached("function.getCallTarget()") RootCallTarget callTarget,
+                        @Cached("create(callTarget)") DirectCallNode dcn) {
+            return dcn.call(argumentValues);
+        }
+
         @Specialization
-        public static Object execute(Object function, @Variadic Object[] argumentValues, @Bind("this") Node node, @Bind("$bci") int bci, @CachedLibrary(limit = "3") InteropLibrary library) {
+        public static Object execute(
+                        Object function,
+                        @Variadic Object[] argumentValues,
+                        @Bind("this") Node node,
+                        @Bind("$bci") int bci,
+                        @CachedLibrary(limit = "3") InteropLibrary library) {
             try {
                 return library.execute(function, argumentValues);
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {

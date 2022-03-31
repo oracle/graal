@@ -5,9 +5,6 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
 
 public class BranchInstruction extends Instruction {
     public BranchInstruction(int id) {

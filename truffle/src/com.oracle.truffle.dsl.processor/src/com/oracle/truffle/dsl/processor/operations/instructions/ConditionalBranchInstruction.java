@@ -3,12 +3,8 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
 
 public class ConditionalBranchInstruction extends Instruction {
     public ConditionalBranchInstruction(int id) {
