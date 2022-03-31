@@ -78,7 +78,9 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -99,6 +101,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
+import org.graalvm.compiler.truffle.compiler.nodes.AnyExtendNode;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
@@ -565,6 +568,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         return graph;
     }
 
+    private static void replaceAnyExtendNodes(StructuredGraph graph) {
+        // replace all AnyExtendNodes with ZeroExtendNodes
+        for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
+            node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
+        }
+    }
+
     /**
      * Hook for processing bailout exceptions.
      *
@@ -594,6 +604,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     CompilationRequest compilationRequest,
                     TruffleCompilerListener listener,
                     TruffleCompilationTask task) {
+
+        replaceAnyExtendNodes(graph);
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("TruffleFinal")) {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After TruffleTier");
