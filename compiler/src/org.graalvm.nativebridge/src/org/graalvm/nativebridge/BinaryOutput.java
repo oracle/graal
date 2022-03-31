@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
 import java.io.Closeable;
-import java.io.UTFDataFormatException;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * A buffer used by the {@link BinaryMarshaller} to marshall parameters and results passed by value.
@@ -40,7 +40,7 @@ import java.util.Arrays;
  * @see BinaryMarshaller
  * @see Builder#registerMarshaller(Class, BinaryMarshaller)
  */
-public abstract class BinaryOutput implements Closeable {
+public abstract class BinaryOutput {
 
     /**
      * Maximum string length for string encoded by 4 bytes length followed be content.
@@ -168,8 +168,11 @@ public abstract class BinaryOutput implements Closeable {
 
     /**
      * Writes a string using a modified UTF-8 encoding in a machine-independent manner.
+     *
+     * @throws IllegalArgumentException if the {@code string} cannot be encoded using modified UTF-8
+     *             encoding.
      */
-    public final void writeUTF(String string) throws UTFDataFormatException {
+    public final void writeUTF(String string) throws IllegalArgumentException {
         int len = string.length();
         int utfLen = 0;
         int c;
@@ -187,7 +190,7 @@ public abstract class BinaryOutput implements Closeable {
         }
 
         if (utfLen > MAX_LENGTH) {
-            throw new UTFDataFormatException("String too long to encode, " + utfLen + " bytes");
+            throw new IllegalArgumentException("String too long to encode, " + utfLen + " bytes");
         }
         int headerSize;
         if (utfLen > MAX_SHORT_LENGTH) {
@@ -235,20 +238,14 @@ public abstract class BinaryOutput implements Closeable {
     }
 
     /**
-     * Closes the buffer and possibly frees off-heap allocated resources.
-     */
-    @Override
-    public void close() {
-    }
-
-    /**
      * Writes the value that is represented by the given object, together with information on the
      * value's data type. Supported types are boxed Java primitive types, {@link String},
      * {@code null}, and arrays of these types.
      *
-     * @throws IllegalArgumentException when the {@code value} type is not supported.
+     * @throws IllegalArgumentException when the {@code value} type is not supported or the
+     *             {@code value} is a string which cannot be encoded using modified UTF-8 encoding.
      */
-    public final void writeTypedValue(Object value) throws UTFDataFormatException {
+    public final void writeTypedValue(Object value) throws IllegalArgumentException {
         if (value instanceof Object[]) {
             Object[] arr = (Object[]) value;
             writeByte(ARRAY);
@@ -300,7 +297,7 @@ public abstract class BinaryOutput implements Closeable {
      * Creates a new buffer backed by a byte array.
      */
     public static ByteArrayBinaryOutput create() {
-        return new ByteArrayBinaryOutput();
+        return new ByteArrayBinaryOutput(ByteArrayBinaryOutput.INITIAL_SIZE);
     }
 
     /**
@@ -309,7 +306,8 @@ public abstract class BinaryOutput implements Closeable {
      * {@link ByteArrayBinaryOutput#getArray()} to obtain the marshaled data.
      */
     public static ByteArrayBinaryOutput create(byte[] initialBuffer) {
-        return initialBuffer == null ? new ByteArrayBinaryOutput() : new ByteArrayBinaryOutput(initialBuffer);
+        Objects.requireNonNull(initialBuffer, "InitialBuffer must be non null.");
+        return new ByteArrayBinaryOutput(initialBuffer);
     }
 
     /**
@@ -337,12 +335,12 @@ public abstract class BinaryOutput implements Closeable {
     public static final class ByteArrayBinaryOutput extends BinaryOutput {
 
         private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
-        private static final int INITIAL_SIZE = 32;
+        static final int INITIAL_SIZE = 32;
 
         private byte[] buffer;
 
-        private ByteArrayBinaryOutput() {
-            buffer = new byte[INITIAL_SIZE];
+        private ByteArrayBinaryOutput(int size) {
+            buffer = new byte[size];
         }
 
         private ByteArrayBinaryOutput(byte[] initialBuffer) {
@@ -382,12 +380,20 @@ public abstract class BinaryOutput implements Closeable {
                 buffer = Arrays.copyOf(buffer, newCapacity);
             }
         }
+
+        /**
+         * Creates a new buffer backed by a byte array. The buffer initial size is
+         * {@code initialSize}.
+         */
+        public static ByteArrayBinaryOutput create(int initialSize) {
+            return new ByteArrayBinaryOutput(initialSize);
+        }
     }
 
     /**
      * A {@link BinaryOutput} backed by an off-heap memory.
      */
-    public static final class CCharPointerBinaryOutput extends BinaryOutput {
+    public static final class CCharPointerBinaryOutput extends BinaryOutput implements Closeable {
 
         private CCharPointer address;
         private int length;
@@ -433,6 +439,9 @@ public abstract class BinaryOutput implements Closeable {
             pos += len;
         }
 
+        /**
+         * Closes the buffer and frees off-heap allocated resources.
+         */
         @Override
         public void close() {
             if (unmanaged) {
@@ -475,6 +484,14 @@ public abstract class BinaryOutput implements Closeable {
             for (int i = 0; i < len; i++) {
                 dst.write(i, src.read(i));
             }
+        }
+
+        /**
+         * Creates a new buffer backed by an off-heap memory segment. The buffer initial size is
+         * {@code initialSize}.
+         */
+        public static CCharPointerBinaryOutput create(int initialSize) {
+            return new CCharPointerBinaryOutput(UnmanagedMemory.malloc(initialSize), initialSize, true);
         }
     }
 }

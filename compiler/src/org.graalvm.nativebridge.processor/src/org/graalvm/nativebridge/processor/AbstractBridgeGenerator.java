@@ -55,7 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
@@ -63,6 +62,9 @@ import org.graalvm.nativebridge.processor.AbstractBridgeParser.MarshallerData;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.MethodData;
 
 abstract class AbstractBridgeGenerator {
+
+    static final String MARSHALLED_DATA_PARAMETER = "marshalledData";
+    private static final int BYTES_PER_PARAMETER = 256;
 
     final AbstractBridgeParser parser;
     final Types types;
@@ -74,13 +76,14 @@ abstract class AbstractBridgeGenerator {
         this.typeCache = parser.typeCache;
     }
 
-    protected final TypeMirror getType(Class<?> type) {
-        return parser.processor.getType(type);
-    }
-
     abstract void generate(DefinitionData data) throws IOException;
 
     abstract MarshallerSnippets marshallerSnippets(DefinitionData data, MarshallerData marshallerData);
+
+    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
+        int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
+        return slots * BYTES_PER_PARAMETER;
+    }
 
     final void writeSourceFile(DefinitionData data, String content) throws IOException {
         TypeElement originatingElement = (TypeElement) data.annotatedType.asElement();
@@ -144,10 +147,7 @@ abstract class AbstractBridgeGenerator {
         return false;
     }
 
-    final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data, CodeBuilder.Parameter jniConfigVariable,
-                    boolean staticFields, DeclaredType marshallerType) {
-        String prefix = staticFields ? "" : "this.";
-        String lookupMethod = marshallerType.equals(typeCache.jniHotSpotMarshaller) ? "lookupHotSpotMarshaller" : "lookupNativeMarshaller";
+    final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data) {
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             List<CharSequence> params = new ArrayList<>();
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
@@ -158,9 +158,8 @@ abstract class AbstractBridgeGenerator {
             for (AnnotationMirror annotationType : marshaller.annotations) {
                 params.add(new CodeBuilder(builder).classLiteral(annotationType.getAnnotationType()).build());
             }
-            builder.lineStart(prefix).write(marshaller.name).write(" = ");
-            CharSequence jniConfigName = jniConfigVariable == null ? "config" : jniConfigVariable.name;
-            builder.invoke(jniConfigName, lookupMethod, params.toArray(new CharSequence[params.size()])).lineEnd(";");
+            builder.lineStart().write(marshaller.name).write(" = ");
+            builder.invoke("config", "lookupMarshaller", params.toArray(new CharSequence[0])).lineEnd(";");
         }
     }
 
@@ -264,11 +263,11 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static void generateMarshallerFields(CodeBuilder builder, DefinitionData data, DeclaredType type, Modifier... modifiers) {
+    void generateMarshallerFields(CodeBuilder builder, DefinitionData data, Modifier... modifiers) {
         for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
             Set<Modifier> modSet = EnumSet.noneOf(Modifier.class);
             Collections.addAll(modSet, modifiers);
-            builder.lineStart().writeModifiers(modSet).space().parameterizedType(type, marshaller.forType).space().write(marshaller.name).lineEnd(";");
+            builder.lineStart().writeModifiers(modSet).space().parameterizedType(typeCache.binaryMarshaller, marshaller.forType).space().write(marshaller.name).lineEnd(";");
         }
     }
 
@@ -295,12 +294,26 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<Map.Entry<MarshallerData, CharSequence>> customMarshallers) {
+        builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
+        boolean first = true;
+        for (Map.Entry<MarshallerData, CharSequence> e : customMarshallers) {
+            if (first) {
+                first = false;
+            } else {
+                builder.spaceIfNeeded().write("+").space();
+            }
+            builder.invoke(e.getKey().name, "inferSize", e.getValue());
+        }
+        builder.lineEnd(";");
+    }
+
     static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
         return (PackageElement) typeElement.getEnclosingElement();
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
-        return parameters.stream().map((p) -> p.name).toArray((len) -> new CharSequence[len]);
+        return parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
     }
 
     abstract static class MarshallerSnippets {
@@ -322,9 +335,11 @@ abstract class AbstractBridgeGenerator {
 
         abstract TypeMirror getEndPointMethodParameterType(TypeMirror type);
 
-        abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence jniEnvFieldName);
+        abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence marshalledParametersOutput,
+                        CharSequence jniEnvFieldName);
 
-        abstract CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName);
+        abstract CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput,
+                        CharSequence jniEnvFieldName);
 
         @SuppressWarnings("unused")
         boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName,
@@ -356,9 +371,10 @@ abstract class AbstractBridgeGenerator {
             return null;
         }
 
-        abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName);
+        abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName);
 
-        abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName);
+        abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                        CharSequence jniEnvFieldName);
 
         static CharSequence outArrayLocal(CharSequence parameterName) {
             return parameterName + "Out";
@@ -393,7 +409,7 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory && !isHSObject) {
                 DeclaredType receiverType = (DeclaredType) marshallerData.nonDefaultReceiver.asType();
                 List<CharSequence> newArgs = new ArrayList<>();
-                newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[args.size()])).build());
+                newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[0])).build());
                 newArgs.add(jniEnvFieldName);
                 args = newArgs;
             }
@@ -413,7 +429,7 @@ abstract class AbstractBridgeGenerator {
             boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
             boolean isNativeObject = types.isSubtype(marshallerData.forType, cache.nativeObject);
             if (hasGeneratedFactory && !isNativeObject) {
-                args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[args.size()])).build());
+                args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[0])).build());
             }
             CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
             if (marshallerData.customDispatchFactory != null) {
@@ -443,10 +459,10 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
                 return new CodeBuilder(builder).invoke(type,
-                                factoryMethod, args.toArray(new CharSequence[args.size()])).build();
+                                factoryMethod, args.toArray(new CharSequence[0])).build();
             } else {
                 return new CodeBuilder(builder).newInstance((DeclaredType) types.erasure(marshallerData.forType),
-                                args.toArray(new CharSequence[args.size()])).build();
+                                args.toArray(new CharSequence[0])).build();
             }
         }
 
@@ -597,7 +613,7 @@ abstract class AbstractBridgeGenerator {
     static final class CodeBuilder {
 
         private static final int INDENT_SIZE = 4;
-        private static final Comparator<TypeElement> FQN_COMPARATOR = (a, b) -> a.getQualifiedName().toString().compareTo(b.getQualifiedName().toString());
+        private static final Comparator<TypeElement> FQN_COMPARATOR = Comparator.comparing(a -> a.getQualifiedName().toString());
 
         private final CodeBuilder parent;
         private final PackageElement pkg;
@@ -606,22 +622,24 @@ abstract class AbstractBridgeGenerator {
         private final Collection<TypeElement> toImport;
         private final StringBuilder body;
         private int indentLevel;
+        private Scope scope;
 
         CodeBuilder(PackageElement pkg, Types types, AbstractTypeCache typeCache) {
-            this(null, pkg, types, typeCache, new TreeSet<>(FQN_COMPARATOR), new StringBuilder());
+            this(null, pkg, types, typeCache, new TreeSet<>(FQN_COMPARATOR), new StringBuilder(), null);
         }
 
         CodeBuilder(CodeBuilder parent) {
-            this(parent, parent.pkg, parent.types, parent.typeCache, parent.toImport, new StringBuilder());
+            this(parent, parent.pkg, parent.types, parent.typeCache, parent.toImport, new StringBuilder(), parent.scope);
         }
 
-        private CodeBuilder(CodeBuilder parent, PackageElement pkg, Types types, AbstractTypeCache typeCache, Collection<TypeElement> toImport, StringBuilder body) {
+        private CodeBuilder(CodeBuilder parent, PackageElement pkg, Types types, AbstractTypeCache typeCache, Collection<TypeElement> toImport, StringBuilder body, Scope scope) {
             this.parent = parent;
             this.pkg = pkg;
             this.types = types;
             this.typeCache = typeCache;
             this.toImport = toImport;
             this.body = body;
+            this.scope = scope;
         }
 
         CodeBuilder indent() {
@@ -635,6 +653,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         CodeBuilder classStart(Set<Modifier> modifiers, CharSequence name, DeclaredType superClass, List<DeclaredType> superInterfaces) {
+            scope = new Scope(superClass != null ? superClass : typeCache.object, superInterfaces, scope);
             lineStart();
             writeModifiers(modifiers).spaceIfNeeded().write("class ").write(name);
             if (superClass != null) {
@@ -651,6 +670,11 @@ abstract class AbstractBridgeGenerator {
             }
             lineEnd(" {");
             return this;
+        }
+
+        CodeBuilder classEnd() {
+            scope = scope.parent;
+            return line("}");
         }
 
         CodeBuilder methodStart(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType,
@@ -938,10 +962,14 @@ abstract class AbstractBridgeGenerator {
 
         CodeBuilder write(TypeElement te) {
             Element teEnclosing = te.getEnclosingElement();
-            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing)) {
+            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing) && !isElementVisible(te)) {
                 toImport.add(te);
             }
             return write(te.getSimpleName());
+        }
+
+        private boolean isElementVisible(TypeElement te) {
+            return scope != null && scope.isElementVisible(te, types);
         }
 
         private static boolean isJavaLang(Element element) {
@@ -966,7 +994,7 @@ abstract class AbstractBridgeGenerator {
                     DeclaredType declaredType = ((DeclaredType) type);
                     List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
                     if (!typeArguments.isEmpty()) {
-                        parameterizedType(declaredType, typeArguments.toArray(new TypeMirror[typeArguments.size()]));
+                        parameterizedType(declaredType, typeArguments.toArray(new TypeMirror[0]));
                     } else {
                         write((TypeElement) declaredType.asElement());
                     }
@@ -1026,11 +1054,6 @@ abstract class AbstractBridgeGenerator {
             return new Parameter(type, name, annotations);
         }
 
-        static List<? extends Parameter> newParameters(List<? extends VariableElement> params) {
-            List<TypeMirror> parameterTypes = params.stream().map((ve) -> ve.asType()).collect(Collectors.toList());
-            return newParameters(params, parameterTypes);
-        }
-
         static List<? extends Parameter> newParameters(List<? extends VariableElement> params,
                         List<? extends TypeMirror> parameterTypes) {
             if (params.size() != parameterTypes.size()) {
@@ -1054,6 +1077,60 @@ abstract class AbstractBridgeGenerator {
                 this.type = type;
                 this.name = name;
                 this.annotations = annotations;
+            }
+        }
+
+        private static final class Scope {
+
+            private final Scope parent;
+            private final DeclaredType superClass;
+            private final List<DeclaredType> superInterfaces;
+
+            Scope(DeclaredType superClass, List<DeclaredType> superInterfaces, Scope parent) {
+                this.superClass = superClass;
+                this.superInterfaces = superInterfaces;
+                this.parent = parent;
+            }
+
+            boolean isElementVisible(TypeElement type, Types types) {
+                Element owner = type.getEnclosingElement();
+                if (owner.getKind().isClass() || owner.getKind().isInterface()) {
+                    return isElementVisibleImpl((TypeElement) owner, types);
+                }
+                return false;
+            }
+
+            private boolean isElementVisibleImpl(TypeElement owner, Types types) {
+                if (isInherited(owner, (TypeElement) ((DeclaredType) types.erasure(superClass)).asElement(), types)) {
+                    return true;
+                }
+                for (DeclaredType superInterface : superInterfaces) {
+                    if (isInherited(owner, (TypeElement) ((DeclaredType) types.erasure(superInterface)).asElement(), types)) {
+                        return true;
+                    }
+                }
+                if (parent != null) {
+                    return parent.isElementVisibleImpl(owner, types);
+                }
+                return false;
+            }
+
+            private static boolean isInherited(TypeElement toCheck, TypeElement type, Types types) {
+                if (toCheck.equals(type)) {
+                    return true;
+                }
+                TypeMirror superClz = type.getSuperclass();
+                if (superClz.getKind() != TypeKind.NONE) {
+                    if (isInherited(toCheck, (TypeElement) ((DeclaredType) types.erasure(superClz)).asElement(), types)) {
+                        return true;
+                    }
+                }
+                for (TypeMirror superIfc : type.getInterfaces()) {
+                    if (isInherited(toCheck, (TypeElement) ((DeclaredType) types.erasure(superIfc)).asElement(), types)) {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
     }

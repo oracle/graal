@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.hstonative;
 
-/**
- * A marshaller used by the native bridge processor on the host side to marshall method parameters
- * and results of a custom type. Marshallers are used to support types that are not directly
- * implemented by the native bridge processor.
- *
- * @see JNIConfig.Builder
- */
-public interface JNIHotSpotMarshaller<T> {
-    /**
-     * Converts the {@code object} into a form that can be transferred into the isolate.
-     */
-    Object marshall(T object);
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
+import org.graalvm.nativebridge.Idempotent;
+import org.graalvm.nativebridge.NativeIsolate;
+import org.graalvm.nativebridge.NativeObject;
+import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-    /**
-     * Converts the internal form back into an object.
-     */
-    T unmarshall(Object rawObject);
+import java.util.Map;
+
+@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
+abstract class NativeCustomMarshallerTest extends NativeObject implements CustomMarshallerService {
+
+    NativeCustomMarshallerTest(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
+    }
+
+    @Idempotent
+    @Override
+    public abstract Map<String, String> getProperties();
 }

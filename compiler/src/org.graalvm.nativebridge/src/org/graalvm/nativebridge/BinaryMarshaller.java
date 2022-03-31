@@ -24,7 +24,7 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
+import java.util.Objects;
 
 /**
  * A marshaller used by the native bridge processor to read or write method parameters and results
@@ -38,10 +38,27 @@ public interface BinaryMarshaller<T> {
     /**
      * Reads the object value from the {@code input} and returns the recreated object.
      */
-    T read(BinaryInput input) throws IOException;
+    T read(BinaryInput input);
 
     /**
      * Writes the {@code object}'s value into the {@code output}.
      */
-    void write(BinaryOutput output, T object) throws IOException;
+    void write(BinaryOutput output, T object);
+
+    /**
+     * Estimates a size in bytes needed to marshall given object. The returned value is used to
+     * pre-allocate the {@link BinaryOutput}'s buffer.
+     */
+    default int inferSize(@SuppressWarnings("unused") T object) {
+        return Long.BYTES;
+    }
+
+    /**
+     * Decorates {@code forMarshaller} by a {@link BinaryMarshaller} handling {@code null} values.
+     * The returned {@link BinaryMarshaller} calls the {@code forMarshaller} only non-null values.
+     */
+    static <T> BinaryMarshaller<T> nullable(BinaryMarshaller<T> forMarshaller) {
+        Objects.requireNonNull(forMarshaller, "ForMarshaller must be non null.");
+        return new NullableBinaryMarshaller<>(forMarshaller);
+    }
 }

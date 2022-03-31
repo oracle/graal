@@ -73,6 +73,8 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -683,6 +685,10 @@ public abstract class Accessor {
         public abstract boolean requireLanguageWithAllEncodings(Object encoding);
 
         public abstract AutoCloseable createPolyglotThreadScope();
+
+        public abstract Engine getPolyglotEngineAPI(Object polyglotEngineImpl);
+
+        public abstract Context getPolyglotContextAPI(Object polyglotContextImpl);
     }
 
     public abstract static class LanguageSupport extends Support {

@@ -22,31 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.common;
+package org.graalvm.nativebridge.processor.test.nativetohs;
 
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext;
-import org.graalvm.nativebridge.ExceptionHandler;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.Service;
+import org.graalvm.nativebridge.Idempotent;
+import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidExceptionHandler4Test extends HSObject implements Service {
+import java.util.Map;
 
-    InvalidExceptionHandler4Test(JNIEnv env, JObject handle) {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshallerService {
+
+    HSCustomMarshallerTest(JNIEnv env, JObject handle) {
         super(env, handle);
     }
 
-    @ExceptionHandler
-    @ExpectError("A method annotated by `ExceptionHandler` must be a non-private static boolean method with `ExceptionHandlerContext` parameter(s).%n" +
-                    "To fix this change the signature to `static boolean handleException(ExceptionHandlerContext exceptionHandlerContext)`.")
-    @SuppressWarnings("unused")
-    static Object handleException(ExceptionHandlerContext exceptionHandlerContext) {
-        return false;
-    }
-
+    @Idempotent
+    @Override
+    public abstract Map<String, String> getProperties();
 }
