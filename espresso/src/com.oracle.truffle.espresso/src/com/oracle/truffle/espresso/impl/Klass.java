@@ -129,11 +129,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                     @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException {
 
-        EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
         Field field = lookupFieldNode.execute(this, member, true);
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
             if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
+                EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
                 return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
