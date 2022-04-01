@@ -95,12 +95,11 @@ public abstract class BooleanArrayStore extends EspressoNode {
         void doArrayLike(StaticObject array, int index, byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Bind("getLanguage()") EspressoLanguage language,
-                        @Bind("getMeta()") Meta meta,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            assert array.getKlass() == meta._boolean_array;
+            assert array.getKlass() == getMeta()._boolean_array;
             boolean booleanValue = value != 0;
-            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, meta, interop, exceptionProfile);
+            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, getMeta(), interop, exceptionProfile);
         }
     }
 }
