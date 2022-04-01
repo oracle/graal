@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_64)
 public abstract class BasicArrayCopyNode extends WithExceptionNode
-                implements DeoptBciSupplier, StateSplit, Virtualizable, SingleMemoryKill, FloatableMemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
+                implements DeoptBciSupplier, StateSplit, Virtualizable, SingleMemoryKill, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 

@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.Value;
 // JaCoCo Exclude
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, FloatableMemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<AMD64ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(AMD64ArrayRegionEqualsWithMaskNode.class);
 

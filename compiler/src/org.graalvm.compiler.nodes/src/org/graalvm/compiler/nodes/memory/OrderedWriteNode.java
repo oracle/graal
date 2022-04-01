@@ -93,7 +93,7 @@ public class OrderedWriteNode extends WriteNode {
         while (true) {
             // Check the memory usages of the current access
             for (Node usage : cur.usages()) {
-                if (!(usage instanceof FloatableMemoryAccess) || !(usage instanceof FixedWithNextNode)) {
+                if (!(usage instanceof MemoryAccess) || !(usage instanceof FixedWithNextNode)) {
                     // Other kinds of usages won't be visited in the traversal and likely
                     // invalidates elimination of the barrier instruction.
                     return false;

@@ -25,7 +25,6 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -37,28 +36,19 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -73,7 +63,6 @@ import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
@@ -81,9 +70,9 @@ import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * Optimization phase that performs global value numbering and loop invariant code motion on a high
- * tier graph. It only considers {@link FixedNode} nodes, floating nodes are handled automatically
- * via their representation in the IR as {@link FloatingNode}.
+ * Optimization phase that performs global value numbering and loop invariant code motion on a
+ * {@link StructuredGraph}. It only considers {@link FixedNode} nodes, floating nodes are handled
+ * automatically via their representation in the IR as {@link FloatingNode}.
  *
  * Note on loop invariant code motion: This phase only performs loop invariant code motion for
  * instructions unconditionally executed inside a loop. A standard example is a loop iterating until
@@ -124,13 +113,13 @@ import org.graalvm.word.LocationIdentity;
  *
  * The algorithm does not create {@link ProxyNode}. Thus, if a node is defined inside a loop and
  * another value equal node is outside of this loop, value numbering will not happen (for the sake
- * of simplicity of the algorthim).
+ * of simplicity of the algorithm).
  *
  * @see <a href="https://en.wikipedia.org/wiki/Value_numbering">Global Value Numbering</a>
  * @see <a href="https://en.wikipedia.org/wiki/Loop-invariant_code_motion">Loop-invariant code
  *      motion</a>
  */
-public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
+public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     public static final CounterKey earlyGVN = DebugContext.counter("EarlyGVN");
     public static final CounterKey earlyGVNLICM = DebugContext.counter("EarlyGVN_LICM");
@@ -138,193 +127,8 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (graph.getDebug().isDumpEnabledForMethod()) {
-            TTY.printf("");
-        }
-
         runFixedNodeGVN(graph, context);
-        runFixedNodeLICM(graph, context);
-        runFixedNodeGVN(graph, context);
-
         assert verifyGVN(graph);
-    }
-
-    private static void runFixedNodeLICM(StructuredGraph graph, CoreProviders context) {
-        /*
-         * Focus on if(loopInvariantCondition) { loop invariant nodes leading to a sink pattern}
-         */
-
-        LoopsData ld = context.getLoopsDataProvider().getLoopsData(graph);
-        outer: for (LoopEx loop : ld.outerFirst()) {
-            // only lift per loop for now
-            NodeBitMap liftedNodes = graph.createNodeBitMap();
-            LoopBeginNode lb = loop.loopBegin();
-            FixedNode cur = lb.next();
-            Loop<Block> hirLoop = ld.getCFG().blockFor(lb).getLoop();
-            LocationSet thisLoopKilledLocations = hirLoop == null ? null : ((HIRLoop) hirLoop).getKillLocations();
-
-            ValueMap licmMap = new ValueMap();
-            // kill everything the loop kills to have a minimal set for
-            GVNVisitor.killLoopLocations(thisLoopKilledLocations, licmMap);
-
-            while (nodeCanBeLifted(cur, loop, liftedNodes)) {
-                if (cur instanceof IfNode) {
-                    IfNode ifNode = (IfNode) cur;
-                    NodeBitMap nodesToMark = graph.createNodeBitMap();
-                    if (sinksLoopInvariantWithoutLoopExit(ifNode.trueSuccessor(), loop, liftedNodes, nodesToMark)) {
-                        loopInvariantCodeIf(lb, ifNode, ifNode.trueSuccessor(), liftedNodes);
-                        cur = lb.next();
-                        liftedNodes.markAll(nodesToMark);
-                        liftedNodes.mark(ifNode.falseSuccessor());
-                        continue;
-                    } else if (sinksLoopInvariantWithoutLoopExit(ifNode.falseSuccessor(), loop, liftedNodes, nodesToMark)) {
-                        loopInvariantCodeIf(lb, ifNode, ifNode.falseSuccessor(), liftedNodes);
-                        cur = lb.next();
-                        liftedNodes.markAll(nodesToMark);
-                        liftedNodes.mark(ifNode.trueSuccessor());
-                        continue;
-                    } else {
-                        continue outer;
-                    }
-                } else {
-                    if (canGVN(cur)) {
-                        if (cur instanceof MemoryAccess) {
-                            MemoryAccess access = (MemoryAccess) cur;
-                            if (!loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                                if (!tryPerformLICM(loop, cur, liftedNodes)) {
-                                    continue outer;
-                                } else {
-                                    cur = lb.next();
-                                    continue;
-                                }
-                            }
-                        }
-                        continue outer;
-                    } else {
-                        continue outer;
-                    }
-                }
-            }
-        }
-
-    }
-
-    private static void loopInvariantCodeIf(LoopBeginNode lb, IfNode ifNode, AbstractBeginNode sinkingSuccessor, NodeBitMap liftedNodes) {
-        AbstractBeginNode nonSinkingBegin = ifNode.trueSuccessor() == sinkingSuccessor ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
-        FixedNode nextAfterNonSinkingBegin = nonSinkingBegin.next();
-        FixedWithNextNode predLoop = (FixedWithNextNode) lb.forwardEnd().predecessor();
-        predLoop.setNext(null);
-        lb.setNext(null);
-        nonSinkingBegin.setNext(null);
-        predLoop.setNext(ifNode);
-        nonSinkingBegin.setNext(lb.forwardEnd());
-        lb.setNext(nextAfterNonSinkingBegin);
-        liftedNodes.mark(ifNode);
-        lb.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, lb.graph(), "After licm of node if sth sink branch %s", ifNode);
-    }
-
-    private static boolean sinksLoopInvariantWithoutLoopExit(FixedNode start, LoopEx loop, NodeBitMap liftedNodes, NodeBitMap nodesToMark) {
-        FixedNode cur = start;
-        while (true) {
-            nodesToMark.mark(cur);
-            if (cur instanceof LoopExitNode) {
-                return false;
-            }
-
-            if (cur instanceof FixedWithNextNode && nodeCanBeLifted(cur, loop, liftedNodes)) {
-                if (!canGVN(cur) && !(cur instanceof BeginNode)) {
-                    // we must ensure no state effect will be moved out of the loop because we
-                    // would need to clone the header state then as well and perform code motion
-                    // on it
-                    return false;
-                }
-                cur = ((FixedWithNextNode) cur).next();
-            } else if (cur instanceof ControlSinkNode) {
-                if (nodeCanBeLifted(cur, loop, liftedNodes)) {
-                    return true;
-                } else {
-                    if (cur instanceof NodeWithState) {
-                        /*
-                         * We reached the control sink and everything until now can be lifted but
-                         * for some reason the sink itself not. Check if it is because the state
-                         * itself references a phi, i.e., it is not outside the loop, in this case
-                         * create a state that can be lifted.
-                         */
-                        for (Node input : cur.inputs()) {
-                            if (!inputIsLoopInvariant(input, loop, liftedNodes)) {
-                                if (input instanceof VirtualState) {
-                                    VirtualState stateInput = (VirtualState) input;
-                                    StateOnlyLoopInvariantOrPhi closure = new StateOnlyLoopInvariantOrPhi(loop);
-                                    stateInput.applyToNonVirtual(closure);
-                                    if (!closure.onlyInvariantOrPhiUsages) {
-                                        return false;
-                                    }
-                                } else {
-                                    return false;
-                                }
-                            }
-                        }
-
-                        // we reached this point, we know that only the state has a phi usage but
-                        // nothing else in between, duplicate the states and replace all phis with
-                        // predecessor inputs and return true
-
-                        final NodeWithState nws = (NodeWithState) cur;
-
-                        final StructuredGraph graph = cur.graph();
-                        Graph.Mark before = graph.getMark();
-                        List<FrameState> states = nws.states().snapshot();
-                        EconomicMap<FrameState, FrameState> newStates = EconomicMap.create();
-                        for (FrameState state : states) {
-                            newStates.put(state, state.duplicateWithVirtualState());
-                        }
-
-                        for (PhiNode phi : loop.loopBegin().phis()) {
-                            phi.replaceAtMatchingUsages(phi.valueAt(0), x -> graph.isNew(before, x));
-                        }
-                        for (FrameState state : states) {
-                            state.replaceAtMatchingUsages(newStates.get(state), x -> x == nws);
-                        }
-                        return true;
-                    }
-                }
-                /*
-                 * We do ignore if the sink is a node with state, there can be multiple cases here
-                 * but if all inputs are loop invariant, any state inputs might as well. If it is a
-                 * deoptimizing node we take the state before the loop which is also fine, for the
-                 * nodes in between we must ensure no side effect happened so far, this is checked
-                 * above when going over FixedWithNextNodes
-                 */
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    private static class StateOnlyLoopInvariantOrPhi extends VirtualState.NodePositionClosure<Node> {
-        private final LoopEx lex;
-        private boolean onlyInvariantOrPhiUsages = true;
-
-        StateOnlyLoopInvariantOrPhi(LoopEx lex) {
-            this.lex = lex;
-        }
-
-        @Override
-        public void apply(Node from, Position p) {
-            if (!onlyInvariantOrPhiUsages) {
-                // no more work needed
-                return;
-            }
-            Node input = p.get(from);
-            if (!lex.isOutsideLoop(input)) {
-                if (!lex.loopBegin().isPhiAtMerge(input)) {
-                    onlyInvariantOrPhiUsages = false;
-                    return;
-                }
-            }
-        }
-
     }
 
     private static void runFixedNodeGVN(StructuredGraph graph, CoreProviders context) {
@@ -348,13 +152,15 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
         final LoopsData ld;
         final NodeBitMap licmNodes;
         final BlockMap<ValueMap> blockMaps;
+        final boolean considerLICM;
 
         GVNVisitor(ControlFlowGraph cfg, LoopsData ld) {
             this.cfg = cfg;
             this.ld = ld;
             this.graph = cfg.graph;
-            licmNodes = graph.createNodeBitMap();
-            blockMaps = new BlockMap<>(cfg);
+            this.licmNodes = graph.createNodeBitMap();
+            this.blockMaps = new BlockMap<>(cfg);
+            this.considerLICM = GraalOptions.EarlyLICM.getValue(graph.getOptions());
         }
 
         /**
@@ -447,7 +253,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                     FixedWithNextNode fwn = nodes.get(i);
                     // a previous GVN can remove this node
                     if (fwn != null) {
-                        procesNode(fwn, insideLoop, unconditionallyInsideLoop, thisLoopKilledLocations, hirLoop, blockMap, cfg, licmNodes, cfg.graph, ld);
+                        procesNode(fwn, insideLoop, unconditionallyInsideLoop, considerLICM, thisLoopKilledLocations, hirLoop, blockMap, licmNodes, ld);
                     }
                 }
             }
@@ -470,8 +276,9 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, LocationSet thisLoopKilledLocations, Loop<Block> hirLoop,
-                        ValueMap blockMap, ControlFlowGraph cfg, NodeBitMap licmNodes, StructuredGraph graph, LoopsData ld) {
+        private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, boolean considerLICM, LocationSet thisLoopKilledLocations, Loop<Block> hirLoop,
+                        ValueMap blockMap, NodeBitMap licmNodes, LoopsData ld) {
+            final ControlFlowGraph cfg = ld.getCFG();
             if (cur instanceof LoopExitNode) {
                 /*
                  * We exit a loop down this path, we have to account for the effects of the loop
@@ -517,7 +324,7 @@ public class EarlyGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
                     }
                 }
             } else {
-                if (unconditionallyInsideLoop && GraalOptions.EarlyLICM.getValue(graph.getOptions())) {
+                if (unconditionallyInsideLoop && considerLICM) {
                     if (canGVN(cur)) {
                         if (cur instanceof MemoryAccess) {
                             MemoryAccess access = (MemoryAccess) cur;

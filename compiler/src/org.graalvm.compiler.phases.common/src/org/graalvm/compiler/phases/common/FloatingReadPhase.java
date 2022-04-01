@@ -62,7 +62,6 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatableAccessNode;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
@@ -251,15 +250,15 @@ public class FloatingReadPhase extends Phase {
     }
 
     /**
-     * Ensure {@link MemoryAccess} used in high tier aligns with the {@link FloatableMemoryAccess}
-     * nodes used in mid tier. Every non-floatable memory access either needs to be lowered to a
-     * floatable one (Which can be fixed) or it has to be a {@link MemoryKill}. Else it would mean
-     * we have a memory accessing node that was present in high tier but does not participate in the
-     * real memory graph in mid tier, this is not allowed.
+     * Ensure {@link MemoryAccess} used in high tier aligns with the {@link MemoryAccess} nodes used
+     * in mid tier. Every non-floatable memory access either needs to be lowered to a floatable one
+     * (Which can be fixed) or it has to be a {@link MemoryKill}. Else it would mean we have a
+     * memory accessing node that was present in high tier but does not participate in the real
+     * memory graph in mid tier, this is not allowed.
      */
     private static boolean memoryTiersAligned(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof MemoryAccess && !(n instanceof FloatableMemoryAccess)) {
+            if (n instanceof MemoryAccess && !(n instanceof MemoryAccess)) {
                 if (!MemoryKill.isMemoryKill(n)) {
                     throw GraalError.shouldNotReachHere(
                                     String.format("Node %s is a memory access but not a floatable one, it should have been a memory kill or be removed after the first lowering", n));
@@ -354,8 +353,8 @@ public class FloatingReadPhase extends Phase {
                 return state;
             }
 
-            if (node instanceof FloatableMemoryAccess) {
-                processAccess((FloatableMemoryAccess) node, state);
+            if (node instanceof MemoryAccess) {
+                processAccess((MemoryAccess) node, state);
             }
 
             if (createFloatingReads && node instanceof FloatableAccessNode) {
@@ -380,8 +379,8 @@ public class FloatingReadPhase extends Phase {
          */
         private static void processAnchor(MemoryAnchorNode anchor, MemoryMapImpl state) {
             for (Node node : anchor.usages().snapshot()) {
-                if (node instanceof FloatableMemoryAccess) {
-                    FloatableMemoryAccess access = (FloatableMemoryAccess) node;
+                if (node instanceof MemoryAccess) {
+                    MemoryAccess access = (MemoryAccess) node;
                     if (access.getLastLocationAccess() == anchor) {
                         MemoryKill lastLocationAccess = state.getLastLocationAccess(access.getLocationIdentity());
                         assert lastLocationAccess != null;
@@ -395,9 +394,9 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        private static void processAccess(FloatableMemoryAccess access, MemoryMapImpl state) {
+        private static void processAccess(MemoryAccess access, MemoryMapImpl state) {
             LocationIdentity locationIdentity = access.getLocationIdentity();
-            if (!locationIdentity.equals(LocationIdentity.any())) {
+            if (!locationIdentity.equals(LocationIdentity.any()) && locationIdentity.isMutable()) {
                 MemoryKill lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 access.setLastLocationAccess(lastLocationAccess);
             }

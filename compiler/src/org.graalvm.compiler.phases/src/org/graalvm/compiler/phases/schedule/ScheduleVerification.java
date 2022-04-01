@@ -45,13 +45,13 @@ import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
@@ -121,7 +121,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                 }
 
                 addFloatingReadUsages(currentState, n);
-            } else if (n instanceof FloatableMemoryAccess) {
+            } else if (n instanceof MemoryAccess) {
                 addFloatingReadUsages(currentState, n);
             } else if (n instanceof FloatingReadNode) {
                 FloatingReadNode floatingReadNode = (FloatingReadNode) n;

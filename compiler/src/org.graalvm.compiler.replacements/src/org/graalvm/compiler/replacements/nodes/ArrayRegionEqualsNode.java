@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.Value;
  * checked). Other combinations of kinds are currently not allowed.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, FloatableMemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);
 

@@ -26,10 +26,9 @@ package org.graalvm.compiler.nodes.memory;
 
 /**
  *
- * A special form of {@linkplain FloatableMemoryAccess} requiring barrier information for garbage
- * collection.
+ * A special form of {@linkplain MemoryAccess} requiring barrier information for garbage collection.
  */
-public interface OnHeapMemoryAccess extends FloatableMemoryAccess {
+public interface OnHeapMemoryAccess extends MemoryAccess {
 
     /**
      * The types of (write/read) barriers attached to stores.

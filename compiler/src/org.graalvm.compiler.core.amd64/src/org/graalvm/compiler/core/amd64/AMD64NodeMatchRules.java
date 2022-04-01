@@ -84,7 +84,7 @@ import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -105,7 +105,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         super(gen);
     }
 
-    protected LIRFrameState getState(FloatableMemoryAccess access) {
+    protected LIRFrameState getState(MemoryAccess access) {
         if (access instanceof DeoptimizingNode) {
             return state((DeoptimizingNode) access);
         }

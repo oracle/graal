@@ -133,7 +133,7 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
@@ -1745,8 +1745,8 @@ public class SnippetTemplate {
         private final MemoryKill lastLocationAccess;
 
         MemoryInputMap(ValueNode replacee) {
-            if (replacee instanceof FloatableMemoryAccess) {
-                FloatableMemoryAccess access = (FloatableMemoryAccess) replacee;
+            if (replacee instanceof MemoryAccess) {
+                MemoryAccess access = (MemoryAccess) replacee;
                 locationIdentity = access.getLocationIdentity();
                 lastLocationAccess = access.getLastLocationAccess();
             } else {
@@ -1891,8 +1891,8 @@ public class SnippetTemplate {
     }
 
     private static LocationIdentity getLocationIdentity(Node node) {
-        if (node instanceof FloatableMemoryAccess) {
-            return ((FloatableMemoryAccess) node).getLocationIdentity();
+        if (node instanceof MemoryAccess) {
+            return ((MemoryAccess) node).getLocationIdentity();
         } else if (node instanceof MemoryEdgeProxy) {
             return ((MemoryEdgeProxy) node).getLocationIdentity();
         } else if (node instanceof MemoryPhiNode) {

@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -80,7 +80,7 @@ import jdk.vm.ci.meta.Value;
  * {@code arrayA[i] != arrayB[i]}. If no such index exists, returns 0.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, FloatableMemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionCompareToNode> TYPE = NodeClass.create(ArrayRegionCompareToNode.class);
 

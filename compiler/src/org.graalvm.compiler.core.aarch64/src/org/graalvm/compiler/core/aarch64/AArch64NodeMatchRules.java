@@ -70,7 +70,7 @@ import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -142,14 +142,14 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return true;
     }
 
-    protected LIRFrameState getState(FloatableMemoryAccess access) {
+    protected LIRFrameState getState(MemoryAccess access) {
         if (access instanceof DeoptimizingNode) {
             return state((DeoptimizingNode) access);
         }
         return null;
     }
 
-    protected AArch64Kind getMemoryKind(FloatableMemoryAccess access) {
+    protected AArch64Kind getMemoryKind(MemoryAccess access) {
         return (AArch64Kind) gen.getLIRKind(((ValueNode) access).stamp(NodeView.DEFAULT)).getPlatformKind();
     }
 

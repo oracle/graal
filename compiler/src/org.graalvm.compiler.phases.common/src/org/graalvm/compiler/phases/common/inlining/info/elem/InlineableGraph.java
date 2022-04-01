@@ -42,7 +42,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.EarlyGlobalValueNumberingPhase;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.FixedNodeRelativeFrequencyCache;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -209,7 +209,7 @@ public class InlineableGraph implements Inlineable {
             canonicalizer.apply(newGraph, context);
 
             if (GraalOptions.EarlyGVN.getValue(newGraph.getOptions())) {
-                new EarlyGlobalValueNumberingPhase().apply(newGraph, context);
+                new DominatorBasedGlobalValueNumberingPhase().apply(newGraph, context);
             }
             return newGraph;
         } catch (Throwable e) {

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.word.LocationIdentity;
 
@@ -34,4 +35,21 @@ import org.graalvm.word.LocationIdentity;
 public interface MemoryAccess extends ValueNodeInterface {
 
     LocationIdentity getLocationIdentity();
+
+    /**
+     *
+     * @return a {@linkplain MemoryKill} that represents the last memory state in the memory graph
+     *         for the {@linkplain LocationIdentity} returned by {@linkplain #getLocationIdentity()}
+     */
+    default MemoryKill getLastLocationAccess() {
+        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
+    }
+
+    /**
+     * @param lla the {@link MemoryKill} that represents the last kill of the
+     *            {@linkplain LocationIdentity} returned by {@linkplain #getLocationIdentity()}
+     */
+    default void setLastLocationAccess(MemoryKill lla) {
+        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
+    }
 }

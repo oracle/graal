@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.phases.Phase;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -156,8 +156,8 @@ public class InsertGuardFencesPhase extends Phase {
                         if (!((PiNode) usage).piStamp().equals(POSITIVE_ARRAY_INDEX_STAMP)) {
                             return false;
                         }
-                    } else if (usage instanceof FloatableMemoryAccess) {
-                        if (!NamedLocationIdentity.isArrayLocation(((FloatableMemoryAccess) usage).getLocationIdentity())) {
+                    } else if (usage instanceof MemoryAccess) {
+                        if (!NamedLocationIdentity.isArrayLocation(((MemoryAccess) usage).getLocationIdentity())) {
                             return false;
                         }
                     } else {

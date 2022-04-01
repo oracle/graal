@@ -53,7 +53,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.EarlyGlobalValueNumberingPhase;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.Architecture;
@@ -112,7 +112,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
             new ConvertDeoptimizeToGuardPhase().apply(graphToEncode, providers);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
-                new EarlyGlobalValueNumberingPhase().apply(graphToEncode, providers);
+                new DominatorBasedGlobalValueNumberingPhase().apply(graphToEncode, providers);
             }
         } catch (Throwable t) {
             throw debug.handle(t);

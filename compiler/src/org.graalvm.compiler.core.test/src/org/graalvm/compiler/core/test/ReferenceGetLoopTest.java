@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
-import org.graalvm.compiler.nodes.memory.FloatableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Test;
 
@@ -47,8 +47,8 @@ public class ReferenceGetLoopTest extends GraalCompilerTest {
         boolean found = false;
         for (LoopEx loop : loops.loops()) {
             for (Node node : loop.inside().nodes()) {
-                if (node instanceof FloatableMemoryAccess) {
-                    FloatableMemoryAccess access = (FloatableMemoryAccess) node;
+                if (node instanceof MemoryAccess) {
+                    MemoryAccess access = (MemoryAccess) node;
                     LocationIdentity location = access.getLocationIdentity();
                     if (location instanceof FieldLocationIdentity) {
                         ResolvedJavaField field = ((FieldLocationIdentity) location).getField();

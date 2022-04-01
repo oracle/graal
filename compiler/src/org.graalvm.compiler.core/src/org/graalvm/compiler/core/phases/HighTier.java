@@ -49,7 +49,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
-import org.graalvm.compiler.phases.common.EarlyGlobalValueNumbering;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.NodeCounterPhase;
@@ -97,7 +97,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (EarlyGVN.getValue(options)) {
-            appendPhase(new EarlyGlobalValueNumberingPhase());
+            appendPhase(new DominatorBasedGlobalValueNumberingPhase());
         }
 
         LoopPolicies loopPolicies = createLoopPolicies(options);
