@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -44,23 +45,23 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
     private final Map<KlassRef, List<ProxyCache>> cache = Collections.synchronizedMap(new HashMap<>());
     private DirectCallNode proxyGeneratorMethodCallNode;
 
-    public synchronized void collectProxyArguments(EspressoLanguage language, @JavaType(String.class) StaticObject proxyName,
-                    @JavaType(Class[].class) StaticObject interfaces,
-                    int classModifier,
-                    DirectCallNode generatorMethodCallNode) {
+    public synchronized void collectProxyArguments(EspressoLanguage language, Meta meta, @JavaType(String.class) StaticObject proxyName,
+                                                   @JavaType(Class[].class) StaticObject interfaces,
+                                                   int classModifier,
+                                                   DirectCallNode generatorMethodCallNode) {
         if (proxyGeneratorMethodCallNode == null) {
             proxyGeneratorMethodCallNode = generatorMethodCallNode;
         }
         // register onLoad action that will give us
         // the klass object for the generated proxy
-        registerClassLoadAction(getContext().getMeta().toHostString(proxyName), klass -> {
+        registerClassLoadAction(meta.toHostString(proxyName), klass -> {
             // store guest-world arguments that we can use when
             // invoking the call node later on re-generation
             ProxyCache proxyCache = new ProxyCache(klass, proxyName, interfaces, classModifier);
 
-            Klass[] proxyInterfaces = new Klass[interfaces.length(getContext().getLanguage())];
+            Klass[] proxyInterfaces = new Klass[interfaces.length(language)];
             for (int i = 0; i < proxyInterfaces.length; i++) {
-                proxyInterfaces[i] = (Klass) getContext().getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(interfaces.get(language, i));
+                proxyInterfaces[i] = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(interfaces.get(language, i));
             }
             // cache proxy arguments under each interface, so that
             // when they change we can re-generate the proxy bytes
