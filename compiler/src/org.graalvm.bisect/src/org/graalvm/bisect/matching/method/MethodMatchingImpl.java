@@ -22,56 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core;
+package org.graalvm.bisect.matching.method;
 
+import org.graalvm.bisect.core.ExperimentId;
+
+import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.bisect.core.optimization.Optimization;
+class MethodMatchingImpl implements MethodMatching {
+    private final ArrayList<MatchedMethod> matchedMethods = new ArrayList<>();
+    private final ArrayList<ExtraMethod> extraMethods = new ArrayList<>();
 
-public class ExecutedMethodImpl implements ExecutedMethod {
-    private final String compilationId;
-    private final String compilationMethodName;
-    private final long period;
-    private final List<Optimization> optimizations;
-    private boolean hot;
-
-    public ExecutedMethodImpl(String compilationId,
-                              String compilationMethodName,
-                              List<Optimization> optimizations,
-                              long period) {
-        this.compilationId = compilationId;
-        this.compilationMethodName = compilationMethodName;
-        this.period = period;
-        this.optimizations = optimizations;
+    public MatchedMethod addMatchedMethod(String compilationMethodName) {
+        MatchedMethod matchedMethod = new MatchedMethod(compilationMethodName);
+        matchedMethods.add(matchedMethod);
+        return matchedMethod;
     }
 
     @Override
-    public String getCompilationId() {
-        return compilationId;
+    public List<MatchedMethod> getMatchedMethods() {
+        return matchedMethods;
+    }
+
+    public ExtraMethod addExtraMethod(String compilationMethodName, ExperimentId experimentId) {
+        ExtraMethod extraMethod = new ExtraMethod(experimentId, compilationMethodName);
+        extraMethods.add(extraMethod);
+        return extraMethod;
     }
 
     @Override
-    public String getCompilationMethodName() {
-        return compilationMethodName;
-    }
-
-    @Override
-    public List<Optimization> getOptimizations() {
-        return optimizations;
-    }
-
-    @Override
-    public boolean isHot() {
-        return hot;
-    }
-
-    @Override
-    public void setHot(boolean hot) {
-        this.hot = hot;
-    }
-
-    @Override
-    public long getPeriod() {
-        return period;
+    public List<ExtraMethod> getExtraMethods() {
+        return extraMethods;
     }
 }

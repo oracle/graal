@@ -25,15 +25,8 @@
 package org.graalvm.bisect.core.optimization;
 
 /**
- * Represents an optimization in a compiled method at a particular BCI.
+ * Represents the kind of performed optimization.
  */
-public interface Optimization {
-    OptimizationKind getOptimizationKind();
-
-    /**
-     * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. A null value means that no fitting bci could be assigned.
-     * @return the byte code index of this optimization
-     */
-    Integer getBCI();
+public enum OptimizationKind {
+    LOOP_PARTIAL_UNROLL
 }

@@ -34,7 +34,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.MethodFilter;
-import org.graalvm.compiler.core.common.OptimizationLog;
+import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -144,7 +144,7 @@ public class GraalCompiler {
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(r.graph.getOptions())) {
             assert !r.graph.isFrozen();
             try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start(debug)) {
-                boolean logOptimizations = GraalOptions.OptimizationLog.getValue(r.graph.getOptions());
+                boolean logOptimizations = OptimizationLog.Options.OptimizationLog.getValue(r.graph.getOptions());
                 if (logOptimizations) {
                     r.graph.setOptimizationLog(new OptimizationLog(r.graph.method(), r.graph.compilationId()));
                 }

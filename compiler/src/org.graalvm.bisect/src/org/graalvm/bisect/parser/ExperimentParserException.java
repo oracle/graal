@@ -22,18 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core.optimization;
+package org.graalvm.bisect.parser;
+
+import org.graalvm.bisect.core.ExperimentId;
 
 /**
- * Represents an optimization in a compiled method at a particular BCI.
+ * Indicates that the experiment files had an incorrect format and could not be parsed.
  */
-public interface Optimization {
-    OptimizationKind getOptimizationKind();
-
-    /**
-     * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. A null value means that no fitting bci could be assigned.
-     * @return the byte code index of this optimization
-     */
-    Integer getBCI();
+@SuppressWarnings("serial")
+public class ExperimentParserException extends Exception {
+    ExperimentParserException(String message, ExperimentId experimentId) {
+        super("Failed to parse experiment " + experimentId + ": " + message);
+    }
 }

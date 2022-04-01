@@ -22,56 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core;
-
-import java.util.List;
+package org.graalvm.bisect.matching.optimization;
 
 import org.graalvm.bisect.core.optimization.Optimization;
 
-public class ExecutedMethodImpl implements ExecutedMethod {
-    private final String compilationId;
-    private final String compilationMethodName;
-    private final long period;
-    private final List<Optimization> optimizations;
-    private boolean hot;
+import java.util.List;
 
-    public ExecutedMethodImpl(String compilationId,
-                              String compilationMethodName,
-                              List<Optimization> optimizations,
-                              long period) {
-        this.compilationId = compilationId;
-        this.compilationMethodName = compilationMethodName;
-        this.period = period;
-        this.optimizations = optimizations;
-    }
-
-    @Override
-    public String getCompilationId() {
-        return compilationId;
-    }
-
-    @Override
-    public String getCompilationMethodName() {
-        return compilationMethodName;
-    }
-
-    @Override
-    public List<Optimization> getOptimizations() {
-        return optimizations;
-    }
-
-    @Override
-    public boolean isHot() {
-        return hot;
-    }
-
-    @Override
-    public void setHot(boolean hot) {
-        this.hot = hot;
-    }
-
-    @Override
-    public long getPeriod() {
-        return period;
-    }
+/**
+ * Creates a matching between optimizations of two executed methods.
+ */
+public interface OptimizationMatcher {
+    /**
+     * Creates a matching between optimizations of two executed methods.
+     * @param optimizations1 a list of optimizations from a method in the first experiment
+     * @param optimizations2 a list of optimizations from a method in the second experiment
+     * @return an object that describes matched and extra optimizations
+     */
+    OptimizationMatching match(List<Optimization> optimizations1, List<Optimization> optimizations2);
 }

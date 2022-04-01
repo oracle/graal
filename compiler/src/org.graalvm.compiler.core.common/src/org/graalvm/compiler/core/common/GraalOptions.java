@@ -35,9 +35,6 @@ import org.graalvm.compiler.options.OptionType;
 // @formatter:off
 public final class GraalOptions {
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptimizationLog = new OptionKey<>(false);
-
     @Option(help = "Use compiler intrinsifications.", type = OptionType.Debug)
     public static final OptionKey<Boolean> Intrinsify = new OptionKey<>(true);
 

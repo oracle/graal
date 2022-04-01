@@ -22,56 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core;
+package org.graalvm.bisect.matching.optimization;
 
-import java.util.List;
-
+import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
 
-public class ExecutedMethodImpl implements ExecutedMethod {
-    private final String compilationId;
-    private final String compilationMethodName;
-    private final long period;
-    private final List<Optimization> optimizations;
-    private boolean hot;
+import java.util.ArrayList;
+import java.util.List;
 
-    public ExecutedMethodImpl(String compilationId,
-                              String compilationMethodName,
-                              List<Optimization> optimizations,
-                              long period) {
-        this.compilationId = compilationId;
-        this.compilationMethodName = compilationMethodName;
-        this.period = period;
-        this.optimizations = optimizations;
+/**
+ * A mutable matching of optimizations between two compilations of the same method in two experiments.
+ */
+class OptimizationMatchingImpl implements OptimizationMatching {
+    private final ArrayList<ExtraOptimization> extraOptimizations = new ArrayList<>();
+    private final ArrayList<Optimization> matchedOptimizations = new ArrayList<>();
+
+    @Override
+    public List<ExtraOptimization> getExtraOptimizations() {
+        return extraOptimizations;
     }
 
     @Override
-    public String getCompilationId() {
-        return compilationId;
+    public List<Optimization> getMatchedOptimizations() {
+        return matchedOptimizations;
     }
 
-    @Override
-    public String getCompilationMethodName() {
-        return compilationMethodName;
+    public void addExtraOptimization(Optimization optimization, ExperimentId experimentId) {
+        ExtraOptimization extraOptimization = new ExtraOptimization(experimentId, optimization);
+        extraOptimizations.add(extraOptimization);
     }
 
-    @Override
-    public List<Optimization> getOptimizations() {
-        return optimizations;
-    }
-
-    @Override
-    public boolean isHot() {
-        return hot;
-    }
-
-    @Override
-    public void setHot(boolean hot) {
-        this.hot = hot;
-    }
-
-    @Override
-    public long getPeriod() {
-        return period;
+    public void addMatchedOptimization(Optimization optimization) {
+        matchedOptimizations.add(optimization);
     }
 }

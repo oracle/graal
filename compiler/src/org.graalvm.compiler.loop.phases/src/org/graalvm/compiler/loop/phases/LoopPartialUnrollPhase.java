@@ -28,7 +28,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.OptimizationLog;
+import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.GraphState;
@@ -67,7 +67,6 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                         continue;
                     }
                     if (getPolicies().shouldPartiallyUnroll(loop, context)) {
-                        LoopPartialUnrollPhase.logUnrolling(graph, loop);
                         if (loop.loopBegin().isSimpleLoop()) {
                             // First perform the pre/post transformation and do the partial
                             // unroll when we come around again.
@@ -143,19 +142,5 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
     @Override
     public boolean checkContract() {
         return false;
-    }
-
-    private static void logUnrolling(StructuredGraph graph, LoopEx loop) {
-        OptimizationLog optimizationLog = graph.getOptimizationLog();
-        if (optimizationLog != null) {
-            // TODO make this part of opt log - pass node
-            NodeSourcePosition nodeSourcePosition = loop.loopBegin().getNodeSourcePosition();
-            String description = "Loop Unrolling";
-            if (nodeSourcePosition == null) {
-                optimizationLog.logOptimization(description, graph.method());
-            } else {
-                optimizationLog.logOptimization(description, graph.method(), nodeSourcePosition.getBCI());
-            }
-        }
     }
 }

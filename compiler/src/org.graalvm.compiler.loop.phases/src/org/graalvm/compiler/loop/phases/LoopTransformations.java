@@ -223,6 +223,9 @@ public abstract class LoopTransformations {
 
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
+        if (loop.loopBegin().graph().getOptimizationLog() != null) {
+            loop.loopBegin().graph().getOptimizationLog().logLoopPartialUnroll(loop);
+        }
         loop.loopBegin().graph().getDebug().log("LoopPartialUnroll %s", loop);
         adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();

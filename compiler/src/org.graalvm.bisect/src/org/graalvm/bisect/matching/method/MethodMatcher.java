@@ -22,18 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core.optimization;
+package org.graalvm.bisect.matching.method;
+
+import org.graalvm.bisect.core.Experiment;
 
 /**
- * Represents an optimization in a compiled method at a particular BCI.
+ * Creates a matching of methods across two experiments.
  */
-public interface Optimization {
-    OptimizationKind getOptimizationKind();
-
+public interface MethodMatcher {
     /**
-     * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. A null value means that no fitting bci could be assigned.
-     * @return the byte code index of this optimization
+     * Matches pairs of methods by their signature and then tries to match their respective compilations (executions)
+     * according to a heuristic. Returns an object describing the pairs of matched methods, matched executed methods
+     * and also the list of (executed) methods that do not have a pair - extra methods.
+     * @param experiment1 the first experiment
+     * @param experiment2 the second experiment
+     * @return the description of the computed matching
      */
-    Integer getBCI();
+    MethodMatching match(Experiment experiment1, Experiment experiment2);
 }

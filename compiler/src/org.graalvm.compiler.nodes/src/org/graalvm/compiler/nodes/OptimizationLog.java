@@ -22,10 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.compiler.nodes;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import java.io.IOException;
@@ -37,6 +41,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class OptimizationLog {
+
+    public static class Options {
+        @Option(help = "Dump optimization log for each compilation " +
+                "to optimization_log/<execution-id>/<compilation-id>.json.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> OptimizationLog = new OptionKey<>(false);
+    }
+
     interface JSONValue {
         void appendTo(Appendable appendable) throws IOException;
     }
@@ -147,28 +158,28 @@ public class OptimizationLog {
     private final ArrayList<OptimizationEntry> optimizationEntries = new ArrayList<>();
     private final CompilationIdentifier compilationIdentifier;
     private final ResolvedJavaMethod method;
+    private final String compilationId;
 
     public OptimizationLog(ResolvedJavaMethod method, CompilationIdentifier compilationIdentifier) {
         this.method = method;
         this.compilationIdentifier = compilationIdentifier;
+        this.compilationId = parseCompilationId();
     }
 
-    public void logOptimization(String description, ResolvedJavaMethod method, int bci) {
-        optimizationEntries.add(new OptimizationEntry(description, method, bci));
-    }
-
-    public void logOptimization(String description, ResolvedJavaMethod method) {
-        optimizationEntries.add(new OptimizationEntry(description, method, null));
-    }
-
-    public void printToTTY() throws IOException {
-        appendTo(TTY.out().out());
+    public void logLoopPartialUnroll(LoopEx loop) {
+        LoopBeginNode loopBegin = loop.loopBegin();
+        Integer bci = null;
+        if (loopBegin.stateAfter != null) {
+            bci = loopBegin.stateAfter.bci;
+        } else if (loopBegin.getNodeSourcePosition() != null) {
+            bci = loopBegin.getNodeSourcePosition().getBCI();
+        }
+        optimizationEntries.add(new OptimizationEntry("Loop Partial Unroll", loopBegin.graph().method(), bci));
     }
 
     public void printToFile() throws IOException {
-        String filename = compilationIdentifier.toString() + ".json";
+        String filename = compilationId + ".json";
         Path path = Path.of("optimization_log", GraalServices.getExecutionID(), filename);
-        TTY.printf("Writing to %s\n", path.toString());
         Files.createDirectories(path.getParent());
         PrintStream stream = new PrintStream(Files.newOutputStream(path));
         appendTo(stream);
@@ -178,14 +189,14 @@ public class OptimizationLog {
         JSONMap map = new JSONMap();
         map.addEntry("executionId", new JSONString(GraalServices.getExecutionID()));
         map.addEntry("compilationMethodName", new JSONString(compilationIdentifier.toString(CompilationIdentifier.Verbosity.NAME)));
-        map.addEntry("compilationId", new JSONString(getCompilationId()));
+        map.addEntry("compilationId", new JSONString(compilationId));
         // TODO do we need this?
         map.addEntry("resolvedMethodName", new JSONString(method.format("%n")));
         map.addEntry("optimizations", entriesAsJSONArray());
         map.appendTo(appendable);
     }
 
-    private String getCompilationId() {
+    private String parseCompilationId() {
         String compilationId = compilationIdentifier.toString(CompilationIdentifier.Verbosity.ID);
         int dash = compilationId.indexOf('-');
         if (dash == -1) {
