@@ -136,6 +136,26 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
         }
 
         @Override
+        protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+            assert a.getBits() == b.getBits();
+            // a + b |<| a
+            if (a.getBits() == Long.SIZE) {
+                return Long.compareUnsigned(upperBound(a) + upperBound(b), upperBound(a)) < 0;
+            }
+            if (a.getBits() == Integer.SIZE) {
+                return Integer.compareUnsigned((int) upperBound(a) + (int) upperBound(b), (int) upperBound(a)) < 0;
+            }
+            return true;
+        }
+
+        @Override
+        protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
+            // leading zeros, adjusted to stamp bits
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            return leadingZeroForBits < shift;
+        }
+
+        @Override
         protected long upperBound(IntegerStamp stamp) {
             return stamp.unsignedUpperBound();
         }

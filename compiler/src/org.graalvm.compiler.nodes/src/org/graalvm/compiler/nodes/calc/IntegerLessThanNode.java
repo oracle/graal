@@ -231,6 +231,19 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         }
 
         @Override
+        protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+            return IntegerStamp.addCanOverflow(a, b);
+        }
+
+        @Override
+        protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
+            // leading zeros, adjusted to stamp bits
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            // one extra bit to avoid flipping the sign
+            return leadingZeroForBits - 1 < shift;
+        }
+
+        @Override
         protected CanonicalCondition getCondition() {
             return LT;
         }

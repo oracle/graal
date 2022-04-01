@@ -44,6 +44,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -239,9 +240,73 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                         return canonical;
                     }
                 }
+                return canonicalizeCommonArithmetic(forX, forY, view);
             }
             return null;
         }
+
+        protected LogicNode canonicalizeCommonArithmetic(ValueNode forX, ValueNode forY, NodeView view) {
+            if (forX instanceof AddNode && forY instanceof AddNode) {
+                AddNode addX = (AddNode) forX;
+                AddNode addY = (AddNode) forY;
+                ValueNode v1 = null;
+                ValueNode v2 = null;
+                ValueNode common = null;
+                if (addX.getX() == addY.getX()) {
+                    // (x + y) < (x + z) => y < z
+                    v1 = addX.getY();
+                    v2 = addY.getY();
+                    common = addX.getX();
+                } else if (addX.getX() == addY.getY()) {
+                    // (x + y) < (z + x) => y < z
+                    v1 = addX.getY();
+                    v2 = addY.getX();
+                    common = addX.getX();
+                } else if (addX.getY() == addY.getX()) {
+                    // (y + x) < (x + z) => y < z
+                    v1 = addX.getX();
+                    v2 = addY.getY();
+                    common = addX.getY();
+                } else if (addX.getY() == addY.getY()) {
+                    // (y + x) < (z + x) => y < z
+                    v1 = addX.getX();
+                    v2 = addY.getX();
+                    common = addX.getY();
+                }
+                if (v1 != null) {
+                    assert v2 != null;
+                    IntegerStamp stamp1 = (IntegerStamp) v1.stamp(view);
+                    IntegerStamp stamp2 = (IntegerStamp) v2.stamp(view);
+                    IntegerStamp stampCommon = (IntegerStamp) common.stamp(view);
+                    if (!addCanOverflow(stamp1, stampCommon) && !addCanOverflow(stamp2, stampCommon)) {
+                        return create(v1, v2, view);
+                    }
+                }
+            }
+
+            if (forX instanceof LeftShiftNode && forY instanceof LeftShiftNode) {
+                LeftShiftNode leftShiftX = (LeftShiftNode) forX;
+                LeftShiftNode leftShiftY = (LeftShiftNode) forY;
+                if (leftShiftX.getY() == leftShiftY.getY() &&
+                                leftShiftX.getY().isConstant() && leftShiftX.getY().asConstant() instanceof PrimitiveConstant) {
+                    PrimitiveConstant constant = (PrimitiveConstant) leftShiftX.getY().asConstant();
+                    if (constant.getJavaKind().isNumericInteger()) {
+                        ValueNode v1 = leftShiftX.getX();
+                        ValueNode v2 = leftShiftY.getX();
+                        IntegerStamp stamp1 = (IntegerStamp) v1.stamp(view);
+                        IntegerStamp stamp2 = (IntegerStamp) v2.stamp(view);
+                        if (!leftShiftCanOverflow(stamp1, constant.asLong()) && !leftShiftCanOverflow(stamp2, constant.asLong())) {
+                            return create(v1, v2, view);
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        protected abstract boolean addCanOverflow(IntegerStamp a, IntegerStamp b);
+
+        protected abstract boolean leftShiftCanOverflow(IntegerStamp a, long shift);
 
         /**
          * Exploit the fact that adding the (signed) MIN_VALUE on both side flips signed and
