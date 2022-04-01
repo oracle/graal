@@ -76,6 +76,7 @@ import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SideEffectFreeWrite;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -310,24 +311,36 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                      */
                     if (!(n instanceof ForeignCall || n instanceof UnreachableBeginNode || node instanceof WithExceptionNode || n instanceof MemoryMapNode || node instanceof CommitAllocationNode) &&
                                     MemoryKill.isMemoryKill(n)) {
-                        if (!wasMemoryKillBefore) {
-                            throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", node, n));
-                        }
+
                         // lowered to a kill verify the original node was a kill
                         if (MemoryKill.isSingleMemoryKill(n)) {
                             SingleMemoryKill singleKill = (SingleMemoryKill) n;
-                            if (!(MemoryKill.isSingleMemoryKill(node))) {
-                                throw GraalError.shouldNotReachHere(String.format("Original node %s was not a single kill but %s is", node, n));
-                            }
-                            SingleMemoryKill oldKill = (SingleMemoryKill) node;
-                            if (!oldKill.getKilledLocationIdentity().isSingle() && singleKill.getKilledLocationIdentity().isSingle()) {
-                                // fine, high level node killed any, new nodes have more precise
-                                // kills
-                            } else if (!oldKill.getKilledLocationIdentity().equals(singleKill.getKilledLocationIdentity())) {
-                                throw GraalError.shouldNotReachHere(String.format("Original node %s kills %s while new node %s kills %s", node, oldKill.getKilledLocationIdentity(), singleKill,
-                                                singleKill.getKilledLocationIdentity()));
+                            if (!singleKill.getKilledLocationIdentity().equals(SideEffectFreeWrite.NO_LOCATION)) {
+                                if (!wasMemoryKillBefore) {
+                                    // Kills to ININT_LOCATION are excluded above. We would like to
+                                    // perform this check before and only once for both
+                                    // single and multi kills however we have special nodes like a
+                                    // side effect free write which use init location writes which
+                                    // we ignore for verification purposes
+                                    throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", node, n));
+                                }
+                                if (!(MemoryKill.isSingleMemoryKill(node))) {
+                                    throw GraalError.shouldNotReachHere(String.format("Original node %s was not a single kill but %s is", node, n));
+                                }
+                                SingleMemoryKill oldKill = (SingleMemoryKill) node;
+                                if (!oldKill.getKilledLocationIdentity().isSingle() && singleKill.getKilledLocationIdentity().isSingle()) {
+                                    // fine, high level node killed any, new nodes have more precise
+                                    // kills
+                                } else if (!oldKill.getKilledLocationIdentity().equals(singleKill.getKilledLocationIdentity())) {
+                                    throw GraalError.shouldNotReachHere(String.format("Original node %s kills %s while new node %s kills %s", node, oldKill.getKilledLocationIdentity(), singleKill,
+                                                    singleKill.getKilledLocationIdentity()));
+                                }
                             }
                         } else if (MemoryKill.isMultiMemoryKill(n)) {
+                            if (!wasMemoryKillBefore) {
+                                // INIT_LOCATION special case: context above
+                                throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", node, n));
+                            }
                             if (!(MemoryKill.isMultiMemoryKill(node))) {
                                 throw GraalError.shouldNotReachHere(String.format("Original node %s was not a multi kill but %s is", node, n));
                             }

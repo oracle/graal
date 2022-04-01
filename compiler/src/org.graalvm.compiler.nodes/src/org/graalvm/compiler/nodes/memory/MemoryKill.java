@@ -69,6 +69,18 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
         return (MultiMemoryKill) n;
     }
 
+    static LocationIdentity getSingleLocationFromMulti(MultiMemoryKill m) {
+        LocationIdentity[] killedLocations = m.getKilledLocationIdentities();
+        if (killedLocations.length == 1) {
+            return killedLocations[0];
+        }
+        return null;
+    }
+
+    static boolean isFacadeOfSingle(MultiMemoryKill m) {
+        return getSingleLocationFromMulti(m) != null;
+    }
+
     LocationIdentity[] ANY_LOCATION_MULTI_KILL = new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
 
     LocationIdentity[] MULTI_KILL_NO_KILL = new LocationIdentity[]{};

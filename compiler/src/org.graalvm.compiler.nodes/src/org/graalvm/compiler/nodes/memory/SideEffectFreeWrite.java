@@ -55,4 +55,23 @@ public class SideEffectFreeWrite extends WriteNode {
         return false;
     }
 
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return NO_LOCATION;
+    }
+
+    public static final LocationIdentity NO_LOCATION = new NoLocation();
+
+    private static final class NoLocation extends LocationIdentity {
+        @Override
+        public boolean isImmutable() {
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return "NO_LOCATION";
+        }
+
+    }
 }
