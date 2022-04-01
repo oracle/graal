@@ -2082,12 +2082,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
-    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr, @SuppressWarnings("unused") boolean throwException_) {
+    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
 
-        // don't trust the value coming from native code, it might be garbage if the used base lib
-        // doesn't have this signature.
+        // We don't pass `throwException` down due to GR-37925, but even if Sulong would
+        // be fixed, it might be garbage if the used base lib has a mismatching signature,
+        // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
 
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
