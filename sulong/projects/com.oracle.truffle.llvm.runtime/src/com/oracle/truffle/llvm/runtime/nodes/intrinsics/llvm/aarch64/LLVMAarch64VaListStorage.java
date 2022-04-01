@@ -621,8 +621,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                     @Cached NativeProfiledMemMove memMove,
-                    @Cached BranchProfile nativizedProfile,
-                    @Cached StackAllocationNode stackAllocationNode) {
+                    @Cached BranchProfile nativizedProfile) {
 
         if (isNativized()) {
             nativizedProfile.enter();

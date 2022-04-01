@@ -234,8 +234,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             intrinsicCallTarget = aotFixedIntrinsicFunction.getFixedCode().getIntrinsic(resolve).cachedCallTarget(type);
         } else {
             LLVMFunctionCode.Intrinsic intrinsic = descriptor.getFunctionCode().getIntrinsic(resolve);
-            // In the AOT mode, the call target must be retrieved via the slow path as it may (is?) not
-            // cached yet and caching it would generate a deopt. Most of the code parts in cachedCallTarget are beyond
+            // In the AOT mode, the call target must be retrieved via the slow path as it may (is?)
+            // not
+            // cached yet and caching it would generate a deopt. Most of the code parts in
+            // cachedCallTarget are beyond
             // the TB anyway.
             intrinsicCallTarget = aot ? intrinsic.cachedCallTargetSlowPath(type) : intrinsic.cachedCallTarget(type);
         }
