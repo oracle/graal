@@ -46,9 +46,9 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
     private DirectCallNode proxyGeneratorMethodCallNode;
 
     public synchronized void collectProxyArguments(EspressoLanguage language, Meta meta, @JavaType(String.class) StaticObject proxyName,
-                                                   @JavaType(Class[].class) StaticObject interfaces,
-                                                   int classModifier,
-                                                   DirectCallNode generatorMethodCallNode) {
+                    @JavaType(Class[].class) StaticObject interfaces,
+                    int classModifier,
+                    DirectCallNode generatorMethodCallNode) {
         if (proxyGeneratorMethodCallNode == null) {
             proxyGeneratorMethodCallNode = generatorMethodCallNode;
         }
