@@ -806,8 +806,8 @@ public class OperationsBytecodeCodeGenerator {
             b.startStatement();
             b.string("OperationsNode reparsed = ");
             b.startStaticCall(typBuilderImpl.asType(), "reparse");
-            b.startGroup().cast(m.getLanguageType()).string("this.language").end();
-            b.startGroup().cast(m.getParseContextType()).string("parseContext").end();
+            b.startGroup().startCall("getRootNode").end().startCall(".getLanguage").typeLiteral(m.getLanguageType()).end(2);
+            b.startGroup().maybeCast(context.getType(Object.class), m.getParseContextType()).string("parseContext").end();
             b.string("buildOrder");
             b.end(2);
 

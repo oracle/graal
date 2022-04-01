@@ -25,14 +25,10 @@ public abstract class OperationsBuilder {
         return builtNodes.toArray(new OperationsNode[builtNodes.size()]);
     }
 
-    protected String nodeName = null;
-    protected boolean isInternal = false;
     protected int maxLocals = -1;
     protected int instrumentationId = 0;
 
     public void reset() {
-        nodeName = null;
-        isInternal = false;
         labelFills.clear();
         maxLocals = -1;
         instrumentationId = 0;
@@ -43,20 +39,6 @@ public abstract class OperationsBuilder {
             maxLocals = (int) value;
         }
         return value;
-    }
-
-    public final void setNodeName(String nodeName) {
-        if (this.nodeName != null) {
-            throw new IllegalStateException("Node name already set");
-        }
-        this.nodeName = nodeName;
-    }
-
-    public final void setInternal() {
-        if (isInternal) {
-            throw new IllegalStateException("isInternal already set");
-        }
-        isInternal = true;
     }
 
     // ------------------------ labels ------------------------

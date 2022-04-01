@@ -1,29 +1,32 @@
 package com.oracle.truffle.api.operation;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class OperationsRootNode extends RootNode implements InstrumentableNode {
+public class OperationsRootNode extends RootNode {
 
     @Child private OperationsNode node;
 
-    OperationsRootNode(OperationsNode node) {
-        super(node.language, node.createFrameDescriptor());
-        this.node = node;
+    private final String nodeName;
+    private final boolean isInternal;
+
+    OperationsRootNode(TruffleLanguage<?> language, OperationsNode node, String nodeName, boolean isInternal) {
+        super(language, node.createFrameDescriptor());
+        this.node = insert(node);
+        this.nodeName = nodeName;
+        this.isInternal = isInternal;
     }
 
     @Override
     public String getName() {
-        return node.nodeName;
+        return nodeName;
     }
 
     @Override
     public boolean isInternal() {
-        return node.isInternal;
+        return isInternal;
     }
 
     @Override
@@ -44,28 +47,29 @@ public class OperationsRootNode extends RootNode implements InstrumentableNode {
 
     @Override
     public boolean isInstrumentable() {
-        return true;
+        return false;
     }
 
-    private class OperationsWrapperNode extends Node implements WrapperNode {
-        private final ProbeNode probe;
+// private class OperationsWrapperNode extends Node implements WrapperNode {
+// private final ProbeNode probe;
+//
+// OperationsWrapperNode(ProbeNode probe) {
+// this.probe = probe;
+// }
+//
+// public Node getDelegateNode() {
+// return OperationsRootNode.this;
+// }
+//
+// public ProbeNode getProbeNode() {
+// return probe;
+// }
+// }
 
-        OperationsWrapperNode(ProbeNode probe) {
-            this.probe = probe;
-        }
-
-        public Node getDelegateNode() {
-            return OperationsRootNode.this;
-        }
-
-        public ProbeNode getProbeNode() {
-            return probe;
-        }
-    }
-
-    public WrapperNode createWrapper(final ProbeNode probe) {
-        return new OperationsWrapperNode(probe);
-    }
+// public WrapperNode createWrapper(final ProbeNode probe) {
+// // return new OperationsWrapperNode(probe);
+// return null;
+// }
 
     @Override
     public String toString() {

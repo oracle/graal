@@ -121,6 +121,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
@@ -4591,7 +4592,11 @@ public class FlatNodeGenFactory {
         String specializationLocalName = createSpecializationLocalName(specialization);
         boolean useSpecializationClass = useSpecializationClass(specialization);
         if (method == null) {
-            method = new CodeExecutableElement(context.getType(void.class), "remove" + specialization.getId() + "_");
+            String methodName = "remove" + specialization.getId() + "_";
+            if (plugs != null) {
+                methodName = plugs.transformNodeMethodName(methodName);
+            }
+            method = new CodeExecutableElement(context.getType(void.class), methodName);
             if (useSpecializationClass) {
                 method.addParameter(new CodeVariableElement(context.getType(Object.class), specializationLocalName));
             }
@@ -4601,25 +4606,31 @@ public class FlatNodeGenFactory {
                 builder.statement("lock.lock()");
                 builder.startTryBlock();
             }
-            String fieldName = createSpecializationFieldName(specialization);
+            CodeTree fieldRef = CodeTreeBuilder.singleString("this." + createSpecializationFieldName(specialization));
+            CodeTree fieldRefWrite = fieldRef;
+            if (plugs != null) {
+                String fieldName = useSpecializationClass ? null : createSpecializationFieldName(specialization);
+                fieldRef = plugs.createSpecializationFieldReference(specialization, fieldName, useSpecializationClass, new GeneratedTypeMirror("", createSpecializationTypeName(specialization)));
+                fieldRefWrite = plugs.createSpecializationFieldReference(specialization, fieldName, useSpecializationClass, null);
+            }
             if (!useSpecializationClass || specialization.getMaximumNumberOfInstances() == 1) {
                 // single instance remove
                 builder.tree((multiState.createSet(null, new Object[]{specialization}, false, true)));
                 if (useSpecializationClass) {
-                    builder.statement("this." + fieldName + " = null");
+                    builder.startStatement().tree(fieldRef).string(" = null").end();
                 }
             } else {
                 // multi instance remove
                 String typeName = createSpecializationTypeName(specialization);
                 boolean specializedIsNode = specializationClassIsNode(specialization);
                 builder.declaration(typeName, "prev", "null");
-                builder.declaration(typeName, "cur", "this." + fieldName);
+                builder.declaration(typeName, "cur", fieldRef);
                 builder.startWhile();
                 builder.string("cur != null");
                 builder.end().startBlock();
                 builder.startIf().string("cur == ").string(specializationLocalName).end().startBlock();
                 builder.startIf().string("prev == null").end().startBlock();
-                builder.statement("this." + fieldName + " = cur.next_");
+                builder.startStatement().tree(fieldRefWrite).string(" = cur.next_").end();
                 if (specializedIsNode) {
                     builder.statement("this.adoptChildren()");
                 }
@@ -4635,7 +4646,7 @@ public class FlatNodeGenFactory {
                 builder.statement("cur = cur.next_");
                 builder.end(); // while block
 
-                builder.startIf().string("this." + fieldName).string(" == null").end().startBlock();
+                builder.startIf().tree(fieldRefWrite).string(" == null").end().startBlock();
                 builder.tree((multiState.createSet(null, Arrays.asList(specialization).toArray(new SpecializationData[0]), false, true)));
                 builder.end();
             }
@@ -4649,6 +4660,9 @@ public class FlatNodeGenFactory {
         }
         CodeTreeBuilder builder = parent.create();
         builder.startStatement().startCall(method.getSimpleName().toString());
+        if (plugs != null) {
+            plugs.addNodeCallParameters(builder);
+        }
         if (useSpecializationClass) {
             builder.string(specializationLocalName);
         }

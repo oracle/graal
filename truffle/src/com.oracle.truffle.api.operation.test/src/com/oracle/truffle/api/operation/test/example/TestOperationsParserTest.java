@@ -32,7 +32,7 @@ public class TestOperationsParserTest {
             } else {
                 node = TestOperationsBuilder.parse(null, s)[0];
             }
-            rootNode = node.createRootNode();
+            rootNode = node.createRootNode(null, "TestFunction");
         }
 
         Tester(String src) {
@@ -51,13 +51,13 @@ public class TestOperationsParserTest {
         }
     }
 
-    private static OperationsNode parse(Consumer<TestOperationsBuilder> builder) {
-        return TestOperationsBuilder.parse(null, builder)[0];
+    private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
+        return TestOperationsBuilder.parse(null, builder)[0].createRootNode(null, "TestFunction").getCallTarget();
     }
 
     @Test
     public void testAdd() {
-        OperationsNode node = parse(b -> {
+        RootCallTarget root = parse(b -> {
             b.beginReturn();
             b.beginAddOperation();
             b.emitLoadArgument(0);
@@ -68,8 +68,6 @@ public class TestOperationsParserTest {
             b.build();
         });
 
-        RootCallTarget root = node.createRootNode().getCallTarget();
-
         Assert.assertEquals(42L, root.call(20L, 22L));
         Assert.assertEquals("foobar", root.call("foo", "bar"));
         Assert.assertEquals(100L, root.call(120L, -20L));
@@ -77,7 +75,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testMax() {
-        OperationsNode node = parse(b -> {
+        RootCallTarget root = parse(b -> {
             b.beginIfThenElse();
 
             b.beginLessThanOperation();
@@ -98,8 +96,6 @@ public class TestOperationsParserTest {
             b.build();
         });
 
-        RootCallTarget root = node.createRootNode().getCallTarget();
-
         Assert.assertEquals(42L, root.call(42L, 13L));
         Assert.assertEquals(42L, root.call(42L, 13L));
         Assert.assertEquals(42L, root.call(42L, 13L));
@@ -108,7 +104,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testIfThen() {
-        OperationsNode node = parse(b -> {
+        RootCallTarget root = parse(b -> {
             b.beginIfThen();
 
             b.beginLessThanOperation();
@@ -128,8 +124,6 @@ public class TestOperationsParserTest {
 
             b.build();
         });
-
-        RootCallTarget root = node.createRootNode().getCallTarget();
 
         Assert.assertEquals(0L, root.call(-2L));
         Assert.assertEquals(0L, root.call(-1L));
@@ -156,16 +150,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testTryCatch() {
-        //@formatter:off
-        String src = "(do"
-                   + "  (try 0"
-                   + "    (if"
-                   + "      (less (arg 0) 0)"
-                   + "      (fail))"
-                   + "    (return 1))"
-                   + "  (return 0))";
-        //@formatter:on
-        OperationsNode node = parse(b -> {
+        RootCallTarget root = parse(b -> {
             b.beginTryCatch(0);
 
             b.beginIfThen();
@@ -190,8 +175,6 @@ public class TestOperationsParserTest {
 
             b.build();
         });
-
-        RootCallTarget root = node.createRootNode().getCallTarget();
 
         Assert.assertEquals(1L, root.call(-1L));
         Assert.assertEquals(0L, root.call(1L));

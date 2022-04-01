@@ -25,6 +25,7 @@ public class TestOperations {
         }
     }
 
+    @SuppressWarnings("unused")
     public static void parse(TestLanguage language, Object input, TestOperationsBuilder builder) {
         if (input instanceof Source) {
             Source source = (Source) input;

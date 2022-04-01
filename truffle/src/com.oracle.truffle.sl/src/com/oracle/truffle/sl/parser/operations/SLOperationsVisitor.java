@@ -16,6 +16,7 @@ import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
 import com.oracle.truffle.sl.operations.SLOperationsBuilder;
 import com.oracle.truffle.sl.parser.operations.SimpleLanguageOperationsParser.ArithmeticContext;
 import com.oracle.truffle.sl.parser.operations.SimpleLanguageOperationsParser.BlockContext;
@@ -117,8 +118,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.beginSource(source);
         b.beginInstrumentation(StandardTags.RootTag.class);
 
-        b.setNodeName(name.toJavaStringUncached());
-
         scope = new LexicalScope(null);
 
         for (int i = 1; i < ctx.IDENTIFIER().size(); i++) {
@@ -157,7 +156,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         // } catch (Exception ignored) {
         // }
 
-        functions.put(name, node.createRootNode().getCallTarget());
+        SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node, name);
+
+        functions.put(name, rootNode.getCallTarget());
 
         return null;
     }
@@ -311,7 +312,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.emitLoadLocal(localIdx);
     }
 
-    private void logicalOrEnd(int localIdx) {
+    private void logicalOrEnd(@SuppressWarnings("unused") int localIdx) {
         b.endConditional();
         b.endBlock();
     }
@@ -598,7 +599,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         } else if (last instanceof MemberAssignContext) {
             MemberAssignContext lastCtx = (MemberAssignContext) last;
 
-            buildMemberExpressionWriteBefore(ident, members, idx - 1);
+            buildMemberExpressionWriteBefore(ident, members, idx - 1, lastCtx.expression().start);
             visit(lastCtx.expression());
             buildMemberExpressionWriteAfter(ident, members, idx - 1);
         } else if (last instanceof MemberFieldContext) {
@@ -632,7 +633,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
      * }
      * </pre>
      */
-    private void buildMemberExpressionWriteBefore(Token ident, List<Member_expressionContext> members, int idx) {
+    private void buildMemberExpressionWriteBefore(Token ident, List<Member_expressionContext> members, int idx, Token errorToken) {
         if (idx == -1) {
             int localIdx = scope.getOrCreate(asTruffleString(ident, false));
             b.beginBlock();
@@ -643,9 +644,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         Member_expressionContext last = members.get(idx);
 
         if (last instanceof MemberCallContext) {
-            SemErr(last.start, "invalid assignment target");
+            SemErr(errorToken, "invalid assignment target");
         } else if (last instanceof MemberAssignContext) {
-            SemErr(last.start, "invalid assignment target");
+            SemErr(errorToken, "invalid assignment target");
         } else if (last instanceof MemberFieldContext) {
             MemberFieldContext lastCtx = (MemberFieldContext) last;
 
@@ -663,7 +664,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         }
     }
 
-    private void buildMemberExpressionWriteAfter(Token ident, List<Member_expressionContext> members, int idx) {
+    private void buildMemberExpressionWriteAfter(Token ident, @SuppressWarnings("unused") List<Member_expressionContext> members, int idx) {
         if (idx == -1) {
             int localIdx = scope.get(asTruffleString(ident, false));
             b.endStoreLocal();

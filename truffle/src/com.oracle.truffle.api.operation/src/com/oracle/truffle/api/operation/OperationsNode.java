@@ -29,30 +29,21 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
 
     protected final int maxStack;
     protected final int maxLocals;
-    protected final String nodeName;
 
-    protected final TruffleLanguage<?> language;
     protected final Object parseContext;
     protected int[][] sourceInfo;
     protected Source[] sources;
     protected final int buildOrder;
-    protected final boolean isInternal;
 
     protected OperationsNode(
-                    TruffleLanguage<?> language,
                     Object parseContext,
-                    String nodeName,
-                    boolean isInternal,
                     int[][] sourceInfo,
                     Source[] sources,
                     int buildOrder,
                     int maxStack,
                     int maxLocals) {
-        this.language = language;
         this.buildOrder = buildOrder;
         this.parseContext = parseContext;
-        this.nodeName = nodeName;
-        this.isInternal = isInternal;
         this.sourceInfo = sourceInfo;
         this.sources = sources;
         this.maxLocals = maxLocals;
@@ -63,8 +54,12 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
         return createFrameDescriptor(maxStack, maxLocals);
     }
 
-    public OperationsRootNode createRootNode() {
-        return new OperationsRootNode(this);
+    public OperationsRootNode createRootNode(TruffleLanguage<?> language, String name) {
+        return new OperationsRootNode(language, this, name, false);
+    }
+
+    public OperationsRootNode createInternalRootNode(TruffleLanguage<?> language, String name) {
+        return new OperationsRootNode(language, this, name, true);
     }
 
     public final Object execute(VirtualFrame frame) {

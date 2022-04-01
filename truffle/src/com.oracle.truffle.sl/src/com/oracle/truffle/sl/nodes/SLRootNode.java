@@ -106,7 +106,7 @@ public class SLRootNode extends RootNode {
 
     @Override
     public String getName() {
-        return name.toJavaStringUncached();
+        return name == null ? null : name.toJavaStringUncached();
     }
 
     public TruffleString getTSName() {

@@ -319,8 +319,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startAssign(fldOperationData).startNew(types.BuilderOperationData).string("null").string("0").string("0").string("0").string("false").end(2);
             b.startStatement().startCall(fldExceptionHandlers.getName(), "clear").end(2);
             b.startStatement().startCall(fldConstPool.getName(), "reset").end(2);
-            b.startAssign("nodeName").string("null").end();
-            b.startAssign("isInternal").string("false").end();
 
             b.startIf().variable(fldKeepSourceInfo).end();
             b.startBlock();
@@ -371,10 +369,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 b.startAssign("result");
                 b.startNew(builderInstrBytecodeNodeType.asType());
-                b.variable(fldLanguage);
                 b.variable(fldParseContext);
-                b.string("nodeName");
-                b.string("isInternal");
                 b.string("sourceInfo");
                 b.string("sources");
                 b.variable(fldNodeNumber);
@@ -393,10 +388,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startAssign("result");
             b.startNew(builderBytecodeNodeType.asType());
-            b.variable(fldLanguage);
             b.variable(fldParseContext);
-            b.string("nodeName");
-            b.string("isInternal");
             b.string("sourceInfo");
             b.string("sources");
             b.variable(fldNodeNumber);
@@ -796,25 +788,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         return typBuilderImpl;
 
-    }
-
-    /**
-     * Creates a stack field.
-     *
-     * @param name the name of the stack field. It will get {@code "Stack"} appended to it.
-     * @param argType the type of the stack elements
-     * @return the created stack field
-     */
-    private CodeVariableElement createStackField(String name, TypeMirror argType) {
-        TypeMirror stackType = generic(context.getTypeElement(Stack.class), argType);
-        CodeVariableElement element = new CodeVariableElement(
-                        Set.of(Modifier.PRIVATE, Modifier.FINAL),
-                        stackType,
-                        name + "Stack");
-        CodeTreeBuilder ctb = element.createInitBuilder();
-        ctb.string("new Stack<>()");
-
-        return element;
     }
 
     private static TypeMirror generic(TypeElement el, TypeMirror... params) {
