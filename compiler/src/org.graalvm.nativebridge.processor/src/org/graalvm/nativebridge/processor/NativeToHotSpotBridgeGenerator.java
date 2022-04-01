@@ -656,6 +656,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         TypeMirror returnType = marshallerSnippets(data, methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
         boolean voidReturnType = returnType.getKind() == TypeKind.VOID;
         builder.lineStart().annotation(typeCache.suppressWarnings, "unused").lineEnd("");
+        builder.lineStart().annotation(typeCache.jNIEntryPoint, null).lineEnd("");
         builder.methodStart(EnumSet.of(Modifier.STATIC), methodName, returnType, params, Collections.emptyList());
         builder.indent();
         // Encode arguments

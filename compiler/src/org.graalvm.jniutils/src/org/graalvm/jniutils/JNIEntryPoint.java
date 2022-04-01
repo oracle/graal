@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.jniutils;
 
-import org.graalvm.jniutils.JNIEntryPoint;
+import org.graalvm.nativeimage.hosted.Feature;
 
-final class ForeignExceptionEndPoints {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    private ForeignExceptionEndPoints() {
-    }
-
-    /**
-     * Called by JNI to create a {@link ForeignException} used to throw native exception into Java
-     * code.
-     *
-     * @param rawValue marshalled original exception
-     * @return a {@link ForeignException} instance
-     */
-    @JNIEntryPoint
-    static Throwable createForeignException(byte[] rawValue) {
-        return ForeignException.create(rawValue, ForeignException.HOST_TO_GUEST);
-    }
-
-    /**
-     * Called by JNI to return a marshalled exception transferred by the {@code exception}.
-     */
-    @JNIEntryPoint
-    static byte[] toByteArray(ForeignException exception) {
-        return exception.toByteArray();
-    }
+/**
+ * An annotation used to mark methods called by the JNI native interface. The annotation can be used
+ * by {@link Feature}s to register the annotated methods as JNI accessed.
+ */
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface JNIEntryPoint {
 }

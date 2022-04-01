@@ -69,6 +69,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
     static final class TypeCache extends AbstractTypeCache {
 
         final DeclaredType currentIsolate;
+        final DeclaredType jNIEntryPoint;
         final DeclaredType jNIExceptionHandler;
         final DeclaredType jNIExceptionHandlerContext;
         final DeclaredType hotSpotCalls;
@@ -81,6 +82,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
             this.currentIsolate = (DeclaredType) processor.getType("org.graalvm.nativeimage.CurrentIsolate");
+            this.jNIEntryPoint = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIEntryPoint");
             this.jNIExceptionHandler = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler");
             this.jNIExceptionHandlerContext = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext");
             this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls");

@@ -590,12 +590,15 @@ public final class JNIExceptionWrapper extends RuntimeException {
         JNI.JClass res = entryPointsClass;
         if (res.isNull()) {
             String binaryName = getBinaryName(HS_ENTRYPOINTS_CLASS);
-            JNI.JObject classLoader = getJVMCIClassLoader(env);
-            JNI.JClass entryPoints;
-            if (classLoader.isNonNull()) {
-                entryPoints = findClass(env, classLoader, binaryName);
-            } else {
-                entryPoints = findClass(env, binaryName);
+            JNI.JClass entryPoints = findClass(env, binaryName);
+            if (entryPoints.isNull()) {
+                // Clear the exception and try to load the entry points class using JVMCI
+                // classloader.
+                ExceptionClear(env);
+                JObject classLoader = getJVMCIClassLoader(env);
+                if (classLoader.isNonNull()) {
+                    entryPoints = findClass(env, classLoader, binaryName);
+                }
             }
             if (entryPoints.isNull()) {
                 // Here we cannot use JNIExceptionWrapper.
