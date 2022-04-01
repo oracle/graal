@@ -241,9 +241,10 @@ JNIEXPORT jint JNICALL JVM_ActiveProcessorCount(void) {
   return (*getEnv())->JVM_ActiveProcessorCount();
 }
 
-JNIEXPORT void* JNICALL JVM_LoadLibrary(const char *name, jboolean throwException) {
+// GR-37925: In some scenarios it can happen that the caller uses JVM_LoadLibrary(const char*) as signature. This is fine by the C ABI, but Sulong does not like it.
+JNIEXPORT void* JNICALL JVM_LoadLibrary(const char *name /*, jboolean throwException*/) {
   IMPLEMENTED(JVM_LoadLibrary);
-  return (*getEnv())->JVM_LoadLibrary(name, throwException);
+  return (*getEnv())->JVM_LoadLibrary(name /*, throwException*/);
 }
 
 JNIEXPORT void JNICALL JVM_UnloadLibrary(void *handle) {
