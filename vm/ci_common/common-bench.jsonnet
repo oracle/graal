@@ -133,8 +133,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
   },
 
   x52_js_bench_compilation_throughput: self.vm_bench_common + common.heap.default + {
-    local libgraal_env = repo_config.vm.mx_env.libgraal,
-    local mx_libgraal = ["mx", "--env", libgraal_env],
+    local mx_libgraal = ["mx", "--env", repo_config.vm.mx_env.libgraal],
 
     setup+: [
       mx_libgraal + ["--dynamicimports", "/graal-js", "sforceimports"],  # clone the revision of /graal-js imported by /vm

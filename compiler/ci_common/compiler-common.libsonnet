@@ -23,9 +23,10 @@
   compiler_bench_base:: bench_common.bench_base + {
     # The extra steps and mx arguments to be applied to build libgraal with PGO
     local is_libgraal = std.objectHasAll(self, "platform") && std.findSubstr("libgraal", self.platform) != [],
-    local libgraal_only(value) = if is_libgraal then value else [],
-    local collect_libgraal_profile = libgraal_only(config.compiler.collect_libgraal_profile()),
-    local use_libgraal_profile = libgraal_only(config.compiler.use_libgraal_profile),
+    local with_profiling = !std.objectHasAll(self, "disable_profiling") || !self.disable_profiling,
+    local libgraal_profiling_only(value) = if is_libgraal && with_profiling then value else [],
+    local collect_libgraal_profile = libgraal_profiling_only(config.compiler.collect_libgraal_profile()),
+    local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
 
     job_prefix:: "bench-compiler",
     environment+: {
