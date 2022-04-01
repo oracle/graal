@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -54,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable, OrderedMemoryAccess, MemoryAccess, SingleMemoryKill {
+public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable, OrderedMemoryAccess, MemoryAccess {
 
     public static final NodeClass<UnsafeAccessNode> TYPE = NodeClass.create(UnsafeAccessNode.class);
     @Input ValueNode object;
@@ -81,14 +80,6 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
     @Override
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        if (ordersMemoryAccesses()) {
-            return LocationIdentity.any();
-        }
-        return getLocationIdentity();
     }
 
     public boolean isLocationForced() {

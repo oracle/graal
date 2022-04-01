@@ -41,24 +41,22 @@ import org.graalvm.word.LocationIdentity;
 public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
 
     /**
-     * Hook for subclasses to specify if a memory kill actually kills something. This can be
-     * necessary for nodes which are not a memory kill in the common case but can kill locations in
-     * specific scenarios.
+     * A node is a memory kill if it implements the memory kill API and actually kills a location
+     * identity.
      */
-    default boolean actuallyKills() {
-        return true;
-    }
-
     static boolean isMemoryKill(Node n) {
-        return n instanceof MemoryKill && ((MemoryKill) n).actuallyKills();
+        // Single memory kills always have to return a killed location identity. Multi-memory kills
+        // however can return a zero length array and thus not kill any location. This is handy to
+        // implement cases where nodes are only memory kills based on a dynamic property.
+        return isSingleMemoryKill(n) || isMultiMemoryKill(n) && asMultiMemoryKill(n).getKilledLocationIdentities().length > 0;
     }
 
     static boolean isSingleMemoryKill(Node n) {
-        return isMemoryKill(n) && n instanceof SingleMemoryKill;
+        return n instanceof SingleMemoryKill;
     }
 
     static boolean isMultiMemoryKill(Node n) {
-        return isMemoryKill(n) && n instanceof MultiMemoryKill;
+        return n instanceof MultiMemoryKill;
     }
 
     static SingleMemoryKill asSingleMemoryKill(Node n) {
@@ -70,5 +68,9 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
         assert isMultiMemoryKill(n);
         return (MultiMemoryKill) n;
     }
+
+    LocationIdentity[] ANY_LOCATION_MULTI_KILL = new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+
+    LocationIdentity[] MULTI_KILL_NO_KILL = new LocationIdentity[]{};
 
 }

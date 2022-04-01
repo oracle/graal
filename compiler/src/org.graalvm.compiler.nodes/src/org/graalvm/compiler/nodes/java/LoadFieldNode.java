@@ -38,13 +38,13 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, Virtualizable, UncheckedInterfaceProvider, SingleMemoryKill {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, Virtualizable, UncheckedInterfaceProvider, MultiMemoryKill {
 
     public static final NodeClass<LoadFieldNode> TYPE = NodeClass.create(LoadFieldNode.class);
 
@@ -109,13 +109,11 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return actuallyKills() ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.FINAL_LOCATION;
-    }
-
-    @Override
-    public boolean actuallyKills() {
-        return ordersMemoryAccesses();
+    public LocationIdentity[] getKilledLocationIdentities() {
+        if (ordersMemoryAccesses()) {
+            return MemoryKill.ANY_LOCATION_MULTI_KILL;
+        }
+        return MemoryKill.MULTI_KILL_NO_KILL;
     }
 
     @Override

@@ -39,6 +39,8 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -59,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the load.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable {
+public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable, MultiMemoryKill {
     public static final NodeClass<RawLoadNode> TYPE = NodeClass.create(RawLoadNode.class);
 
     /**
@@ -117,17 +119,20 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
+    public LocationIdentity[] getKilledLocationIdentities() {
+        if (ordersMemoryAccesses()) {
+            return MemoryKill.ANY_LOCATION_MULTI_KILL;
+        }
+        return MemoryKill.MULTI_KILL_NO_KILL;
+    }
+
+    @Override
     public boolean inferStamp() {
         // Primitive stamps can't get any better
         if (accessKind.isObject()) {
             return updateStamp(computeStampForArrayAccess(object, accessKind, stamp));
         }
         return false;
-    }
-
-    @Override
-    public boolean actuallyKills() {
-        return ordersMemoryAccesses();
     }
 
     @Override

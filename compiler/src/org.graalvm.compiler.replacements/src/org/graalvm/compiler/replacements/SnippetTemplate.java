@@ -2650,7 +2650,7 @@ public class SnippetTemplate {
  * CFG edges for select snippet lowerings.
  */
 @NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
-final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, SingleMemoryKill {
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, MultiMemoryKill {
     static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
 
     private final LocationIdentity killedLocation;
@@ -2669,13 +2669,12 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
     }
 
     @Override
-    public boolean actuallyKills() {
-        return killedLocation != null;
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return killedLocation;
+    public LocationIdentity[] getKilledLocationIdentities() {
+        if (killedLocation != null) {
+            return new LocationIdentity[]{killedLocation};
+        } else {
+            return MemoryKill.MULTI_KILL_NO_KILL;
+        }
     }
 }
 

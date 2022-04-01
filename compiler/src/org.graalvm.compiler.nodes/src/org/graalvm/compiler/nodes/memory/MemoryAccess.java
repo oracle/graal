@@ -52,4 +52,5 @@ public interface MemoryAccess extends ValueNodeInterface {
     default void setLastLocationAccess(MemoryKill lla) {
         throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
     }
+
 }

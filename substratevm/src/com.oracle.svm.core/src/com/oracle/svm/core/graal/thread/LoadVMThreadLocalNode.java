@@ -37,7 +37,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaOrderedReadNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -50,7 +51,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable, SingleMemoryKill, MemoryAccess {
+public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable, MultiMemoryKill, MemoryAccess {
     public static final NodeClass<LoadVMThreadLocalNode> TYPE = NodeClass.create(LoadVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;
@@ -73,21 +74,16 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
     }
 
     @Override
-    public boolean actuallyKills() {
-        return MemoryOrderMode.ordersMemoryAccesses(memoryOrder);
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        if (actuallyKills()) {
-            return LocationIdentity.any();
+    public LocationIdentity[] getKilledLocationIdentities() {
+        if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
+            return MemoryKill.ANY_LOCATION_MULTI_KILL;
         }
-        return threadLocalInfo.locationIdentity;
+        return MemoryKill.MULTI_KILL_NO_KILL;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return getKilledLocationIdentity();
+        return threadLocalInfo.locationIdentity;
     }
 
     @Override
