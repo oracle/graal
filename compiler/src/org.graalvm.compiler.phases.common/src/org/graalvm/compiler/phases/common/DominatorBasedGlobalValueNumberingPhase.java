@@ -25,10 +25,8 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -297,14 +295,11 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
             }
 
             /*
-             * perform global value numbering of fixed nodes, also performs LICM for nodes that
-             *
-             * * either already have a dominating value number equal operation
-             *
-             * * limited form of LICM for nodes that are dominated by the loop header and dominate
-             * all exits. This are operations that are unconditionally executed
+             * Perform the actual global value numbering of fixed nodes. May also perform LICM for
+             * nodes that either already have a dominating value number equal operation or performs
+             * a limited form of LICM for nodes that are dominated by the loop header and dominate
+             * all exits. Such operations that are unconditionally executed in the particular loop.
              */
-
             boolean canSubsitute = blockMap.hasSubstitute(cur);
             if (canSubsitute) {
                 if (cur instanceof MemoryAccess) {
@@ -456,54 +451,94 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
      * limited amount of LICM for code unconditionally executed inside a loop that is invariant).
      */
     static final class ValueMap {
-        private final EconomicMap<Node, Node> entries;
+        private static final int INITIAL_SIZE = 4;
+
+        /**
+         * The array storing the {@link Node} remembered for global value numbering. Can contain
+         * holes if nodes are deleted. Will be {@link #compress() compressed} or can become larger
+         * if necessary with {@link #grow()}.
+         */
+        private Node[] entries;
+        /**
+         * The number of nodes stored already. Note that {@code entries[length]==null}and
+         * {@code entries[length-1]=lastAddedNode}
+         */
+        private int length;
+        private int deleted;
         private final LocationSet kills;
 
         private ValueMap() {
-            this.entries = EconomicMap.create(new ValueMapEquivalence());
+            this.entries = new Node[INITIAL_SIZE];
             this.kills = new LocationSet();
+        }
+
+        private void grow() {
+            compress();
+            if (length == entries.length) {
+                entries = Arrays.copyOf(entries, entries.length * 2);
+            }
+        }
+
+        private void compress() {
+            if (deleted > length / 2) {
+                Node[] entriesNew = new Node[entries.length];
+                int newLength = 0;
+                for (int i = 0; i < length; i++) {
+                    Node entry = entries[i];
+                    if (entry != null) {
+                        entriesNew[newLength++] = entry;
+                    }
+                }
+                entries = entriesNew;
+                length = newLength;
+                deleted = 0;
+            }
+        }
+
+        private Node find(Node n) {
+            for (int i = 0; i < length; i++) {
+                Node entry = entries[i];
+                if (entry != null) {
+                    if (valueEquals(entry, n)) {
+                        // return the dominating node
+                        return entry;
+                    }
+                } else {
+                    // holes allowed
+                }
+            }
+            return null;
+        }
+
+        private void add(Node n) {
+            grow();
+            entries[length++] = n;
         }
 
         /**
          * Equivalence strategy for global value numbering.
+         *
+         * Determine if two nodes are equal with respect to global value numbering. Tihs means their
+         * inputs are equal, their node classes are equal and their data fields.
          */
-        static class ValueMapEquivalence extends Equivalence {
 
-            /**
-             * Determine if two nodes are equal with respect to global value numbering. Tihs means
-             * their inputs are equal, their node classes are equal and their data fields.
-             */
-            @Override
-            public boolean equals(Object a, Object b) {
-                if (a instanceof Node && b instanceof Node) {
-                    Node n1 = (Node) a;
-                    Node n2 = (Node) b;
-                    if (n1.getNodeClass().equals(n2.getNodeClass())) {
-                        if (n1.getNodeClass().dataEquals(n1, n2)) {
-                            if (n1.getNodeClass().equalInputs(n1, n2)) {
-                                return true;
-                            }
-                        }
+        private static boolean valueEquals(Node a, Node b) {
+            if (a.getNodeClass().equals(b.getNodeClass())) {
+                if (a.getNodeClass().dataEquals(a, b)) {
+                    if (a.getNodeClass().equalInputs(a, b)) {
+                        return true;
                     }
                 }
-                return false;
             }
-
-            @Override
-            public int hashCode(Object o) {
-                if (o instanceof Node) {
-                    Node n1 = (Node) o;
-                    return n1.getNodeClass().getNameTemplate().hashCode();
-                }
-                throw GraalError.shouldNotReachHere();
-            }
-
+            return false;
         }
 
         ValueMap copy() {
             ValueMap other = new ValueMap();
-            other.entries.putAll(entries);
+            other.entries = Arrays.copyOf(entries, entries.length);
             other.kills.addAll(kills);
+            other.length = length;
+            other.deleted = deleted;
             return other;
         }
 
@@ -517,7 +552,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
          * Determine if there is a node that is equal to the given one.
          */
         public boolean hasSubstitute(Node n) {
-            Node edgeDataEqual = entries.get(n);
+            Node edgeDataEqual = find(n);
+            assert edgeDataEqual == null || edgeDataEqual != n : "Must find different value equal node with different identity for " + n;
             return edgeDataEqual != null;
         }
 
@@ -526,7 +562,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
          * and data fields) up in the dominance chain.
          */
         public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes) {
-            Node edgeDataEqual = entries.get(n);
+            Node edgeDataEqual = find(n);
             if (edgeDataEqual != null) {
                 assert edgeDataEqual.graph() != null;
                 assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
@@ -580,8 +616,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
          * Preserve a node for global value numbering in dominated code.
          */
         public void rememberNodeForGVN(Node n) {
-            GraalError.guarantee(!entries.containsKey(n), "Must GVN before adding a new node");
-            entries.put(n, n);
+            GraalError.guarantee(find(n) == null, "Must GVN before adding a new node");
+            add(n);
         }
 
         public void killValuesByPotentialMemoryKill(Node n) {
@@ -606,13 +642,15 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
          */
         private void killValuesByIdentity(LocationIdentity loc) {
             kills.add(loc);
-            MapCursor<Node, Node> cursor = entries.getEntries();
-            while (cursor.advance()) {
-                Node next = cursor.getKey();
-                if (next instanceof MemoryAccess) {
-                    MemoryAccess mem = (MemoryAccess) next;
-                    if (mem.getLocationIdentity().overlaps(loc)) {
-                        cursor.remove();
+            for (int i = 0; i < length; i++) {
+                Node entry = entries[i];
+                if (entry != null) {
+                    if (entry instanceof MemoryAccess) {
+                        MemoryAccess mem = (MemoryAccess) entry;
+                        if (mem.getLocationIdentity().overlaps(loc)) {
+                            entries[i] = null;
+                            deleted++;
+                        }
                     }
                 }
             }
