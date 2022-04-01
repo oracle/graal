@@ -4,7 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.2.0
 
-* GR-36557 Replaced `--engine.MaximumGraalNodeCount` with `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
+* GR-36557 Deprecated `--engine.MaximumGraalNodeCount` and introduced `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
 * GR-37493 Added `@DenyReplace` to deny replacement of final node types. 
 * GR-37493 Potentially breaking: Disabled replace of all Truffle DSL generated uncached nodes. If you call `Node.replace()` on an uncached version of a generated node or library it will now fail with an `IllegalArgumentException`. As a rule of thumb, uncached versions of nodes should not ever be stored in `@Child` fields. Instead, they should always be used as singletons.
 * GR-37493 Removed long time deprecated API `NodeFieldAccessor` without replacement. Added a some utility methods in `NodeUtil` as a replacement for this API: `NodeUtil.collectFieldNames(Class)`, `NodeUtil.collectNodeChildren(Node)` and `NodeUtil.collectNodeProperties(Node)`.

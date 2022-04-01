@@ -428,9 +428,11 @@ public abstract class PartialEvaluator {
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(context.task.inliningData()),
                         graphCache);
-        try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(new GraphSizeListener(context.options, context.graph))) {
+        GraphSizeListener listener = new GraphSizeListener(context.options, context.graph);
+        try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
             decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
         }
+        assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
     }
 
     /**

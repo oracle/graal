@@ -145,6 +145,7 @@ The accepted values are:
 - `--engine.InstrumentationTableSize=[1, inf)` : Maximum number of instrumentation counters available (default: 10000).
 - `--engine.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
 - `--engine.MaximumGraalGraphSize=[1, inf)` : Stop partial evaluation when the graph exceeded this size (default: 150000).
+- `--engine.MaximumGraalNodeCount=[1, inf)` : Stop partial evaluation when the graph exceeded this many nodes (default: 40000).
 - `--engine.MaximumInlineNodeCount=[1, inf)` : Ignore further truffle inlining decisions when the graph exceeded this many nodes (default: 150000).
 - `--engine.MethodExpansionStatistics=true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...` : Print statistics on expanded Java methods during partial evaluation at the end of a run.Accepted values are:  
     true - Collect data for the default tier 'truffleTier'.  
