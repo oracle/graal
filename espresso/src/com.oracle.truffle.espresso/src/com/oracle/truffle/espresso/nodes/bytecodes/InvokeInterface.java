@@ -42,7 +42,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -97,11 +96,11 @@ public abstract class InvokeInterface extends EspressoNode {
         public abstract Object execute(Object[] args);
 
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(resolutionSeed.getDeclaringKlass());
+            return getContext().getClassHierarchyOracle().hasNoImplementors(resolutionSeed.getDeclaringKlass());
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+            return getContext().getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
         @TruffleBoundary

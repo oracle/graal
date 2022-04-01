@@ -1298,7 +1298,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta(), this)); break;
                     case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1), this)); break;
 
-                    case ARRAYLENGTH : arrayLength(frame, top, curBCI, this); break;
+                    case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
                     case ATHROW      :
                         throw getMeta().throwException(nullCheck(popObject(frame, top - 1)));
@@ -1691,10 +1691,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         // @formatter:on
     }
 
-    private void arrayLength(VirtualFrame frame, int top, int curBCI, BytecodeNode node) {
+    private void arrayLength(VirtualFrame frame, int top, int curBCI) {
         StaticObject array = nullCheck(popObject(frame, top - 1));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
-            putInt(frame, top - 1, InterpreterToVM.arrayLength(array, EspressoLanguage.get(node)));
+            putInt(frame, top - 1, InterpreterToVM.arrayLength(array, getLanguage()));
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.

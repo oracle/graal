@@ -38,7 +38,6 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * INSTANCEOF bytecode helper nodes.
@@ -216,7 +215,7 @@ public abstract class InstanceOf extends EspressoNode {
             if (comparison < 0) {
                 simpleSubTypeCheckProfile.enter();
                 Klass elemental = superType.getElementalType();
-                Meta meta = EspressoContext.get(this).getMeta();
+                Meta meta = getMeta();
                 return elemental == meta.java_lang_Object || elemental == meta.java_io_Serializable || elemental == meta.java_lang_Cloneable;
             }
 
@@ -240,11 +239,11 @@ public abstract class InstanceOf extends EspressoNode {
         }
 
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(superType);
+            return getContext().getClassHierarchyOracle().hasNoImplementors(superType);
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+            return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
         @Specialization(assumptions = "noImplementors")
@@ -287,11 +286,11 @@ public abstract class InstanceOf extends EspressoNode {
         }
 
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(superType);
+            return getContext().getClassHierarchyOracle().hasNoImplementors(superType);
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+            return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
         @Specialization(assumptions = "noImplementors")
@@ -315,7 +314,7 @@ public abstract class InstanceOf extends EspressoNode {
 
         @Specialization
         public boolean doArrayKlass(@SuppressWarnings("unused") ArrayKlass maybeSubtype) {
-            Meta meta = EspressoContext.get(this).getMeta();
+            Meta meta = getMeta();
             return superType == meta.java_lang_Cloneable || superType == meta.java_io_Serializable;
         }
 

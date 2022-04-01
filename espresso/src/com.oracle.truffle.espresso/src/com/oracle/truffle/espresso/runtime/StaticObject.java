@@ -274,7 +274,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public static boolean isNull(StaticObject object) {
         assert object != null;
-        // TODO(da): do not call `EspressoLanguage.get(null)`
+        // GR-37710: do not call `EspressoLanguage.get(null)`
         assert (object.getKlass() != null) || object == NULL || (object.isForeignObject() &&
                         InteropLibrary.getUncached().isNull(object.rawForeignObject(EspressoLanguage.get(null)))) : "klass can only be null for Espresso null (NULL) and interop nulls";
         return object.getKlass() == null;

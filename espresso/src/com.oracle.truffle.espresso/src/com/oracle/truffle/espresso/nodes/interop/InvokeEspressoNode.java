@@ -32,7 +32,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -57,8 +56,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
          * Espresso and unwrapped when going out)
          */
         if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-            EspressoLanguage language = EspressoLanguage.get(this);
-            return ((StaticObject) result).rawForeignObject(language);
+            return ((StaticObject) result).rawForeignObject(getLanguage());
         }
         return result;
     }

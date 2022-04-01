@@ -327,9 +327,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
-            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+            Meta meta = EspressoContext.get(toEspressoNode).getMeta();
+            int length = getLength(arguments, toEspressoNode, meta);
+            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, meta);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")

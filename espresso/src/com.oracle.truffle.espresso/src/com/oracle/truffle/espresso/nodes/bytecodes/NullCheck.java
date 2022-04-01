@@ -28,7 +28,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @GenerateUncached
@@ -41,7 +40,7 @@ public abstract class NullCheck extends EspressoNode {
     StaticObject execute(StaticObject receiver, @Cached BranchProfile exceptionProfile) {
         if (StaticObject.isNull(receiver)) {
             exceptionProfile.enter();
-            throw EspressoContext.get(this).getMeta().throwNullPointerException();
+            throw getMeta().throwNullPointerException();
         }
         return receiver;
     }
