@@ -175,8 +175,8 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     boolean doForeignValue(StaticObject receiver,
-                    @Bind("getContext()") EspressoContext context,
                     @Bind("getLanguage()") EspressoLanguage language,
+                    @Bind("getContext()") EspressoContext context,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {

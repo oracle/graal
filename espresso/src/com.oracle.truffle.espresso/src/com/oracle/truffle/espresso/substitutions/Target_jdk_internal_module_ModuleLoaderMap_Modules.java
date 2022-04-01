@@ -48,10 +48,10 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
         public abstract void execute();
 
         @Specialization
-        public static void clinit(
-                        @Bind("getLanguage()") EspressoLanguage language,
+        public void clinit(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_Modules_clinit.getCallTargetNoSubstitution())") DirectCallNode original) {
+            EspressoLanguage language = getLanguage();
             Meta meta = context.getMeta();
             assert meta.getJavaVersion().java17OrLater();
             original.call();
