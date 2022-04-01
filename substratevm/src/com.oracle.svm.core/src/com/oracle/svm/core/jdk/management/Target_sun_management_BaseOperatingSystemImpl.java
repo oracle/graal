@@ -39,11 +39,6 @@ final class Target_sun_management_BaseOperatingSystemImpl {
     Target_sun_management_BaseOperatingSystemImpl(@SuppressWarnings("unused") VMManagement vm) {
     }
 
-    @Substitute
-    public double getSystemLoadAverage() {
-        return -1; /* Workaround until we add support for `Unsafe.getLoadAverage` (GR-37414). */
-    }
-
     /*
      * The following substitutions eliminate the use of the `BaseOperatingSystemImpl.jvm` field,
      * which we set to `null` to avoid dealing with `VMManagementImpl` that we do not support.

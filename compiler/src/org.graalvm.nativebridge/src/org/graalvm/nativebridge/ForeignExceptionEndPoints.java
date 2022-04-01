@@ -22,30 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package org.graalvm.nativebridge;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.nativebridge.ExceptionHandler;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.Service;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSInvalidExceptionHandlerTest extends HSObject implements Service {
+final class ForeignExceptionEndPoints {
 
-    HSInvalidExceptionHandlerTest(JNIEnv env, JObject handle) {
-        super(env, handle);
+    private ForeignExceptionEndPoints() {
     }
 
-    @ExceptionHandler
-    @ExpectError("A method annotated by `ExceptionHandler` must be a non-private static boolean method with `ExceptionHandlerContext` parameter(s).%n" +
-                    "To fix this change the signature to `static boolean handleException(ExceptionHandlerContext p0)`.")
-    @SuppressWarnings("unused")
-    static boolean handleException(Throwable exception) {
-        return false;
+    /**
+     * Called by JNI to create a {@link ForeignException} used to throw native exception into Java
+     * code.
+     *
+     * @param rawValue marshalled original exception
+     * @return a {@link ForeignException} instance
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static Throwable createForeignException(byte[] rawValue) {
+        return ForeignException.create(rawValue, ForeignException.HOST_TO_GUEST);
     }
 
+    /**
+     * Called by JNI to return a marshalled exception transferred by the {@code exception}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static byte[] toByteArray(ForeignException exception) {
+        return exception.toByteArray();
+    }
 }

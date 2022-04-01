@@ -181,11 +181,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void fmov(int size, Register dst, Register src) {
-        super.fmov(size, dst, src);
-    }
-
-    @Override
     protected void fmovFpu2Cpu(int size, Register dst, Register src) {
         super.fmovFpu2Cpu(size, dst, src);
     }

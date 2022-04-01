@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package com.oracle.svm.core.posix;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext;
-import org.graalvm.nativebridge.ExceptionHandler;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.processor.test.Service;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.hosted.Feature;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSExceptionHandlerTest extends HSObject implements Service {
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.LoadAverageSupport;
+import com.oracle.svm.core.posix.headers.Stdlib;
 
-    HSExceptionHandlerTest(JNIEnv env, JObject delegate) {
-        super(env, delegate);
+class PosixLoadAverageSupport implements LoadAverageSupport {
+    @Override
+    public int getLoadAverage(double[] loadavg, int nelems) {
+        /*
+         * Adapted from `os::loadavg` which is the same in both `src/hotspot/os/linux/os_linux.cpp`
+         * and `src/hotspot/os/bsd/os_bsd.cpp`.
+         */
+        try (PinnedObject pinnedLoadavg = PinnedObject.create(loadavg)) {
+            return Stdlib.getloadavg(pinnedLoadavg.addressOfArrayElement(0), nelems);
+        }
     }
+}
 
-    @ExceptionHandler
-    @SuppressWarnings("unused")
-    static boolean handleException(ExceptionHandlerContext exceptionHandlerContext) {
-        return false;
+@AutomaticFeature
+class PosixLoadAverageSupportFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LoadAverageSupport.class, new PosixLoadAverageSupport());
     }
 }

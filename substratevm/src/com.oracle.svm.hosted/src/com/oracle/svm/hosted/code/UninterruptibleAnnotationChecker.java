@@ -77,6 +77,7 @@ public final class UninterruptibleAnnotationChecker {
         for (HostedMethod method : methods) {
             Uninterruptible annotation = method.getAnnotation(Uninterruptible.class);
             StructuredGraph graph = method.compilationInfo.getGraph();
+            c.checkSpecifiedOptions(method, annotation);
             c.checkOverrides(method, annotation);
             c.checkCallees(method, annotation, graph);
             c.checkCallers(method, annotation, graph);
@@ -96,6 +97,26 @@ public final class UninterruptibleAnnotationChecker {
                 message = message + System.lineSeparator() + violation;
             }
             throw UserError.abort("%s", message);
+        }
+    }
+
+    /**
+     * Check that each method annotated with {@linkplain Uninterruptible} doesn't contain
+     * "calleeMustBe == false" and "mayBeInlined == true" at the same time.
+     *
+     * The combination does not make much sense because "mayBeInlined = true" means that the
+     * annotated method itself actually has no need to be uninterruptible, it is just a "benign
+     * utility method" that is used from within and outside uninterruptible code. But then
+     * "calleeMustBe = false" actually means that the method is actually doing something to switch
+     * from uninterruptible to "normal" code.
+     */
+    private void checkSpecifiedOptions(HostedMethod method, Uninterruptible methodAnnotation) {
+        if (methodAnnotation == null) {
+            return;
+        }
+        if (methodAnnotation.mayBeInlined() && !methodAnnotation.calleeMustBe()) {
+            violations.add("method " + method.format("%H.%n(%p)") + " is annotated with 'calleeMustBe == false' " +
+                            "and 'mayBeInlined == true' at the same time.");
         }
     }
 

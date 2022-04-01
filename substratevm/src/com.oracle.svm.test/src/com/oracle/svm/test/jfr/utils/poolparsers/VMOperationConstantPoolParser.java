@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +23,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
 
-/**
- * A marshaller used by the native bridge processor on the host side to marshall method parameters
- * and results of a custom type. Marshallers are used to support types that are not directly
- * implemented by the native bridge processor.
- *
- * @see JNIConfig.Builder
- */
-public interface JNIHotSpotMarshaller<T> {
-    /**
-     * Converts the {@code object} into a form that can be transferred into the isolate.
-     */
-    Object marshall(T object);
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-    /**
-     * Converts the internal form back into an object.
-     */
-    T unmarshall(Object rawObject);
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
+
+import java.io.IOException;
+
+public class VMOperationConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfVMOperationTypes = input.readInt();
+        for (int i = 0; i < numberOfVMOperationTypes; i++) {
+            addFoundId(input.readInt()); // Id.
+            Assert.assertFalse("VMOperation type is empty!", input.readUTF().isEmpty());
+        }
+    }
 }

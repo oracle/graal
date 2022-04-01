@@ -82,26 +82,28 @@ class AMD64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public PointerBase getHeapBase(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
         return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_R14()));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
         return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_R15()));
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
         return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_RSP()));
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
         return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_RIP()));

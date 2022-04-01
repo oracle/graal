@@ -56,7 +56,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
@@ -65,7 +65,6 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -77,7 +76,7 @@ import jdk.vm.ci.meta.Value;
 /**
  */
 @Opcode("AMD64_ARRAY_INDEX_OF")
-public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
+public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64ArrayIndexOfOp> TYPE = LIRInstructionClass.create(AMD64ArrayIndexOfOp.class);
 
     private static final Register REG_ARRAY = rsi;
@@ -118,9 +117,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     @Temp({REG}) Value[] vectorCompareVal;
     @Temp({REG}) Value[] vectorArray;
 
-    private AMD64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, int maxVectorSize, int constOffset, int nValues, LIRGeneratorTool tool,
+    private AMD64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, int constOffset, int nValues, LIRGeneratorTool tool,
                     Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value searchValue1, Value searchValue2, Value searchValue3, Value searchValue4) {
-        super(TYPE);
+        super(TYPE, tool, AVXSize.YMM);
         this.valueKind = valueKind;
         this.arrayIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
         this.arrayBaseOffset = arrayBaseOffset;
@@ -130,7 +129,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         this.nValues = nValues;
         assert 0 < nValues && nValues <= 4;
         assert valueKind == JavaKind.Byte || valueKind == JavaKind.Char || valueKind == JavaKind.Int;
-        assert supports(tool, CPUFeature.SSE2) || supports(tool, CPUFeature.AVX) || supportsAVX2(tool);
+        assert supports(tool.target(), CPUFeature.SSE2) || supports(tool.target(), CPUFeature.AVX) || supports(tool.target(), CPUFeature.AVX2);
         assert !(!withMask && findTwoConsecutive) || nValues == 2;
         assert !(withMask && findTwoConsecutive) || nValues == 4;
         assert !(withMask && !findTwoConsecutive) || nValues == 2;
@@ -145,7 +144,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         this.searchValue3 = searchValue3;
         this.searchValue4 = searchValue4;
 
-        vectorKind = getVectorKind(valueKind, maxVectorSize, tool);
+        this.vectorKind = getVectorKind(valueKind);
         this.vectorCompareVal = allocateVectorRegisters(tool, vectorKind, nValues);
         this.vectorArray = allocateVectorRegisters(tool, vectorKind, 4);
     }
@@ -166,7 +165,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         return registers;
     }
 
-    public static AMD64ArrayIndexOfOp movParamsAndCreate(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, int maxVectorSize, LIRGeneratorTool tool,
+    public static AMD64ArrayIndexOfOp movParamsAndCreate(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, LIRGeneratorTool tool,
                     Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
 
         int nValues = searchValues.length;
@@ -193,38 +192,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         } else {
             constOffset = -1;
         }
-        return new AMD64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, maxVectorSize, constOffset, nValues, tool,
+        return new AMD64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, constOffset, nValues, tool,
                         result, regArray, regOffset, regLength, regFromIndex, regSearchValue1, regSearchValue2, regSearchValue3, regSearchValue4);
     }
 
     private boolean useConstantOffset() {
         return constOffset >= 0;
-    }
-
-    private AVXKind.AVXSize getVectorSize() {
-        return AVXKind.getDataSize(vectorKind);
-    }
-
-    private static AMD64Kind getVectorKind(JavaKind valueKind, int maxVectorSize, LIRGeneratorTool tool) {
-        if (supportsAVX2(tool) && (maxVectorSize < 0 || maxVectorSize >= 32)) {
-            switch (valueKind) {
-                case Byte:
-                    return AMD64Kind.V256_BYTE;
-                case Char:
-                    return AMD64Kind.V256_WORD;
-                default:
-                    return AMD64Kind.V256_DWORD;
-            }
-        } else {
-            switch (valueKind) {
-                case Byte:
-                    return AMD64Kind.V128_BYTE;
-                case Char:
-                    return AMD64Kind.V128_WORD;
-                default:
-                    return AMD64Kind.V128_DWORD;
-            }
-        }
     }
 
     @Override
@@ -258,8 +231,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         Label elementWiseNotFound = new Label();
         Label skipBulkVectorLoop = new Label();
         Label bsfAdd = new Label();
-        int vectorSize = getVectorElementCount();
-        int bulkSize = vectorSize * nVectors;
+        int vectorLength = vectorKind.getVectorLength();
+        int bulkSize = vectorLength * nVectors;
 
         if (useConstantOffset()) {
             asm.leaq(arrayPtr, new AMD64Address(arrayPtr, constOffset + arrayBaseOffset));
@@ -267,8 +240,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             asm.leaq(arrayPtr, new AMD64Address(arrayPtr, asRegister(offsetReg), Scale.Times1, arrayBaseOffset));
         }
 
-        // index = fromIndex + vectorSize (+1 if findTwoConsecutive)
-        asm.leaq(index, new AMD64Address(asRegister(fromIndexReg), vectorSize + (findTwoConsecutive ? 1 : 0)));
+        // index = fromIndex + vectorLength (+1 if findTwoConsecutive)
+        asm.leaq(index, new AMD64Address(asRegister(fromIndexReg), vectorLength + (findTwoConsecutive ? 1 : 0)));
 
         // re-use fromIndex register as temp
         Register cmpResult = asRegister(fromIndexReg);
@@ -279,55 +252,55 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             broadcastSearchValue(crb, asm, vecCmp[i], searchValue[i], cmpResult, vecArray[0]);
         }
 
-        // check if vector vector load is in bounds
+        // check if vector load is in bounds
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.LessEqual, runVectorized, false);
 
-        if (getVectorSize() == AVXKind.AVXSize.YMM) {
+        if (supportsAVX2AndYMM()) {
             // region is too short for YMM vectors, try XMM
             Label[] xmmFound = {new Label()};
             // index = fromIndex (+ 1 if findTwoConsecutive) + XMM vector size
-            asm.subq(index, vectorSize / 2);
+            asm.subq(index, vectorLength / 2);
             // check if vector vector load is in bounds
             asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, qWordWise, false);
             // do one vector comparison from fromIndex
-            emitVectorCompare(asm, valueKind, AVXKind.AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, xmmFound, true);
+            emitVectorCompare(asm, valueKind, AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, xmmFound, true);
             // and one aligned to the array end
             asm.movq(index, arrayLength);
-            emitVectorCompare(asm, valueKind, AVXKind.AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, xmmFound, true);
+            emitVectorCompare(asm, valueKind, AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, xmmFound, true);
             // no match, return negative
             asm.jmp(elementWiseNotFound);
             // match found, adjust index by XMM offset
             asm.bind(xmmFound[0]);
-            asm.subq(index, (vectorSize / 2) + (findTwoConsecutive ? 1 : 0));
+            asm.subq(index, (vectorLength / 2) + (findTwoConsecutive ? 1 : 0));
             // return index found
             asm.jmp(bsfAdd);
         }
 
         asm.bind(qWordWise);
-        int vectorSizeQWord = AVXKind.AVXSize.QWORD.getBytes() / valueKind.getByteCount();
+        int vectorLengthQWord = AVXSize.QWORD.getBytes() / valueKind.getByteCount();
         // region is too short for XMM vectors, try QWORD
         Label[] qWordFound = {new Label()};
         // index = fromIndex (+ 1 if findTwoConsecutive) + QWORD vector size
-        asm.subq(index, vectorSizeQWord);
+        asm.subq(index, vectorLengthQWord);
         // check if vector vector load is in bounds
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, elementWise, false);
         // do one vector comparison from fromIndex
-        emitVectorCompare(asm, valueKind, AVXKind.AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, qWordFound, true);
+        emitVectorCompare(asm, valueKind, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, qWordFound, true);
         // and one aligned to the array end
         asm.movq(index, arrayLength);
-        emitVectorCompare(asm, valueKind, AVXKind.AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, qWordFound, true);
+        emitVectorCompare(asm, valueKind, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, qWordFound, true);
         // no match, return negative
         asm.jmpb(elementWiseNotFound);
         // match found, adjust index by QWORD offset
         asm.bind(qWordFound[0]);
-        asm.subq(index, vectorSizeQWord + (findTwoConsecutive ? 1 : 0));
+        asm.subq(index, vectorLengthQWord + (findTwoConsecutive ? 1 : 0));
         // return index found
         asm.jmp(bsfAdd);
 
         // search range is smaller than vector size, do element-wise comparison
         asm.bind(elementWise);
         // index = fromIndex (+ 1 if findTwoConsecutive)
-        asm.subq(index, vectorSizeQWord);
+        asm.subq(index, vectorLengthQWord);
         // check if enough array slots remain
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.GreaterEqual, elementWiseNotFound, true);
 
@@ -410,7 +383,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.bind(runVectorized);
 
         // do one unaligned vector comparison pass and adjust alignment afterwards
-        emitVectorCompare(asm, valueKind, getVectorSize(), 1, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, false);
+        emitVectorCompare(asm, valueKind, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, false);
 
         // adjust index to vector size alignment
         asm.movl(cmpResult, arrayPtr);
@@ -419,7 +392,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         }
         asm.addq(index, cmpResult);
         // adjust to next lower multiple of vector size
-        asm.andq(index, -vectorSize);
+        asm.andq(index, -vectorLength);
         asm.subq(index, cmpResult);
         // add bulk size
         asm.addq(index, bulkSize);
@@ -430,7 +403,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         emitAlign(crb, asm);
         asm.bind(bulkVectorLoop);
         // memory-aligned bulk comparison
-        emitVectorCompare(asm, valueKind, getVectorSize(), nVectors, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, false);
+        emitVectorCompare(asm, valueKind, vectorSize, nVectors, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, false);
         // adjust index
         asm.addq(index, bulkSize);
         // check if there are enough array slots remaining for the bulk loop
@@ -441,7 +414,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             // do last load from end of array
             asm.movq(index, arrayLength);
             // compare
-            emitVectorCompare(asm, valueKind, getVectorSize(), 1, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, true);
+            emitVectorCompare(asm, valueKind, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, true);
         } else {
             // remove bulk offset
             asm.subq(index, bulkSize);
@@ -449,13 +422,13 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             // same loop as bulkVectorLoop, with only one vector
             asm.bind(singleVectorLoop);
             // add vector size
-            asm.addq(index, vectorSize);
+            asm.addq(index, vectorLength);
             // check if vector load is in bounds
             asm.cmpq(index, arrayLength);
             // if load would be over bounds, set the load to the end of the array
             asm.cmovq(AMD64Assembler.ConditionFlag.Greater, index, arrayLength);
             // compare
-            emitVectorCompare(asm, valueKind, getVectorSize(), 1, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, true);
+            emitVectorCompare(asm, valueKind, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, true);
             // check if there are enough array slots remaining for the loop
             asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Less, singleVectorLoop, true);
         }
@@ -493,24 +466,20 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     }
 
     private int getResultIndexDelta(int i) {
-        return (i + 1) * getVectorElementCount() + (findTwoConsecutive ? 1 : 0);
+        return (i + 1) * vectorKind.getVectorLength() + (findTwoConsecutive ? 1 : 0);
     }
 
-    private int getVectorElementCount() {
-        return getVectorSize().getBytes() / valueKind.getByteCount();
-    }
-
-    private int getVectorOffset(int i, int j, AVXKind.AVXSize vectorSize) {
+    private int getVectorOffset(int i, int j, AVXSize targetVectorSize) {
         if (findTwoConsecutive) {
-            return -(((i + 1) * vectorSize.getBytes() + ((j ^ 1) * valueKind.getByteCount())));
+            return -(((i + 1) * targetVectorSize.getBytes() + ((j ^ 1) * valueKind.getByteCount())));
         }
-        return -(((i + 1) * vectorSize.getBytes()));
+        return -(((i + 1) * targetVectorSize.getBytes()));
     }
 
     private void broadcastSearchValue(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register dst, Value srcVal, Register tmpReg, Register tmpVector) {
         Register src = asRegOrTmpReg(crb, asm, srcVal, tmpReg);
         AMD64MacroAssembler.movdl(asm, dst, src);
-        emitBroadcast(asm, valueKind, dst, tmpVector, getVectorSize());
+        emitBroadcast(asm, valueKind, dst, tmpVector, vectorSize);
     }
 
     private static boolean isConstant(Value val) {
@@ -542,14 +511,14 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     /**
      * Fills {@code vecDst} with copies of its lowest byte, word or dword.
      */
-    private static void emitBroadcast(AMD64MacroAssembler asm, JavaKind kind, Register vecDst, Register vecTmp, AVXKind.AVXSize vectorSize) {
+    private static void emitBroadcast(AMD64MacroAssembler asm, JavaKind kind, Register vecDst, Register vecTmp, AVXSize targetVectorSize) {
         switch (kind) {
             case Byte:
                 if (asm.supports(CPUFeature.AVX2)) {
-                    VexRMOp.VPBROADCASTB.emit(asm, vectorSize, vecDst, vecDst);
+                    VexRMOp.VPBROADCASTB.emit(asm, targetVectorSize, vecDst, vecDst);
                 } else if (asm.supports(CPUFeature.AVX)) {
-                    VexRVMOp.VPXOR.emit(asm, vectorSize, vecTmp, vecTmp, vecTmp);
-                    VexRVMOp.VPSHUFB.emit(asm, vectorSize, vecDst, vecDst, vecTmp);
+                    VexRVMOp.VPXOR.emit(asm, targetVectorSize, vecTmp, vecTmp, vecTmp);
+                    VexRVMOp.VPSHUFB.emit(asm, targetVectorSize, vecDst, vecDst, vecTmp);
                 } else if (asm.supports(CPUFeature.SSSE3)) {
                     asm.pxor(vecTmp, vecTmp);
                     asm.pshufb(vecDst, vecTmp);
@@ -562,10 +531,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             case Short:
             case Char:
                 if (asm.supports(CPUFeature.AVX2)) {
-                    VexRMOp.VPBROADCASTW.emit(asm, vectorSize, vecDst, vecDst);
+                    VexRMOp.VPBROADCASTW.emit(asm, targetVectorSize, vecDst, vecDst);
                 } else if (asm.supports(CPUFeature.AVX)) {
-                    VexRMIOp.VPSHUFLW.emit(asm, vectorSize, vecDst, vecDst, 0);
-                    VexRMIOp.VPSHUFD.emit(asm, vectorSize, vecDst, vecDst, 0);
+                    VexRMIOp.VPSHUFLW.emit(asm, targetVectorSize, vecDst, vecDst, 0);
+                    VexRMIOp.VPSHUFD.emit(asm, targetVectorSize, vecDst, vecDst, 0);
                 } else { // SSE
                     asm.pshuflw(vecDst, vecDst, 0);
                     asm.pshufd(vecDst, vecDst, 0);
@@ -573,9 +542,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
                 break;
             case Int:
                 if (asm.supports(CPUFeature.AVX2)) {
-                    VexRMOp.VPBROADCASTD.emit(asm, vectorSize, vecDst, vecDst);
+                    VexRMOp.VPBROADCASTD.emit(asm, targetVectorSize, vecDst, vecDst);
                 } else if (asm.supports(CPUFeature.AVX)) {
-                    VexRMIOp.VPSHUFD.emit(asm, vectorSize, vecDst, vecDst, 0);
+                    VexRMIOp.VPSHUFD.emit(asm, targetVectorSize, vecDst, vecDst, 0);
                 } else { // SSE
                     asm.pshufd(vecDst, vecDst, 0);
                 }
@@ -587,7 +556,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
     private void emitVectorCompare(AMD64MacroAssembler asm,
                     JavaKind kind,
-                    AVXKind.AVXSize vectorSize,
+                    AVXSize targetVectorSize,
                     int nVectors,
                     Register arrayPtr,
                     Register index,
@@ -600,7 +569,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         for (int i = 0; i < nVectors; i++) {
             int base = i * nValues;
             for (int j = 0; j < (withMask ? nValues / 2 : nValues); j++) {
-                emitArrayLoad(asm, vectorSize, vecArray[base + j], arrayPtr, index, getVectorOffset(nVectors - (i + 1), j, vectorSize));
+                emitArrayLoad(asm, targetVectorSize, vecArray[base + j], arrayPtr, index, getVectorOffset(nVectors - (i + 1), j, targetVectorSize));
             }
         }
         // compare all loaded bytes to the search value.
@@ -608,42 +577,42 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         if (findTwoConsecutive) {
             for (int i = 0; i < nVectors << 1; i += 2) {
                 if (withMask) {
-                    por(asm, vectorSize, vecArray[i], vecCmp[2]);
-                    por(asm, vectorSize, vecArray[i + 1], vecCmp[3]);
+                    por(asm, targetVectorSize, vecArray[i], vecCmp[2]);
+                    por(asm, targetVectorSize, vecArray[i + 1], vecCmp[3]);
                 }
-                pcmpeq(asm, vectorSize, kind, vecArray[i], vecCmp[0]);
-                pcmpeq(asm, vectorSize, kind, vecArray[i + 1], vecCmp[1]);
-                pand(asm, vectorSize, vecArray[i], vecArray[i + 1]);
-                pmovmsk(asm, vectorSize, cmpResult, vecArray[i]);
-                emitVectorCompareCheckVectorFound(asm, vectorSize, cmpResult, vectorFound[nVectors - ((i / 2) + 1)], shortJmp);
+                pcmpeq(asm, targetVectorSize, kind, vecArray[i], vecCmp[0]);
+                pcmpeq(asm, targetVectorSize, kind, vecArray[i + 1], vecCmp[1]);
+                pand(asm, targetVectorSize, vecArray[i], vecArray[i + 1]);
+                pmovmsk(asm, targetVectorSize, cmpResult, vecArray[i]);
+                emitVectorCompareCheckVectorFound(asm, targetVectorSize, cmpResult, vectorFound[nVectors - ((i / 2) + 1)], shortJmp);
             }
         } else if (withMask) {
             assert nValues == 2 && nVectors == 1;
-            por(asm, vectorSize, vecArray[0], vecCmp[1]);
-            pcmpeq(asm, vectorSize, kind, vecArray[0], vecCmp[0]);
-            pmovmsk(asm, vectorSize, cmpResult, vecArray[0]);
-            emitVectorCompareCheckVectorFound(asm, vectorSize, cmpResult, vectorFound[0], shortJmp);
+            por(asm, targetVectorSize, vecArray[0], vecCmp[1]);
+            pcmpeq(asm, targetVectorSize, kind, vecArray[0], vecCmp[0]);
+            pmovmsk(asm, targetVectorSize, cmpResult, vecArray[0]);
+            emitVectorCompareCheckVectorFound(asm, targetVectorSize, cmpResult, vectorFound[0], shortJmp);
         } else {
             for (int i = 0; i < nVectors; i++) {
                 int base = i * nValues;
                 for (int j = 0; j < nValues; j++) {
-                    pcmpeq(asm, vectorSize, kind, vecArray[base + j], vecCmp[j]);
+                    pcmpeq(asm, targetVectorSize, kind, vecArray[base + j], vecCmp[j]);
                     if ((j & 1) == 1) {
-                        por(asm, vectorSize, vecArray[base + j - 1], vecArray[base + j]);
+                        por(asm, targetVectorSize, vecArray[base + j - 1], vecArray[base + j]);
                     }
                 }
                 if (nValues > 2) {
-                    por(asm, vectorSize, vecArray[base], vecArray[base + 2]);
+                    por(asm, targetVectorSize, vecArray[base], vecArray[base + 2]);
                 }
-                pmovmsk(asm, vectorSize, cmpResult, vecArray[base]);
-                emitVectorCompareCheckVectorFound(asm, vectorSize, cmpResult, vectorFound[nVectors - (i + 1)], shortJmp);
+                pmovmsk(asm, targetVectorSize, cmpResult, vecArray[base]);
+                emitVectorCompareCheckVectorFound(asm, targetVectorSize, cmpResult, vectorFound[nVectors - (i + 1)], shortJmp);
             }
         }
     }
 
     @SuppressWarnings("fallthrough")
-    private static void emitVectorCompareCheckVectorFound(AMD64MacroAssembler asm, AVXKind.AVXSize vectorSize, Register cmpResult, Label branchTarget, boolean shortJmp) {
-        switch (vectorSize) {
+    private static void emitVectorCompareCheckVectorFound(AMD64MacroAssembler asm, AVXSize targetVectorSize, Register cmpResult, Label branchTarget, boolean shortJmp) {
+        switch (targetVectorSize) {
             case DWORD:
                 asm.andlAndJcc(cmpResult, 0xf, ConditionFlag.NotZero, branchTarget, shortJmp);
                 break;
@@ -660,27 +629,27 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     }
 
     @SuppressWarnings("fallthrough")
-    private void emitArrayLoad(AMD64MacroAssembler asm, AVXKind.AVXSize vectorSize, Register vecDst, Register array, Register index, int displacement) {
+    private void emitArrayLoad(AMD64MacroAssembler asm, AVXSize targetVectorSize, Register vecDst, Register array, Register index, int displacement) {
         AMD64Address src = new AMD64Address(array, index, arrayIndexScale, displacement);
         if (asm.supports(CPUFeature.AVX)) {
-            switch (vectorSize) {
+            switch (targetVectorSize) {
                 case DWORD:
-                    VexMoveOp.VMOVD.emit(asm, AVXKind.AVXSize.DWORD, vecDst, src);
+                    VexMoveOp.VMOVD.emit(asm, AVXSize.DWORD, vecDst, src);
                     break;
                 case QWORD:
-                    VexMoveOp.VMOVQ.emit(asm, AVXKind.AVXSize.QWORD, vecDst, src);
+                    VexMoveOp.VMOVQ.emit(asm, AVXSize.QWORD, vecDst, src);
                     break;
                 case XMM:
                 case YMM:
-                    VexMoveOp.VMOVDQU32.emit(asm, vectorSize, vecDst, src);
+                    VexMoveOp.VMOVDQU32.emit(asm, targetVectorSize, vecDst, src);
                     break;
                 case ZMM:
-                    VexMoveOp.VMOVDQU64.emit(asm, vectorSize, vecDst, src);
+                    VexMoveOp.VMOVDQU64.emit(asm, targetVectorSize, vecDst, src);
                     break;
             }
         } else {
             // SSE
-            switch (vectorSize) {
+            switch (targetVectorSize) {
                 case DWORD:
                     asm.movdl(vecDst, src);
                     break;
@@ -724,20 +693,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         }
     }
 
-    private static boolean supportsAVX2(LIRGeneratorTool tool) {
-        return supports(tool, CPUFeature.AVX2);
-    }
-
-    private static boolean supports(LIRGeneratorTool tool, CPUFeature cpuFeature) {
-        return ((AMD64) tool.target().arch).getFeatures().contains(cpuFeature);
-    }
-
     private int strideAsPowerOf2() {
         return Integer.numberOfTrailingZeros(valueKind.getByteCount());
-    }
-
-    @Override
-    public boolean needsClearUpperVectorRegisters() {
-        return true;
     }
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
@@ -47,26 +48,30 @@ import org.graalvm.word.Pointer;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+/**
+ * Represents java.lang.StringUTF16.compress methods.
+ *
+ * <ul>
+ * <li>int compress(char[] src, int srcOff, byte[] dst, int dstOff, int len)
+ * <li>int compress(byte[] src, int srcOff, byte[] dst, int dstOff, int len)
+ * </ul>
+ */
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN, cyclesRationale = "depends on length")
-public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
+public final class StringUTF16CompressNode extends FixedWithNextNode
                 implements LIRLowerable, MultiMemoryKill, MemoryAccess {
 
-    public static final NodeClass<AMD64StringUTF16CompressNode> TYPE = NodeClass.create(AMD64StringUTF16CompressNode.class);
+    public static final NodeClass<StringUTF16CompressNode> TYPE = NodeClass.create(StringUTF16CompressNode.class);
 
+    /** pointer to src[srcOff]. */
     @Input private ValueNode src;
+    /** pointer to dst[dstOff]. */
     @Input private ValueNode dst;
     @Input private ValueNode len;
     final JavaKind readKind;
 
     @OptionalInput(Memory) private MemoryKill lla; // Last access location registered.
 
-    // java.lang.StringUTF16.compress([CI[BII)I
-    //
-    // int compress(char[] src, int src_indx, byte[] dst, int dst_indx, int len)
-    //
-    // Represented as a graph node by:
-
-    public AMD64StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind readKind) {
+    public StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind readKind) {
         super(TYPE, StampFactory.forInteger(32));
         this.src = src;
         this.dst = dst;

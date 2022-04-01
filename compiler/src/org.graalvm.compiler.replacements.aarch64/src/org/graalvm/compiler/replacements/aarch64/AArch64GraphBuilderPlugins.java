@@ -36,6 +36,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -66,7 +67,9 @@ import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
+import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
+import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.StringUTF16Snippets;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
@@ -269,6 +272,82 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte, "compareTo", byte[].class, byte[].class));
         r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char, "compareToUTF16", byte[].class, byte[].class));
+        r.register(new InvocationPlugin("inflate", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @SuppressWarnings("try")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcIndex, ValueNode dest, ValueNode destIndex, ValueNode len) {
+                // @formatter:off
+                //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex * 2 + len * 2 > dest.length)) {
+                //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+                //        }
+                //
+                //        // Offset calc. outside of the actual intrinsic.
+                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
+                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * 2 * byteArrayIndexScale(INJECTED));
+                //        StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Byte);
+                // @formatter:on
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
+                    helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.GT, srcLength);
+
+                    ValueNode scaledDestIndex = helper.scale(destIndex, JavaKind.Char);
+                    helper.intrinsicRangeCheck(scaledDestIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode end = helper.add(scaledDestIndex, helper.scale(len, JavaKind.Char));
+                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
+                    helper.intrinsicRangeCheck(end, Condition.GT, destLength);
+
+                    ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
+                    ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, scaledDestIndex);
+                    b.add(new StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Byte));
+                }
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("inflate", byte[].class, int.class, char[].class, int.class, int.class) {
+            @SuppressWarnings("try")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcIndex, ValueNode dest, ValueNode destIndex, ValueNode len) {
+                // @formatter:off
+                //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len > dest.length)) {
+                //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+                //        }
+                //
+                //        // Offset calc. outside of the actual intrinsic.
+                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
+                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
+                //        StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Char);
+                // @formatter:on
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
+                    helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.GT, srcLength);
+
+                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode end = helper.add(destIndex, len);
+                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
+                    helper.intrinsicRangeCheck(end, Condition.GT, destLength);
+
+                    ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
+                    ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Char, destIndex);
+                    b.add(new StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Char));
+                }
+                return true;
+            }
+        });
+
         r.register(new SnippetSubstitutionInvocationPlugin<>(StringLatin1Snippets.Templates.class,
                         "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
@@ -294,6 +373,81 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char, "compareTo", byte[].class, byte[].class));
         r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true, "compareToLatin1", byte[].class, byte[].class));
+        r.register(new InvocationPlugin("compress", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @SuppressWarnings("try")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcIndex, ValueNode dest, ValueNode destIndex, ValueNode len) {
+                // @formatter:off
+                //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length >> 1) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len > dest.length)) {
+                //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+                //        }
+                //
+                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * 2 * byteArrayIndexScale(INJECTED));
+                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
+                //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Byte);
+                // @formatter:on
+
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    ValueNode scaledSrcIndex = helper.scale(srcIndex, JavaKind.Char);
+                    helper.intrinsicRangeCheck(scaledSrcIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode end = helper.add(scaledSrcIndex, helper.scale(len, JavaKind.Char));
+                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
+                    helper.intrinsicRangeCheck(end, Condition.GT, srcLength);
+
+                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
+                    helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.GT, destLength);
+
+                    ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, scaledSrcIndex);
+                    ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
+                    b.addPush(JavaKind.Int, new StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Byte));
+                }
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("compress", char[].class, int.class, byte[].class, int.class, int.class) {
+            @SuppressWarnings("try")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcIndex, ValueNode dest, ValueNode destIndex, ValueNode len) {
+                // @formatter:off
+                //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len > dest.length)) {
+                //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+                //        }
+                //
+                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
+                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
+                //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Char);
+                // @formatter:on
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode end = helper.add(srcIndex, len);
+                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
+                    helper.intrinsicRangeCheck(end, Condition.GT, srcLength);
+
+                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
+                    helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.GT, destLength);
+
+                    ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Char, srcIndex);
+                    ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
+                    b.addPush(JavaKind.Int, new StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Char));
+                }
+                return true;
+            }
+        });
+
         r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
                         "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override

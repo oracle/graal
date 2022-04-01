@@ -93,7 +93,7 @@ public class RegexASTPostProcessor {
         CalcASTPropsVisitor.run(ast);
         ast.createPrefix();
         InitIDVisitor.init(ast);
-        if (!properties.hasNonLiteralLookBehindAssertions() && !ast.getRoot().hasBackReferences() && !properties.hasLargeCountedRepetitions() && !properties.hasAtomicGroups()) {
+        if (ast.canTransformToDFA()) {
             new MarkLookBehindEntriesVisitor(ast).run();
         }
         checkInnerLiteral();

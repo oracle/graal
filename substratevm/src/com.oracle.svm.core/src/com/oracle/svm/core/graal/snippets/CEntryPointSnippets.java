@@ -292,8 +292,26 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          */
 
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
-            String[] args = SubstrateUtil.getArgs(parameters.getArgc(), parameters.getArgv());
-            args = RuntimeOptionParser.parseAndConsumeAllOptions(args, false);
+            boolean exitWhenArgumentParsingFails = true;
+            boolean ignoreUnrecognized = false;
+            if (parameters.version() >= 4) {
+                ignoreUnrecognized = parameters.getIgnoreUnrecognizedArguments();
+                exitWhenArgumentParsingFails = parameters.getExitWhenArgumentParsingFails();
+            }
+
+            String[] args = SubstrateUtil.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+            try {
+                args = RuntimeOptionParser.parseAndConsumeAllOptions(args, ignoreUnrecognized);
+            } catch (IllegalArgumentException e) {
+                if (exitWhenArgumentParsingFails) {
+                    Log.logStream().println("error: " + e.getMessage());
+                    System.exit(1);
+                } else {
+                    CEntryPointActions.leaveTearDownIsolate();
+                    return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
+                }
+            }
+
             if (ImageSingletons.contains(JavaMainSupport.class)) {
                 ImageSingletons.lookup(JavaMainSupport.class).mainArgs = args;
             }
@@ -306,6 +324,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         if (!success) {
+            CEntryPointActions.leaveTearDownIsolate();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
@@ -320,6 +339,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         } catch (Throwable t) {
             System.err.println("Uncaught exception while running initialization hooks:");
             t.printStackTrace();
+            CEntryPointActions.leaveTearDownIsolate();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 

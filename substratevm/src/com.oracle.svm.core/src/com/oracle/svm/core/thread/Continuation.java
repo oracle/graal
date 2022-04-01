@@ -31,12 +31,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -195,9 +195,9 @@ public final class Continuation {
     }
 
     int tryPreempt(Thread thread) {
-        TryPreemptThunk thunk = new TryPreemptThunk(this, thread);
-        JavaVMOperation.enqueueBlockingSafepoint("tryForceYield0", thunk);
-        return thunk.preemptStatus;
+        TryPreemptOperation vmOp = new TryPreemptOperation(this, thread);
+        vmOp.enqueue();
+        return vmOp.preemptStatus;
     }
 
     int yield() {
@@ -260,19 +260,20 @@ public final class Continuation {
         assert isEmpty();
     }
 
-    static class TryPreemptThunk implements SubstrateUtil.Thunk {
+    static class TryPreemptOperation extends JavaVMOperation {
         int preemptStatus = YIELD_SUCCESS;
 
         final Continuation cont;
         final Thread thread;
 
-        TryPreemptThunk(Continuation cont, Thread thread) {
+        TryPreemptOperation(Continuation cont, Thread thread) {
+            super(VMOperationInfos.get(TryPreemptOperation.class, "Try to preempt continuation", SystemEffect.SAFEPOINT));
             this.cont = cont;
             this.thread = thread;
         }
 
         @Override
-        public void invoke() {
+        public void operate() {
             IsolateThread vmThread = PlatformThreads.getIsolateThread(thread);
             Pointer bottomSP = cont.bottomSP;
             Pointer returnSP = cont.sp;

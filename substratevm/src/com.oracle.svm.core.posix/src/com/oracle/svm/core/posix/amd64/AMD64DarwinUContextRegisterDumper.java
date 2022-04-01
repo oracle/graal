@@ -95,12 +95,14 @@ class AMD64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         Signal.AMD64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_amd64();
         return ((Pointer) sigcontext).readWord(sigcontext.rsp_offset());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         Signal.AMD64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_amd64();
         return ((Pointer) sigcontext).readWord(sigcontext.rip_offset());

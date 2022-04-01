@@ -148,6 +148,13 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
+    // Class hierarchy information is managed by ClassHierarchyOracle,
+    // stored in ObjectKlass only for convenience.
+    // region class hierarchy information
+    private final SingleImplementor implementor;
+    private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
+    // endregion
+
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
     }
@@ -198,6 +205,8 @@ public final class ObjectKlass extends Klass {
         if (!info.addedToRegistry()) {
             initSelfReferenceInPool();
         }
+        this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+        this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -260,7 +269,7 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
-        Method.MethodVersion[][] itable = getKlassVersion().itable;
+        Method.MethodVersion[][] itable = getItable();
         if (itable != null) {
             for (Method.MethodVersion[] table : itable) {
                 for (int i = 0; i < table.length; i++) {
@@ -747,7 +756,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Method.MethodVersion[] getDeclaredMethodVersions() {
-        return getKlassVersion().declaredMethods;
+        return getKlassVersion().getDeclaredMethodVersions();
     }
 
     @Override
@@ -943,16 +952,12 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().vtable;
     }
 
-    Method.MethodVersion[][] getItable() {
-        return getKlassVersion().itable;
+    public Method.MethodVersion[][] getItable() {
+        return getKlassVersion().getItable();
     }
 
-    ObjectKlass.KlassVersion[] getiKlassTable() {
-        return getKlassVersion().iKlassTable;
-    }
-
-    KlassVersion[] getVersionIKlassTable() {
-        return getKlassVersion().iKlassTable;
+    public ObjectKlass.KlassVersion[] getiKlassTable() {
+        return getKlassVersion().getiKlassTable();
     }
 
     Method vtableLookupImpl(int vtableIndex) {
@@ -982,7 +987,7 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
+    public void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
         Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method.MethodVersion m : getVTable()) {
@@ -1537,7 +1542,7 @@ public final class ObjectKlass extends Klass {
      * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
      * classes and corresponding assumptions.
      *
-     * @see ClassHierarchyOracle#isLeaf(ObjectKlass)
+     * @see ClassHierarchyOracle#isLeafKlass(ObjectKlass)
      * @see ClassHierarchyOracle#hasNoImplementors(ObjectKlass)
      */
     public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
@@ -1575,13 +1580,6 @@ public final class ObjectKlass extends Klass {
 
         @CompilationFinal //
         boolean hasDeclaredDefaultMethods = false;
-
-        // Class hierarchy information is managed by ClassHierarchyOracle,
-        // stored in ObjectKlass only for convenience.
-        // region class hierarchy information
-        private final SingleImplementor implementor;
-        private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
-        // endregion
 
         @CompilationFinal private HierarchyInfo hierarchyInfo;
 
@@ -1627,8 +1625,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
-            this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
+            getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         // used to create a redefined version
@@ -1732,8 +1729,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
-            this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
+            getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         public KlassVersion replace(Ids<Object> ids) {
@@ -1749,6 +1745,18 @@ public final class ObjectKlass extends Klass {
 
             ChangePacket packet = new ChangePacket(null, linkedKlass.getParserKlass(), null, detectedChange);
             return new KlassVersion(this, pool, linkedKlass, packet, Collections.emptyList(), ids);
+        }
+
+        public Method.MethodVersion[][] getItable() {
+            return itable;
+        }
+
+        public Method.MethodVersion[] getDeclaredMethodVersions() {
+            return declaredMethods;
+        }
+
+        public KlassVersion[] getiKlassTable() {
+            return iKlassTable;
         }
 
         public Assumption getAssumption() {

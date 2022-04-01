@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -1228,7 +1229,7 @@ public final class GCImpl implements GC {
 
     private static class CollectionVMOperation extends NativeVMOperation {
         CollectionVMOperation() {
-            super("Garbage collection", SystemEffect.SAFEPOINT);
+            super(VMOperationInfos.get(CollectionVMOperation.class, "Garbage collection", SystemEffect.SAFEPOINT));
         }
 
         @Override
@@ -1369,7 +1370,9 @@ public final class GCImpl implements GC {
         log.string(prefix).string("MaximumHeapSize: ").unsigned(getPolicy().getMaximumHeapSize()).newline();
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
 
-        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableAndFlushForAllThreads);
+        FlushTLABsOperation vmOp = new FlushTLABsOperation();
+        vmOp.enqueue();
+
         HeapImpl heap = HeapImpl.getHeapImpl();
         Space edenSpace = heap.getYoungGeneration().getEden();
         UnsignedWord youngChunkBytes = edenSpace.getChunkBytes();
@@ -1397,5 +1400,16 @@ public final class GCImpl implements GC {
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();
         log.string(prefix).string("TotalNanos: ").signed(totalNanos).newline();
         log.string(prefix).string("GCLoadPercent: ").signed(roundedGCLoad).newline();
+    }
+
+    private static class FlushTLABsOperation extends JavaVMOperation {
+        protected FlushTLABsOperation() {
+            super(VMOperationInfos.get(FlushTLABsOperation.class, "Flush TLABs", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
+        }
     }
 }

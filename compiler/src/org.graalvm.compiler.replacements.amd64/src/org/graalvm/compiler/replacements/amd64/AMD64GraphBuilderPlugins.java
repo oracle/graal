@@ -71,7 +71,9 @@ import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
+import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
+import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.StringUTF16Snippets;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
@@ -312,7 +314,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //        // Offset calc. outside of the actual intrinsic.
                 //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
                 //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * 2 * byteArrayIndexScale(INJECTED));
-                //        AMD64StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Byte);
+                //        StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Byte);
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
@@ -329,7 +331,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, scaledDestIndex);
-                    b.add(new AMD64StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Byte));
+                    b.add(new StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Byte));
                 }
                 return true;
             }
@@ -350,7 +352,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //        // Offset calc. outside of the actual intrinsic.
                 //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
                 //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
-                //        AMD64StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Char);
+                //        StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Char);
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
@@ -366,7 +368,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Char, destIndex);
-                    b.add(new AMD64StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Char));
+                    b.add(new StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Char));
                 }
                 return true;
             }
@@ -413,7 +415,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //
                 //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * 2 * byteArrayIndexScale(INJECTED));
                 //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
-                //        return AMD64StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Byte);
+                //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Byte);
                 // @formatter:on
 
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
@@ -431,7 +433,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, scaledSrcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
-                    b.addPush(JavaKind.Int, new AMD64StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Byte));
+                    b.addPush(JavaKind.Int, new StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Byte));
                 }
                 return true;
             }
@@ -451,7 +453,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //
                 //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
                 //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
-                //        return AMD64StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Char);
+                //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Char);
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
@@ -467,7 +469,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Char, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
-                    b.addPush(JavaKind.Int, new AMD64StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Char));
+                    b.addPush(JavaKind.Int, new StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Char));
                 }
                 return true;
             }

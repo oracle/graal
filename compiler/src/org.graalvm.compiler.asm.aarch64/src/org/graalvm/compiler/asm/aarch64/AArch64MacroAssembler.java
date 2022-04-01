@@ -755,6 +755,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * Performs a load to the zero register. The effect of this is to test the address's page
+     * permissions.
+     */
+    public void deadLoad(int srcSize, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.ldrHelper(srcSize, zr, address, true);
+        } else if (!tryMergeLoadStore(srcSize, zr, address, false, false)) {
+            super.ldrHelper(srcSize, zr, address, true);
+        }
+    }
+
+    /**
      * Loads a srcSize value from address into rt.
      *
      * @param srcSize size of memory read in bits. Must be 8, 16 or 32 and smaller or equal to
@@ -1558,7 +1573,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src Either floating-point or general-purpose register. If general-purpose register may
      *            not be stackpointer. Cannot be null in any case.
      */
-    @Override
     public void fmov(int size, Register dst, Register src) {
         assert size == 32 || size == 64;
         assert !(dst.getRegisterCategory().equals(CPU) && src.getRegisterCategory().equals(CPU)) : "src and dst cannot both be integer registers.";
@@ -1567,7 +1581,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         } else if (src.getRegisterCategory().equals(CPU)) {
             fmovCpu2Fpu(size, dst, src);
         } else {
-            super.fmov(size, dst, src);
+            fmovFpu2Fpu(size, dst, src);
         }
     }
 

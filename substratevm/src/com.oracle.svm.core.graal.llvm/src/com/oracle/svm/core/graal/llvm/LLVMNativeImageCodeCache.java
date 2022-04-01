@@ -62,6 +62,8 @@ import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.CGlobalDataImpl;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.llvm.util.LLVMObjectFileReader;
 import com.oracle.svm.core.graal.llvm.util.LLVMObjectFileReader.LLVMTextSectionInfo;
@@ -402,17 +404,15 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         for (CompilationResult result : getCompilations().values()) {
             for (DataPatch dataPatch : result.getDataPatches()) {
                 if (dataPatch.reference instanceof CGlobalDataReference) {
-                    CGlobalDataReference reference = (CGlobalDataReference) dataPatch.reference;
-
-                    if (reference.getDataInfo().isSymbolReference()) {
-                        objectFile.createUndefinedSymbol(reference.getDataInfo().getData().symbolName, 0, true);
+                    CGlobalDataInfo info = ((CGlobalDataReference) dataPatch.reference).getDataInfo();
+                    CGlobalDataImpl<?> data = info.getData();
+                    if (info.isSymbolReference() && objectFile.getOrCreateSymbolTable().getSymbol(data.symbolName) == null) {
+                        objectFile.createUndefinedSymbol(data.symbolName, 0, true);
                     }
 
-                    int offset = reference.getDataInfo().getOffset();
-
                     String symbolName = (String) dataPatch.note;
-                    if (reference.getDataInfo().getData().symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
-                        objectFile.createDefinedSymbol(symbolName, dataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true);
+                    if (data.symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
+                        objectFile.createDefinedSymbol(symbolName, dataSection, info.getOffset() + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true);
                     }
                 } else if (dataPatch.reference instanceof DataSectionReference) {
                     DataSectionReference reference = (DataSectionReference) dataPatch.reference;

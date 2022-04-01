@@ -51,7 +51,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
-import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -132,7 +132,7 @@ public abstract class SubstrateSegfaultHandler {
             // the crash happened in native code that was linked into Native Image.
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 PointerBase heapBase = RegisterDumper.singleton().getHeapBase(context);
-                WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
+                CEntryPointSnippets.setHeapBase(heapBase);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 PointerBase threadPointer = RegisterDumper.singleton().getThreadPointer(context);

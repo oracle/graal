@@ -252,12 +252,6 @@ public class StaticObject implements TruffleObject, Cloneable {
         return trackAllocation(getKlass(), obj);
     }
 
-    @Override
-    @TruffleBoundary
-    public Object clone() throws CloneNotSupportedException {
-        return super.clone();
-    }
-
     private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
         if (klass == null) {
             return obj;

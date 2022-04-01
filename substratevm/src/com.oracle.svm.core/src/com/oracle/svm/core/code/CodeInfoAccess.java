@@ -314,6 +314,7 @@ public final class CodeInfoAccess {
         CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void lookupCodeInfo(CodeInfo info, long ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
         CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
     }
@@ -371,10 +372,12 @@ public final class CodeInfoAccess {
         return (CodePointer) ((UnsignedWord) impl.getCodeStart()).add(impl.getCodeSize());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getCodeInfoIndex(CodeInfo info) {
         return cast(info).getCodeInfoIndex();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getCodeInfoEncodings(CodeInfo info) {
         return cast(info).getCodeInfoEncodings();
     }

@@ -24,40 +24,29 @@
  */
 package org.graalvm.nativebridge;
 
-import java.io.IOException;
-import java.util.Arrays;
-import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
+final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
 
-final class JNIHotSpotMarshallerAdapter<T> implements JNIHotSpotMarshaller<T> {
+    private static final int THROWABLE_SIZE_ESTIMATE = 1024;
+    private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
 
-    private final BinaryMarshaller<T> binaryMarshaller;
-
-    JNIHotSpotMarshallerAdapter(BinaryMarshaller<T> binaryMarshaller) {
-        this.binaryMarshaller = binaryMarshaller;
+    @Override
+    public Throwable read(BinaryInput in) {
+        String foreignExceptionClassName = in.readUTF();
+        String foreignExceptionMessage = (String) in.readTypedValue();
+        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
+        return new MarshalledException(foreignExceptionClassName, foreignExceptionMessage, ForeignException.mergeStackTrace(foreignExceptionStack));
     }
 
     @Override
-    public Object marshall(T object) {
-        if (object == null) {
-            return null;
-        }
-        try (ByteArrayBinaryOutput out = BinaryOutput.create()) {
-            binaryMarshaller.write(out, object);
-            return Arrays.copyOf(out.getArray(), out.getPosition());
-        } catch (IOException e) {
-            throw new AssertionError(e.getMessage(), e);
-        }
+    public void write(BinaryOutput out, Throwable object) {
+        out.writeUTF(object instanceof MarshalledException ? ((MarshalledException) object).getForeignExceptionClassName() : object.getClass().getName());
+        out.writeTypedValue(object.getMessage());
+        stackTraceMarshaller.write(out, object.getStackTrace());
     }
 
     @Override
-    public T unmarshall(Object rawObject) {
-        if (rawObject == null) {
-            return null;
-        }
-        try (BinaryInput in = BinaryInput.create((byte[]) rawObject)) {
-            return binaryMarshaller.read(in);
-        } catch (IOException e) {
-            throw new AssertionError(e.getMessage(), e);
-        }
+    public int inferSize(Throwable object) {
+        // We don't use Throwable#getStackTrace as it allocates.
+        return THROWABLE_SIZE_ESTIMATE;
     }
 }

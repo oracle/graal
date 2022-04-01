@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,8 +110,8 @@ public class StubPortProcessor extends AbstractProcessor {
                         if (!sha1.equals(digest)) {
                             String oldUrl = JDK_COMMIT + commit + '/' + path;
                             env().getMessager().printMessage(Diagnostic.Kind.ERROR,
-                                            String.format("Sha1 digest of %s[%d:%d] does not match: expected %s but was %s. See diff of %s and %s.",
-                                                            path, lineStart, lineEnd, sha1, digest, oldUrl, url));
+                                            String.format("Sha1 digest of %s[%d:%d] (ported by %s) does not match: expected %s but was %s. See diff of %s and %s.",
+                                                            path, lineStart, lineEnd, element.toString(), sha1, digest, oldUrl, url));
                         }
                     }
                 } catch (NoSuchAlgorithmException | IOException | URISyntaxException e) {

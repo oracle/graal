@@ -30,17 +30,18 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 
-import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.asm.VectorSize;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Helper methods for dealing with AVX and SSE {@link AMD64Kind AMD64Kinds}.
  */
 public final class AVXKind {
 
-    public enum AVXSize {
+    public enum AVXSize implements VectorSize {
         DWORD,
         QWORD,
         XMM,
@@ -61,6 +62,33 @@ public final class AVXKind {
                     return 64;
                 default:
                     return 0;
+            }
+        }
+
+        /**
+         * Tests if this can fit within {@code supportedVectorSize}. For XMM/YMM/ZMM, we check if
+         * {@code supportedVectorSize} has larger width; for DWORD/QWORD, we check if both AVXSizes
+         * are identical.
+         */
+        @SuppressWarnings("fallthrough")
+        public boolean fitsWithin(AVXSize supportedVectorSize) {
+            switch (this) {
+                case XMM:
+                    if (supportedVectorSize == XMM) {
+                        return true;
+                    }
+                    // fall through
+                case YMM:
+                    if (supportedVectorSize == YMM) {
+                        return true;
+                    }
+                    // fall through
+                case ZMM:
+                    return supportedVectorSize == ZMM;
+                default:
+                    // For general purpose avx instructions, we check if both AVXSizes are
+                    // identical.
+                    return this == supportedVectorSize;
             }
         }
     }

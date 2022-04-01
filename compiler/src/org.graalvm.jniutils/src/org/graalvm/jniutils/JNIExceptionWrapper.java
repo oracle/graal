@@ -220,7 +220,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 StackTraceElement[] mergedStack = mergeStackTraces(hsStack, nativeStack,
                                 hasSameExceptionType ? 0 : 1, // exception with same exception
                                 // type has no factory method
-                                0, false);
+                                getIndexOfPropagateJNIExceptionFrame(nativeStack), false);
                 hsThrowable = updateStackTrace(env, hsThrowable, mergedStack);
             }
         }
@@ -345,6 +345,25 @@ public final class JNIExceptionWrapper extends RuntimeException {
         void handleException(ExceptionHandlerContext context);
     }
 
+    public static StackTraceElement[] mergeStackTraces(
+                    StackTraceElement[] hotSpotStackTrace,
+                    StackTraceElement[] nativeStackTrace,
+                    boolean originatedInHotSpot) {
+        if (originatedInHotSpot) {
+            if (containsHotSpotCall(hotSpotStackTrace)) {
+                // Already merged
+                return hotSpotStackTrace;
+            }
+        } else {
+            if (containsHotSpotCall(nativeStackTrace)) {
+                // Already merged
+                return nativeStackTrace;
+            }
+        }
+        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, originatedInHotSpot ? 0 : getIndexOfTransitionFromHotSpotFrame(hotSpotStackTrace),
+                        getIndexOfPropagateJNIExceptionFrame(nativeStackTrace), originatedInHotSpot);
+    }
+
     /**
      * Merges {@code hotSpotStackTrace} with {@code nativeStackTrace}.
      *
@@ -390,7 +409,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * Gets the stack trace from a JNI exception.
      *
      * @param env the {@link JNIEnv}
-     * @param throwableHandle the JNI exception to get the stack trace from
+     * @param throwableHandle the JNI exception to get the stack trace from.
      * @return the stack trace
      */
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
@@ -480,33 +499,45 @@ public final class JNIExceptionWrapper extends RuntimeException {
         return 0;
     }
 
+    /**
+     * Gets the index of the first frame denoting the native method call.
+     *
+     * @returns {@code 0} if no caller found
+     */
+    private static int getIndexOfTransitionFromHotSpotFrame(StackTraceElement[] stackTrace) {
+        for (int i = 0; i < stackTrace.length; i++) {
+            if (stackTrace[i].isNativeMethod()) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
     private static boolean isStackFrame(StackTraceElement stackTraceElement, Class<?> clazz, String methodName) {
         return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
     }
 
-    private static <T extends JObject> T createExceptionOfSameType(JNIEnv env, Throwable original) {
-        WordFactory.nullPointer();
-        String className = original.getClass().getTypeName();
+    private static JThrowable createExceptionOfSameType(JNIEnv env, Throwable original) {
+        Class<? extends Throwable> originalType = original.getClass();
+        String className = originalType.getTypeName();
         JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);
         if (exceptionClass.isNonNull()) {
             JNIMethod constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class, String.class));
             if (constructor != null) {
                 JNI.JValue args = StackValue.get(1, JNI.JValue.class);
                 args.addressOf(0).setJObject(createHSString(env, original.getMessage()));
-                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
-                return res;
+                return HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
             }
             constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class));
             if (constructor != null) {
-                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
-                return res;
+                return HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
             }
         }
         return WordFactory.nullPointer();
     }
 
     // JNI calls
-    private static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
+    private static JThrowable callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);

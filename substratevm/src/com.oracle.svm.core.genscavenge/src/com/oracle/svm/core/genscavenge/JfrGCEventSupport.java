@@ -60,6 +60,10 @@ class JfrGCEventSupport {
         return JfrTicks.elapsedTicks();
     }
 
+    public int stopGCPhasePause() {
+        return popPhase();
+    }
+
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.GarbageCollection)) {
@@ -82,8 +86,7 @@ class JfrGCEventSupport {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long startTicks) {
-        int level = popPhase();
+    public void emitGCPhasePauseEvent(UnsignedWord gcEpoch, int level, String name, long startTicks) {
         JfrEvent event = getGCPhasePauseEvent(level);
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(event)) {
             long end = JfrTicks.elapsedTicks();

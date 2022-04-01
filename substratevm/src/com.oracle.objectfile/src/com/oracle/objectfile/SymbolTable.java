@@ -33,4 +33,15 @@ public interface SymbolTable extends Iterable<Symbol> {
     Symbol newDefinedEntry(String name, ObjectFile.Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode);
 
     Symbol newUndefinedEntry(String name, boolean isCode);
+
+    /**
+     * Simple sanity check: don't let a symbol replace an already defined symbol, to be used with
+     * {@link java.util.Map#compute}.
+     */
+    static <T extends Symbol> T tryReplace(T oldEntry, T newEntry) {
+        if (oldEntry == null || (!oldEntry.isDefined() && oldEntry.getName().equals(newEntry.getName()))) {
+            return newEntry;
+        }
+        throw new RuntimeException("Illegal replacement of symbol table entry");
+    }
 }

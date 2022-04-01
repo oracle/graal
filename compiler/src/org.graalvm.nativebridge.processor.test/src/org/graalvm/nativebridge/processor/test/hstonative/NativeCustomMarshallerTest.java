@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.hstonative;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
+import org.graalvm.nativebridge.Idempotent;
+import org.graalvm.nativebridge.NativeIsolate;
+import org.graalvm.nativebridge.NativeObject;
+import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-/**
- * Marks a method as an exception handler. The method is used by the annotation processor to handle
- * exceptions passing over the isolate boundary. The method returns {@code true} if it has handled
- * the given exception or {@code false} to perform the default exception handling.
- */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
-public @interface ExceptionHandler {
+import java.util.Map;
+
+@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
+abstract class NativeCustomMarshallerTest extends NativeObject implements CustomMarshallerService {
+
+    NativeCustomMarshallerTest(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
+    }
+
+    @Idempotent
+    @Override
+    public abstract Map<String, String> getProperties();
 }

@@ -89,6 +89,8 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
             tree.collectTargetsToDequeue(context.task.inliningData());
             tree.updateTracingInfo(context.task.inliningData());
         }
+        tree.finalizeGraph();
+        tree.trace();
         if (!tree.getRoot().getChildren().isEmpty()) {
             /*
              * If we've seen a truffle call in the graph, even if we have not inlined any call
@@ -98,8 +100,6 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
              */
             postPartialEvaluationSuite.apply(graph, context);
         }
-        tree.finalizeGraph();
-        tree.trace();
         graph.maybeCompress();
         assert GraphOrder.assertSchedulableGraph(graph) : "PE result must be schedulable in order to apply subsequent phases";
     }

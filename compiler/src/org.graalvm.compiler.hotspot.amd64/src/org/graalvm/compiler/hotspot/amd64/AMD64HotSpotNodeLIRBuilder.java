@@ -197,7 +197,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             // Emit assembly for snippet stubs
             return null;
         }
-        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen().getMaxVectorSize());
+        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen().config.maxVectorSize);
         return descriptor == null ? null : lookupForeignCall(descriptor);
     }
 

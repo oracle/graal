@@ -383,16 +383,18 @@ abstract class CoreLocations {
 
         public abstract Class<? extends DynamicObject> getDeclaringClass();
 
-        protected final void receiverCheck(DynamicObject store) {
-            if (!getDeclaringClass().isInstance(store)) {
+        protected static DynamicObject receiverCast(DynamicObject store, Class<? extends DynamicObject> tclass) {
+            try {
+                return tclass.cast(Objects.requireNonNull(store));
+            } catch (ClassCastException | NullPointerException ex) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw illegalReceiver(store);
+                throw illegalReceiver(store, tclass);
             }
         }
 
-        private IllegalArgumentException illegalReceiver(DynamicObject store) {
+        protected static IllegalArgumentException illegalReceiver(DynamicObject store, Class<? extends DynamicObject> declaringClass) {
             CompilerAsserts.neverPartOfCompilation();
-            return new IllegalArgumentException(String.format("Invalid receiver type (expected %s, was %s)", getDeclaringClass(), store == null ? null : store.getClass()));
+            return new IllegalArgumentException("Invalid receiver type (expected " + declaringClass + ", was " + (store == null ? null : store.getClass()) + ")");
         }
     }
 
@@ -956,14 +958,12 @@ abstract class CoreLocations {
 
         @Override
         public Object get(DynamicObject store, boolean guard) {
-            receiverCheck(store);
-            return UNSAFE.getObject(store, offset);
+            return UNSAFE.getObject(receiverCast(store, tclass), offset);
         }
 
         @Override
         public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            receiverCheck(store);
-            UNSAFE.putObject(store, offset, value);
+            UNSAFE.putObject(receiverCast(store, tclass), offset, value);
         }
 
         @Override
@@ -989,14 +989,12 @@ abstract class CoreLocations {
 
         @Override
         public long getLong(DynamicObject store, boolean guard) {
-            receiverCheck(store);
-            return UNSAFE.getLong(store, offset);
+            return UNSAFE.getLong(receiverCast(store, tclass), offset);
         }
 
         @Override
         public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
-            receiverCheck(store);
-            UNSAFE.putLong(store, offset, value);
+            UNSAFE.putLong(receiverCast(store, tclass), offset, value);
         }
 
         @Override

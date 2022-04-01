@@ -35,7 +35,8 @@ public class TestGCEvents extends JfrTest {
                         "jdk.GarbageCollection",
                         "jdk.GCPhasePause",
                         "jdk.GCPhasePauseLevel1",
-                        "jdk.GCPhasePauseLevel2"
+                        "jdk.GCPhasePauseLevel2",
+                        "jdk.ExecuteVMOperation"
         };
     }
 
