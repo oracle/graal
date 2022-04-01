@@ -123,6 +123,12 @@ public class LinearScan {
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
+    /**
+     * Maximum number of unsorted intervals we consider "almost sorted" and cheap to sort in-place
+     * with insertion sort, i.e. not worth affording a worst case O(n log(n)) sorting algorithm.
+     */
+    private static final int ALMOST_SORTED_THRESHOLD = 64;
+
     private final LIR ir;
     private final FrameMapBuilder frameMapBuilder;
     private final RegisterAttributes[] registerAttributes;
@@ -594,15 +600,50 @@ public class LinearScan {
         return Pair.create(list1, list2);
     }
 
+    private static void sortIntervals(Interval[] intervals) {
+        Arrays.sort(intervals, (Interval a, Interval b) -> a.from() - b.from());
+    }
+
     protected void sortIntervalsBeforeAllocation() {
         int sortedLen = 0;
+        int notSorted = 0;
+        int sortedFromMax = -1;
         for (Interval interval : intervals) {
             if (interval != null) {
                 sortedLen++;
+
+                int from = interval.from();
+                if (sortedFromMax <= from) {
+                    sortedFromMax = interval.from();
+                } else {
+                    notSorted++;
+                }
             }
         }
 
         Interval[] sortedList = new Interval[sortedLen];
+        if (notSorted > 0 && notSorted <= ALMOST_SORTED_THRESHOLD) {
+            // almost sorted, use simple in-place sorting algorithm
+            sortIntervalsAlmostSorted(intervals, sortedList);
+        } else {
+            // already sorted, or a potentially high number of swaps needed
+            int sortedIdx = 0;
+            for (Interval interval : intervals) {
+                if (interval != null) {
+                    sortedList[sortedIdx++] = interval;
+                }
+            }
+            if (notSorted > 0) {
+                sortIntervals(sortedList);
+            }
+        }
+        sortedIntervals = sortedList;
+    }
+
+    /**
+     * Sorts intervals using insertion sort (O(n) best case, O(n^2) worse case complexity).
+     */
+    private static void sortIntervalsAlmostSorted(Interval[] intervals, Interval[] sortedList) {
         int sortedIdx = 0;
         int sortedFromMax = -1;
 
@@ -627,7 +668,6 @@ public class LinearScan {
                 }
             }
         }
-        sortedIntervals = sortedList;
     }
 
     void sortIntervalsAfterAllocation() {
@@ -642,7 +682,7 @@ public class LinearScan {
         int newLen = newList.length;
 
         // conventional sort-algorithm for new intervals
-        Arrays.sort(newList, (Interval a, Interval b) -> a.from() - b.from());
+        sortIntervals(newList);
 
         // merge old and new list (both already sorted) into one combined list
         Interval[] combinedList = new Interval[oldLen + newLen];
