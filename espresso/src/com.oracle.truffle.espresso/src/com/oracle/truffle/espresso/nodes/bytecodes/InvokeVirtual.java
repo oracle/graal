@@ -117,7 +117,7 @@ public abstract class InvokeVirtual extends EspressoNode {
         }
 
         protected ClassHierarchyAssumption readLeafAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().isLeafMethod(resolutionSeed.getMethodVersion());
+            return getContext().getClassHierarchyOracle().isLeafMethod(resolutionSeed.getMethodVersion());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
