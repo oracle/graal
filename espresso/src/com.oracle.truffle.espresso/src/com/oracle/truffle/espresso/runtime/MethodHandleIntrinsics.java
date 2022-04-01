@@ -134,11 +134,6 @@ public final class MethodHandleIntrinsics {
         return PolySigIntrinsics.None;
     }
 
-// @Override
-// public EspressoContext getContext() {
-// return context;
-// }
-
     private Method findIntrinsic(Method m, MethodRef methodRef) {
         Method method = getIntrinsic(methodRef);
         if (method != null) {

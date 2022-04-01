@@ -375,8 +375,6 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 String methodName = method.getSimpleName().toString();
                 if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals("getSourceSection") //
                                 && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {
-                    if (methodName.equals("getContext"))
-                        emitError(sourceType, String.format("WOW"));
                     wrappedMethods.add(method);
                 }
             }
