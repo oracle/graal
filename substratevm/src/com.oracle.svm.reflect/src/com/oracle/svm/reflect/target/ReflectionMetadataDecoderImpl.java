@@ -64,6 +64,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     public static final int IN_HEAP_FLAG_MASK = 1 << IN_HEAP_FLAG_INDEX;
     public static final int HIDING_FLAG_INDEX = 29;
     public static final int HIDING_FLAG_MASK = 1 << HIDING_FLAG_INDEX;
+    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK;
 
     static byte[] getEncoding() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
@@ -181,7 +182,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     }
 
     @Override
-    public boolean isHidingMethod(int modifiers) {
+    public boolean isHiding(int modifiers) {
         return (modifiers & HIDING_FLAG_MASK) != 0;
     }
 
@@ -207,7 +208,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     StringIndex deletedReason
      * }
      * </pre>
-     * <p>
+     *
      * Heap field encoding.
      *
      * <pre>
@@ -216,12 +217,22 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     ObjectIndex fieldObject
      * }
      * </pre>
-     * <p>
-     * Partial field encoding.
+     *
+     * Hiding field encoding.
      *
      * <pre>
-     * PartialFieldMetadata : FieldMetadata {
-     *     int         modifiers
+     * HidingFieldMetadata : FieldMetadata {
+     *     int         modifiers (including HIDING flag)
+     *     StringIndex name
+     *     ClassIndex  type
+     * }
+     * </pre>
+     *
+     * Reachable field encoding.
+     *
+     * <pre>
+     * ReachableFieldEncoding : FieldMetadata {
+     *     int         modifiers (always zero)
      *     StringIndex name
      * }
      * </pre>
@@ -229,30 +240,40 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     private static Field decodeField(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
+        boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         if (inHeap) {
             Field field = (Field) decodeObject(buf, info);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
                 return null;
             }
+            if (reflectOnly && !complete) {
+                return null;
+            }
             return field;
         }
-        boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
+        boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
+        assert !(complete && hiding);
         modifiers &= ~COMPLETE_FLAG_MASK;
 
         String name = decodeName(buf, info);
+        Class<?> type = (complete || hiding) ? decodeType(buf, info) : null;
         if (!complete) {
-            if (reflectOnly) {
+            if (reflectOnly != hiding) {
+                /*
+                 * When querying for reflection fields, we want the hiding fields but not the
+                 * reachable fields. When querying for reachable fields, we want the reachable
+                 * fields but not the hiding fields.
+                 */
                 return null;
             }
             Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
             if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                field.constructorJDK17OrLater(declaringClass, name, null, modifiers, false, -1, null, null);
+                field.constructorJDK17OrLater(declaringClass, name, type, modifiers, false, -1, null, null);
             } else {
-                field.constructorJDK11OrEarlier(declaringClass, name, null, modifiers, -1, null, null);
+                field.constructorJDK11OrEarlier(declaringClass, name, type, modifiers, -1, null, null);
             }
             return SubstrateUtil.cast(field, Field.class);
         }
-        Class<?> type = decodeType(buf, info);
         boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
         String signature = decodeName(buf, info);
         byte[] annotations = decodeByteArray(buf);
@@ -303,14 +324,24 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * }
      * </pre>
      *
-     * Partial method encoding.
+     * Hiding method encoding.
      *
      * <pre>
-     * PartialMethodMetadata : MethodMetadata {
-     *     int          modifiers
+     * HidingMethodMetadata : MethodMetadata {
+     *     int          modifiers      (including HIDING flag)
      *     StringIndex  name
      *     ClassIndex[] parameterTypes
      *     ClassIndex   returnType
+     * }
+     * </pre>
+     *
+     * Reachable method encoding.
+     *
+     * <pre>
+     * ReachableMethodMetadata : MethodMetadata {
+     *     int          modifiers      (always zero)
+     *     StringIndex  name
+     *     ClassIndex[] parameterTypes
      * }
      * </pre>
      */
@@ -343,11 +374,11 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * }
      * </pre>
      *
-     * Partial constructor encoding.
+     * Reachable constructor encoding.
      *
      * <pre>
-     * PartialConstructorMetadata : ConstructorMetadata {
-     *     int          modifiers
+     * ReachableConstructorMetadata : ConstructorMetadata {
+     *     int          modifiers      (always zero)
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
@@ -359,21 +390,24 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     private static Executable decodeExecutable(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly, boolean isMethod) {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
+        boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf, info);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
                 return null;
             }
+            if (reflectOnly && !complete) {
+                return null;
+            }
             return executable;
         }
-        boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
         assert !(complete && hiding);
         modifiers &= ~COMPLETE_FLAG_MASK;
 
         String name = isMethod ? decodeName(buf, info) : null;
         Class<?>[] parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
-        Class<?> returnType = isMethod ? decodeType(buf, info) : null;
+        Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf, info) : null;
         if (!complete) {
             if (reflectOnly != hiding) {
                 /*

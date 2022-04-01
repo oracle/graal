@@ -51,7 +51,7 @@ public interface ReflectionMetadataDecoder {
 
     byte[] parseByteArray(int index);
 
-    boolean isHidingMethod(int modifiers);
+    boolean isHiding(int modifiers);
 
     long getMetadataByteLength();
 }

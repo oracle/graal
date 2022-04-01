@@ -56,9 +56,11 @@ public interface RuntimeReflectionSupport extends ReflectionRegistry {
     Object getAccessor(Executable method);
 
     /*
-     * Returns the methods that shadow a superclass method registered for reflection, to be excluded
-     * from reflection queries.
+     * Returns the methods and fields that shadow a superclass element registered for reflection, to
+     * be excluded from reflection queries.
      */
+    Set<?> getHidingReflectionFields();
+
     Set<?> getHidingReflectionMethods();
 
     Object[] getRecordComponents(Class<?> type);
