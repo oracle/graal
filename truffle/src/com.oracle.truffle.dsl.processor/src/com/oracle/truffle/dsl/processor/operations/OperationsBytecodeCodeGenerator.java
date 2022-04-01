@@ -11,6 +11,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
@@ -57,19 +58,21 @@ public class OperationsBytecodeCodeGenerator {
     private static final String DSL_METHOD_PREFIX = "execute_";
     private static final String DSL_CLASS_PREFIX = "Execute_";
 
+    private final ProcessorContext context = ProcessorContext.getInstance();
+    private final TruffleTypes types = context.getTypes();
+
+    private static final String ConditionProfile_Name = "com.oracle.truffle.api.profiles.ConditionProfile";
+    final DeclaredType ConditionProfile = context.getDeclaredType(ConditionProfile_Name);
+
     private final CodeTypeElement typBuilderImpl;
     private final String simpleName;
-    private final ProcessorContext context;
     private final OperationsData m;
-    private final TruffleTypes types;
     private final boolean withInstrumentation;
 
     public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, String simpleName, OperationsData m, boolean withInstrumentation) {
         this.typBuilderImpl = typBuilderImpl;
         this.simpleName = simpleName;
         this.m = m;
-        this.context = ProcessorContext.getInstance();
-        this.types = context.getTypes();
         this.withInstrumentation = withInstrumentation;
     }
 
@@ -95,6 +98,10 @@ public class OperationsBytecodeCodeGenerator {
         CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
         GeneratorUtils.addCompilationFinalAnnotation(fldHandlers, 1);
         builderBytecodeNodeType.add(fldHandlers);
+
+        CodeVariableElement fldConditionBranches = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(ConditionProfile), "conditionProfiles");
+        GeneratorUtils.addCompilationFinalAnnotation(fldConditionBranches, 1);
+        builderBytecodeNodeType.add(fldConditionBranches);
 
         CodeVariableElement fldProbeNodes = null;
         if (withInstrumentation) {
@@ -768,6 +775,10 @@ public class OperationsBytecodeCodeGenerator {
                                 .end().build();
             case CONST_POOL:
                 return CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), inputType).variable(vars.consts) //
+                                .string("[").tree(instr.createReadArgumentCode(index, vars)).string("]") //
+                                .build();
+            case BRANCH_PROFILE:
+                return CodeTreeBuilder.createBuilder().string("conditionProfiles") //
                                 .string("[").tree(instr.createReadArgumentCode(index, vars)).string("]") //
                                 .build();
             case INSTRUMENT:

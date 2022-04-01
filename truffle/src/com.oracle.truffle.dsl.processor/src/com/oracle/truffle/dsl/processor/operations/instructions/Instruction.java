@@ -41,6 +41,7 @@ public abstract class Instruction {
         LOCAL(2),
         ARGUMENT(2),
         INSTRUMENT(2),
+        BRANCH_PROFILE(2),
         BRANCH_TARGET(2);
 
         final int argumentLength;
@@ -60,6 +61,8 @@ public abstract class Instruction {
                     return context.getType(Object.class);
                 case VARARG_VALUE:
                     return new ArrayCodeTypeMirror(context.getType(Object.class));
+                case BRANCH_PROFILE:
+                    return context.getDeclaredType("com.oracle.truffle.api.profiles.ConditionProfile");
                 case BRANCH_TARGET:
                 case INSTRUMENT:
                     return context.getType(short.class);
@@ -73,6 +76,7 @@ public abstract class Instruction {
                 case STACK_VALUE:
                 case STACK_VALUE_IGNORED:
                 case VARARG_VALUE:
+                case BRANCH_PROFILE:
                     return false;
                 case CONST_POOL:
                 case LOCAL:
@@ -91,6 +95,7 @@ public abstract class Instruction {
                 case STACK_VALUE_IGNORED:
                 case VARARG_VALUE:
                 case INSTRUMENT:
+                case BRANCH_PROFILE:
                     return null;
                 case CONST_POOL:
                     return context.getType(Object.class);
@@ -114,6 +119,8 @@ public abstract class Instruction {
                 case BRANCH_TARGET:
                 case INSTRUMENT:
                     return null;
+                case BRANCH_PROFILE:
+                    return CodeTreeBuilder.singleString("ConditionProfile.createCountingProfile()");
                 case VARARG_VALUE:
                     return CodeTreeBuilder.createBuilder().variable(vars.numChildren).string(" - " + instr.numStackValuesExclVarargs()).build();
                 default:
@@ -160,6 +167,8 @@ public abstract class Instruction {
                                     .doubleQuote("**%d") //
                                     .tree(op.createReadArgumentCode(n, vars)) //
                                     .end(3).build();
+                case BRANCH_PROFILE:
+                    return null;
                 default:
                     throw new IllegalArgumentException("Unexpected value: " + this);
             }
@@ -320,6 +329,10 @@ public abstract class Instruction {
 
         if (n < inputs.length && inputs[n] == InputType.VARARG_VALUE) {
             value = CodeTreeBuilder.createBuilder().startParantheses().variable(vars.numChildren).string(" - " + numStackValuesExclVarargs()).end().build();
+        }
+
+        if (n < inputs.length && inputs[n] == InputType.BRANCH_PROFILE) {
+            value = CodeTreeBuilder.singleString("numBranchProfiles++");
         }
 
         if (n < inputs.length && inputs[n] == InputType.CONST_POOL) {

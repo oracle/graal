@@ -246,6 +246,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement fldNumChildNodes = new CodeVariableElement(context.getType(int.class), "numChildNodes");
         typBuilderImpl.add(fldNumChildNodes);
 
+        CodeVariableElement fldNumBranchProfiles = new CodeVariableElement(context.getType(int.class), "numBranchProfiles");
+        typBuilderImpl.add(fldNumBranchProfiles);
+
         CodeVariableElement fldBuiltNodes = new CodeVariableElement(generic(context.getTypeElement(ArrayList.class), types.OperationsNode), "builtNodes");
         typBuilderImpl.add(fldBuiltNodes);
         {
@@ -307,6 +310,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startAssign(fldBci).string("0").end();
             b.startAssign(fldNumChildNodes).string("0").end();
+            b.startAssign(fldNumBranchProfiles).string("0").end();
             b.startAssign(fldCurStack).string("0").end();
             b.startAssign(fldMaxStack).string("0").end();
             if (FLAG_NODE_AST_PRINTING) {
@@ -356,6 +360,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.statement("OperationsNode result");
 
+            b.declaration("ConditionProfile[]", "condProfiles", "new ConditionProfile[numBranchProfiles]");
+            b.startFor().string("int i = 0; i < numBranchProfiles; i++").end().startBlock();
+            b.statement("condProfiles[i] = ConditionProfile.createCountingProfile()");
+            b.end();
+
             if (ENABLE_INSTRUMENTATION) {
                 b.startIf().variable(fldKeepInstrumentation).end();
                 b.startBlock();
@@ -375,7 +384,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.string("cpCopy");
                 b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
                 b.string("handlers");
-                // b.string("getInstrumentTrees()");
+                b.string("condProfiles");
+                b.string("getInstrumentTrees()");
                 b.end(2);
 
                 b.end().startElseBlock();
@@ -396,6 +406,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("cpCopy");
             b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
             b.string("handlers");
+            b.string("condProfiles");
             b.end(2);
 
             if (ENABLE_INSTRUMENTATION) {
