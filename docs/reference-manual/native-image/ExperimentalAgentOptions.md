@@ -1,3 +1,10 @@
+---
+layout: docs
+toc_group: native-image
+link_title: Experimental Agent Options
+permalink: /reference-manual/native-image/ExperimentalAgentOptions/
+---
+
 # Experimental Agent Options
 
 The `native-image-agent` tool has options which are currently experimental and might be enabled in future releases, but can also be changed or removed entirely.
