@@ -82,11 +82,10 @@ public abstract class BooleanArrayStore extends EspressoNode {
         public abstract void execute(StaticObject receiver, int index, byte value);
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, byte value,
-                        @Bind("getLanguage()") EspressoLanguage language) {
+        void doEspresso(StaticObject array, int index, byte value) {
             assert !StaticObject.isNull(array);
             assert array.getKlass() == EspressoContext.get(this).getMeta()._boolean_array;
-            getContext().getInterpreterToVM().setArrayByte(language, value, index, array);
+            getContext().getInterpreterToVM().setArrayByte(getLanguage(), value, index, array);
         }
 
         @Specialization(guards = {

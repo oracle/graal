@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -30,7 +29,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -73,19 +71,17 @@ public abstract class ShortArrayStore extends EspressoNode {
         public abstract void execute(StaticObject receiver, int index, short value);
 
         @Specialization(guards = "array.isEspressoObject()")
-        void doEspresso(StaticObject array, int index, short value,
-                        @Bind("getLanguage()") EspressoLanguage language) {
+        void doEspresso(StaticObject array, int index, short value) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayShort(language, value, index, array);
+            getContext().getInterpreterToVM().setArrayShort(getLanguage(), value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")
         void doArrayLike(StaticObject array, int index, short value,
-                        @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            ForeignArrayUtils.writeForeignArrayElement(array, index, value, language, getContext().getMeta(), interop, exceptionProfile);
+            ForeignArrayUtils.writeForeignArrayElement(array, index, value, getLanguage(), getContext().getMeta(), interop, exceptionProfile);
         }
     }
 }

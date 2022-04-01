@@ -116,12 +116,11 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     int doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asInt(receiver.rawForeignObject(language));
+            return interopLibrary.asInt(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object does not fit in int");
@@ -130,8 +129,8 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     int doForeign(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
-                    @Bind("getMeta()") Meta meta,
+                @Bind("getLanguage()") EspressoLanguage language,
+                @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
                     @Cached BranchProfile error) {
@@ -171,12 +170,11 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     boolean doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asBoolean(receiver.rawForeignObject(language));
+            return interopLibrary.asBoolean(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object is not boolean");
@@ -226,12 +224,11 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     char doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            String foreignString = interopLibrary.asString(receiver.rawForeignObject(language));
+            String foreignString = interopLibrary.asString(receiver.rawForeignObject(getLanguage()));
             if (foreignString.length() != 1) {
                 error.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Multicharacter foreign string cannot be cast to char");
@@ -245,8 +242,8 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     char doForeign(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
-                    @Bind("getMeta()") Meta meta,
+                @Bind("getLanguage()") EspressoLanguage language,
+                @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
                     @Cached BranchProfile error) {
@@ -286,12 +283,11 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     short doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asShort(receiver.rawForeignObject(language));
+            return interopLibrary.asShort(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object does not fit in short");
@@ -341,12 +337,11 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     byte doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asByte(receiver.rawForeignObject(language));
+            return interopLibrary.asByte(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object does not fit in byte");
@@ -355,8 +350,8 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     byte doForeign(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
-                    @Bind("getMeta()") Meta meta,
+                @Bind("getLanguage()") EspressoLanguage language,
+                @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
                     @Cached BranchProfile error) {
@@ -396,12 +391,11 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     long doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asLong(receiver.rawForeignObject(language));
+            return interopLibrary.asLong(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object does not fit in long");
@@ -410,8 +404,8 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     long doForeign(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
-                    @Bind("getMeta()") Meta meta,
+                @Bind("getLanguage()") EspressoLanguage language,
+                @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
                     @Cached BranchProfile error) {
@@ -451,12 +445,11 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     float doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asFloat(receiver.rawForeignObject(language));
+            return interopLibrary.asFloat(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object does not fit in float");
@@ -506,12 +499,11 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
     double doForeignValue(StaticObject receiver,
-                    @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
         try {
-            return interopLibrary.asDouble(receiver.rawForeignObject(language));
+            return interopLibrary.asDouble(receiver.rawForeignObject(getLanguage()));
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign object does not fit in double");

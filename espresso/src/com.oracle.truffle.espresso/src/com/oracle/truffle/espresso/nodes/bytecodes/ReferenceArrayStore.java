@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -80,10 +79,10 @@ public abstract class ReferenceArrayStore extends EspressoNode {
 
         @Specialization(guards = "array.isForeignObject()")
         void doArrayLike(StaticObject array, int index, StaticObject value,
-                        @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
+            EspressoLanguage language = getLanguage();
             Object unwrappedValue = value.isForeignObject() ? value.rawForeignObject(language) : value;
             ForeignArrayUtils.writeForeignArrayElement(array, index, unwrappedValue, language, getContext().getMeta(), interop, exceptionProfile);
         }

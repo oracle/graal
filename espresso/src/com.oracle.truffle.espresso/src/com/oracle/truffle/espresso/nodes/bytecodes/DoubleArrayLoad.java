@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -31,7 +30,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
@@ -74,21 +72,19 @@ public abstract class DoubleArrayLoad extends EspressoNode {
         public abstract double execute(StaticObject receiver, int index);
 
         @Specialization(guards = "array.isEspressoObject()")
-        double doEspresso(StaticObject array, int index,
-                        @Bind("getLanguage()") EspressoLanguage language) {
+        double doEspresso(StaticObject array, int index) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayDouble(language, index, array);
+            return getContext().getInterpreterToVM().getArrayDouble(getLanguage(), index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")
         double doArrayLike(StaticObject array, int index,
-                        @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary arrayInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary elemInterop,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
             Meta meta = getContext().getMeta();
-            Object result = ForeignArrayUtils.readForeignArrayElement(array, index, language, meta, arrayInterop, exceptionProfile);
+            Object result = ForeignArrayUtils.readForeignArrayElement(array, index, getLanguage(), meta, arrayInterop, exceptionProfile);
             try {
                 return elemInterop.asDouble(result);
             } catch (UnsupportedMessageException e) {

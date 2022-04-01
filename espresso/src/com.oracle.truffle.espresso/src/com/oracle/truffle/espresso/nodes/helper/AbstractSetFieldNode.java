@@ -116,8 +116,7 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
@@ -145,8 +144,7 @@ abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class CharSetFieldNode extends AbstractSetFieldNode {
@@ -174,8 +172,7 @@ abstract class CharSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class ShortSetFieldNode extends AbstractSetFieldNode {
@@ -203,8 +200,7 @@ abstract class ShortSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class ByteSetFieldNode extends AbstractSetFieldNode {
@@ -232,8 +228,7 @@ abstract class ByteSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class LongSetFieldNode extends AbstractSetFieldNode {
@@ -261,8 +256,7 @@ abstract class LongSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class FloatSetFieldNode extends AbstractSetFieldNode {
@@ -290,8 +284,7 @@ abstract class FloatSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
@@ -319,8 +312,7 @@ abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue, interopLibrary, language, getContext(), error);}
 }
 
 abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
@@ -348,6 +340,5 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
                     @Cached BranchProfile error) {
-        setForeignField(receiver, fieldValue.isForeignObject() ? fieldValue.rawForeignObject(language) : fieldValue, interopLibrary, language, getContext(), error);
-    }
+        setForeignField(receiver, fieldValue.isForeignObject() ? fieldValue.rawForeignObject(language) : fieldValue, interopLibrary, language, getContext(), error);}
 }
