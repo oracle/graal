@@ -1676,9 +1676,6 @@ public class NativeImageGenerator {
             } else if (LayoutEncoding.isPrimitiveArray(le)) {
                 System.out.format("primitive array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
                                 LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isStoredContinuation(le)) {
-                // can exist as HostedType even if unreachable and continuations are disabled
-                System.out.print("stored continuation  ");
             } else {
                 throw VMError.shouldNotReachHere();
             }

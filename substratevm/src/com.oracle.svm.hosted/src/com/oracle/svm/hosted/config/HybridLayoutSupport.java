@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.config;
 
 import java.lang.reflect.Modifier;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -56,13 +55,7 @@ public class HybridLayoutSupport {
         return clazz.getAnnotation(Hybrid.class).canHybridFieldsBeDuplicated();
     }
 
-    /**
-     * Finds the hybrid array and bitset fields of a class annotated with {@link Hybrid}.
-     *
-     * @param hybridClass A class annotated with {@link Hybrid}
-     * @return A {@link Pair} containing the (non-null) hybrid array field in the left position, and
-     *         the (nullable) hybrid bitset field in the right position.
-     */
+    /** Finds the hybrid array and bitset fields of a hybrid class. */
     public HybridFields findHybridFields(HostedInstanceClass hybridClass) {
         assert hybridClass.getAnnotation(Hybrid.class) != null;
         assert Modifier.isFinal(hybridClass.getModifiers());

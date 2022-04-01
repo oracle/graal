@@ -37,11 +37,6 @@ import com.oracle.svm.core.hub.LayoutEncoding;
  * instance layouts and array layouts. The contents of a specified member array and (optional)
  * member type id slots are directly placed within the class layout. This saves one indirection when
  * accessing the array or type id slots.
- *
- * <p>
- * The array length is located directly after the HUB pointer, like in regular array. Then (if
- * present) the type id slots follow. Then the instance fields are placed. At the end of the layout,
- * the array elements are located.
  * 
  * <pre>
  *    +--------------------------------------------------+
@@ -73,15 +68,15 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 public @interface Hybrid {
 
     /**
-     * If {@code true}, we expect that the data in the hybrid fields can be duplicated between the
-     * hybrid object and a separate object for the array. For most objects, a duplication could
-     * occur if inlining and constant folding result in the internal reference to a hybrid field
-     * being constant folded to a constant value, which must be written into the image heap
-     * separately from the hybrid object.
-     * 
-     * If {@code false}, we expect that this duplication of the hybrid fields can never happen.
+     * If {@code true}, we allow the data in the hybrid fields to be duplicated between the hybrid
+     * object and a separate object for the array. For most objects, a duplication could occur if
+     * inlining and constant folding result in the internal reference to a hybrid field being
+     * constant folded to a constant value, which must be written into the image heap separately
+     * from the hybrid object.
+     *
+     * If {@code false}, a duplication of the hybrid fields must never happen.
      */
-    boolean canHybridFieldsBeDuplicated();
+    boolean canHybridFieldsBeDuplicated() default false;
 
     /**
      * Specifies a single member array as the hybrid array.

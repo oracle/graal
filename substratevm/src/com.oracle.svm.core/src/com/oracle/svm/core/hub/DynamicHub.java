@@ -98,7 +98,7 @@ import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
 
-@Hybrid(canHybridFieldsBeDuplicated = false)
+@Hybrid
 @Substitute
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
@@ -609,11 +609,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInstanceClass() {
         return HubType.isInstance(hubType);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isStoredContinuationClass() {
-        return HubType.isStoredContinuation(hubType);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
