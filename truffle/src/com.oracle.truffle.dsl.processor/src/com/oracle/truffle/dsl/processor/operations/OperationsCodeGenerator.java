@@ -81,6 +81,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTypeElement typBuilderImpl = createBuilderImpl(typBuilder);
         typBuilder.add(typBuilderImpl);
+        GeneratorUtils.addSuppressWarnings(context, typBuilderImpl, "cast", "hiding", "unchecked");
 
         {
             CodeVariableElement parLanguage = new CodeVariableElement(m.getLanguageType(), "language");

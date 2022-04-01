@@ -332,11 +332,16 @@ public class GeneratorUtils {
         }
     }
 
-    public static void addSuppressWarnings(ProcessorContext context, CodeElement<? extends Element> element, String value) {
+    public static void addSuppressWarnings(ProcessorContext context, CodeElement<? extends Element> element, String... value) {
         CodeAnnotationMirror annSuppressWarnings = new CodeAnnotationMirror(context.getDeclaredType(SuppressWarnings.class));
         element.addAnnotationMirror(annSuppressWarnings);
 
-        annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(value));
+        if (value.length == 1) {
+            annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(value[0]));
+        } else {
+            annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(
+                            Arrays.stream(value).map(CodeAnnotationValue::new).collect(Collectors.toList())));
+        }
     }
 
     static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {

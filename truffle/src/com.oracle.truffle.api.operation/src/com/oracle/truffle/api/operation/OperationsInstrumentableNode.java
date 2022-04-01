@@ -10,17 +10,14 @@ public abstract class OperationsInstrumentableNode extends OperationsNode {
     @Children OperationsInstrumentTreeNode[] instrumentTree;
 
     protected OperationsInstrumentableNode(
-                    TruffleLanguage<?> language,
                     Object parseContext,
-                    String nodeName,
-                    boolean isInternal,
                     int[][] sourceInfo,
                     Source[] sources,
                     int buildOrder,
                     int maxStack,
                     int maxLocals,
                     OperationsInstrumentTreeNode[] instrumentTree) {
-        super(language, parseContext, nodeName, isInternal, sourceInfo, sources, buildOrder, maxStack, maxLocals);
+        super(parseContext, sourceInfo, sources, buildOrder, maxStack, maxLocals);
         this.instrumentTree = instrumentTree;
     }
 
