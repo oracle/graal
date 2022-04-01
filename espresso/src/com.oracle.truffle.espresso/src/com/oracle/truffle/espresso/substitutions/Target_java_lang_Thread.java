@@ -118,7 +118,6 @@ public final class Target_java_lang_Thread {
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit,
                         @Cached("create(context.getMeta().java_lang_Thread_dispatchUncaughtException.getCallTarget())") DirectCallNode dispatchUncaught) {
-            Meta meta = context.getMeta();
             ThreadsAccess threadAccess = context.getThreadAccess();
             if (context.multiThreadingEnabled()) {
                 // Thread.start() is synchronized.
@@ -140,6 +139,7 @@ public final class Target_java_lang_Thread {
                     String className = threadKlass.getExternalName();
                     return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
                 });
+                Meta meta = context.getMeta();
                 if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler || isSystemInnocuousThread(self, meta)) {
                     // no exception: bootstrap code cannot recover from this
                 } else {

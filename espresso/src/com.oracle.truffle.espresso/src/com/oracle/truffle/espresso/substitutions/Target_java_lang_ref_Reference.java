@@ -104,12 +104,12 @@ public final class Target_java_lang_ref_Reference {
         @Specialization
         @JavaType(Object.class)
         StaticObject doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_ref_Reference_getFromInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.java_lang_ref_Reference_getFromInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
             // Call original to possibly trigger guest assertion.
             original.call(self);
             // Ignore result, and return the actual result.
-            return get(self, context.getMeta());
+            return get(self, meta);
         }
     }
 
@@ -140,12 +140,12 @@ public final class Target_java_lang_ref_Reference {
 
         @Specialization
         void doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_ref_Reference_clearInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.java_lang_ref_Reference_clearInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
             // Call original to possibly trigger guest assertion.
             original.call(self);
             // Ignore result, and actually clear.
-            clear(self, context.getMeta());
+            clear(self, meta);
         }
     }
 

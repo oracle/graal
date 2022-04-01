@@ -31,7 +31,6 @@ import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -723,11 +722,8 @@ public final class Target_sun_misc_Unsafe {
         abstract byte execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        byte doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getByte(address);
+        byte doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getByte(address);
         }
     }
 
@@ -737,11 +733,8 @@ public final class Target_sun_misc_Unsafe {
         abstract char execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        char doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getChar(address);
+        char doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getChar(address);
         }
     }
 
@@ -751,11 +744,8 @@ public final class Target_sun_misc_Unsafe {
         abstract short execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        short doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getShort(address);
+        short doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getShort(address);
         }
     }
 
@@ -765,11 +755,8 @@ public final class Target_sun_misc_Unsafe {
         abstract int execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        int doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getInt(address);
+        int doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getInt(address);
         }
     }
 
@@ -779,11 +766,8 @@ public final class Target_sun_misc_Unsafe {
         abstract float execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        float doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getFloat(address);
+        float doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getFloat(address);
         }
     }
 
@@ -793,11 +777,8 @@ public final class Target_sun_misc_Unsafe {
         abstract double execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        double doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getDouble(address);
+        double doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getDouble(address);
         }
     }
 
@@ -807,11 +788,8 @@ public final class Target_sun_misc_Unsafe {
         abstract long execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        long doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        @Bind("getContext()") EspressoContext context) {
-            return UnsafeAccess.getIfAllowed(context).getLong(address);
+        long doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getLong(address);
         }
     }
 
@@ -1025,12 +1003,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        byte value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putByte(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putByte(address, value);
         }
     }
 
@@ -1040,12 +1014,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        char value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putChar(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putChar(address, value);
         }
     }
 
@@ -1055,12 +1025,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        short value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putShort(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putShort(address, value);
         }
     }
 
@@ -1070,12 +1036,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        int value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putInt(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putInt(address, value);
         }
     }
 
@@ -1085,12 +1047,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        float value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putFloat(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putFloat(address, value);
         }
     }
 
@@ -1100,12 +1058,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        double value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putDouble(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putDouble(address, value);
         }
     }
 
@@ -1115,12 +1069,8 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value);
 
         @Specialization
-        void doCached(
-                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                        long address,
-                        long value,
-                        @Bind("getContext()") EspressoContext context) {
-            UnsafeAccess.getIfAllowed(context).putLong(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putLong(address, value);
         }
     }
 

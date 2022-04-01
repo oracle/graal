@@ -24,13 +24,13 @@
 package com.oracle.truffle.espresso.nodes.helper;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -60,9 +60,8 @@ public abstract class TypeCheckNode extends EspressoNode {
         return true;
     }
 
-    @Specialization(guards = "isJLObject(context, typeToCheck)")
-    protected boolean typeCheckJLObject(Klass typeToCheck, Klass k,
-                    @Bind("getContext()") EspressoContext context) {
+    @Specialization(guards = "isJLObject(getContext(), typeToCheck)")
+    protected boolean typeCheckJLObject(Klass typeToCheck, Klass k) {
         return !k.isPrimitive();
     }
 
@@ -86,12 +85,12 @@ public abstract class TypeCheckNode extends EspressoNode {
     }
 
     @Specialization(replaces = "typeCheckCached", guards = "arrayBiggerDim(k, typeToCheck)")
-    protected boolean typeCheckArrayLowerDim(ArrayKlass typeToCheck, ArrayKlass k,
-                    @Bind("getContext()") EspressoContext context) {
+    protected boolean typeCheckArrayLowerDim(ArrayKlass typeToCheck, ArrayKlass k) {
+        Meta meta = getMeta();
         Klass elem = typeToCheck.getElementalType();
-        return elem == context.getMeta().java_lang_Object ||
-                        elem == context.getMeta().java_io_Serializable ||
-                        elem == context.getMeta().java_lang_Cloneable;
+        return elem == meta.java_lang_Object ||
+                        elem == meta.java_io_Serializable ||
+                        elem == meta.java_lang_Cloneable;
     }
 
     /*

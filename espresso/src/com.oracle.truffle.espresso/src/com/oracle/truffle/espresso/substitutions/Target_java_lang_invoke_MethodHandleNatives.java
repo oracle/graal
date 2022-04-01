@@ -380,7 +380,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(value = Class.class) StaticObject caller,
                         int lookupMode,
                         boolean speculativeResolve,
-                        @Bind("getContext()") EspressoContext context,
                         @Cached ResolveNode resolve) {
             StaticObject result = StaticObject.NULL;
             EspressoException error = null;
@@ -389,7 +388,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             } catch (EspressoException e) {
                 error = e;
             }
-            Meta meta = context.getMeta();
+            Meta meta = getMeta();
             if (StaticObject.isNull(result)) {
                 int refKind = getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self));
                 if (!isValidRefKind(refKind)) {
@@ -424,8 +423,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
                         @JavaType(value = Class.class) StaticObject caller,
                         @SuppressWarnings("unused") int lookupMode,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
                         @Cached BranchProfile isMethodProfile,
                         @Cached BranchProfile isFieldProfile,
                         @Cached BranchProfile isConstructorProfile,
@@ -434,7 +433,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @Cached BranchProfile isInvokeStaticOrInterfaceProfile,
                         @Cached BranchProfile isInvokeVirtualOrSpecialProfile,
                         @Cached BranchProfile isHandleMethodProfile) {
-            Meta meta = context.getMeta();
             if (meta.HIDDEN_VMTARGET.getHiddenObject(memberName) != null) {
                 return memberName; // Already planted
             }

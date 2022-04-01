@@ -41,7 +41,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -97,11 +96,11 @@ public abstract class ByteArrayLoad extends EspressoNode {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "isBufferLikeByteArray(language, context, interop, array)"
+                        "isBufferLikeByteArray(language, meta, interop, array)"
         })
         byte doBufferLike(StaticObject array, int index,
                         @Bind("getLanguage()") EspressoLanguage language,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Bind("getMeta()") Meta meta,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile outOfBoundsProfile) {
             assert !StaticObject.isNull(array);
@@ -109,7 +108,6 @@ public abstract class ByteArrayLoad extends EspressoNode {
                 return interop.readBufferByte(array.rawForeignObject(language), index);
             } catch (InvalidBufferOffsetException e) {
                 outOfBoundsProfile.enter();
-                Meta meta = context.getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -119,18 +117,17 @@ public abstract class ByteArrayLoad extends EspressoNode {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "!isBufferLikeByteArray(language, context, arrayInterop, array)",
+                        "!isBufferLikeByteArray(language, meta, arrayInterop, array)",
                         "isArrayLike(arrayInterop, array.rawForeignObject(language))"
         })
         byte doArrayLike(StaticObject array, int index,
                         @Bind("getLanguage()") EspressoLanguage language,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Bind("getMeta()") Meta meta,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary arrayInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary elemInterop,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isByteArrayProfile) {
             assert !StaticObject.isNull(array);
-            Meta meta = context.getMeta();
             Object result = ForeignArrayUtils.readForeignArrayElement(array, index, language, meta, arrayInterop, exceptionProfile);
 
             if (isByteArrayProfile.profile(array.getKlass() == meta._byte_array)) {

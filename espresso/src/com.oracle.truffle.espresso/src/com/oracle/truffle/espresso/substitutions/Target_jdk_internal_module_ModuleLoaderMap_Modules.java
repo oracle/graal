@@ -51,16 +51,15 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
         public void clinit(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_Modules_clinit.getCallTargetNoSubstitution())") DirectCallNode original) {
-            EspressoLanguage language = getLanguage();
             Meta meta = context.getMeta();
             assert meta.getJavaVersion().java17OrLater();
             original.call();
 
             ArrayList<StaticObject> toAdd = new ArrayList<>(2);
-            if (meta.getContext().JDWPOptions != null) {
+            if (context.JDWPOptions != null) {
                 toAdd.add(meta.toGuestString(Target_jdk_internal_module_ModuleLoaderMap.HOTSWAP_MODULE_NAME));
             }
-            if (meta.getContext().Polyglot) {
+            if (context.Polyglot) {
                 toAdd.add(meta.toGuestString(Target_jdk_internal_module_ModuleLoaderMap.POLYGLOT_MODULE_NAME));
             }
 
@@ -71,6 +70,7 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
             /*
              * Spoof the statically stored boot module set.
              */
+            EspressoLanguage language = getLanguage();
 
             Field bootModulesField = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(Symbol.Name.bootModules, Symbol.Type.java_util_Set);
             Method setOf = meta.java_util_Set.lookupMethod(Symbol.Name.of, Symbol.Signature.java_util_Set_Object_array);

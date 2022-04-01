@@ -37,7 +37,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -88,10 +87,9 @@ public abstract class ArrayLength {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "isBufferLikeByteArray(language, context, interop, array)",
+                        "isBufferLikeByteArray(language, getMeta(), interop, array)",
         })
         int doBufferLike(StaticObject array,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @Bind("getLanguage()") EspressoLanguage language,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile sizeOverflowProfile) {
@@ -111,12 +109,11 @@ public abstract class ArrayLength {
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "!isBufferLikeByteArray(language, context, interop, array)",
+                        "!isBufferLikeByteArray(language, getMeta(), interop, array)",
                         "isArrayLike(interop, array.rawForeignObject(language))"
         })
         int doArrayLike(StaticObject array,
                         @Bind("getLanguage()") EspressoLanguage language,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile sizeOverflowProfile) {
             assert !StaticObject.isNull(array);

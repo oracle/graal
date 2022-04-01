@@ -26,7 +26,6 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
 
@@ -61,11 +60,6 @@ public final class UnsafeAccess {
 
     public static Unsafe getIfAllowed(Meta meta) {
         checkAllowed(meta);
-        return UNSAFE;
-    }
-
-    public static Unsafe getIfAllowed(EspressoContext context) {
-        checkAllowed(context.getMeta());
         return UNSAFE;
     }
 

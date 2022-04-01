@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
@@ -56,11 +55,10 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
         StaticObject executeImpl(
                         @JavaType(internalName = "Ljdk/internal/module/SystemModules;") StaticObject systemModules,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().jdk_internal_module_SystemModuleFinders_of.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.jdk_internal_module_SystemModuleFinders_of.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct a ModuleFinder that can locate our Espresso-specific platform modules
             // and compose it with the resulting module finder from the original call
-            Meta meta = context.getMeta();
             StaticObject moduleFinder = (StaticObject) original.call(systemModules);
             StaticObject extensionPathArray = getEspressoExtensionPaths(meta);
             if (extensionPathArray != StaticObject.NULL) {
@@ -78,11 +76,10 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         @Specialization
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
         StaticObject executeImpl(
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().jdk_internal_module_SystemModuleFinders_ofSystem.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.jdk_internal_module_SystemModuleFinders_ofSystem.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct ModuleFinders that can locate our Espresso-specific platform modules
             // and compose it with the resulting module finder from the original call
-            Meta meta = context.getMeta();
             StaticObject moduleFinder = (StaticObject) original.call();
             StaticObject extensionPathArray = getEspressoExtensionPaths(meta);
             if (extensionPathArray != StaticObject.NULL) {

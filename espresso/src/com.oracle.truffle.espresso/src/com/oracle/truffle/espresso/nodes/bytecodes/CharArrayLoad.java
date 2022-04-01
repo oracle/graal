@@ -35,7 +35,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -77,12 +76,11 @@ public abstract class CharArrayLoad extends EspressoNode {
         @Specialization(guards = "array.isForeignObject()")
         char doForeign(StaticObject array, int index,
                         @Bind("getLanguage()") EspressoLanguage language,
-                        @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary arrayInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary elemInterop,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            Meta meta = context.getMeta();
+            Meta meta = getMeta();
             Object element = ForeignArrayUtils.readForeignArrayElement(array, index, language, meta, arrayInterop, exceptionProfile);
             try {
                 String string1 = elemInterop.asString(element);

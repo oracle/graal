@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.substitutions;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -34,7 +33,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -67,8 +65,7 @@ public final class Target_java_lang_Object {
         @TruffleBoundary
         @Fallback
         void registerFinalizer(@JavaType(Object.class) StaticObject self,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
-                        @Cached("context.getMeta().java_lang_ref_Finalizer_register.getCallTarget()") CallTarget register,
+                        @Cached("getMeta().java_lang_ref_Finalizer_register.getCallTarget()") CallTarget register,
                         @Cached IndirectCallNode indirectCallNode) {
             indirectCallNode.call(register, self);
         }

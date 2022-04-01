@@ -32,6 +32,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
@@ -95,12 +96,12 @@ public abstract class BooleanArrayStore extends EspressoNode {
         void doArrayLike(StaticObject array, int index, byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Bind("getLanguage()") EspressoLanguage language,
-                        @Bind("getContext()") EspressoContext context,
+                        @Bind("getMeta()") Meta meta,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            assert array.getKlass() == context.getMeta()._boolean_array;
+            assert array.getKlass() == meta._boolean_array;
             boolean booleanValue = value != 0;
-            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, context.getMeta(), interop, exceptionProfile);
+            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, meta, interop, exceptionProfile);
         }
     }
 }
