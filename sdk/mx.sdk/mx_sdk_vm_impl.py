@@ -476,7 +476,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _project_name = GraalVmNativeProperties.project_name(image_config)
                 _add(layout, _macro_dir, 'dependency:{}'.format(_project_name), component)  # native-image.properties is the main output
                 # Add profiles
-                for profile in _image_profile(GraalVmNativeProperties.canonical_image_name(image_config)):
+                for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
                     _add(layout, _macro_dir, 'file:{}'.format(abspath(profile)))
 
         def _add_link(_dest, _target, _component=None, _dest_base_name=None):
@@ -1337,7 +1337,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 name = name[:-len(suffix)]
             canonical_name = GraalVmNativeProperties.canonical_image_name(image_config)
             build_args += _extra_image_builder_args(canonical_name)
-            profiles = _image_profile(canonical_name)
+            profiles = _image_profiles(canonical_name)
             if profiles:
                 if not _get_svm_support().is_pgo_supported():
                     raise mx.abort("Image profiles can not be used if PGO is not supported.")
@@ -3086,6 +3086,27 @@ def _infer_env(graalvm_dist):
 
     return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), _no_licenses()
 
+def graalvm_env(out_env=None):
+    """
+    Gets an environment that captures variables configuring the GraalVM configured in the current mx environment.
+
+    :out_env dict or None: the dict into which the variables will be added. A copy of `os.environ` is used if None.
+    :return: a tuple of the current GraalVM distribution and an environment of the variables reflecting its configuration
+    """
+    env = out_env or os.environ.copy()
+    graalvm_dist = get_final_graalvm_distribution()
+    dynamicImports, components, exclude_components, nativeImages, disableInstallables, noLicenses = _infer_env(graalvm_dist)
+
+    env['GRAALVM_HOME'] = graalvm_home()
+
+    env['DYNAMIC_IMPORTS'] = ','.join(dynamicImports)
+    env['COMPONENTS'] = ','.join(components)
+    env['NATIVE_IMAGES'] = ','.join(nativeImages)
+    env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
+    env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
+    if noLicenses:
+        env['NO_LICENSES'] = 'true'
+    return graalvm_dist, env
 
 def graalvm_enter(args):
     """enter a subshell for developing with a particular GraalVM config"""
@@ -3141,18 +3162,7 @@ def graalvm_enter(args):
                                   """))
         return
 
-    graalvm_dist = get_final_graalvm_distribution()
-    dynamicImports, components, exclude_components, nativeImages, disableInstallables, noLicenses = _infer_env(graalvm_dist)
-
-    env['GRAALVM_HOME'] = graalvm_home()
-
-    env['DYNAMIC_IMPORTS'] = ','.join(dynamicImports)
-    env['COMPONENTS'] = ','.join(components)
-    env['NATIVE_IMAGES'] = ','.join(nativeImages)
-    env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
-    env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
-    if noLicenses:
-        env['NO_LICENSES'] = 'true'
+    graalvm_dist, env = graalvm_env()
 
     # Disable loading of the global ~/.mx/env file in the subshell. The contents of this file are already in the current
     # environment. Parsing the ~/.mx/env file again would lead to confusing results, especially if it contains settings
@@ -3190,7 +3200,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("Launchers:")
             for launcher in launchers:
                 suffix = ''
-                profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
+                profile_cnt = len(_image_profiles(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
                 if profile_cnt > 0:
                     suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
                 print(" - {} ({}){}".format(launcher.native_image_name, "native" if launcher.is_native() else "bash", suffix))
@@ -3204,7 +3214,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 suffix = ''
                 if library.is_skipped():
                     suffix += " (skipped)"
-                profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
+                profile_cnt = len(_image_profiles(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
                 if profile_cnt > 0:
                     suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
                 print(" - {}{}".format(library.native_image_name, suffix))
@@ -3449,7 +3459,7 @@ def _extra_image_builder_args(image):
     return args
 
 
-def _image_profile(image):
+def _image_profiles(image):
     prefix = image + ':'
     prefix_len = len(prefix)
     profiles = []
