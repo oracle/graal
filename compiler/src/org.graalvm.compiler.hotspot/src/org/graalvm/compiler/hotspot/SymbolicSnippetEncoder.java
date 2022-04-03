@@ -985,7 +985,7 @@ public class SymbolicSnippetEncoder {
                     if (substitutedMethod.equals(target.targetMethod())) {
                         // Replace call to original method with a placeholder
                         PartialIntrinsicCallTargetNode partial = graph.add(
-                                        new PartialIntrinsicCallTargetNode(target.invokeKind(), substitutedMethod, target.returnStamp(), target.arguments().toArray(new ValueNode[0])));
+                                        new PartialIntrinsicCallTargetNode(target.invokeKind(), substitutedMethod, target.returnStamp(), target.arguments().toArray(ValueNode.EMPTY_ARRAY)));
                         target.replaceAndDelete(partial);
                     }
                 }
