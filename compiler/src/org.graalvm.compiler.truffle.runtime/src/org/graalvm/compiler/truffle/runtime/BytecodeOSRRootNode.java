@@ -77,6 +77,11 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     }
 
     @Override
+    public String getName() {
+        return toString();
+    }
+
+    @Override
     public String toString() {
         return loopNode.toString() + "<OSR@" + target + ">";
     }

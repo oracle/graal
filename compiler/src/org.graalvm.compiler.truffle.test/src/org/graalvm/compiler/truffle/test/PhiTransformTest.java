@@ -25,7 +25,11 @@
 
 package org.graalvm.compiler.truffle.test;
 
+import java.util.ListIterator;
+
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
@@ -33,6 +37,11 @@ import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.truffle.compiler.nodes.AnyExtendNode;
 import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
@@ -94,6 +103,34 @@ public class PhiTransformTest extends GraalCompilerTest {
     public void succeed2() {
         StructuredGraph graph = createGraph("succeed2Snippet");
         Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() == 0);
+    }
+
+    public static float deoptSnippet(int count) {
+        /*
+         * This test will fail with a wrong result if the phi transformation happens, since the
+         * upper 32 bits of the int-in-long are observed after the deopt.
+         */
+        long[] values = new long[2];
+        float s = 0;
+        do {
+            values[0] = ((int) values[0] + 1) & 0xffffffffL;
+            s++;
+            GraalDirectives.sideEffect();
+            if (s > 30) {
+                // value is used as i64 after deopt:
+                GraalDirectives.deoptimize();
+                if (values[0] < 0 || values[0] >= count) {
+                    break;
+                }
+            }
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void deopt() {
+        StructuredGraph graph = createGraph("deoptSnippet");
+        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() == 1);
     }
 
     public static float fail1Snippet(int count) {
@@ -184,14 +221,49 @@ public class PhiTransformTest extends GraalCompilerTest {
         Assert.assertTrue(graph.getNodes().filter(NarrowNode.class).count() > 0);
     }
 
+    @Override
+    protected Suites createSuites(OptionValues opts) {
+        Suites suites = super.createSuites(opts);
+        ListIterator<BasePhase<? super HighTierContext>> iter = suites.getHighTier().findPhase(PartialEscapePhase.class);
+        iter.add(new ToAnyExtendsPhase());
+        iter.add(new PhiTransformPhase(createCanonicalizerPhase()));
+        iter.add(new ToZeroExtendsPhase());
+        return suites;
+    }
+
     private StructuredGraph createGraph(String name) {
         test(name, 100);
         StructuredGraph graph = parseEager(name, AllowAssumptions.YES);
 
-        CoreProviders context = getProviders();
+        createCanonicalizerPhase().apply(graph, getProviders());
+        HighTierContext context = getDefaultHighTierContext();
+        new PartialEscapePhase(false, createCanonicalizerPhase(), getInitialOptions()).apply(graph, context);
+        new ToAnyExtendsPhase().apply(graph, context);
+        new PhiTransformPhase(createCanonicalizerPhase()).apply(graph, context);
+        new ToZeroExtendsPhase().apply(graph, context);
         createCanonicalizerPhase().apply(graph, context);
-        new PartialEscapePhase(false, createCanonicalizerPhase(), getInitialOptions()).apply(graph, getDefaultHighTierContext());
-        new PhiTransformPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
         return graph;
+    }
+
+    static final class ToAnyExtendsPhase extends BasePhase<CoreProviders> {
+
+        @Override
+        protected void run(StructuredGraph graph, CoreProviders context) {
+            if (!graph.toString().contains("deoptSnippet")) {
+                for (ZeroExtendNode node : graph.getNodes().filter(ZeroExtendNode.class)) {
+                    node.replaceAndDelete(graph.unique(new AnyExtendNode(node.getValue())));
+                }
+            }
+        }
+    }
+
+    static final class ToZeroExtendsPhase extends BasePhase<CoreProviders> {
+
+        @Override
+        protected void run(StructuredGraph graph, CoreProviders context) {
+            for (AnyExtendNode node : graph.getNodes().filter(AnyExtendNode.class)) {
+                node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
+            }
+        }
     }
 }
