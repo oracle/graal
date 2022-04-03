@@ -922,37 +922,38 @@ public class GraphDecoder {
              * work to the implementor side where such patterns can typically be easily fixed by
              * creating loop phis and assigning them correctly.
              */
-            List<ValueNode> newFrameStateValues = new ArrayList<>();
-            for (ValueNode frameStateValue : frameState.values) {
-                if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
-                    newFrameStateValues.add(frameStateValue);
+            FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
 
-                } else {
-                    ProxyPlaceholder newFrameStateValue = graph.unique(new ProxyPlaceholder(frameStateValue, merge));
-                    newFrameStateValues.add(newFrameStateValue);
+                @Override
+                public ValueNode apply(int index, ValueNode frameStateValue) {
+                    if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
+                        return frameStateValue;
 
-                    /*
-                     * We do not have the orderID of the value anymore, so we need to search through
-                     * the complete list of nodes to find a match.
-                     */
-                    for (int i = 0; i < loopScope.createdNodes.length; i++) {
-                        if (loopScope.createdNodes[i] == frameStateValue) {
-                            loopScope.createdNodes[i] = newFrameStateValue;
-                        }
-                    }
+                    } else {
+                        ProxyPlaceholder newFrameStateValue = graph.unique(new ProxyPlaceholder(frameStateValue, merge));
 
-                    if (loopScope.initialCreatedNodes != null) {
-                        for (int i = 0; i < loopScope.initialCreatedNodes.length; i++) {
-                            if (loopScope.initialCreatedNodes[i] == frameStateValue) {
-                                loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                        /*
+                         * We do not have the orderID of the value anymore, so we need to search
+                         * through the complete list of nodes to find a match.
+                         */
+                        for (int i = 0; i < loopScope.createdNodes.length; i++) {
+                            if (loopScope.createdNodes[i] == frameStateValue) {
+                                loopScope.createdNodes[i] = newFrameStateValue;
                             }
                         }
+
+                        if (loopScope.initialCreatedNodes != null) {
+                            for (int i = 0; i < loopScope.initialCreatedNodes.length; i++) {
+                                if (loopScope.initialCreatedNodes[i] == frameStateValue) {
+                                    loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                                }
+                            }
+                        }
+                        return newFrameStateValue;
                     }
                 }
-            }
-
-            FrameState newFrameState = graph.add(new FrameState(frameState.outerFrameState(), frameState.getCode(), frameState.bci, newFrameStateValues, frameState.localsSize(),
-                            frameState.stackSize(), frameState.rethrowException(), frameState.duringCall(), frameState.monitorIds(), frameState.virtualObjectMappings()));
+            };
+            FrameState newFrameState = graph.add(frameState.duplicate(valueFunction));
 
             frameState.replaceAtUsagesAndDelete(newFrameState);
             frameState = newFrameState;
@@ -2128,56 +2129,58 @@ class LoopDetector implements Runnable {
                 }
             }
         }
-        List<ValueNode> newValues = new ArrayList<>(oldState.values().size());
+
         /* The framestate may contain a value multiple times */
         EconomicMap<ValueNode, ValueNode> old2NewValues = EconomicMap.create();
-        for (ValueNode v : oldState.values) {
-            if (v != null && old2NewValues.containsKey(v)) {
-                newValues.add(old2NewValues.get(v));
-                continue;
-            }
+        FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
 
-            ValueNode value = v;
-            ValueNode realValue = ProxyPlaceholder.unwrap(value);
-
-            /*
-             * The LoopExit is inserted before the existing merge, i.e., separately for every branch
-             * that leads to the merge. So for phi functions of the merge, we need to take the input
-             * that corresponds to our branch.
-             */
-            if (realValue instanceof PhiNode && loopExplosionMerge.isPhiAtMerge(realValue)) {
-                value = ((PhiNode) realValue).valueAt(loopExplosionEnd);
-                realValue = ProxyPlaceholder.unwrap(value);
-            }
-
-            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
-                /*
-                 * value v, input to the old state, can already be a proxy placeholder node to
-                 * another, dominating loop exit, we must not take the unwrapped value in this case
-                 * but the properly proxied one
-                 */
-                newValues.add(v);
-                if (v != null) {
-                    old2NewValues.put(v, v);
+            @Override
+            public ValueNode apply(int index, ValueNode v) {
+                if (v != null && old2NewValues.containsKey(v)) {
+                    return old2NewValues.get(v);
                 }
-            } else {
+
+                ValueNode value = v;
+                ValueNode realValue = ProxyPlaceholder.unwrap(value);
+
                 /*
-                 * The node is not in the FrameState of the LoopBegin, i.e., it is a value computed
-                 * inside the loop.
+                 * The LoopExit is inserted before the existing merge, i.e., separately for every
+                 * branch that leads to the merge. So for phi functions of the merge, we need to
+                 * take the input that corresponds to our branch.
                  */
-                GraalError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
-                                "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
+                if (realValue instanceof PhiNode && loopExplosionMerge.isPhiAtMerge(realValue)) {
+                    value = ((PhiNode) realValue).valueAt(loopExplosionEnd);
+                    realValue = ProxyPlaceholder.unwrap(value);
+                }
 
-                ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
-                ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit);
-                proxyPlaceholder.setValue(proxy);
-                newValues.add(proxy);
-                old2NewValues.put(v, proxy);
+                if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
+                    /*
+                     * value v, input to the old state, can already be a proxy placeholder node to
+                     * another, dominating loop exit, we must not take the unwrapped value in this
+                     * case but the properly proxied one
+                     */
+                    if (v != null) {
+                        old2NewValues.put(v, v);
+                    }
+                    return v;
+                } else {
+                    /*
+                     * The node is not in the FrameState of the LoopBegin, i.e., it is a value
+                     * computed inside the loop.
+                     */
+                    GraalError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
+                                    "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
+
+                    ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
+                    ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit);
+                    proxyPlaceholder.setValue(proxy);
+                    old2NewValues.put(v, proxy);
+                    return proxy;
+                }
             }
-        }
+        };
 
-        FrameState newState = new FrameState(oldState.outerFrameState(), oldState.getCode(), oldState.bci, newValues, oldState.localsSize(), oldState.stackSize(), oldState.rethrowException(),
-                        oldState.duringCall(), oldState.monitorIds(), oldState.virtualObjectMappings());
+        FrameState newState = oldState.duplicate(valueFunction);
 
         assert loopExit.stateAfter() == null;
         loopExit.setStateAfter(graph.add(newState));
@@ -2258,24 +2261,22 @@ class LoopDetector implements Runnable {
             }
 
             /*
-             * Build the new FrameState for the loop header. There is only once change in comparison
+             * Build the new FrameState for the loop header. There is only one change in comparison
              * to the old FrameState: the loop variable is replaced with the phi function.
              */
-            FrameState oldFrameState = explosionHeadState;
-            List<ValueNode> newFrameStateValues = new ArrayList<>(explosionHeadValues.size());
-            for (int i = 0; i < explosionHeadValues.size(); i++) {
-                if (i == loopVariableIndex) {
-                    newFrameStateValues.add(loopVariablePhi);
-                } else {
-                    newFrameStateValues.add(explosionHeadValues.get(i));
+            int loopVariableIndexCopy = loopVariableIndex;
+            FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
+                @Override
+                public ValueNode apply(int index, ValueNode node) {
+                    if (index == loopVariableIndexCopy) {
+                        return loopVariablePhi;
+                    } else {
+                        return node;
+                    }
                 }
-            }
-
-            FrameState newFrameState = graph.add(
-                            new FrameState(oldFrameState.outerFrameState(), oldFrameState.getCode(), oldFrameState.bci, newFrameStateValues, oldFrameState.localsSize(),
-                                            oldFrameState.stackSize(), oldFrameState.rethrowException(), oldFrameState.duringCall(), oldFrameState.monitorIds(),
-                                            oldFrameState.virtualObjectMappings()));
-            oldFrameState.replaceAtUsages(newFrameState);
+            };
+            FrameState newFrameState = graph.add(explosionHeadState.duplicate(valueFunction));
+            explosionHeadState.replaceAtUsages(newFrameState);
 
             /*
              * Disconnect the outermost loop header from its loop body, so that we can later on

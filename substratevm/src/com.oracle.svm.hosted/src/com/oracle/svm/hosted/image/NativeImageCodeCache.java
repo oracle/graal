@@ -429,7 +429,7 @@ public abstract class NativeImageCodeCache {
 
         DeoptSourceFrameInfo sourceFrame = sourceFrameInfo.getValue();
         FrameInfoQueryResult.ValueInfo[] targetValues = targetFrame.getValueInfos();
-        List<JavaKind> sourceKinds = sourceFrame.expectedKinds;
+        List<JavaKind> sourceKinds = Arrays.asList(sourceFrame.expectedKinds);
         if (targetFrame.getNumLocals() != sourceFrame.numLocals || targetFrame.getNumStack() != sourceFrame.numStack || targetFrame.getNumLocks() != sourceFrame.numLocks) {
             StringBuilder errorMessage = new StringBuilder();
             errorMessage.append("Mismatch between number of expected values in target and source.\n");

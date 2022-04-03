@@ -1149,7 +1149,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private boolean checkFrameStatesAgainstInlinedMethods() {
         for (FrameState fs : getNodes(FrameState.TYPE)) {
             if (!BytecodeFrame.isPlaceholderBci(fs.bci)) {
-                ResolvedJavaMethod m = fs.code.getMethod();
+                ResolvedJavaMethod m = fs.getCode().getMethod();
                 if (!m.equals(rootMethod) && !methods.contains(m)) {
                     SortedSet<String> haystack = new TreeSet<>();
                     if (!methods.contains(rootMethod)) {
