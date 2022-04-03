@@ -63,6 +63,15 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     protected void onSafepointDisabledLoopBegin(LoopEx loop) {
     }
 
+    /**
+     * Determines whether guest safepoints should be allowed at all. To be implemented by
+     * subclasses. The default implementation returns <code>false</code>, leading to guest
+     * safepoints being disabled for all loops in the graph.
+     */
+    protected boolean allowGuestSafepoints() {
+        return false;
+    }
+
     private static boolean loopIsIn32BitRange(LoopEx loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
@@ -122,6 +131,9 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
         }
         for (LoopEx loop : loops.loops()) {
+            if (!allowGuestSafepoints()) {
+                loop.loopBegin().disableGuestSafepoint();
+            }
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 Block b = loops.getCFG().blockFor(loopEnd);
                 blocks: while (b != loop.loop().getHeader()) {
