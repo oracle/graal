@@ -149,6 +149,9 @@ public class GDSChannel extends GraalChannelBase {
         switch (code) {
             case EXC_CODE_INVALID_CONFIG:
                 fb.output("ERR_WrongToken", token);
+                if (tokenStorage.getConfSource().equals(GDSTokenStorage.Source.FIL)) {
+                    setToken("");
+                }
                 token = getToken(licensePath);
                 break;
             case EXC_CODE_UNVERIFIED_CONFIG:
@@ -192,17 +195,27 @@ public class GDSChannel extends GraalChannelBase {
         if (!SystemUtils.nonBlankString(token)) {
             String email = MailStorage.checkEmailAddress(receiveEmailAddress(), fb);
             token = getConnector().sendVerificationEmail(email, licensePath, null);
+            saveToken(token);
             fb.output("PROMPT_VerifyEmailAddressEntry", email);
             fb.acceptLine(false);
+        } else {
+            saveToken(token);
         }
+        return token;
+    }
+
+    private void saveToken(String token) {
         fb.output("MSG_ObtainedToken", token);
+        setToken(token);
+    }
+
+    private void setToken(String token) {
         try {
             tokenStorage.setToken(token);
             tokenStorage.save();
         } catch (IOException ex) {
             fb.error("WARN_CannotSaveToken", ex, tokenStorage.getPropertiesPath());
         }
-        return token;
     }
 
     @Override
@@ -210,6 +223,11 @@ public class GDSChannel extends GraalChannelBase {
         return new MetadataLoaderAdapter(delegate) {
             @Override
             public String getLicenseType() {
+                return null;
+            }
+
+            @Override
+            public String getLicenseID() {
                 return null;
             }
         };
