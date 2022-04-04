@@ -592,7 +592,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     public static void clear(VirtualFrame frame, int slot) {
-        frame.setObject(slot, null);
+        if (CompilerDirectives.inInterpreter()) {
+            frame.setObject(slot, null);
+        } else {
+            frame.clear(slot);
+        }
     }
 
     // endregion Operand stack accessors
@@ -730,8 +734,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     @ExplodeLoop
-    public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-        BytecodeOSRNode.super.restoreParentFrame(osrFrame, parentFrame);
+    public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        BytecodeOSRNode.super.restoreParentFrame(osrFrame, parentFrame, target);
         setBCI(parentFrame, getBci(osrFrame));
     }
 
@@ -759,7 +763,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
-        boolean skipLivenessActions = isOSR;
+        boolean skipLivenessActions = false;
 
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
@@ -1794,7 +1798,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     // don't send an instrumentation event.
                     beforeTransfer = null;
                 }
-
+                livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
                 Object osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
                 if (osrResult != null) {
                     throw new EspressoOSRReturnException(osrResult);

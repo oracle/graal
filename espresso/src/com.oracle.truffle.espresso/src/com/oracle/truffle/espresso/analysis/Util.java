@@ -23,10 +23,10 @@
 
 package com.oracle.truffle.espresso.analysis;
 
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
@@ -35,7 +35,7 @@ public final class Util {
     private Util() {
     }
 
-    public static int[] toIntArray(ArrayList<Integer> targets) {
+    public static int[] toIntArray(List<Integer> targets) {
         int[] result = new int[targets.size()];
         int pos = 0;
         for (int i : targets) {

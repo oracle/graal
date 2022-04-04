@@ -154,7 +154,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame);
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target);
     }
 
     /**
@@ -174,7 +174,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     default void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, osrFrame, parentFrame);
+        NodeAccessor.RUNTIME.restoreOSRFrame(this, osrFrame, parentFrame);
     }
 
     /**
