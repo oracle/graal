@@ -139,6 +139,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test that OSR is triggered in the expected location when multiple loops are involved, and
+     * makes sure that their cached frame states for transfers are independent.
+     */
+    @Test
+    public void testMultipleLoopsIncompatibleState() {
+        // Each loop runs for osrThreshold + 1 iterations, so the first loop should trigger OSR.
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        TwoLoopsIncompatibleFrames osrNode = new TwoLoopsIncompatibleFrames(builder);
+        RootNode rootNode = new Program(osrNode, builder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(TwoLoopsIncompatibleFrames.OSR_IN_FIRST_LOOP, target.call(osrThreshold + 1, true));
+        Assert.assertEquals(TwoLoopsIncompatibleFrames.OSR_IN_SECOND_LOOP, target.call(osrThreshold + 1, false));
+    }
+
+    /*
      * Test that OSR fails if the code cannot be compiled.
      */
     @Test
@@ -657,6 +672,90 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
+    /**
+     * Contains two loops whose entry's frame states differs. Makes sure that one's entry frame
+     * state does not spill to the other
+     */
+    public static class TwoLoopsIncompatibleFrames extends BytecodeOSRTestNode {
+        static final String NO_OSR = "no osr";
+        static final String OSR_IN_FIRST_LOOP = "osr in first loop";
+        static final String OSR_IN_SECOND_LOOP = "osr in second loop";
+
+        static final int FIRST_LOOP_TARGET = 0;
+        static final int SECOND_LOOP_TARGET = 1;
+
+        @CompilationFinal int iterationsSlot;
+        @CompilationFinal int indexSlot;
+        @CompilationFinal int selectSlot;
+        @CompilationFinal int localSlot;
+
+        public TwoLoopsIncompatibleFrames(FrameDescriptor.Builder builder) {
+            iterationsSlot = builder.addSlot(FrameSlotKind.Int, "iterations", null);
+            indexSlot = builder.addSlot(FrameSlotKind.Int, "index", null);
+            selectSlot = builder.addSlot(FrameSlotKind.Boolean, "select", null);
+            localSlot = builder.addSlot(FrameSlotKind.Illegal, "local", null);
+        }
+
+        @Override
+        Object execute(VirtualFrame frame) {
+            int numIter = (int) frame.getArguments()[0];
+            boolean select = (boolean) frame.getArguments()[1];
+            frame.setInt(iterationsSlot, numIter);
+            frame.setInt(indexSlot, 0);
+            frame.setBoolean(selectSlot, select);
+            if (select) {
+                frame.setInt(localSlot, 0);
+                return executeLoop(frame, numIter, select);
+            } else {
+                frame.setDouble(localSlot, 0d);
+                return executeLoop(frame, numIter, select);
+            }
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            return executeLoop(osrFrame, osrFrame.getInt(iterationsSlot), target == FIRST_LOOP_TARGET);
+        }
+
+        protected Object executeLoop(VirtualFrame frame, int numIterations, boolean select) {
+            try {
+                if (select) {
+                    for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                        frame.setInt(indexSlot, i);
+                        int partial = frame.getInt(localSlot);
+                        frame.setInt(localSlot, i + partial);
+                        if (i + 1 < numIterations) { // back-edge will be taken
+                            if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                                Object result = BytecodeOSRNode.tryOSR(this, FIRST_LOOP_TARGET, null, null, frame);
+                                if (result != null) {
+                                    return OSR_IN_FIRST_LOOP;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                        frame.setInt(indexSlot, i);
+                        double partial = frame.getDouble(localSlot);
+                        frame.setDouble(localSlot, i + partial);
+                        if (i + 1 < numIterations) { // back-edge will be taken
+                            if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                                Object result = BytecodeOSRNode.tryOSR(this, SECOND_LOOP_TARGET, null, null, frame);
+                                if (result != null) {
+                                    return OSR_IN_SECOND_LOOP;
+                                }
+                            }
+                        }
+                    }
+                }
+                return NO_OSR;
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+    }
+
     public static class UncompilableFixedIterationLoop extends FixedIterationLoop {
         public UncompilableFixedIterationLoop(FrameDescriptor frameDescriptor) {
             super(frameDescriptor);
@@ -1128,7 +1227,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             // The parent implementation asserts we are in compiled code, so we instead explicitly
             // do the transfer here.
-            ((BytecodeOSRMetadata) osrMetadata).transferFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
+            ((BytecodeOSRMetadata) osrMetadata).restoreFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
             // Since the intSlot tag changed inside the compiled code, the tag speculation should
             // fail and cause a deopt.
             Assert.assertFalse(CompilerDirectives.inCompiledCode());
