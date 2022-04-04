@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 22.2.0
+* Changed the behavior of [`Context.close()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#close--) (as well as `Context.close(false)` which is equivalent). In case the context was cancelled during the close operation or the context was exited during the close operation at request of the guest application, or it was already cancelled or exited before the close operation begins,
+the close operation throws a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException) with [`PolyglotException.isCancelled()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException#isCancelled--) or [`PolyglotException.isExit()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException#isExit--), respectively, equal to `true`.
+
+
 ## Version 22.1.0
 * Changed the default [`Object` target type mapping (`Value.as(Object.class)`)](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-) for values that have both array elements and members from `Map` to `List`.
   Note: This is an incompatible change. Embedders relying on the dynamic type `Map` after a `Object` target type coercion will have to migrate their code.

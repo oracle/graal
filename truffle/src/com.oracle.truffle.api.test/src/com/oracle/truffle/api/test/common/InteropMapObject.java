@@ -132,7 +132,7 @@ public class InteropMapObject implements TruffleObject {
 
     @ExportMessage
     boolean isMemberInsertable(String member) {
-        return true;
+        return !contains(member);
     }
 
     @ExportMessage

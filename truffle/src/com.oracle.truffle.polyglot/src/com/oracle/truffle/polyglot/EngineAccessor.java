@@ -80,7 +80,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -343,6 +343,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getHostContext(Object polyglotContext) {
             return ((PolyglotContextImpl) polyglotContext).getHostContextImpl();
+        }
+
+        @Override
+        public Value asValue(Object polyglotContextImpl, Object guestValue) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().asValue(guestValue);
         }
 
         @Override
@@ -721,6 +726,38 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object[] enterContextAsPolyglotThread(Object polyglotContext) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            return context.enterThreadChanged(true, false, true, false, true);
+        }
+
+        @Override
+        public void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            context.leaveThreadChanged(prev, true, true, true);
+        }
+
+        @Override
+        public Object enterIfNeeded(Object polyglotContext) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            try {
+                return context.engine.enterIfNeeded(context, true);
+            } catch (Throwable t) {
+                throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
+            }
+        }
+
+        @Override
+        public void leaveIfNeeded(Object polyglotContext, Object prev) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            try {
+                context.engine.leaveIfNeeded(prev, context);
+            } catch (Throwable t) {
+                throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
+            }
+        }
+
+        @Override
         public Object evalInternalContext(Node location, Object polyglotContext, Source source, boolean allowInternal) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
             if (context.parent == null) {
@@ -906,9 +943,14 @@ final class EngineAccessor extends Accessor {
         public PolyglotException wrapGuestException(Object polyglotObject, Throwable e) {
             if (polyglotObject instanceof PolyglotContextImpl) {
                 PolyglotContextImpl polyglotContext = (PolyglotContextImpl) polyglotObject;
-                PolyglotLanguage language = polyglotContext.getHostContext().language;
-                PolyglotLanguageContext languageContext = polyglotContext.getContextInitialized(language, null);
-                return PolyglotImpl.guestToHostException(languageContext, e, true);
+                PolyglotLanguageContext hostLanguageContext = polyglotContext.getHostContext();
+                if (polyglotContext.state.isInvalidOrClosed()) {
+                    return PolyglotImpl.guestToHostException(hostLanguageContext, e, false);
+                } else {
+                    PolyglotLanguage language = polyglotContext.getHostContext().language;
+                    PolyglotLanguageContext languageContext = polyglotContext.getContextInitialized(language, null);
+                    return PolyglotImpl.guestToHostException(languageContext, e, true);
+                }
             } else if (polyglotObject instanceof PolyglotEngineImpl) {
                 return PolyglotImpl.guestToHostException((PolyglotEngineImpl) polyglotObject, e);
             } else {
@@ -1357,6 +1399,18 @@ final class EngineAccessor extends Accessor {
             return context.isActive(Thread.currentThread());
         }
 
+        @Override
+        public void clearExplicitContextStack(Object polyglotContext) {
+            PolyglotContextImpl context = (PolyglotContextImpl) polyglotContext;
+            context.clearExplicitContextStack();
+        }
+
+        @Override
+        public void initiateCancelOrExit(Object polyglotContext, boolean exit, int exitCode, boolean resourceLimit, String message) {
+            PolyglotContextImpl context = (PolyglotContextImpl) polyglotContext;
+            context.initiateCancelOrExit(exit, exitCode, resourceLimit, message);
+        }
+
         @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
         @Override
         @CompilerDirectives.TruffleBoundary
@@ -1392,6 +1446,23 @@ final class EngineAccessor extends Accessor {
                 context.closeImpl(true);
                 context.finishCleanup();
             }
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        public void closeContext(Object impl, boolean force, boolean resourceExhaused, String resourceExhausedReason) {
+            PolyglotContextImpl context = (PolyglotContextImpl) impl;
+            if (force) {
+                context.cancel(resourceExhaused, resourceExhausedReason);
+            } else {
+                context.closeAndMaybeWait(false, null);
+            }
+        }
+
+        @Override
+        public void closeEngine(Object polyglotEngine, boolean force) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
+            engine.ensureClosed(force, false, false);
         }
 
         @Override
@@ -1549,7 +1620,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public AbstractHostService getHostService(Object polyglotEngineImpl) {
+        public AbstractPolyglotImpl.AbstractHostLanguageService getHostService(Object polyglotEngineImpl) {
             assert polyglotEngineImpl instanceof PolyglotEngineImpl;
             return ((PolyglotEngineImpl) polyglotEngineImpl).host;
         }

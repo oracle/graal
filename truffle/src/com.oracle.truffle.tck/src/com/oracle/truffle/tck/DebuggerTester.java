@@ -957,7 +957,13 @@ public final class DebuggerTester implements AutoCloseable {
                 }
             } finally {
                 if (context != null) {
-                    context.close();
+                    try {
+                        context.close();
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled() && !pe.isExit()) {
+                            throw pe;
+                        }
+                    }
                 }
             }
         }

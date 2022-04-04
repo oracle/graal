@@ -82,6 +82,10 @@ public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
+    public LanguageFinalizationFailureTest() {
+        ignoreCancelOnClose = true;
+    }
+
     @Test
     public void testFinalizationFailureTruffleException() {
         AtomicBoolean disposeCalled = new AtomicBoolean();

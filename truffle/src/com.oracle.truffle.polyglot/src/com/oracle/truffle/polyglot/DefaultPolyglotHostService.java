@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.wrapper;
+package com.oracle.truffle.polyglot;
+
+import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
-import com.oracle.truffle.api.TruffleLanguage;
-
-final class GuestHostLanguage extends TruffleLanguage<GuestHostContext> {
-
-    // not yet needed - but will be in the future
-    @SuppressWarnings("unused") private final AbstractHostAccess access;
-    private final GuestToHostLanguageService service;
-
-    GuestHostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess access) {
-        this.access = access;
-        this.service = new GuestToHostLanguageService(polyglot);
+/**
+ * Polyglot host service is needed for polyglot isolates. In case it is used for a non-isolated
+ * engine, DefaultPolyglotHostService is used. Since there is no host side in terms of polyglot
+ * isolates, all operations are no-op.
+ */
+class DefaultPolyglotHostService extends AbstractPolyglotHostService {
+    DefaultPolyglotHostService(AbstractPolyglotImpl polyglot) {
+        super(polyglot);
     }
 
     @Override
-    protected GuestHostContext createContext(Env env) {
-        env.registerService(service);
-        return new GuestHostContext();
+    public void patch(AbstractPolyglotHostService otherService) {
     }
 
     @Override
-    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-        return true;
+    public void notifyClearExplicitContextStack(Object contextReceiver) {
     }
 
     @Override
-    protected boolean patchContext(GuestHostContext context, Env newEnv) {
-        return true;
+    public void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message) {
     }
 
+    @Override
+    public void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message) {
+    }
+
+    @Override
+    public void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting) {
+    }
 }
