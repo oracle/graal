@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.debug.scope;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 

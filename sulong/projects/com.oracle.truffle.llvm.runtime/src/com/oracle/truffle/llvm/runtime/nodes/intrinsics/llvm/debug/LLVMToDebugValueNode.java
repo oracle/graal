@@ -239,20 +239,17 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromThreadLocalGlobal(LLVMDebugThreadLocalGlobalVariable value,
-                    @Cached BranchProfile exception) {
-        LLVMThreadLocalSymbol global = value.getDescriptor();
-        LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(getContext().getSymbol(global, exception)).getObject();
+    protected LLVMDebugValue fromThreadLocalGlobal(LLVMDebugThreadLocalGlobalVariable value, @Cached BranchProfile exception) {
+        LLVMThreadLocalSymbol symbol = value.getDescriptor();
+        Object target = LLVMLanguage.getContext().getSymbolUncached(symbol);
+        LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
         long offset = pointer.getOffset();
-        LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(global.getBitcodeID(exception));
-        LLVMPointer target = base.increment(offset);
-        if (LLVMManagedPointer.isInstance(target)) {
-            final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
-            if (LLDBSupport.pointsToObjectAccess(LLVMManagedPointer.cast(target))) {
-                return new LLDBMemoryValue(managedPointer);
-            }
+        if (offset != 0) {
+            LLVMPointer base = LLVMLanguage.get(null).contextThreadLocal.get().getSection(symbol.getBitcodeID(exception));
+            LLVMPointer memory = base.increment(offset);
+            return new LLDBMemoryValue(memory);
         }
-        return new LLDBThreadLocalGlobalConstant(global);
+        return null;
     }
 
     @Fallback
