@@ -68,7 +68,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.putLong(data, accumulatedCount);
             JfrNativeEventWriter.putLong(data, peakCount);
             UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0);
+            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
         }
     }
 
@@ -84,7 +84,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.putLong(data, totalSize);
             JfrNativeEventWriter.putLong(data, usedSize);
             UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0);
+            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
         }
     }
 }

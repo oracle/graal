@@ -53,7 +53,7 @@ public class ThreadStartEvent {
             JfrNativeEventWriter.putThread(data, isolateThread);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
             UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0);
+            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
         }
     }
 }

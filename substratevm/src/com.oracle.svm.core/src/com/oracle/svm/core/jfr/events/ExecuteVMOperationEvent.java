@@ -62,7 +62,7 @@ public class ExecuteVMOperationEvent {
             JfrNativeEventWriter.putThread(data, requestingThread);
             JfrNativeEventWriter.putLong(data, vmOperation.getCausesSafepoint() ? Safepoint.Master.singleton().getSafepointId().rawValue() : 0);
             UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0);
+            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
         }
     }
 }

@@ -50,7 +50,7 @@ public class ThreadEndEvent {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putThread(data, isolateThread);
             UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0);
+            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
         }
     }
 }

@@ -44,6 +44,11 @@ import com.oracle.svm.core.util.VMError;
  * of another thread). {@link Uninterruptible} is also necessary to ensure that all
  * {@link JfrNativeEventWriter}s are finished before {@link SubstrateJVM#endRecording} enters the
  * safepoint.
+ *
+ * A JFR event writer pre-allocates a size field for an event, {@link java.lang.Byte.BYTES} byte for a small event
+ * and {@link java.lang.Integer.BYTES} bytes for a large event. If an event was written as a small event, but actual
+ * size exceeds pre-allocated size, a retry should be employed to write the event as a large event. See
+ * {@link EndChunkNativePeriodicEvents#emitJVMInformation} for an example.
  */
 @DuplicatedInNativeCode
 public final class JfrNativeEventWriter {
@@ -320,7 +325,7 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static boolean isValid(JfrNativeEventWriterData data) {
+    public static boolean isValid(JfrNativeEventWriterData data) {
         return data.getEndPos().isNonNull();
     }
 

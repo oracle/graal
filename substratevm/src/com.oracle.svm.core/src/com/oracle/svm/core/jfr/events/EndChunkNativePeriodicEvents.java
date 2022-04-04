@@ -69,7 +69,7 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.InitialEnvironmentVariable);
             for (StringEntry env : envs) {
-                if (!emitInitialEnvironmentVariable(data, env, isLarge) && !isLarge) {
+                if (!emitInitialEnvironmentVariable(data, env, isLarge) && JfrNativeEventWriter.isValid(data) && !isLarge) {
                     if (emitInitialEnvironmentVariable(data, env, true)) {
                         isLarge = true;
                         SubstrateJVM.get().setLarge(JfrEvent.InitialEnvironmentVariable.getId(), true);
@@ -96,7 +96,7 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.InitialSystemProperty);
             for (StringEntry systemProperty : systemProperties) {
-                if (!emitInitialSystemProperty(data, systemProperty, isLarge) && !isLarge) {
+                if (!emitInitialSystemProperty(data, systemProperty, isLarge) && JfrNativeEventWriter.isValid(data) && !isLarge) {
                     if (emitInitialSystemProperty(data, systemProperty, true)) {
                         isLarge = true;
                         SubstrateJVM.get().setLarge(JfrEvent.InitialSystemProperty.getId(), true);
@@ -128,7 +128,7 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.putLong(data, loadedClassCount);
             JfrNativeEventWriter.putLong(data, unloadedClassCount);
             UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0);
+            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
         }
     }
 
@@ -139,7 +139,7 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.JVMInformation);
-            if (!emitJVMInformation0(data, jvmInformation, isLarge) && !isLarge) {
+            if (!emitJVMInformation0(data, jvmInformation, isLarge) && JfrNativeEventWriter.isValid(data) && !isLarge) {
                 if (emitJVMInformation0(data, jvmInformation, true)) {
                     SubstrateJVM.get().setLarge(JfrEvent.JVMInformation.getId(), true);
                 }
@@ -169,7 +169,7 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             boolean isLarge = SubstrateJVM.get().isLarge(JfrEvent.OSInformation);
-            if (!emitOSInformation0(data, osVersion, isLarge) && !isLarge) {
+            if (!emitOSInformation0(data, osVersion, isLarge) && JfrNativeEventWriter.isValid(data) && !isLarge) {
                 if (emitOSInformation0(data, osVersion, true)) {
                     SubstrateJVM.get().setLarge(JfrEvent.OSInformation.getId(), true);
                 }
