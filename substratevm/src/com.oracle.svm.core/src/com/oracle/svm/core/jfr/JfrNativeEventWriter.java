@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.VMError;
  * of another thread). {@link Uninterruptible} is also necessary to ensure that all
  * {@link JfrNativeEventWriter}s are finished before {@link SubstrateJVM#endRecording} enters the
  * safepoint.
- *
+ * <p>
  * A JFR event writer pre-allocates a size field for an event, {@link java.lang.Byte#BYTES} byte for
  * a small event and {@link java.lang.Integer#BYTES} bytes for a large event. If an event was
  * written as a small event, but actual size exceeds pre-allocated size, a retry should be employed
@@ -66,8 +66,23 @@ public final class JfrNativeEventWriter {
     private JfrNativeEventWriter() {
     }
 
+    /**
+     * This method (together with {@link #endSmallEvent}) should be used for events where the size
+     * is statically known and never larger than {@link #MAX_COMPRESSED_BYTE_VALUE} bytes.
+     */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void beginEventWrite(JfrNativeEventWriterData data, boolean large) {
+    public static void beginSmallEvent(JfrNativeEventWriterData data, JfrEvent event) {
+        beginEvent(data, event, false);
+    }
+
+    /**
+     * This method (together with {@link #endEvent}) should only be used for events where we do not
+     * know the event size statically (e.g., events that may contain large embedded string values).
+     * For such events, it is always necessary to use a retry mechanism in the caller because the
+     * event may exceed the pre-allocated event size.
+     */
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void beginEvent(JfrNativeEventWriterData data, JfrEvent event, boolean large) {
         assert SubstrateJVM.isRecording();
         assert isValid(data);
         assert getUncommittedSize(data).equal(0);
@@ -76,40 +91,64 @@ public final class JfrNativeEventWriter {
         } else {
             reserve(data, Byte.BYTES);
         }
+        putLong(data, event.getId());
     }
 
+    /**
+     * See {@link #beginSmallEvent}.
+     * 
+     * @return {@link JfrEventWriteStatus#Success} or {@link JfrEventWriteStatus#Failure}.
+     */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static UnsignedWord endEventWrite(JfrNativeEventWriterData data, boolean large) {
+    public static JfrEventWriteStatus endSmallEvent(JfrNativeEventWriterData data) {
+        JfrEventWriteStatus status = endEvent(data, false);
+        VMError.guarantee(status != JfrEventWriteStatus.RetryLarge);
+        return status;
+    }
+
+    /**
+     * See {@link #beginEvent}.
+     *
+     * @return {@link JfrEventWriteStatus#Success}, {@link JfrEventWriteStatus#Failure}, or
+     *         {@link JfrEventWriteStatus#RetryLarge}.
+     */
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static JfrEventWriteStatus endEvent(JfrNativeEventWriterData data, boolean large) {
         if (!isValid(data)) {
-            return WordFactory.unsigned(0);
+            return JfrEventWriteStatus.Failure;
         }
 
         UnsignedWord written = getUncommittedSize(data);
         if (large) {
             // Write a 4 byte size and commit the event if any payload was written.
-            if (written.belowOrEqual(MAX_PADDED_INT_VALUE) && written.aboveThan(Integer.BYTES)) {
+            if (written.belowOrEqual(Integer.BYTES) || written.aboveThan(MAX_PADDED_INT_VALUE)) {
+                cancel(data);
+                return JfrEventWriteStatus.Failure;
+            } else {
                 Pointer currentPos = data.getCurrentPos();
                 data.setCurrentPos(data.getStartPos());
                 putPaddedInt(data, (int) written.rawValue());
                 data.setCurrentPos(currentPos);
                 commitEvent(data);
-                return written;
+                return JfrEventWriteStatus.Success;
             }
         } else {
-            // Write one byte size and commit the event if any payload was written.
-            if (written.belowOrEqual(MAX_COMPRESSED_BYTE_VALUE) && written.aboveThan(Byte.BYTES)) {
+            // Write a 1 byte size and commit the event if any payload was written.
+            if (written.belowOrEqual(Byte.BYTES)) {
+                cancel(data);
+                return JfrEventWriteStatus.Failure;
+            } else if (written.aboveThan(MAX_COMPRESSED_BYTE_VALUE)) {
+                reset(data);
+                return JfrEventWriteStatus.RetryLarge;
+            } else {
                 Pointer currentPos = data.getCurrentPos();
                 data.setCurrentPos(data.getStartPos());
                 putByte(data, (byte) written.rawValue());
                 data.setCurrentPos(currentPos);
                 commitEvent(data);
-                return written;
+                return JfrEventWriteStatus.Success;
             }
         }
-        // Abort if event size will not fit in pre-allocated size field (compressed),
-        // or event payload is empty.
-        reset(data);
-        return WordFactory.unsigned(0);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
@@ -303,7 +342,7 @@ public final class JfrNativeEventWriter {
 
     /**
      * Only needs to be called when non-event data is written to a buffer. For events,
-     * {@link #beginEventWrite} and {@link #endEventWrite} should be used instead.
+     * {@link #beginSmallEvent} and {@link #endSmallEvent} should be used instead.
      */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static boolean commit(JfrNativeEventWriterData data) {
@@ -327,7 +366,7 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static boolean isValid(JfrNativeEventWriterData data) {
+    private static boolean isValid(JfrNativeEventWriterData data) {
         return data.getEndPos().isNonNull();
     }
 

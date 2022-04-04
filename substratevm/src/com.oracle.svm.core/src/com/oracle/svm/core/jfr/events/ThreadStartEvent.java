@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.jfr.JfrEvent;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
@@ -45,15 +44,13 @@ public class ThreadStartEvent {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.ThreadStart.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadStart);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ThreadStart.getId(), 0));
             JfrNativeEventWriter.putThread(data, isolateThread);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
-            UnsignedWord written = JfrNativeEventWriter.endEventWrite(data, false);
-            assert written.aboveThan(0) || !JfrNativeEventWriter.isValid(data);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }

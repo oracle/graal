@@ -496,8 +496,8 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setLarge(long eventTypeId, boolean large) {
-        eventSettings[(int) eventTypeId].setLarge(large);
+    public void setLarge(JfrEvent event, boolean large) {
+        eventSettings[(int) event.getId()].setLarge(large);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
