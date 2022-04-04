@@ -101,10 +101,9 @@ public class CVLineRecordBuilder {
         }
 
         /* Add line record. */
-        /* An optimization would be to merge adjacent line records. */
         int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
         int line = Math.max(range.getLine(), 1);
-        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getLo() - primaryEntry.getPrimary().getHi(), line);
+        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - primaryEntry.getPrimary().getLo(), line);
         lineRecord.addNewLine(lineLoAddr, line);
     }
 }
