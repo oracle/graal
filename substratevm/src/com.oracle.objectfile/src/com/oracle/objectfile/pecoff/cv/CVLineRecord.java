@@ -122,16 +122,20 @@ final class CVLineRecord extends CVSymbolRecord {
         /* Fileblock header: fileId (4 bytes) lineEntry count (4 bytes) tablesize (4 bytes) */
         static final int FILE_BLOCK_HEADER_SIZE = Integer.BYTES * 3;
 
+        /* Initial value (that can never occur) for previousLine when there is no previous line. */
+        static final int NO_PREVIOUS_LINE = -2;
+
         private final ArrayList<LineEntry> lineEntries = new ArrayList<>(DEFAULT_LINE_ENTRY_COUNT);
         private final int fileId;
         private int previousLine;
 
         FileBlock(int fileId) {
             this.fileId = fileId;
-            this.previousLine = -2;
+            this.previousLine = NO_PREVIOUS_LINE;
         }
 
         void addEntry(LineEntry le) {
+            assert le.lineAndFlags != NO_PREVIOUS_LINE;
             /* Only add an entry if the line number has changed. */
             if (le.lineAndFlags != previousLine) {
                 lineEntries.add(le);
