@@ -83,12 +83,6 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     AnnotatedType[] annotatedBounds;
 
     @Substitute
-    public Type[] getBounds() {
-        Type[] result = JavaVersionUtil.JAVA_SPEC <= 8 ? boundsJDK8OrEarlier : (Type[]) boundsJDK11OrLater;
-        return result.clone();
-    }
-
-    @Substitute
     public AnnotatedType[] getAnnotatedBounds() {
         return annotatedBounds;
     }
