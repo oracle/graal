@@ -91,6 +91,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private final boolean trackLastGroup;
     private final boolean dontOverwriteLastGroup;
     private int lastResultSp = -1;
+    private int lastResultIndex = -1;
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
 
@@ -272,6 +273,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
      */
     public void pushResult() {
         lastResultSp = sp;
+        lastResultIndex = getIndex();
     }
 
     /**
@@ -286,7 +288,13 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public int[] popResult() {
-        return lastResultSp < 0 ? null : result;
+        if (lastResultSp < 0) {
+            return null;
+        }
+        // Restore the index to the locals to reflect the state of the successful match.
+        // This index will be reused when used inside a submatcher for an atomic group.
+        setIndex(lastResultIndex);
+        return result;
     }
 
     public boolean canPop() {

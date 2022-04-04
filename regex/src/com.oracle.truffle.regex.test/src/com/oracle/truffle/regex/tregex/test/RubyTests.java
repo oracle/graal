@@ -499,4 +499,14 @@ public class RubyTests extends RegexTestBase {
         // This is currently broken in CRuby (https://bugs.ruby-lang.org/issues/18631).
         test("(?<x>a)ab(?<=a(?<x>ab))\\k<x>", "", "aaba", 0, true, 0, 4, 0, 1, 1, 3);
     }
+
+    @Test
+    public void gr37962() {
+        // Minimal test case.
+        test("^(?>(aa)?)+$", "", "a", 0, false);
+        // Original test case.
+        String a1000 = new String(new char[1000]).replace('\0', 'a');
+        String a500 = new String(new char[500]).replace('\0', 'a');
+        test("^(?>(?=a)(" + a1000 + "|))++$", "", a500, 0, false);
+    }
 }
