@@ -786,6 +786,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void pin(Object receiver);
 
+        public abstract void hostExit(int exitCode);
+
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
