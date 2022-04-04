@@ -29,17 +29,20 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.core.util.json.JSONParserException;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
 
     public static final String NAME_KEY = "name";
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
+    public static final String SERIALIZATION_TYPES_KEY = "types";
 
     private final RuntimeSerializationSupport serializationSupport;
 
@@ -52,7 +55,20 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     public void parseAndRegister(Reader reader) throws IOException {
         JSONParser parser = new JSONParser(reader);
         Object json = parser.parse();
-        for (Object serializationKey : asList(json, "first level of document must be an array of serialization lists")) {
+        if (json instanceof List) {
+            parseSerializationList(asList(json, "first level of document must be an array of serialization descriptor objects"));
+        } else if (json instanceof Map) {
+            Object listObject = asMap(json, "first level of document must be a map of serialization types").get(SERIALIZATION_TYPES_KEY);
+            if (listObject != null) {
+                parseSerializationList(asList(listObject, "types must be an array of serialization descriptor objects"));
+            }
+        } else {
+            throw new JSONParserException("first level of document must either be an array of serialization lists or a map of serialization types");
+        }
+    }
+
+    private void parseSerializationList(List<Object> list) {
+        for (Object serializationKey : list) {
             parseSerializationDescriptorObject(asMap(serializationKey, "second level of document must be serialization descriptor objects"));
         }
     }
