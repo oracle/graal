@@ -45,10 +45,12 @@ import com.oracle.svm.core.util.VMError;
  * {@link JfrNativeEventWriter}s are finished before {@link SubstrateJVM#endRecording} enters the
  * safepoint.
  *
- * A JFR event writer pre-allocates a size field for an event, {@link java.lang.Byte#BYTES} byte for a small event
- * and {@link java.lang.Integer#BYTES} bytes for a large event. If an event was written as a small event, but actual
- * size exceeds pre-allocated size, a retry should be employed to write the event as a large event. See
- * {@link com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents#emitJVMInformation} for an example.
+ * A JFR event writer pre-allocates a size field for an event, {@link java.lang.Byte#BYTES} byte for
+ * a small event and {@link java.lang.Integer#BYTES} bytes for a large event. If an event was
+ * written as a small event, but actual size exceeds pre-allocated size, a retry should be employed
+ * to write the event as a large event. See
+ * {@link com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents#emitJVMInformation} for an
+ * example.
  */
 @DuplicatedInNativeCode
 public final class JfrNativeEventWriter {
