@@ -728,7 +728,7 @@ def _cinterfacetutorial(native_image, args=None):
     mkpath(build_dir)
 
     # Build the shared library from Java code
-    native_image(['--shared', '-H:Path=' + build_dir, '-H:Name=libcinterfacetutorial',
+    native_image(['--shared', '-H:Path=' + build_dir, '-H:Name=libcinterfacetutorial', '-Dcom.oracle.svm.tutorial.headerfile=' + join(c_source_dir, 'mydata.h'),
                   '-H:CLibraryPath=' + tutorial_proj.dir, '-cp', tutorial_proj.output_dir()] + args)
 
     # Build the C executable
