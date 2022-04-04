@@ -22,30 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package org.graalvm.nativebridge;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.nativebridge.ExceptionHandler;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.Service;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSInvalidExceptionHandlerTest extends HSObject implements Service {
+    private static final int THROWABLE_SIZE_ESTIMATE = 1024;
+    private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
 
-    HSInvalidExceptionHandlerTest(JNIEnv env, JObject handle) {
-        super(env, handle);
+    @Override
+    public Throwable read(BinaryInput in) {
+        String foreignExceptionClassName = in.readUTF();
+        String foreignExceptionMessage = (String) in.readTypedValue();
+        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
+        return new MarshalledException(foreignExceptionClassName, foreignExceptionMessage, ForeignException.mergeStackTrace(foreignExceptionStack));
     }
 
-    @ExceptionHandler
-    @ExpectError("A method annotated by `ExceptionHandler` must be a non-private static boolean method with `ExceptionHandlerContext` parameter(s).%n" +
-                    "To fix this change the signature to `static boolean handleException(ExceptionHandlerContext p0)`.")
-    @SuppressWarnings("unused")
-    static boolean handleException(Throwable exception) {
-        return false;
+    @Override
+    public void write(BinaryOutput out, Throwable object) {
+        out.writeUTF(object instanceof MarshalledException ? ((MarshalledException) object).getForeignExceptionClassName() : object.getClass().getName());
+        out.writeTypedValue(object.getMessage());
+        stackTraceMarshaller.write(out, object.getStackTrace());
     }
 
+    @Override
+    public int inferSize(Throwable object) {
+        // We don't use Throwable#getStackTrace as it allocates.
+        return THROWABLE_SIZE_ESTIMATE;
+    }
 }

@@ -22,27 +22,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.hstonative;
+package org.graalvm.nativebridge;
 
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.nativebridge.ExceptionHandler;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.NativeIsolate;
-import org.graalvm.nativebridge.NativeObject;
-import org.graalvm.nativebridge.processor.test.Service;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
+final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
 
-@GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
-abstract class NativeExceptionHandlerTest extends NativeObject implements Service {
+    private static final byte NULL = 0;
+    private static final byte NON_NULL = 1;
 
-    NativeExceptionHandlerTest(NativeIsolate isolate, long handle) {
-        super(isolate, handle);
+    private final BinaryMarshaller<T> delegate;
+
+    NullableBinaryMarshaller(BinaryMarshaller<T> delegate) {
+        this.delegate = delegate;
     }
 
-    @ExceptionHandler
-    @SuppressWarnings("unused")
-    static boolean handleException(JNIEnv jniEnv, Throwable exception) {
-        return false;
+    @Override
+    public T read(BinaryInput input) {
+        byte nullStatus = input.readByte();
+        switch (nullStatus) {
+            case NULL:
+                return null;
+            case NON_NULL:
+                return delegate.read(input);
+            default:
+                throw new IllegalArgumentException("Unexpected input " + nullStatus);
+        }
+    }
+
+    @Override
+    public void write(BinaryOutput output, T object) {
+        if (object != null) {
+            output.writeByte(NON_NULL);
+            delegate.write(output, object);
+        } else {
+            output.writeByte(NULL);
+        }
+    }
+
+    @Override
+    public int inferSize(T object) {
+        if (object != null) {
+            return 1 + delegate.inferSize(object);
+        } else {
+            return 1;
+        }
     }
 }

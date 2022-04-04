@@ -65,13 +65,12 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
     @Override
     DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType,
                     Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
-                    ExecutableElement customDispatchAccessor, ExecutableElement customReceiverAccessor, ExecutableElement exceptionHandler,
-                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToIgnore,
-                    Set<DeclaredType> annotationsForMarshallerLookup) {
+                    ExecutableElement customDispatchAccessor, ExecutableElement customReceiverAccessor,
+                    VariableElement endPointHandle, DeclaredType jniConfig, MarshallerData throwableMarshaller,
+                    Set<DeclaredType> annotationsToIgnore, Set<DeclaredType> annotationsForMarshallerLookup) {
         DeclaredType centryPointPredicate = (DeclaredType) getAnnotationValue(annotation, "include");
-        return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, customDispatchAccessor, customReceiverAccessor, exceptionHandler,
-                        endPointHandle,
-                        centryPointPredicate, jniConfig, annotationsToIgnore, annotationsForMarshallerLookup);
+        return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, customDispatchAccessor, customReceiverAccessor,
+                        endPointHandle, centryPointPredicate, jniConfig, throwableMarshaller, annotationsToIgnore, annotationsForMarshallerLookup);
     }
 
     static HotSpotToNativeBridgeParser create(NativeBridgeProcessor processor) {
@@ -90,11 +89,11 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
         HotSpotToNativeDefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
                         List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor,
-                        ExecutableElement receiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle,
-                        DeclaredType centryPointPredicate, DeclaredType jniConfig, Set<DeclaredType> ignoreAnnotations,
-                        Set<DeclaredType> marshallerAnnotations) {
+                        ExecutableElement receiverAccessor, VariableElement endPointHandle, DeclaredType centryPointPredicate,
+                        DeclaredType jniConfig, MarshallerData throwableMarshaller,
+                        Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
             super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor,
-                            exceptionHandler, endPointHandle, jniConfig, ignoreAnnotations, marshallerAnnotations);
+                            endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
             this.centryPointPredicate = centryPointPredicate;
         }
     }

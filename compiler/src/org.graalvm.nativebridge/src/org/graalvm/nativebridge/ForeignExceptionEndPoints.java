@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,31 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/**
- * Marks a method as an exception handler. The method is used by the annotation processor to handle
- * exceptions passing over the isolate boundary. The method returns {@code true} if it has handled
- * the given exception or {@code false} to perform the default exception handling.
- */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
-public @interface ExceptionHandler {
+final class ForeignExceptionEndPoints {
+
+    private ForeignExceptionEndPoints() {
+    }
+
+    /**
+     * Called by JNI to create a {@link ForeignException} used to throw native exception into Java
+     * code.
+     *
+     * @param rawValue marshalled original exception
+     * @return a {@link ForeignException} instance
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static Throwable createForeignException(byte[] rawValue) {
+        return ForeignException.create(rawValue, ForeignException.HOST_TO_GUEST);
+    }
+
+    /**
+     * Called by JNI to return a marshalled exception transferred by the {@code exception}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static byte[] toByteArray(ForeignException exception) {
+        return exception.toByteArray();
+    }
 }
