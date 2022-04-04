@@ -734,8 +734,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     @ExplodeLoop
-    public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        BytecodeOSRNode.super.restoreParentFrame(osrFrame, parentFrame, target);
+    public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+        BytecodeOSRNode.super.restoreParentFrame(osrFrame, parentFrame);
         setBCI(parentFrame, getBci(osrFrame));
     }
 

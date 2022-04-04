@@ -592,7 +592,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeCast(this.indexedPrimitiveLocals, long[].class, true, true, true);
     }
 
-    private byte[] getIndexedTags() {
+    public byte[] getIndexedTags() {
         return unsafeCast(indexedTags, byte[].class, true, true, true);
     }
 

@@ -1072,8 +1072,20 @@ public abstract class Accessor {
          * @param osrNode the node being on-stack replaced.
          * @param source the frame to transfer state from
          * @param target the frame to transfer state into
+         * @param bytecodeTarget the target location OSR executes from (e.g., bytecode index).
          */
-        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target);
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget);
+
+        /**
+         * Restores state from the {@code source} frame into the {@code target} frame. This method
+         * should only be used inside OSR code. The frames must have the same layout as the frame
+         * passed when executing the {@code osrNode}.
+         * 
+         * @param osrNode the node being on-stack replaced.
+         * @param source the frame to transfer state from
+         * @param target the frame to transfer state into
+         */
+        public abstract void restoreOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target);
 
         /**
          * Returns the compiler options specified available from the runtime.
