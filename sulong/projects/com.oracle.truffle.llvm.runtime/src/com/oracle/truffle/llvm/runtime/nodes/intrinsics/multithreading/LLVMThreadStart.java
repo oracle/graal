@@ -135,7 +135,7 @@ public final class LLVMThreadStart {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack(callNode));
+            stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack(this));
             try {
 
                 // copy arguments to frame

@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.memory;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
@@ -59,7 +60,7 @@ public final class LLVMThreadingStack {
         return s;
     }
 
-    public LLVMStack getStack(LLVMNode node) {
+    public LLVMStack getStack(Node node) {
         LLVMStack s = getCurrentStack(node);
         if (s == null) {
             s = createNewStack();
@@ -67,7 +68,7 @@ public final class LLVMThreadingStack {
         return s;
     }
 
-    public LLVMStack getStackProfiled(Thread thread, ConditionProfile profile, LLVMNode node) {
+    public LLVMStack getStackProfiled(Thread thread, ConditionProfile profile, Node node) {
         if (profile.profile(thread == mainThread)) {
             assert mainThreadStack != null;
             return mainThreadStack;
@@ -79,7 +80,7 @@ public final class LLVMThreadingStack {
         return s;
     }
 
-    private static LLVMStack getCurrentStack(LLVMNode node) {
+    private static LLVMStack getCurrentStack(Node node) {
         return LLVMLanguage.get(node).contextThreadLocal.get().getLLVMStack();
     }
 
