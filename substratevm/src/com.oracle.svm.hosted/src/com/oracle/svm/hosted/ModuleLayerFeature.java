@@ -378,7 +378,7 @@ public final class ModuleLayerFeature implements Feature {
             imageClassLoader = cl;
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
-                ModuleSupport.openModuleByClass(Module.class, ModuleLayerFeature.class);
+                ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ModuleLayerFeature.class, Module.class);
                 Field[] moduleClassFields = (Field[]) classGetDeclaredMethods0Method.invoke(Module.class, false);
 
                 Field everyoneModuleField = findFieldByName(moduleClassFields, "EVERYONE_MODULE");

@@ -321,7 +321,7 @@ public class NativeImageClassLoaderSupport {
     private static void implAddReadsAllUnnamed(Module module) {
         try {
             Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-            ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupport.class);
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
             implAddReadsAllUnnamed.setAccessible(true);
             implAddReadsAllUnnamed.invoke(module);
         } catch (ReflectiveOperationException | NoSuchElementException e) {

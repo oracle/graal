@@ -222,7 +222,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
-            ModuleSupport.exportAndOpenPackageToClass(module.getName(), packageName, false, ClassLoaderSupportImpl.class);
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ClassLoaderSupportImpl.class, false, module.getName(), packageName);
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
         return resourceBundles;

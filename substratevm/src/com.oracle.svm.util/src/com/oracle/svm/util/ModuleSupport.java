@@ -25,6 +25,7 @@
 package com.oracle.svm.util;
 
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -38,9 +39,78 @@ public final class ModuleSupport extends ModuleSupportBase {
     private ModuleSupport() {
     }
 
-    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
-        Module declaringModule = declaringClass.getModule();
-        String packageName = declaringClass.getPackageName();
+    public enum Access {
+        OPEN {
+            @Override
+            void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+                if (accessingModule != null) {
+                    if (declaringModule.isOpen(packageName, accessingModule)) {
+                        return;
+                    }
+                    Modules.addOpens(declaringModule, packageName, accessingModule);
+                } else {
+                    if (declaringModule.isOpen(packageName)) {
+                        return;
+                    }
+                    Modules.addOpensToAllUnnamed(declaringModule, packageName);
+                }
+            }
+        },
+        EXPORT {
+            @Override
+            void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+                if (accessingModule != null) {
+                    if (declaringModule.isExported(packageName, accessingModule)) {
+                        return;
+                    }
+                    Modules.addExports(declaringModule, packageName, accessingModule);
+                } else {
+                    if (declaringModule.isExported(packageName)) {
+                        return;
+                    }
+                    Modules.addExportsToAllUnnamed(declaringModule, packageName);
+                }
+            }
+        };
+
+        abstract void giveAccess(Module accessingModule, Module declaringModule, String packageName);
+    }
+
+    public static void accessModuleByClass(Access access, Class<?> accessingClass, Class<?> declaringClass) {
+        accessModuleByClass(access, accessingClass, declaringClass.getModule(), declaringClass.getPackageName());
+    }
+
+    /**
+     * Open or export packages {@code packageNames} in the module named {@code moduleName} to module
+     * of given {@code accessingClass}. If {@code accessingClass} is null packages are opened or
+     * exported to ALL-UNNAMED. If no packages are given, all packages of the module are opened or
+     * exported.
+     */
+    public static void accessPackagesToClass(Access access, Class<?> accessingClass, boolean optional, String moduleName, String... packageNames) {
+        Module declaringModule = getModule(moduleName, optional);
+        if (declaringModule == null) {
+            return;
+        }
+        Objects.requireNonNull(packageNames);
+        Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : declaringModule.getPackages();
+        for (String packageName : packages) {
+            accessModuleByClass(access, accessingClass, declaringModule, packageName);
+        }
+    }
+
+    private static Module getModule(String moduleName, boolean optional) {
+        Objects.requireNonNull(moduleName);
+        Optional<Module> declaringModuleOpt = ModuleLayer.boot().findModule(moduleName);
+        if (declaringModuleOpt.isEmpty()) {
+            if (optional) {
+                return null;
+            }
+            throw new NoSuchElementException(moduleName);
+        }
+        return declaringModuleOpt.get();
+    }
+
+    private static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
         Module namedAccessingModule = null;
         if (accessingClass != null) {
             Module accessingModule = accessingClass.getModule();
@@ -48,76 +118,6 @@ public final class ModuleSupport extends ModuleSupportBase {
                 namedAccessingModule = accessingModule;
             }
         }
-        if (namedAccessingModule != null ? declaringModule.isOpen(packageName, namedAccessingModule) : declaringModule.isOpen(packageName)) {
-            return;
-        }
-        if (namedAccessingModule != null) {
-            Modules.addOpens(declaringModule, packageName, namedAccessingModule);
-        } else {
-            Modules.addOpensToAllUnnamed(declaringModule, packageName);
-        }
-    }
-
-    /**
-     * Exports and opens a single package {@code packageName} in the module named {@code moduleName}
-     * to all unnamed modules.
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenPackageToClass(String moduleName, String packageName, boolean optional, Class<?> accessingClass) {
-        Optional<Module> value = ModuleLayer.boot().findModule(moduleName);
-        if (value.isEmpty()) {
-            if (!optional) {
-                throw new NoSuchElementException(moduleName);
-            }
-            return;
-        }
-        Module declaringModule = value.get();
-        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
-        if (accessingModule != null && accessingModule.isNamed()) {
-            if (!declaringModule.isOpen(packageName, accessingModule)) {
-                Modules.addOpens(declaringModule, packageName, accessingModule);
-            }
-        } else {
-            Modules.addOpensToAllUnnamed(declaringModule, packageName);
-        }
-
-    }
-
-    /**
-     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenAllPackagesToUnnamed(String name, boolean optional) {
-        Optional<Module> value = ModuleLayer.boot().findModule(name);
-        if (value.isEmpty()) {
-            if (!optional) {
-                throw new NoSuchElementException("No module in boot layer named " + name + ". Available modules: " + ModuleLayer.boot());
-            }
-            return;
-        }
-        Module module = value.get();
-        Set<String> packages = module.getPackages();
-        for (String pkg : packages) {
-            Modules.addExportsToAllUnnamed(module, pkg);
-            Modules.addOpensToAllUnnamed(module, pkg);
-        }
-    }
-
-    /**
-     * Exports and opens a single package {@code pkg} in the module named {@code name} to all
-     * unnamed modules.
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
-        Optional<Module> value = ModuleLayer.boot().findModule(name);
-        if (value.isEmpty()) {
-            if (!optional) {
-                throw new NoSuchElementException(name);
-            }
-            return;
-        }
-        Module module = value.get();
-        Modules.addExportsToAllUnnamed(module, pkg);
-        Modules.addOpensToAllUnnamed(module, pkg);
+        access.giveAccess(namedAccessingModule, declaringModule, packageName);
     }
 }

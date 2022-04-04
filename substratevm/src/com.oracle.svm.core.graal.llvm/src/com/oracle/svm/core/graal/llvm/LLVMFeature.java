@@ -90,7 +90,7 @@ public class LLVMFeature implements Feature, InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (ModuleSupport.modulePathBuild) {
-            ModuleSupport.openModuleByClass(LLVMIntrinsicNode.class, NodeClass.class);
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NodeClass.class, LLVMIntrinsicNode.class);
         }
 
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
