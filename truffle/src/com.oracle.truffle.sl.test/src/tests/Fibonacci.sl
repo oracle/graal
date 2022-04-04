@@ -19,7 +19,6 @@ function fib(num) {
 
 function main() {  
   i = 1;
-  j = 1;
   while (i <= 10) {
     println(i + ": " + fib(i));
     i = i + 1;

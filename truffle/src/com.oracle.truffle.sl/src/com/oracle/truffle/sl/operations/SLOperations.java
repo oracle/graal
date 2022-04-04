@@ -100,13 +100,14 @@ public class SLOperations {
     @TypeSystemReference(SLTypes.class)
     public static class SLFunctionLiteralOperation {
         @Specialization
-        public static Object execute(
-                        @SuppressWarnings("unused") TruffleString functionName,
-                        @Cached("lookupFunction(functionName, this)") Object result) {
+        public static SLFunction perform(
+                        TruffleString functionName,
+                        @Cached("lookupFunction(functionName, this)") SLFunction result) {
+            assert result.getName().equals(functionName) : "functionName should be a compile-time constant";
             return result;
         }
 
-        static Object lookupFunction(TruffleString functionName, Node node) {
+        static SLFunction lookupFunction(TruffleString functionName, Node node) {
             return SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
         }
     }

@@ -17,8 +17,8 @@ function loop(n) {
 
 function main() {
   i = 0;
-  while (i < 100000) {
-    loop(100);
+  while (i < 20) {
+    loop(1000);
     i = i + 1;
   }
   println(loop(1000));  

@@ -114,7 +114,7 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
         }
     }
 
-    public final Node createFakeLocationNode(final int bci) {
+    public final Node createLocationNode(final int bci) {
         return new Node() {
             @Override
             public SourceSection getSourceSection() {

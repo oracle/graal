@@ -55,9 +55,6 @@ public class OperationsBytecodeCodeGenerator {
     private final static Object MARKER_CHILD = new Object();
     private final static Object MARKER_CONST = new Object();
 
-    private static final String DSL_METHOD_PREFIX = "execute_";
-    private static final String DSL_CLASS_PREFIX = "Execute_";
-
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
 
@@ -145,6 +142,9 @@ public class OperationsBytecodeCodeGenerator {
 
                 CustomInstruction cinstr = (CustomInstruction) instr;
 
+                final Set<String> methodNames = new HashSet<>();
+                final Set<String> innerTypeNames = new HashSet<>();
+
                 final SingleOperationData soData = cinstr.getData();
                 final List<Object> additionalData = new ArrayList<>();
                 final List<DataKind> additionalDataKinds = new ArrayList<>();
@@ -155,12 +155,16 @@ public class OperationsBytecodeCodeGenerator {
                 NodeGeneratorPlugs plugs = new NodeGeneratorPlugs() {
                     @Override
                     public String transformNodeMethodName(String name) {
-                        return DSL_METHOD_PREFIX + name + "_" + soData.getName();
+                        String result = soData.getName() + "_" + name + "_";
+                        methodNames.add(result);
+                        return result;
                     }
 
                     @Override
                     public String transformNodeInnerTypeName(String name) {
-                        return DSL_CLASS_PREFIX + name + "_" + soData.getName();
+                        String result = soData.getName() + "_" + name;
+                        innerTypeNames.add(result);
+                        return result;
                     }
 
                     @Override
@@ -272,7 +276,7 @@ public class OperationsBytecodeCodeGenerator {
                 CodeExecutableElement uncExec = null;
                 List<CodeExecutableElement> execs = new ArrayList<>();
                 for (ExecutableElement ex : ElementFilter.methodsIn(result.getEnclosedElements())) {
-                    if (!ex.getSimpleName().toString().startsWith(DSL_METHOD_PREFIX)) {
+                    if (!methodNames.contains(ex.getSimpleName().toString())) {
                         continue;
                     }
 
@@ -283,7 +287,7 @@ public class OperationsBytecodeCodeGenerator {
                 }
 
                 for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
-                    if (!te.getSimpleName().toString().startsWith(DSL_CLASS_PREFIX)) {
+                    if (!innerTypeNames.contains(te.getSimpleName().toString())) {
                         continue;
                     }
 

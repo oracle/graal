@@ -8,7 +8,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
 public class ConditionalBranchInstruction extends Instruction {
     public ConditionalBranchInstruction(int id) {
-        super("brfalse", id, ResultType.BRANCH, InputType.BRANCH_TARGET, InputType.STACK_VALUE, InputType.BRANCH_PROFILE);
+        super("branch.false", id, ResultType.BRANCH, InputType.BRANCH_TARGET, InputType.STACK_VALUE, InputType.BRANCH_PROFILE);
     }
 
     @Override

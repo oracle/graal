@@ -15,7 +15,7 @@ function g() {return d() + e() + f();}
 function main() {
     i = 0;
     result = 0;
-    while (i < 1000000) {
+    while (i < 10000) {
         result = result + g();
         i = i + 1;
     }
