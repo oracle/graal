@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
@@ -47,6 +48,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 final class GraphManager {
 
@@ -73,6 +75,9 @@ final class GraphManager {
             int graphSize = partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
             StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
             postPartialEvaluationSuite.apply(context.graph, context);
+            if (context.options.get(PolyglotCompilerOptions.InliningUsePreciseSize)) {
+                graphSize = NodeCostUtil.computeGraphSize(context.graph);
+            }
             entry = new Entry(context.graph, plugin, graphAfterPE, graphSize);
             irCache.put(truffleAST, entry);
         }
@@ -96,11 +101,14 @@ final class GraphManager {
         return new PEAgnosticInlineInvokePlugin(rootContext.task.inliningData(), partialEvaluator);
     }
 
-    Entry peRoot() {
+    Entry peRoot(TruffleTierContext context) {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         int graphSize = partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
         postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
+        if (context.options.get(PolyglotCompilerOptions.InliningUsePreciseSize)) {
+            graphSize = NodeCostUtil.computeGraphSize(context.graph);
+        }
         return new Entry(rootContext.graph, plugin, graphAfterPE, graphSize);
     }
 
