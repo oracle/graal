@@ -183,9 +183,9 @@ To make this process easy, use the `@<prop-values-file>` syntax to generate a pa
 Other handy option is `--link-at-build-time-paths` which specifes all given class types or module-path entries to be fully defined at build time. 
 This option requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
 
-```shell
---link-at-build-time-paths <class search path of directories and zip/jar files>
-```
+    ```shell
+    --link-at-build-time-paths <class search path of directories and zip/jar files>
+    ```
 
 The given entries are searched and all classes inside are registered as `--link-at-build-time` classes.
 This option is only allowed to be used on command line.
