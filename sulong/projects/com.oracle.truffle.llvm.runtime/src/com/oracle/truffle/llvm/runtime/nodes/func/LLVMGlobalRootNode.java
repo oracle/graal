@@ -80,7 +80,7 @@ public class LLVMGlobalRootNode extends RootNode {
     @SuppressWarnings("try")
     @TruffleBoundary
     private Object executeWithoutFrame() {
-        LLVMStack stack = getContext().getThreadingStack().getStack();
+        LLVMStack stack = getContext().getThreadingStack().getStack(this.getContext().getLanguage());
         try {
             Object appPath = new LLVMArgumentBuffer(applicationPath);
             LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);

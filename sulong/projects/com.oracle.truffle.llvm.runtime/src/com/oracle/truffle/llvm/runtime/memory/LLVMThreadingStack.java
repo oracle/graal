@@ -35,6 +35,7 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 /**
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
@@ -50,28 +51,40 @@ public final class LLVMThreadingStack {
         this.stackSize = stackSize;
     }
 
-    public LLVMStack getStack() {
-        LLVMStack s = getCurrentStack();
+    public LLVMStack getStack(LLVMLanguage language) {
+        LLVMStack s = getCurrentStack(language);
         if (s == null) {
             s = createNewStack();
         }
         return s;
     }
 
-    public LLVMStack getStackProfiled(Thread thread, ConditionProfile profile) {
+    public LLVMStack getStack(LLVMNode node) {
+        LLVMStack s = getCurrentStack(node);
+        if (s == null) {
+            s = createNewStack();
+        }
+        return s;
+    }
+
+    public LLVMStack getStackProfiled(Thread thread, ConditionProfile profile, LLVMNode node) {
         if (profile.profile(thread == mainThread)) {
             assert mainThreadStack != null;
             return mainThreadStack;
         }
-        LLVMStack s = getCurrentStack();
+        LLVMStack s = getCurrentStack(node);
         if (s == null) {
             s = createNewStack();
         }
         return s;
     }
 
-    private static LLVMStack getCurrentStack() {
-        return LLVMLanguage.get(null).contextThreadLocal.get().getLLVMStack();
+    private static LLVMStack getCurrentStack(LLVMNode node) {
+        return LLVMLanguage.get(node).contextThreadLocal.get().getLLVMStack();
+    }
+
+    private static LLVMStack getCurrentStack(LLVMLanguage language) {
+        return language.contextThreadLocal.get().getLLVMStack();
     }
 
     @TruffleBoundary
@@ -104,13 +117,11 @@ public final class LLVMThreadingStack {
 
     private static void free(LLVMMemory memory, Thread thread) {
         ContextThreadLocal<LLVMThreadLocalValue> context = LLVMLanguage.get(null).contextThreadLocal;
-        if (context != null) {
-            LLVMThreadLocalValue value = context.get(thread);
-            if (value != null) {
-                LLVMStack s = value.removeLLVMStack();
-                if (s != null) {
-                    s.free(memory);
-                }
+        LLVMThreadLocalValue value = context.get(thread);
+        if (value != null) {
+            LLVMStack s = value.removeLLVMStack();
+            if (s != null) {
+                s.free(memory);
             }
         }
     }

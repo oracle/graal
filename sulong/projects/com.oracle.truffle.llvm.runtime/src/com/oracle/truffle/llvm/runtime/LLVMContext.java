@@ -557,7 +557,7 @@ public final class LLVMContext {
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
                     RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-                    LLVMStack stack = threadingStack.getStack();
+                    LLVMStack stack = threadingStack.getStack(language);
                     disposeContext.call(stack);
                 } else {
                     throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " is not a function or enclosed inside a LLVMManagedPointer");
