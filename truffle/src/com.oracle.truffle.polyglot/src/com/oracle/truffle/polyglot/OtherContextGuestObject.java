@@ -137,6 +137,7 @@ final class OtherContextGuestObject implements TruffleObject {
     static void leaveContext(PolyglotEngineImpl engine, Object[] prev, PolyglotContextImpl context, PolyglotContextImpl enclosingContext) {
         try {
             engine.leave(prev, context);
+            runOnCancelledOrOnExited(enclosingContext, context);
         } catch (Throwable e) {
             throw toHostOrInnerContextBoundaryException(enclosingContext, e, context);
         }
@@ -208,15 +209,28 @@ final class OtherContextGuestObject implements TruffleObject {
     }
 
     @TruffleBoundary
+    private static void runOnCancelledOrOnExited(PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
+        if (delegateContext.parent != null) {
+            PolyglotContextImpl.State receiverContextState = receiverContext.state;
+            PolyglotContextImpl.State delegateContextState = delegateContext.state;
+            if ((delegateContextState.isCancelling() || delegateContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) && !receiverContextState.isCancelling() &&
+                            receiverContextState != PolyglotContextImpl.State.CLOSED_CANCELLED) {
+                delegateContext.runOnCancelled();
+                throw new IllegalStateException("Context cancel exception of inner context leaks outside to a non-cancelled context!");
+            } else if ((delegateContextState.isExiting() || delegateContextState == PolyglotContextImpl.State.CLOSED_EXITED) && !receiverContextState.isExiting() &&
+                            receiverContextState != PolyglotContextImpl.State.CLOSED_EXITED) {
+                delegateContext.runOnExited(delegateContext.exitCode);
+                throw new IllegalStateException("Context exit exception of inner context leaks outside to a non-exited context!");
+            }
+        }
+    }
+
+    @TruffleBoundary
     private static RuntimeException toHostOrInnerContextBoundaryException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl delegateContext) {
         try {
             if (e instanceof PolyglotEngineImpl.CancelExecution) {
-                PolyglotContextImpl.State enclosingState = receiverContext != null ? receiverContext.state : PolyglotContextImpl.State.DEFAULT;
-                if (!enclosingState.isCancelling() && enclosingState != PolyglotContextImpl.State.CLOSED_CANCELLED) {
-                    delegateContext.runOnCancelled();
-                    if (delegateContext.parent != null) {
-                        throw new IllegalStateException("Context cancel exception of inner context leaks outside to a non-cancelled context!");
-                    }
+                if (!delegateContext.isActive(Thread.currentThread())) {
+                    runOnCancelledOrOnExited(receiverContext, delegateContext);
                 }
                 if (delegateContext.parent != null) {
                     throw (PolyglotEngineImpl.CancelExecution) e;
@@ -224,12 +238,8 @@ final class OtherContextGuestObject implements TruffleObject {
                     throw PolyglotImpl.guestToHostException(delegateContext.getHostContext(), e, false);
                 }
             } else if (e instanceof PolyglotContextImpl.ExitException) {
-                PolyglotContextImpl.State enclosingState = receiverContext != null ? receiverContext.state : PolyglotContextImpl.State.DEFAULT;
-                if (!enclosingState.isExiting() && enclosingState != PolyglotContextImpl.State.CLOSED_EXITED) {
-                    delegateContext.runOnExited(((PolyglotContextImpl.ExitException) e).getExitCode());
-                    if (delegateContext.parent != null) {
-                        throw new IllegalStateException("Context exit exception of inner context leaks outside to a non-exited context!");
-                    }
+                if (!delegateContext.isActive(Thread.currentThread())) {
+                    runOnCancelledOrOnExited(receiverContext, delegateContext);
                 }
                 if (delegateContext.parent != null) {
                     throw (PolyglotContextImpl.ExitException) e;
