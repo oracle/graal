@@ -1067,6 +1067,7 @@ public final class LLVMContext {
             return allRunningThreads.toArray(Thread[]::new);
         }
 
+        @TruffleBoundary
         public void addThreadLocalGlobalInitializer(AggregateTLGlobalInPlaceNode inPlaceNode) {
             assert !threadLocalGlobalInitializer.contains(inPlaceNode);
             threadLocalGlobalInitializer.add(inPlaceNode);
