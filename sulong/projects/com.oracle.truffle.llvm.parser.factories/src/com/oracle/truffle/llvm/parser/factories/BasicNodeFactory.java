@@ -119,12 +119,13 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSmaxOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMUnsignedVectorMinMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgCountNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
@@ -1455,16 +1456,15 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.memmove.p0i8.p0i8.i64":
                     return createMemmoveIntrinsic(args);
                 case "llvm.pow.f32":
-                    return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.pow.f64":
-                    return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.pow.f80":
-                    return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.powi.f32":
-                    return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.powi.f64":
-                    return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.powi.f80":
+                case "llvm.powi.f32.i32":
+                case "llvm.powi.f64.i16":
+                case "llvm.powi.f64.i32":
+                case "llvm.powi.f80.i32":
                     return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.round.f32":
                 case "llvm.round.f64":
@@ -1497,6 +1497,15 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMFunnelShiftNodeFactory.Fshr_I32NodeGen.create(args[1], args[2], args[3]);
                 case "llvm.fshr.i64":
                     return LLVMFunnelShiftNodeFactory.Fshr_I64NodeGen.create(args[1], args[2], args[3]);
+                case "llvm.fmuladd.f32":
+                    LLVMExpressionNode mulNodeFloat = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.FLOAT, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.FLOAT, mulNodeFloat, args[3]);
+                case "llvm.fmuladd.f64":
+                    LLVMExpressionNode mulNodeDouble = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.DOUBLE, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.DOUBLE, mulNodeDouble, args[3]);
+                case "llvm.fmuladd.f80":
+                    LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.X86_FP80, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.X86_FP80, mulNodeF80, args[3]);
                 case "llvm.minnum.f32":
                 case "llvm.minnum.f64":
                     return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2]);
@@ -1706,19 +1715,53 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMIsConstantNodeGen.create(args[1]);
         }
 
-        if ("llvm.umax".equals(intrinsicName) && typeSuffix != null && typeSuffix.length != null) {
+        if ("llvm.umax".equals(intrinsicName) && typeSuffix != null) {
             try {
-                int vectorLength = Integer.parseInt(typeSuffix.length);
-                return LLVMUnsignedVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMUmaxOperator.INSTANCE);
+                if (typeSuffix.length != null) {
+                    int vectorLength = Integer.parseInt(typeSuffix.length);
+                    return LLVMCMathsIntrinsicsFactory.LLVMVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMUmaxOperator.INSTANCE);
+                } else {
+                    return LLVMCMathsIntrinsicsFactory.LLVMScalarMinMaxNodeGen.create(args[1], args[2], LLVMUmaxOperator.INSTANCE);
+                }
             } catch (NumberFormatException e) {
                 // fall through
             }
         }
 
-        if ("llvm.umin".equals(intrinsicName) && typeSuffix != null && typeSuffix.length != null) {
+        if ("llvm.umin".equals(intrinsicName) && typeSuffix != null) {
             try {
-                int vectorLength = Integer.parseInt(typeSuffix.length);
-                return LLVMUnsignedVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMUminOperator.INSTANCE);
+                if (typeSuffix.length != null) {
+                    int vectorLength = Integer.parseInt(typeSuffix.length);
+                    return LLVMCMathsIntrinsicsFactory.LLVMVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMUminOperator.INSTANCE);
+                } else {
+                    return LLVMCMathsIntrinsicsFactory.LLVMScalarMinMaxNodeGen.create(args[1], args[2], LLVMUminOperator.INSTANCE);
+                }
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+
+        if ("llvm.smax".equals(intrinsicName) && typeSuffix != null) {
+            try {
+                if (typeSuffix.length != null) {
+                    int vectorLength = Integer.parseInt(typeSuffix.length);
+                    return LLVMCMathsIntrinsicsFactory.LLVMVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMSmaxOperator.INSTANCE);
+                } else {
+                    return LLVMCMathsIntrinsicsFactory.LLVMScalarMinMaxNodeGen.create(args[1], args[2], LLVMSmaxOperator.INSTANCE);
+                }
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+
+        if ("llvm.smin".equals(intrinsicName) && typeSuffix != null) {
+            try {
+                if (typeSuffix.length != null) {
+                    int vectorLength = Integer.parseInt(typeSuffix.length);
+                    return LLVMCMathsIntrinsicsFactory.LLVMVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMSminOperator.INSTANCE);
+                } else {
+                    return LLVMCMathsIntrinsicsFactory.LLVMScalarMinMaxNodeGen.create(args[1], args[2], LLVMSminOperator.INSTANCE);
+                }
             } catch (NumberFormatException e) {
                 // fall through
             }

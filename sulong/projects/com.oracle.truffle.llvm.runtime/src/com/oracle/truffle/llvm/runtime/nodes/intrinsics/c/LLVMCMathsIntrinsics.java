@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -809,7 +809,7 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    abstract static class LLVMUMinMaxOperator {
+    abstract static class LLVMMinMaxOperator {
         protected abstract boolean compare(boolean a, boolean b);
 
         protected abstract int compare(int a, int b);
@@ -821,7 +821,7 @@ public abstract class LLVMCMathsIntrinsics {
         protected abstract double compare(double a, double b);
     }
 
-    public static final class LLVMUmaxOperator extends LLVMUMinMaxOperator {
+    public static final class LLVMUmaxOperator extends LLVMMinMaxOperator {
         public static final LLVMUmaxOperator INSTANCE = new LLVMUmaxOperator();
 
         @Override
@@ -850,7 +850,7 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    public static final class LLVMUminOperator extends LLVMUMinMaxOperator {
+    public static final class LLVMUminOperator extends LLVMMinMaxOperator {
         public static final LLVMUminOperator INSTANCE = new LLVMUminOperator();
 
         @Override
@@ -879,21 +879,126 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    @NodeChild(type = LLVMExpressionNode.class)
-    @NodeField(name = "vectorLength", type = int.class)
-    @NodeField(name = "operator", type = LLVMUMinMaxOperator.class)
-    public abstract static class LLVMUnsignedVectorMinMaxNode extends LLVMBuiltin {
-        protected abstract int getVectorLength();
+    public static final class LLVMSmaxOperator extends LLVMMinMaxOperator {
+        public static final LLVMSmaxOperator INSTANCE = new LLVMSmaxOperator();
 
-        protected abstract LLVMUMinMaxOperator getOperator();
+        @Override
+        protected boolean compare(boolean a, boolean b) {
+            return a || b;
+        }
 
-        private byte compare(byte a, byte b) {
+        @Override
+        protected int compare(int a, int b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        protected long compare(long a, long b) {
+            return Math.max(a, b) >= 0 ? a : b;
+        }
+
+        @Override
+        protected float compare(float a, float b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        protected double compare(double a, double b) {
+            return Math.max(a, b);
+        }
+    }
+
+    public static final class LLVMSminOperator extends LLVMMinMaxOperator {
+        public static final LLVMSminOperator INSTANCE = new LLVMSminOperator();
+
+        @Override
+        protected boolean compare(boolean a, boolean b) {
+            return a && b;
+        }
+
+        @Override
+        protected int compare(int a, int b) {
+            return Math.min(a, b) <= 0 ? a : b;
+        }
+
+        @Override
+        protected long compare(long a, long b) {
+            return Math.min(a, b) <= 0 ? a : b;
+        }
+
+        @Override
+        protected float compare(float a, float b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        protected double compare(double a, double b) {
+            return Math.min(a, b);
+        }
+    }
+
+    public abstract static class LLVMAbstractMinMaxNode extends LLVMBuiltin {
+        protected abstract LLVMMinMaxOperator getOperator();
+
+        protected byte compare(byte a, byte b) {
             return (byte) getOperator().compare(a, b);
         }
 
-        private short compare(short a, short b) {
+        protected short compare(short a, short b) {
             return (short) getOperator().compare(a, b);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "operator", type = LLVMMinMaxOperator.class)
+    public abstract static class LLVMScalarMinMaxNode extends LLVMAbstractMinMaxNode {
+        @Specialization
+        protected boolean doI1Scalar(boolean a, boolean b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected byte doI8Scalar(byte a, byte b) {
+            return compare(a, b);
+        }
+
+        @Specialization
+        protected short doI16Vector(short a, short b) {
+            return compare(a, b);
+        }
+
+        @Specialization
+        protected int doI32Vector(int a, int b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected long doI64Vector(long a, long b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected float doFloatVector(float a, float b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected double doDoubleVector(double a, double b) {
+            return getOperator().compare(a, b);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    @NodeField(name = "operator", type = LLVMMinMaxOperator.class)
+    public abstract static class LLVMVectorMinMaxNode extends LLVMAbstractMinMaxNode {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        protected boolean doI1Scalar(boolean a, boolean b) {
+            return getOperator().compare(a, b);
         }
 
         @Specialization
@@ -906,6 +1011,11 @@ public abstract class LLVMCMathsIntrinsics {
                 result[i] = getOperator().compare(a.getValue(i), b.getValue(i));
             }
             return LLVMI1Vector.create(result);
+        }
+
+        @Specialization
+        protected byte doI8Scalar(byte a, byte b) {
+            return compare(a, b);
         }
 
         @Specialization
@@ -923,6 +1033,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
+        protected short doI16Vector(short a, short b) {
+            return compare(a, b);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI16Vector doI16Vector(LLVMI16Vector a, LLVMI16Vector b) {
             assert a.getLength() == getVectorLength();
@@ -934,6 +1049,11 @@ public abstract class LLVMCMathsIntrinsics {
                 result[i] = compare(aValue, bValue);
             }
             return LLVMI16Vector.create(result);
+        }
+
+        @Specialization
+        protected int doI32Vector(int a, int b) {
+            return getOperator().compare(a, b);
         }
 
         @Specialization
@@ -951,6 +1071,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
+        protected long doI64Vector(long a, long b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI64Vector doI64Vector(LLVMI64Vector a, LLVMI64Vector b) {
             assert a.getLength() == getVectorLength();
@@ -965,6 +1090,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
+        protected float doFloatVector(float a, float b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMFloatVector doFloatVector(LLVMFloatVector a, LLVMFloatVector b) {
             assert a.getLength() == getVectorLength();
@@ -974,6 +1104,11 @@ public abstract class LLVMCMathsIntrinsics {
                 result[i] = getOperator().compare(a.getValue(i), b.getValue(i));
             }
             return LLVMFloatVector.create(result);
+        }
+
+        @Specialization
+        protected double doDoubleVector(double a, double b) {
+            return getOperator().compare(a, b);
         }
 
         @Specialization
