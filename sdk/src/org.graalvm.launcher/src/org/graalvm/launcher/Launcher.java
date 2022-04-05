@@ -936,11 +936,11 @@ public abstract class Launcher {
         final int terminalWidth = Math.max(getTerminalWidth(), indent.length() + 10);
         final int width = terminalWidth - indent.length();
 
-        if (s.length() <= width) {
-            return s;
+        String rest = s.strip();
+        if (rest.length() <= width) {
+            return rest;
         }
 
-        String rest = s;
         StringBuilder builder = new StringBuilder();
         while (rest.length() > width) {
             // NOTE: may return width, which is fine, we cut just before i
@@ -955,7 +955,7 @@ public abstract class Launcher {
                 builder.append(rest, 0, i);
                 builder.append(System.lineSeparator());
                 builder.append(indent);
-                rest = rest.substring(i + 1); // + 1 to skip the space
+                rest = rest.substring(i + 1).stripLeading(); // + 1 to skip the space
             } else {
                 break; // No space left in rest
             }
