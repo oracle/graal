@@ -969,15 +969,21 @@ public abstract class Launcher {
 
     int getTerminalWidth() {
         if (terminalWidth == -1) {
+            int width;
             if (System.console() != null) {
                 try (Terminal terminal = createSystemTerminal()) {
-                    terminalWidth = terminal.getWidth();
+                    width = terminal.getWidth();
                 } catch (IOException exception) {
-                    terminalWidth = FALLBACK_TERMINAL_WIDTH;
+                    width = FALLBACK_TERMINAL_WIDTH;
                 }
             } else {
-                terminalWidth = FALLBACK_TERMINAL_WIDTH;
+                width = FALLBACK_TERMINAL_WIDTH;
             }
+
+            if (width <= 0) { // Dumb terminal
+                width = FALLBACK_TERMINAL_WIDTH;
+            }
+            terminalWidth = width;
         }
         return terminalWidth;
     }
