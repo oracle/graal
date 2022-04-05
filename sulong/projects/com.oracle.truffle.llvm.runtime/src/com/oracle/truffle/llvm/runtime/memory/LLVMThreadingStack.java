@@ -36,7 +36,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 /**
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
