@@ -40,22 +40,24 @@ public class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
-    // TODO (pichristoph) remove 'static'
-    private final HashMap<String, String> linkageNames = new HashMap<>();
+    private final HashMap<String, String> linkageNames;
     private final HashMap<String, long[]> symbolOffsets;
-    private final HashMap<String, HashMap<String, String>> linkageScopeNames = new HashMap<>();
+    private final HashMap<String, HashMap<String, String>> linkageScopeNames;
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
         this.functionKeys = new ArrayList<>();
-        // this.linkageScopeNames = new HashMap<>();
+        this.linkageNames = new HashMap<>();
+        this.linkageScopeNames = new HashMap<>();
         this.symbolOffsets = new HashMap<>();
     }
 
-    public LLVMScope(HashMap<String, LLVMSymbol> symbols, ArrayList<String> functionKeys, HashMap<String, HashMap<String, String>> linkageScopeNames, HashMap<String, long[]> symbolOffsets) {
+    public LLVMScope(HashMap<String, LLVMSymbol> symbols, ArrayList<String> functionKeys, HashMap<String, String> linkageNames, HashMap<String, HashMap<String, String>> linkageScopeNames,
+                    HashMap<String, long[]> symbolOffsets) {
         this.symbols = symbols;
         this.functionKeys = functionKeys;
-        // this.linkageScopeNames = linkageScopeNames;
+        this.linkageNames = linkageNames;
+        this.linkageScopeNames = linkageScopeNames;
         this.symbolOffsets = symbolOffsets;
     }
 
@@ -93,7 +95,6 @@ public class LLVMScope implements TruffleObject {
     }
 
     public String getMangledName(String name) {
-        // return linkageNames.get(name);
         for (HashMap<String, String> scope : linkageScopeNames.values()) {
             if (scope.containsKey(name)) {
                 return scope.get(name);
