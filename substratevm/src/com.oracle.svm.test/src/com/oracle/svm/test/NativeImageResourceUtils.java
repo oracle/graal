@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImageResourceUtils {
 
@@ -49,6 +50,11 @@ public class NativeImageResourceUtils {
 
     // Register resources.
     public static final class TestFeature implements Feature {
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.configure");
+        }
+
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
