@@ -92,6 +92,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -1416,31 +1417,34 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private static final class PolyglotShutDownHook implements Runnable {
 
+        @SuppressWarnings("try")
         public void run() {
             PolyglotEngineImpl[] engines;
             synchronized (ENGINES) {
                 engines = ENGINES.keySet().toArray(new PolyglotEngineImpl[0]);
             }
             for (PolyglotEngineImpl engine : engines) {
-                if (DEBUG_MISSING_CLOSE) {
-                    PrintStream out = System.out;
-                    out.println("Missing close on vm shutdown: ");
-                    out.print(" InitializedLanguages:");
-                    synchronized (engine.lock) {
-                        for (PolyglotContextImpl context : engine.collectAliveContexts()) {
-                            for (PolyglotLanguageContext langContext : context.contexts) {
-                                if (langContext.env != null) {
-                                    out.print(langContext.language.getId());
-                                    out.print(", ");
+                try (ThreadScope scope = engine.getImpl().getRootImpl().createThreadScope()) {
+                    if (DEBUG_MISSING_CLOSE) {
+                        PrintStream out = System.out;
+                        out.println("Missing close on vm shutdown: ");
+                        out.print(" InitializedLanguages:");
+                        synchronized (engine.lock) {
+                            for (PolyglotContextImpl context : engine.collectAliveContexts()) {
+                                for (PolyglotLanguageContext langContext : context.contexts) {
+                                    if (langContext.env != null) {
+                                        out.print(langContext.language.getId());
+                                        out.print(", ");
+                                    }
                                 }
                             }
                         }
+                        out.println();
+                        engine.createdLocation.printStackTrace();
                     }
-                    out.println();
-                    engine.createdLocation.printStackTrace();
-                }
-                if (engine != null) {
-                    engine.ensureClosed(false, true);
+                    if (engine != null) {
+                        engine.ensureClosed(false, true);
+                    }
                 }
             }
         }
