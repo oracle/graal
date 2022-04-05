@@ -29,13 +29,13 @@ For example:
 
 The JAR file that contains `foo` and `bar` will then contain both configurations without conflicting with one another.
 Therefore the recommended layout for storing the configuration data in JAR files is the following:
-```
-META-INF/
-└── native-image
-    └── groupID
-        └── artifactID
-            └── native-image.properties
-```
+    ```
+    META-INF/
+    └── native-image
+        └── groupID
+            └── artifactID
+                └── native-image.properties
+    ```
 
 Note that the use of `${.}` in a _native-image.properties_ file expands to the resource location that contains that exact configuration file.
 This can be useful if the _native-image.properties_ file wants to refer to resources within its "subfolder", for example, `-H:SubstitutionResources=${.}/substitutions.json`.
@@ -48,11 +48,11 @@ Other options that are known to work in this context are:
 * `-H:SubstitutionResources`
 * `-H:SerializationConfigurationResources`
 
-By having such a composable _native-image.properties_ file, building a native executabke does not require any additional arguments specified on command line.
+By having such a composable _native-image.properties_ file, building a native executable does not require any additional arguments specified on command line.
 It is sufficient to just run the following command:
-```shell
-$JAVA_HOME/bin/native-image -jar target/<name>.jar
-```
+    ```shell
+    $JAVA_HOME/bin/native-image -jar target/<name>.jar
+    ```
 
 To debug which configuration data gets applied for the building, use `native-image --verbose`.
 This will show from where `native-image` picks up the configurations to construct the final composite configuration command line options for the native image builder.
@@ -99,12 +99,14 @@ For example, if `foo.bar` contains `ImageName=foo_app`:
 * `native-image -jar foo.bar application` generates the executable `application`
 
 ### Order of Arguments Evaluation
+
 The arguments passed to `native-image` are evaluated left-to-right.
-This also extends to arguments that get passed indirectly via the `META-INF/native-image` based configuration.
+This also extends to arguments that get passed indirectly via `META-INF/native-image` based configuration.
 Suppose you have a JAR file that contains _native-image.properties_ with `Args = -H:Optimize=0`.
 Then by using the `-H:Optimize=2` option after `-cp <jar-file>` you can override the setting that comes from the JAR file.
 
 ### Specifying Default Options for Native Image
+
 If there is a need to pass some options for every build unconditionally, for example, to always generate a native executable in verbose mode (`--verbose`), you can make use of the `NATIVE_IMAGE_CONFIG_FILE` environment variable.
 If it is set to a Java properties file, the `native-image` builder will use the default setting defined in there on each invocation.
 Write a configuration file and export `NATIVE_IMAGE_CONFIG_FILE=$HOME/.native-image/default.properties` in `~/.bash_profile`.
@@ -163,25 +165,25 @@ For more information, continue reading to the [Class Initialization in Native Im
 
 ## Defining Required Types at Build Time / Preventing Linking Errors
 
-A well-structured library or application should handle linking when building a native executable.
+A well-structured library or application should handle linking when building a native executable by itself.
 The default behavior is to throw linking errors, if they occur, at run time. 
-However, you can prevent unwanted linking errors by defining classes when building a native executable.
-For that, use the `--link-at-build-time` option.
-This option instruct the `native-image` builder to link classes at build time without listing classes and packages explicitly. 
-The option `--link-at-build-time` is designed in a way so that libraries can only configure their own classes, to avoid any side effects on other classes. 
-You can pass it to the `native-image` builder on the command line, embedd in a `native-image.properties` file on the module-path, or embed in a `native-image.properties` file on the classpath.
+However, you can prevent unwanted linking errors by specifing which classes are required to be fully linked at build time.
+For that, use the `--link-at-build-time` option. 
+If the option is used in the right context (on the command line or embeded in a `native-image.properties` file on the module-path), you can specify required classes to link at build time without explicitly listing classes and packages.
+It is designed in a way so that libraries can only configure their own classes, to avoid any side effects on other classes. 
+<!-- You can pass it to the `native-image` builder on the command line, embed in a `native-image.properties` file on the module-path, or embed in a `native-image.properties` file on the classpath. -->
 
 Depending on how the option is used it behaves differently:
 
-* If you use `--link-at-build-time` without arguments, all classes in the scope are required to be fully defined. You can use `--link-at-build-time` without arguments on the command line or embedded in a `native-image.properties` file on the module-path, but not on the classpath. Then all classes will be treated as "link-at-build-time" classes. If the option is embedded in a `native-image.properties` file on the classpath, the following warning will be thrown:
+* If you use `--link-at-build-time` without arguments, all classes in the scope are required to be fully defined. You can use `--link-at-build-time` without arguments on the command line or embedded in a `native-image.properties` file on the module-path, but not on the classpath. Then all classes will be treated as "link-at-build-time" classes. If the option is embedded in a `native-image.properties` file on the classpath, the following error will be thrown:
     ```shell
     Error: Using '--link-at-build-time' without args only allowed on module-path. 'META-INF/native-image/org.mylibrary/native-image.properties' in 'file:///home/test/myapp/MyLibrary.jar' not part of module-path.
     ```
-* If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module-path or classpath (embedded in `native-image.properties` files) only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the classpath need to be listed explicitly. 
+* If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module-path or classpath (embedded in `native-image.properties` files), only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the classpath need to be listed explicitly. 
 To make this process easy, use the `@<prop-values-file>` syntax to generate a package list (or a class list) in a separate file automatically.
 
-Other handy option is `--link-at-build-time-paths` which specifes all given class types or module-path entries to be fully defined at build time. 
-This option requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
+Another handy option is `--link-at-build-time-paths` which allows to specify which classes are required to be fully defined at build time by other means.
+This option variant requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
 
     ```shell
     --link-at-build-time-paths <class search path of directories and zip/jar files>

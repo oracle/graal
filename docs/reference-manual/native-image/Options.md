@@ -6,8 +6,8 @@ permalink: /reference-manual/native-image/Options/
 ---
 # Native Image Options
 
-The `native-image` builder needs to provide the classpath for all classes using the `-cp` option followed by a list of directories or JAR files, separated by `:`.
-The name of the class containing the `main` method is the last argument, or you can use `-jar` and provide a JAR file that specifies the `main` method in its manifest.
+To ahead-of-time compile your Java application into a native executable, provide the classpath for all classes using the `-cp` option followed by a list of directories or JAR files, separated by `:` to the `native-image` builder. 
+The name of the class containing the `main` method should be the last argument, or you can use `-jar` and provide a JAR file that specifies the `main` method in its manifest.
 
 The syntax of the `native-image` command is:
 
@@ -20,11 +20,11 @@ The syntax of the `native-image` command is:
 The options passed to `native-image` are evaluated left-to-right.
 For more information, see [Native Image Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
 
-The options fall into four categories: a native executable building options, macro options, non-standard options, and server options.
-Non-standard and server options are subject to change through a deprecation cycle.
+The options fall into several categories: standard, non-standard and macro options.
+Non-standard options are subject to change through a deprecation cycle.
 
 Command-line help is available.
-Run `native-image --help` to get the commands overview, and `native-image --help-extra` to print help on non-standard, macro, and server options.
+Run `native-image --help` to get the commands overview, and `native-image --help-extra` to print help on non-standard and macro options.
 
 ### Options to Native Image Builder
 
@@ -50,7 +50,7 @@ Depending on the GraalVM edition, the commands to the `native-image` builder may
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
 * `--force-fallback`: force building of a fallback native executable
-* `--gc=<value>`: select Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector; `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default). **GraalVM Enterprise only**
+* `--gc=<value>`: select Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (**GraalVM Enterprise only**); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages.
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at run time and not during image building. An empty string is currently not supported.
 * `--install-exit-handlers`: provide `java.lang.Terminator` exit handlers
