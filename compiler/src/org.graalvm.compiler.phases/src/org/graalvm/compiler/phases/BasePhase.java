@@ -99,6 +99,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     private final CounterKey inputNodesCount;
 
     /**
+     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
+     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     */
+    private final CounterKey edgeModificationCount;
+
+    /**
      * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
      */
     private final MemUseTrackerKey memUseTracker;
@@ -126,6 +132,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         private final CounterKey inputNodesCount;
 
         /**
+         * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of
+         * all graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+         */
+        private final CounterKey edgeModificationCount;
+
+        /**
          * Records memory usage within {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
          */
         private final MemUseTrackerKey memUseTracker;
@@ -135,6 +147,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             executionCount = DebugContext.counter("PhaseCount_%s", clazz).doc("Number of phase executions.");
             memUseTracker = DebugContext.memUseTracker("PhaseMemUse_%s", clazz).doc("Memory allocated in phase.");
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
+            edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
     }
 
@@ -155,6 +168,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         executionCount = statistics.executionCount;
         memUseTracker = statistics.memUseTracker;
         inputNodesCount = statistics.inputNodesCount;
+        edgeModificationCount = statistics.edgeModificationCount;
     }
 
     public final void apply(final StructuredGraph graph, final C context) {
@@ -221,6 +235,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                         DebugCloseable c = memUseTracker.start(debug);) {
 
             int sizeBefore = 0;
+            int edgesBefore = graph.getEdgeModificationCount();
             Mark before = null;
             OptionValues options = graph.getOptions();
             boolean verifySizeContract = PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract();
@@ -234,8 +249,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel);
             }
             inputNodesCount.add(debug, graph.getNodeCount());
+
             this.run(graph, context);
             executionCount.increment(debug);
+            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);

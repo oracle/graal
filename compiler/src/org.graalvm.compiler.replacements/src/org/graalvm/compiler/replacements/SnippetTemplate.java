@@ -456,6 +456,16 @@ import jdk.vm.ci.meta.Signature;
  */
 public class SnippetTemplate {
 
+    /**
+     * Times instantiations of all templates derived from this snippet.
+     */
+    private static final TimerKey totalInstantiationTimer = DebugContext.timer("SnippetInstantiationTime");
+
+    /**
+     * Counts instantiations of all templates derived from this snippet.
+     */
+    private static final CounterKey totalInstantiationCounter = DebugContext.counter("SnippetInstantiationCount");
+
     private boolean mayRemoveLocation = false;
 
     /**
@@ -493,6 +503,10 @@ public class SnippetTemplate {
          */
         private final CounterKey instantiationCounter;
 
+        private final CounterKey creationCounter;
+
+        private final TimerKey creationTimer;
+
         protected abstract SnippetParameterInfo info();
 
         protected SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
@@ -501,6 +515,8 @@ public class SnippetTemplate {
             this.privateLocations = privateLocations;
             instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
+            creationCounter = DebugContext.counter("SnippetCreationCount[%s]", method.getName());
+            creationTimer = DebugContext.timer("SnippetCreationTime[%s]", method.getName());
             this.receiver = receiver;
         }
 
@@ -926,12 +942,18 @@ public class SnippetTemplate {
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null || (graph.trackNodeSourcePosition() && !template.snippet.trackNodeSourcePosition())) {
                 try (DebugContext debug = openSnippetDebugContext(outer, args)) {
-                    try (DebugCloseable a = SnippetTemplateCreationTime.start(debug); DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
-                        SnippetTemplates.increment(debug);
+                    try (DebugCloseable a = SnippetTemplateCreationTime.start(outer);
+                                    DebugCloseable a2 = args.info.creationTimer.start(outer);
+                                    DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
+                        SnippetTemplates.increment(outer);
+                        args.info.creationCounter.increment(outer);
                         OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
                         template = new SnippetTemplate(snippetOptions, debug, providers, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
+                        }
+                        if (outer.areMetricsEnabled()) {
+                            DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(outer, template.nodes.size());
                         }
                     } catch (Throwable e) {
                         throw debug.handle(e);
@@ -1380,9 +1402,6 @@ public class SnippetTemplate {
                 }
             }
 
-            if (debug.areMetricsEnabled()) {
-                DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(debug, nodes.size());
-            }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate final state");
             assert snippet.verify();
             this.snippet.freeze();
@@ -1973,8 +1992,10 @@ public class SnippetTemplate {
 
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
             // Inline the snippet nodes, replacing parameters with the given args in the process
             final FixedNode replaceeGraphPredecessor = (FixedNode) replacee.predecessor();
             StartNode entryPointNode = snippet.start();
@@ -2248,8 +2269,10 @@ public class SnippetTemplate {
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             StartNode entryPointNode = snippet.start();
@@ -2305,8 +2328,10 @@ public class SnippetTemplate {
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             StartNode entryPointNode = snippet.start();

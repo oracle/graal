@@ -41,7 +41,10 @@ import java.util.List;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
@@ -86,6 +89,7 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.word.LocationIdentity;
 
@@ -245,10 +249,20 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         graph.setAfterStage(postRunStage);
     }
 
+    @SuppressWarnings("try")
     private void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {
-        IncrementalCanonicalizerPhase<CoreProviders> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
-        incrementalCanonicalizer.appendPhase(new Round(context, mode, graph.getOptions()));
-        incrementalCanonicalizer.apply(graph, context);
+        boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
+        OptionValues options = graph.getOptions();
+        new SchedulePhase(immutableSchedule, options).apply(graph, context);
+
+        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
+        try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
+            new Round(context, mode).apply(graph, context);
+        }
+
+        if (!listener.getNodes().isEmpty()) {
+            canonicalizer.applyIncremental(graph, context, listener.getNodes(), null, false);
+        }
         assert graph.verify();
     }
 
@@ -456,20 +470,12 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
         private final CoreProviders context;
         private final LoweringMode mode;
-        private final SchedulePhase schedulePhase;
+        private final TimerKey totalTimer;
 
-        private Round(CoreProviders context, LoweringMode mode, OptionValues options) {
+        private Round(CoreProviders context, LoweringMode mode) {
             this.context = context;
             this.mode = mode;
-
-            /*
-             * In VERIFY_LOWERING, we want to verify whether the lowering itself changes the graph.
-             * Make sure we're not detecting spurious changes because the SchedulePhase modifies the
-             * graph.
-             */
-            boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
-
-            this.schedulePhase = new SchedulePhase(immutableSchedule, options);
+            this.totalTimer = DebugContext.timer("LoweringTime_%s", loweringStage);
         }
 
         @Override
@@ -495,7 +501,6 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
         @Override
         public void run(StructuredGraph graph) {
-            schedulePhase.apply(graph, context, false);
             ScheduleResult schedule = graph.getLastSchedule();
             schedule.getCFG().computePostdominators();
             Block startBlock = schedule.getCFG().getStartBlock();
@@ -553,6 +558,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
             final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
 
+            DebugContext debug = startAnchor.asNode().getDebug();
+
             // Lower the instructions of this block.
             List<Node> nodes = schedule.nodesFor(b);
             for (Node node : nodes) {
@@ -576,7 +583,16 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                     assert (unscheduledUsages = getUnscheduledUsages(node, schedule)) != null;
                     Mark preLoweringMark = node.graph().getMark();
                     try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
-                        ((Lowerable) node).lower(loweringTool);
+                        TimerKey timer = null;
+                        if (debug.areMetricsEnabled()) {
+                            Class<? extends Node> clazz = node.getClass();
+                            timer = DebugContext.timer("LoweringTime_%s_%s", loweringStage, clazz);
+                            DebugContext.counter("LoweringCount_%s_%s", loweringStage, clazz).increment(debug);
+                        }
+                        try (DebugCloseable a = timer != null ? timer.start(debug) : null;
+                                        DebugCloseable a2 = totalTimer.start(debug)) {
+                            ((Lowerable) node).lower(loweringTool);
+                        }
                     }
                     if (loweringTool.guardAnchor.asNode().isDeleted()) {
                         // TODO nextNode could be deleted but this is not currently supported
