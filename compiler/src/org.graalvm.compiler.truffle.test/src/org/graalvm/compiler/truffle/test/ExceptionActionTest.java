@@ -63,6 +63,10 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @BeforeClass
     public static void setUp() {
+        // All ExceptionActionTest's tests are executed in the spawned subprocess. The
+        // PermanentBailoutNode is used only by the code running in the subprocess. Needless
+        // PermanentBailoutNode initialization in the parent process will cause ExceptionActionTest
+        // failure when running with the engine.ExceptionAction=Throw.
         if (SubprocessTestUtils.isSubprocess()) {
             createPermanentBailoutNode().getCallTarget().call();
         }

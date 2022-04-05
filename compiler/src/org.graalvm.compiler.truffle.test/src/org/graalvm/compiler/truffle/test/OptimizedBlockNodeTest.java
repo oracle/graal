@@ -683,7 +683,7 @@ public class OptimizedBlockNodeTest {
         setup(blockCompilationSize, maxGraalNodeCount, new String[0]);
     }
 
-    private void setup(int blockCompilationSize, int maxGraalNodeCount, String[] additionalContextOptions) {
+    private void setup(int blockCompilationSize, int maxGraalNodeCount, String... additionalContextOptions) {
         assert additionalContextOptions.length % 2 == 0 : "additionalContextOptions length must be even";
         clearContext();
         Context.Builder builder = Context.newBuilder().allowAllAccess(true)//
