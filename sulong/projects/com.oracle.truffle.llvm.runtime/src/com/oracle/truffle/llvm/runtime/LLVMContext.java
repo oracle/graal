@@ -838,6 +838,16 @@ public final class LLVMContext {
         }
     }
 
+    public LLVMPointer getSymbolResolved(LLVMSymbol symbol, BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        LLVMPointer target = getSymbol(symbol, exception);
+        if (symbol.isThreadLocalSymbol()) {
+            LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
+            LLVMPointer base = language.contextThreadLocal.get(getEnv().getContext()).getSection(symbol.getBitcodeID(exception));
+            return base.increment(pointer.getOffset());
+        }
+        return target;
+    }
+
     /**
      * This method is only intended to be used during initialization of a Sulong library.
      */

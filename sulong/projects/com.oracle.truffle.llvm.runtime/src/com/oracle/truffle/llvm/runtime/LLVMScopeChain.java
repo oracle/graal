@@ -176,7 +176,7 @@ public class LLVMScopeChain implements TruffleObject {
             LLVMSymbol symbol = get(symbolName);
             if (symbol != null) {
                 try {
-                    LLVMPointer value = LLVMContext.get(self).getSymbol(symbol, exception);
+                    LLVMPointer value = LLVMContext.get(self).getSymbolResolved(symbol, exception);
                     if (value != null) {
                         return escape.executeWithTarget(value);
                     }
