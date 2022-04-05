@@ -67,7 +67,6 @@ class SubstrateAArch64Feature implements Feature {
         ImageSingletons.add(ReservedRegisters.class, new AArch64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
-            AArch64CalleeSavedRegisters.createAndRegister();
 
             ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
                 @Override
@@ -86,6 +85,13 @@ class SubstrateAArch64Feature implements Feature {
 
             ImageSingletons.add(TargetGraphBuilderPlugins.class, new AArch64GraphBuilderPlugins());
             ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateAArch64SuitesCreatorProvider());
+        }
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!SubstrateOptions.useLLVMBackend()) {
+            AArch64CalleeSavedRegisters.createAndRegister();
         }
     }
 }

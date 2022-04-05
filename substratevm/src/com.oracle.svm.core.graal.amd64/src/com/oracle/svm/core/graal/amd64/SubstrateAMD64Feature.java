@@ -67,7 +67,6 @@ class SubstrateAMD64Feature implements Feature {
         ImageSingletons.add(ReservedRegisters.class, new AMD64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
-            AMD64CalleeSavedRegisters.createAndRegister(access);
 
             ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
                 @Override
@@ -86,6 +85,13 @@ class SubstrateAMD64Feature implements Feature {
 
             ImageSingletons.add(TargetGraphBuilderPlugins.class, new AMD64GraphBuilderPlugins());
             ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateAMD64SuitesCreatorProvider());
+        }
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!SubstrateOptions.useLLVMBackend()) {
+            AMD64CalleeSavedRegisters.createAndRegister();
         }
     }
 }

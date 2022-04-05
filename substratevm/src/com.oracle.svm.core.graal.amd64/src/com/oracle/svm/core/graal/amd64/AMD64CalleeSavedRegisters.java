@@ -44,7 +44,6 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -58,6 +57,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.log.Log;
@@ -80,7 +80,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void createAndRegister(Feature.AfterRegistrationAccess access) {
+    public static void createAndRegister() {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         SubstrateRegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(SubstrateRegisterConfig.ConfigKind.NORMAL, null, target, SubstrateOptions.PreserveFramePointer.getValue());
 
@@ -89,10 +89,11 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         List<Register> calleeSavedXMMRegisters = new ArrayList<>();
 
         /*
-         * Check whether JIT support is enabled by checking for the GraalFeature. Other options, for
-         * example DeoptimizationSupport#enabled(), do not work because they are not yet registered.
+         * Check whether JIT support is enabled. Since GraalFeature is not visible here, we check
+         * for DeoptimizationSupport#enabled() instead, which is available iff the GraalFeature is
+         * enabled.
          */
-        boolean isRuntimeCompilationEnabled = ImageSingletons.contains(access.findClassByName("com.oracle.svm.graal.hosted.GraalFeature"));
+        boolean isRuntimeCompilationEnabled = DeoptimizationSupport.enabled();
 
         /*
          * Reverse list so that CPU registers are spilled close to the beginning of the frame, i.e.,
@@ -217,6 +218,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         public void emit() {
+            assert isRuntimeCompilationEnabled == DeoptimizationSupport.enabled() : "JIT compilation enabled after registering singleton?";
             if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 Label end = new Label();
                 try {
