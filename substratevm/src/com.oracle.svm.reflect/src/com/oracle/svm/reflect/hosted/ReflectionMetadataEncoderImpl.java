@@ -93,6 +93,7 @@ import com.oracle.svm.reflect.target.ReflectionMetadataEncoding;
 import com.oracle.svm.reflect.target.Target_sun_reflect_annotation_AnnotationParser;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import sun.invoke.util.Wrapper;
@@ -250,6 +251,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         }
         RecordComponentMetadata[] recordComponents = getRecordComponents(metaAccess, type, javaClass);
         Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
+        int classAccessFlags = Reflection.getClassAccessFlags(javaClass);
         Annotation[] annotations = GuardedAnnotationAccess.getDeclaredAnnotations(type);
         TypeAnnotation[] typeAnnotations = getTypeAnnotations(javaClass);
 
@@ -265,8 +267,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         annotations = registerAnnotationValues(metaAccess, annotations);
         typeAnnotations = registerTypeAnnotationValues(metaAccess, typeAnnotations);
 
-        registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, annotations,
-                        typeAnnotations));
+        registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, classAccessFlags, annotations, typeAnnotations));
     }
 
     private static final Method getEnclosingMethodInfo = ReflectionUtil.lookupMethod(Class.class, "getEnclosingMethod0");
@@ -759,8 +760,9 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), this::encodeExecutable, false);
             int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), this::encodeExecutable, false);
             int recordComponentsIndex = JavaVersionUtil.JAVA_SPEC >= 17 ? encodeAndAddCollection(buf, classMetadata.recordComponents, this::encodeRecordComponent, true) : NO_DATA;
-            if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex)) {
-                hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex);
+            int classAccessFlags = classMetadata.classAccessFlags;
+            if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex) || classAccessFlags != hub.getModifiers()) {
+                hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, classAccessFlags);
             }
         }
         for (AccessibleObjectMetadata metadata : heapData) {

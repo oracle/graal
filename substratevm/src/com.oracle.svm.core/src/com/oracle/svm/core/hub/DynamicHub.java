@@ -470,8 +470,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex) {
-        this.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex);
+    public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classAccessFlags) {
+        this.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, classAccessFlags);
     }
 
     /** Executed at runtime. */
@@ -642,6 +642,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     public int getModifiers() {
         return modifiers;
+    }
+
+    public int getClassAccessFlags() {
+        return reflectionMetadata != null ? reflectionMetadata.classAccessFlags : modifiers;
     }
 
     @Substitute
@@ -1610,11 +1614,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         @TargetElement(onlyWith = JDK17OrLater.class)//
         final int recordComponentsEncodingIndex;
 
-        private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex) {
+        final int classAccessFlags;
+
+        private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classAccessFlags) {
             this.fieldsEncodingIndex = fieldsEncodingIndex;
             this.methodsEncodingIndex = methodsEncodingIndex;
             this.constructorsEncodingIndex = constructorsEncodingIndex;
             this.recordComponentsEncodingIndex = recordComponentsEncodingIndex;
+            this.classAccessFlags = classAccessFlags;
         }
     }
 
