@@ -52,7 +52,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -1227,10 +1226,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             // The parent implementation asserts we are in compiled code, so we instead explicitly
             // do the transfer here.
-            ((BytecodeOSRMetadata) osrMetadata).restoreFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
-            // Since the intSlot tag changed inside the compiled code, the tag speculation should
-            // fail and cause a deopt.
-            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+            super.restoreParentFrame(osrFrame, parentFrame);
+            // Parent frame restoration does not speculate on the state of the frame on return.
+            Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
     }
 

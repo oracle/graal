@@ -471,7 +471,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
     }
 
-    private byte getTag(com.oracle.truffle.api.frame.FrameSlot slot) {
+    public byte getTag(com.oracle.truffle.api.frame.FrameSlot slot) {
         int slotIndex = getFrameSlotIndex(slot);
         try {
             return getTags()[slotIndex];
