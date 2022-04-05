@@ -35,8 +35,17 @@ import org.graalvm.nativeimage.Platforms;
 import jdk.internal.module.Modules;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class ModuleSupport extends ModuleSupportBase {
+public final class ModuleSupport {
+
+    public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
+    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "org.graalvm.nativeimage.module.addmods";
+    public static final boolean modulePathBuild = isModulePathBuild();
+
     private ModuleSupport() {
+    }
+
+    public static boolean isModulePathBuild() {
+        return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
     }
 
     public enum Access {
