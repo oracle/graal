@@ -452,6 +452,7 @@ public class LLVMVaListStorage implements TruffleObject {
         private static final StackAllocationNode UNCACHED = new StackAllocationNode();
 
         @Child VarargsAreaStackAllocationNode allocNode;
+        @CompilerDirectives.CompilationFinal boolean aot;
 
         private StackAllocationNode() {
         }
@@ -464,10 +465,15 @@ public class LLVMVaListStorage implements TruffleObject {
             return UNCACHED;
         }
 
+        public boolean isAOT() {
+            return aot;
+        }
+
         @Override
         public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
             allocNode = createVarargsAreaStackAllocationNode();
             insert((Node) allocNode);
+            aot = true;
         }
 
         public LLVMPointer executeWithTarget(long size, Frame frame) {
