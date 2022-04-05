@@ -172,6 +172,8 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
+            if vm.use_string_inlining:
+                self.base_image_build_args += ['-H:+UseStringInlining']
             if vm.is_llvm:
                 self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
             if vm.gc:
@@ -198,6 +200,7 @@ class NativeImageVM(GraalVm):
         self.hotspot_pgo = False
         self.is_gate = False
         self.is_quickbuild = False
+        self.use_string_inlining = False
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
@@ -222,7 +225,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
@@ -234,6 +237,10 @@ class NativeImageVM(GraalVm):
         if matching.group("native_architecture") is not None:
             mx.logv("'native-architecture' is enabled for {}".format(config_name))
             self.native_architecture = True
+
+        if matching.group("string_inlining") is not None:
+            mx.logv("'string-inlining' is enabled for {}".format(config_name))
+            self.use_string_inlining = True
 
         if matching.group("gate") is not None:
             mx.logv("'gate' mode is enabled for {}".format(config_name))
