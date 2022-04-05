@@ -41,9 +41,9 @@ public class LLVMScope implements TruffleObject {
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
     // TODO (pichristoph) remove 'static'
-    private static final HashMap<String, String> linkageNames = new HashMap<>();
+    private final HashMap<String, String> linkageNames = new HashMap<>();
     private final HashMap<String, long[]> symbolOffsets;
-    private static final HashMap<String, HashMap<String, String>> linkageScopeNames = new HashMap<>();
+    private final HashMap<String, HashMap<String, String>> linkageScopeNames = new HashMap<>();
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
