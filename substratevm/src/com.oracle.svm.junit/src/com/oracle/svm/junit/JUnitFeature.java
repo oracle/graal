@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -74,6 +75,8 @@ public final class JUnitFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        /* Open up builder to allow whitebox testing */
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "org.graalvm.nativeimage.builder");
         SVMJUnitRunner svmRunner = new SVMJUnitRunner(access);
         ImageSingletons.add(SVMJUnitRunner.class, svmRunner);
     }
