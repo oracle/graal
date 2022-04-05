@@ -95,4 +95,9 @@ public class LLVMThreadLocalSymbol extends LLVMSymbol {
     public LLVMThreadLocalSymbol asThreadLocalSymbol() {
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "(" + sourceSymbol + ")" + name;
+    }
 }

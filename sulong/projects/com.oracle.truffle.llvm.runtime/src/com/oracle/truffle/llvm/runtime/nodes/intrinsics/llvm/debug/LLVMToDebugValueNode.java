@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -241,7 +241,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     @Specialization
     protected LLVMDebugValue fromThreadLocalGlobal(LLVMDebugThreadLocalGlobalVariable value, @Cached BranchProfile exception) {
         LLVMThreadLocalSymbol symbol = value.getDescriptor();
-        Object target = LLVMLanguage.getContext().getSymbolUncached(symbol);
+        Object target = LLVMLanguage.getContext().getSymbol(symbol, exception);
         LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
         long offset = pointer.getOffset();
         if (offset != 0) {

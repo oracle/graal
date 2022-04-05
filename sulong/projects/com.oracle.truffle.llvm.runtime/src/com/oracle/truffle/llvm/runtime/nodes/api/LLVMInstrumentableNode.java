@@ -164,7 +164,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
         if (hasRootInstance(frame)) {
             LLVMContext ctx = LLVMContext.get(self);
             try {
-                LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction(), exception);
+                LLVMPointer pointer = ctx.getSymbolResolved(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction(), exception);
                 return dataEscapeNode.executeWithTarget(pointer);
             } catch (LLVMIllegalSymbolIndexException ex) {
                 // fallthrough
