@@ -33,8 +33,10 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
@@ -213,6 +215,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
+    protected int putRelocatableInfoOffset(long l, byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * Mark address so it is relocated relative to the start of the text segment.
+         */
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.DW_INFO_SECTION_NAME, l);
+        pos = putLong(0, buffer, pos);
+        return pos;
+    }
+
     protected int putRelocatableHeapOffset(long l, byte[] buffer, int p) {
         int pos = p;
         /*
@@ -325,6 +337,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    protected int writeAttrLocList(int offset, byte[] buffer, int pos) {
+        if (buffer == null) {
+            return pos + putInt(offset, scratch, 0);
+        } else {
+            return putInt(offset, buffer, pos);
+        }
+    }
+
     @SuppressWarnings("unused")
     protected int writeAttrData8(long value, byte[] buffer, int pos) {
         if (buffer == null) {
@@ -376,6 +396,20 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return pos + putSLEB(0, scratch, 0);
         } else {
             return putSLEB(0, buffer, pos);
+        }
+    }
+
+    protected static String formatValue(DebugInfoProvider.DebugLocalValueInfo value) {
+        switch (value.localKind()) {
+            case REGISTER:
+                return "REG:" + value.regIndex();
+            case STACKSLOT:
+                return "STACK:" + value.stackSlot();
+            case CONSTANT:
+                return "CONST:" + value.constantValue();
+            case UNDEFINED:
+            default:
+                return "-";
         }
     }
 
@@ -616,25 +650,25 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodName);
     }
 
-    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline, int index) {
-        dwarfSections.setMethodLocalIndex(methodEntry, paramInfo, isInline, index);
+    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setMethodLocalIndex(methodEntry, localInfo, index);
     }
 
-    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline) {
+    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodLocalIndex(methodEntry, paramInfo, isInline);
+        return dwarfSections.getMethodLocalIndex(methodEntry, localInfo);
     }
 
-    protected void setMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline, int index) {
-        dwarfSections.setMethodLocationIndex(methodEntry, paramInfo, isInline, index);
+    protected void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setRangeLocalIndex(range, localInfo, index);
     }
 
-    protected int getMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo paramInfo, boolean isInline) {
+    protected int getRangeLocalIndex(Range range, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodLocationIndex(methodEntry, paramInfo, isInline);
+        return dwarfSections.getRangeLocalIndex(range, localInfo);
     }
 }

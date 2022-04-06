@@ -33,6 +33,7 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
@@ -55,6 +56,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final String DW_FRAME_SECTION_NAME = ".debug_frame";
     public static final String DW_ABBREV_SECTION_NAME = ".debug_abbrev";
     public static final String DW_INFO_SECTION_NAME = ".debug_info";
+    public static final String DW_LOC_SECTION_NAME = ".debug_loc";
     public static final String DW_ARANGES_SECTION_NAME = ".debug_aranges";
 
     /**
@@ -277,7 +279,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final byte DW_OP_bra = 0x28;
     public static final byte DW_OP_eq = 0x29;
     public static final byte DW_OP_lit0 = 0x30;
+    public static final byte DW_OP_reg0 = 0x50;
     public static final byte DW_OP_breg0 = 0x70;
+    public static final byte DW_OP_regx = (byte) 0x90;
+    public static final byte DW_OP_bregx = (byte) 0x92;
     public static final byte DW_OP_push_object_address = (byte) 0x97;
 
     /* Register constants for AArch64. */
@@ -301,6 +306,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     private DwarfStrSectionImpl dwarfStrSection;
     private DwarfAbbrevSectionImpl dwarfAbbrevSection;
     private DwarfInfoSectionImpl dwarfInfoSection;
+    private DwarfLocSectionImpl dwarfLocSection;
     private DwarfARangesSectionImpl dwarfARangesSection;
     private DwarfLineSectionImpl dwarfLineSection;
     private DwarfFrameSectionImpl dwarfFameSection;
@@ -327,8 +333,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
         dwarfStrSection = new DwarfStrSectionImpl(this);
         dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
         dwarfInfoSection = new DwarfInfoSectionImpl(this);
+        dwarfLocSection = new DwarfLocSectionImpl(this);
         dwarfARangesSection = new DwarfARangesSectionImpl(this);
         dwarfLineSection = new DwarfLineSectionImpl(this);
+
         if (elfMachine == ELFMachine.AArch64) {
             dwarfFameSection = new DwarfFrameSectionImplAArch64(this);
             this.heapbaseRegister = rheapbase_aarch64;
@@ -339,7 +347,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.threadRegister = rthread_x86;
         }
         propertiesIndex = new HashMap<>();
-        methodPropertiesIndex = new HashMap<>();
+        methodLocalPropertiesIndex = new HashMap<>();
+        rangeLocalPropertiesIndex = new HashMap<>();
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
@@ -356,6 +365,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
 
     public DwarfInfoSectionImpl getInfoSectionImpl() {
         return dwarfInfoSection;
+    }
+
+    public DwarfLocSectionImpl getLocSectionImpl() {
+        return dwarfLocSection;
     }
 
     public DwarfARangesSectionImpl getARangesSectionImpl() {
@@ -765,92 +778,75 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     /**
-     * A class used to associate properties with a specific primary or abstract inline method. This
-     * includes the index of each parameter or local declaration for the method in the info section,
-     * either for a top level or an inline version of the parameter/local. It also includes the
-     * index of each such parameter or local's location list in the loc section. Note, however, that
-     * in some cases a parameter or local may not have a corresponding location list.
+     * A class used to associate properties with a specific param or local whether top level or
+     * inline.
      */
 
-    static final class DwarfMethodProperties {
+    static final class DwarfLocalProperties {
         private HashMap<DebugLocalInfo, Integer> locals;
-        private HashMap<DebugLocalInfo, Integer> inlineLocals;
-        private HashMap<DebugLocalInfo, Integer> locations;
-        private HashMap<DebugLocalInfo, Integer> inlineLocations;
 
-        private DwarfMethodProperties() {
+        private DwarfLocalProperties() {
             locals = new HashMap<>();
-            inlineLocals = new HashMap<>();
-            locations = new HashMap<>();
-            inlineLocations = new HashMap<>();
         }
 
-        int getIndex(DebugLocalInfo localInfo, boolean isInline) {
-            HashMap<DebugLocalInfo, Integer> localsIndex = (isInline ? inlineLocals : locals);
-            return localsIndex.get(localInfo);
+        int getIndex(DebugLocalInfo localInfo) {
+            return locals.get(localInfo);
         }
 
-        void setIndex(DebugLocalInfo localInfo, boolean isInline, int index) {
-            HashMap<DebugLocalInfo, Integer> localsIndex = (isInline ? inlineLocals : locals);
-            if (localsIndex.get(localInfo) != null) {
-                assert localsIndex.get(localInfo) == index;
+        void setIndex(DebugLocalInfo localInfo, int index) {
+            if (locals.get(localInfo) != null) {
+                assert locals.get(localInfo) == index;
             } else {
-                localsIndex.put(localInfo, index);
-            }
-        }
-
-        int getLocationIndex(DebugLocalInfo localInfo, boolean isInline) {
-            HashMap<DebugLocalInfo, Integer> locationsIndex = (isInline ? inlineLocations : locations);
-            return locationsIndex.get(localInfo);
-        }
-
-        void setLocationIndex(DebugLocalInfo localInfo, boolean isInline, int index) {
-            HashMap<DebugLocalInfo, Integer> locationsIndex = (isInline ? inlineLocations : locations);
-            if (locationsIndex.get(localInfo) != null) {
-                assert locationsIndex.get(localInfo) == index;
-            } else {
-                locationsIndex.put(localInfo, index);
+                locals.put(localInfo, index);
             }
         }
     }
 
-    private HashMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex;
+    private HashMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
 
-    private DwarfMethodProperties addMethodProperties(MethodEntry methodEntry) {
-        DwarfMethodProperties methodProperties = new DwarfMethodProperties();
-        methodPropertiesIndex.put(methodEntry, methodProperties);
-        return methodProperties;
+    private HashMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
+
+    private DwarfLocalProperties addMethodLocalProperties(MethodEntry methodEntry) {
+        DwarfLocalProperties localProperties = new DwarfLocalProperties();
+        methodLocalPropertiesIndex.put(methodEntry, localProperties);
+        return localProperties;
     }
 
-    public void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, boolean isInline, int index) {
-        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+    private DwarfLocalProperties addRangeLocalProperties(Range range) {
+        DwarfLocalProperties localProperties = new DwarfLocalProperties();
+        rangeLocalPropertiesIndex.put(range, localProperties);
+        return localProperties;
+    }
+
+    public void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties methodProperties = methodLocalPropertiesIndex.get(methodEntry);
         if (methodProperties == null) {
-            methodProperties = addMethodProperties(methodEntry);
+            methodProperties = addMethodLocalProperties(methodEntry);
         }
-        methodProperties.setIndex(localInfo, isInline, index);
+        methodProperties.setIndex(localInfo, index);
     }
 
-    public int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localinfo, boolean isInline) {
-        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+    public int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localinfo) {
+        DwarfLocalProperties methodProperties = methodLocalPropertiesIndex.get(methodEntry);
         assert methodProperties != null : "get of non-existent local index";
-        int index = methodProperties.getIndex(localinfo, isInline);
-        assert index > 0 : "get of local index before it was set";
+        int index = methodProperties.getIndex(localinfo);
+        assert index >= 0 : "get of local index before it was set";
         return index;
     }
 
-    public void setMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, boolean isInline, int index) {
-        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
-        if (methodProperties == null) {
-            methodProperties = addMethodProperties(methodEntry);
+    public void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties rangeProperties = rangeLocalPropertiesIndex.get(range);
+        if (rangeProperties == null) {
+            rangeProperties = addRangeLocalProperties(range);
         }
-        methodProperties.setLocationIndex(localInfo, isInline, index);
+        rangeProperties.setIndex(localInfo, index);
     }
 
-    public int getMethodLocationIndex(MethodEntry methodEntry, DebugLocalInfo localinfo, boolean isInline) {
-        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
-        assert methodProperties != null : "get of non-existent local index";
-        int index = methodProperties.getLocationIndex(localinfo, isInline);
-        assert index > 0 : "get of local index before it was set";
+    public int getRangeLocalIndex(Range range, DebugLocalInfo localinfo) {
+        DwarfLocalProperties rangeProperties = rangeLocalPropertiesIndex.get(range);
+        assert rangeProperties != null : "get of non-existent local index";
+        int index = rangeProperties.getIndex(localinfo);
+        assert index >= 0 : "get of local index before it was set";
         return index;
     }
 }

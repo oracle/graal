@@ -565,7 +565,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_specification : .......... DW_FORM_ref_addr</code>
          *
-         * <li><code>DW_AT_location: ................ DW_loc_list</code> n.b. only for
+         * <li><code>DW_AT_location: ................ DW_FORM_sec_offset</code> n.b. only for
          * method_local_location2
          *
          * </ul>
@@ -739,8 +739,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>abbrev_code == interface_layout, tag == union_type, has_children</code>
          *
          * <li><code>Dw_AT_name : ....... DW_FORM_strp</code>
-         *
-         * <li><code>DW_AT_location : ... DW_FORM_expr_loc</code>
          *
          * </ul>
          *
@@ -1534,7 +1532,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
-            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
         }
         /*
          * Now terminate.
@@ -1553,7 +1551,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
-            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
         }
         /*
          * Now terminate.

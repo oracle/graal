@@ -355,7 +355,9 @@ public class Range {
             calleeMethod = firstCallee.getMethodEntry();
         }
         HashMap<DebugLocalInfo, List<Range>> varRangeMap = new HashMap<>();
-        varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<Range>());
+        if (calleeMethod.getThisParam() != null) {
+            varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<Range>());
+        }
         for (int i = 0; i < calleeMethod.getParamCount(); i++) {
             varRangeMap.put(calleeMethod.getParam(i), new ArrayList<Range>());
         }
@@ -383,9 +385,18 @@ public class Range {
             DebugLocalValueInfo localValueInfo = subRange.getLocalValue(i);
             DebugLocalInfo local = subRange.getLocal(i);
             if (local != null && localValueInfo.localKind() != DebugLocalValueInfo.LocalKind.UNDEFINED) {
-                List<Range> varRanges = varRangeMap.get(local);
-                assert varRanges != null : "local not present in var to ranges map!";
-                varRanges.add(subRange);
+                switch (localValueInfo.localKind()) {
+                    case REGISTER:
+                    case STACKSLOT:
+                        List<Range> varRanges = varRangeMap.get(local);
+                        assert varRanges != null : "local not present in var to ranges map!";
+                        varRanges.add(subRange);
+                        break;
+                    case CONSTANT:
+                        // drop through cannot handle constants for now
+                    case UNDEFINED:
+                        break;
+                }
             }
         }
     }

@@ -1106,7 +1106,30 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // CallNode nodeToEmbed parent call node to convert to entry code leaf
             // NativeImageDebugLocationInfo leaf into which current leaf may be merged
             root.visitChildren(visitor, (Object) null, (Object) null, (Object) null);
+            // try to add a location record for offset zero
+            updateInitialLocation(compilation, locationInfos);
             return locationInfos.stream();
+        }
+
+        private void updateInitialLocation(CompilationResult compilationResult, List<DebugLocationInfo> locationInfos) {
+            if (locationInfos.isEmpty()) {
+                // no info available anyway so give up
+            }
+            int prologueEnd = -1;
+            for (CompilationResult.CodeMark mark : compilationResult.getMarks()) {
+                if (mark.id.equals(SubstrateBackend.SubstrateMarkId.PROLOGUE_END)) {
+                    prologueEnd = mark.pcOffset;
+                    break;
+                }
+            }
+            if (prologueEnd < 0) {
+                // this is not a normal compiled method so give up
+            }
+            NativeImageDebugLocationInfo locationInfo = (NativeImageDebugLocationInfo) locationInfos.get(0);
+            if (locationInfo.lo < 24) {
+                // we can safely wind this record back to offset zero
+                locationInfo.lo = 0;
+            }
         }
 
         // indices for arguments passed to SingleLevelVisitor::apply
@@ -1436,7 +1459,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      */
     private class NativeImageDebugLocationInfo extends NativeImageDebugBaseMethodInfo implements DebugLocationInfo {
         private final int bci;
-        private final int lo;
+        private int lo;
         private int hi;
         private DebugLocationInfo callersLocationInfo;
         private boolean isPrologueEnd;
@@ -1707,7 +1730,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int regIndex() {
-            return ((RegisterValue) value).getRegister().encoding();
+            return ((RegisterValue) value).getRegister().number;
         }
 
         @Override
