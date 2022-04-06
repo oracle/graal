@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -163,7 +164,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         PrimitiveKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             try {
@@ -181,7 +182,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         ArrayKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             Object foreignObject = value.rawForeignObject(getLanguage());
@@ -205,7 +206,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         @SuppressWarnings("unused") ObjectKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             try {
@@ -229,14 +230,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         @SuppressWarnings("unused") ObjectKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile,
                         @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             // Casting to ForeignException skip the field checks.
             Object foreignObject = value.rawForeignObject(getLanguage());
             if (interop.isException(foreignObject)) {
-                initCheck.execute((ObjectKlass) targetKlass);
+                initCheck.execute(targetKlass);
                 return StaticObject.createForeignException(meta, foreignObject, interop);
             }
             exceptionProfile.enter();
@@ -249,7 +250,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile,
                         @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();

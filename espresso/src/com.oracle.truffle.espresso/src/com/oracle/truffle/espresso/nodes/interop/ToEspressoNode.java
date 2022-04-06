@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -70,7 +71,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     @Specialization
     Object doPrimitive(Object value,
                     PrimitiveKlass primitiveKlass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
         try {
             // @formatter:off
@@ -108,7 +109,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     @Specialization(guards = "isStringCompatible(klass)")
     Object doHostString(String value, ObjectKlass klass) {
-        return klass.getMeta().getMeta().toGuestString(value);
+        return klass.getMeta().toGuestString(value);
     }
 
     @Specialization(guards = {
@@ -116,8 +117,8 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "interop.isNull(value)",
                     "!isPrimitiveKlass(klass)"
     })
-    Object doForeignNull(Object value, Klass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+    Object doForeignNull(Object value, @SuppressWarnings("unused") Klass klass,
+                         @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
         return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
     }
 
@@ -130,7 +131,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isString(klass)"
     })
     Object doForeignString(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
         try {
             String hostString = interop.asString(value);
             return klass.getMeta().toGuestString(hostString);
@@ -149,7 +150,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isForeignException(klass)"
     })
     Object doForeignException(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached InitCheck initCheck) {
         initCheck.execute(klass);
         return StaticObject.createForeignException(klass.getMeta(), value, interop);
@@ -163,7 +164,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isEspressoException(value)"
     })
     Object doForeignArray(Object value, ArrayKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }
 
@@ -176,7 +177,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isByteArray(klass)"
     })
     Object doForeignBuffer(Object value, ArrayKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }
 
@@ -190,7 +191,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isString(klass)"
     })
     Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck) throws UnsupportedTypeException {
         // Skip expensive checks for java.lang.Object.
