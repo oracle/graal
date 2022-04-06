@@ -1081,8 +1081,8 @@ public final class FrameStateBuilder implements SideEffectsState {
             }
         }
         assert stackSize == 0;
-        ValueNode[] newStack = {};
-        ValueNode[] locks = {};
+        ValueNode[] newStack = ValueNode.EMPTY_ARRAY;
+        ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         assert monitorIds.length == 0;
         stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), false, false));
         return stateAfterStart;

@@ -887,7 +887,7 @@ public class InliningUtil extends ValueMergeUtil {
         return true;
     }
 
-    private static final ValueNode[] NO_ARGS = {};
+    private static final ValueNode[] NO_ARGS = ValueNode.EMPTY_ARRAY;
 
     private static boolean isStateAfterException(FrameState frameState) {
         return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.getMethod().isSynchronized());

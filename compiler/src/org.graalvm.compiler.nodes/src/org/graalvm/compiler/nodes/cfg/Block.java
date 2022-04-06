@@ -472,7 +472,7 @@ public final class Block extends AbstractBlockBase<Block> {
             }
         }
 
-        next.setPredecessors(newPreds.toArray(new Block[0]));
+        next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
     }
 
     protected void setPostDominator(Block postdominator) {
