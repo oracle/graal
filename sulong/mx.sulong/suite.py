@@ -930,9 +930,6 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
       "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
-      "cmakeConfig" : {
-        "CMAKE_EXE_LINKER_FLAGS" : "-lm",
-      },
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -1093,23 +1090,6 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
-      "os_arch" : {
-        "darwin": {
-          "<others>" : {
-            "cmakeConfig" : {
-              "CMAKE_EXE_LINKER_FLAGS" : "-lm",
-              "CMAKE_C_FLAGS" : "-Wno-deprecated-declarations",
-            },
-          },
-        },
-        "<others>": {
-          "<others>" : {
-            "cmakeConfig" : {
-              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lrt -pthread",
-            },
-          },
-        },
-      },
     },
     "com.oracle.truffle.llvm.tests.inlineasm.native" : {
       "subDir" : "tests",
