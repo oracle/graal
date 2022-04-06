@@ -35,4 +35,9 @@ public class BranchInstruction extends Instruction {
 
         return b.build();
     }
+
+    @Override
+    public boolean isBranchInstruction() {
+        return true;
+    }
 }

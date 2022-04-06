@@ -48,7 +48,7 @@ import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations
-@TypeSystemReference(SLTypes.class)
+// @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)
 @OperationProxy(SLEqualNode.class)
@@ -161,7 +161,7 @@ public class SLOperations {
     }
 
     @Operation
-    @TypeSystemReference(SLTypes.class)
+    // @TypeSystemReference(SLTypes.class)
     public static class SLConvertToBoolean {
         @Specialization
         public static boolean perform(Object obj, @Bind("this") Node node, @Bind("$bci") int bci) {

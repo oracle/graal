@@ -1,6 +1,7 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.type.TypeKind;
@@ -509,5 +510,13 @@ public abstract class Instruction {
 
     public boolean standardPrologue() {
         return true;
+    }
+
+    public boolean isBranchInstruction() {
+        return Arrays.stream(results).anyMatch(x -> x == ResultType.BRANCH);
+    }
+
+    public boolean isReturnInstruction() {
+        return Arrays.stream(results).anyMatch(x -> x == ResultType.RETURN);
     }
 }

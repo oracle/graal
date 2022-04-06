@@ -60,6 +60,8 @@ public class OperationsBytecodeCodeGenerator {
     private final static Object MARKER_CHILD = new Object();
     private final static Object MARKER_CONST = new Object();
 
+    private static final boolean DO_STACK_LOGGING = false;
+
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
 
@@ -491,13 +493,27 @@ public class OperationsBytecodeCodeGenerator {
                             typeName = "Object";
                         }
 
+                        if (DO_STACK_LOGGING) {
+                            b.startBlock();
+                            b.declaration(retType, "__value__", value);
+                            b.statement("System.out.printf(\" pushing " + typeName + " at -" + destOffset + ": %s%n\", __value__)");
+                        }
+
                         b.startStatement();
                         b.startCall("$frame", "set" + typeName);
                         b.string("$sp - " + destOffset);
-                        b.tree(value);
+                        if (DO_STACK_LOGGING) {
+                            b.string("__value__");
+                        } else {
+                            b.tree(value);
+                        }
                         b.end(2);
 
                         b.returnStatement();
+
+                        if (DO_STACK_LOGGING) {
+                            b.end();
+                        }
                     }
 
                     public boolean createCallSpecialization(SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary) {
@@ -707,8 +723,6 @@ public class OperationsBytecodeCodeGenerator {
 
                 CodeVariableElement[] varInputs = null;
                 CodeVariableElement[] varResults = null;
-                boolean hasBranch = false;
-                boolean hasReturn = false;
 
                 if (op.standardPrologue()) {
 
@@ -743,11 +757,9 @@ public class OperationsBytecodeCodeGenerator {
                                 b.statement("Object result_" + i);
                                 break;
                             case BRANCH:
-                                hasBranch = true;
                                 varResults[i] = varBci;
                                 break;
                             case RETURN:
-                                hasReturn = true;
                                 varResults[i] = varReturnValue;
                                 break;
                         }
@@ -797,9 +809,9 @@ public class OperationsBytecodeCodeGenerator {
                     }
                 }
 
-                if (hasReturn) {
+                if (op.isReturnInstruction()) {
                     b.statement("break loop");
-                } else if (!hasBranch) {
+                } else if (!op.isBranchInstruction()) {
                     b.startAssign(varNextBci).variable(varBci).string(" + " + op.length()).end();
                     b.statement("break");
                 }
