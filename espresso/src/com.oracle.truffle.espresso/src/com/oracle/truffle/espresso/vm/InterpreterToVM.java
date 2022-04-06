@@ -200,19 +200,13 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public byte getArrayByte(EspressoLanguage language, int index, @JavaType(byte[].class /*
-                                                                                           * or
-                                                                                           * boolean
-                                                                                           * []
-                                                                                           */) StaticObject array) {
+    public byte getArrayByte(EspressoLanguage language, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array) {
         return getArrayByte(language, index, array, null);
     }
 
-    public byte getArrayByte(EspressoLanguage language, int index, @JavaType(byte[].class /*
-                                                                                           * or
-                                                                                           * boolean
-                                                                                           * []
-                                                                                           */) StaticObject array, BytecodeNode bytecodeNode) {
+    public byte getArrayByte(EspressoLanguage language, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array, BytecodeNode bytecodeNode) {
         byte[] underlying = array.<byte[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
