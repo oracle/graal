@@ -243,6 +243,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return childExecutions;
     }
 
+    public void addChildExecution(NodeExecutionData data) {
+        childExecutions.add(data);
+    }
+
     public Set<TypeMirror> findSpecializedTypes(NodeExecutionData execution) {
         Set<TypeMirror> foundTypes = new HashSet<>();
         for (SpecializationData specialization : getSpecializations()) {

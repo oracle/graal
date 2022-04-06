@@ -113,33 +113,53 @@ public class CustomInstruction extends Instruction {
     }
 
     @Override
+    public boolean standardPrologue() {
+        return data.getMainProperties().isVariadic;
+    }
+
+    @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (results.length > 0) {
-            b.startAssign(vars.results[0]);
+        if (data.getMainProperties().isVariadic) {
+            // variadics always box
+            if (results.length > 0) {
+                b.startAssign(vars.results[0]);
+            } else {
+                b.startStatement();
+            }
+
+            int inputIndex = 0;
+            b.startCall("this", executeMethod);
+            b.variable(vars.frame);
+            b.variable(vars.bci);
+            b.variable(vars.sp);
+
+            for (ParameterKind kind : data.getMainProperties().parameters) {
+                switch (kind) {
+                    case STACK_VALUE:
+                    case VARIADIC:
+                        b.variable(vars.inputs[inputIndex++]);
+                        break;
+                    case VIRTUAL_FRAME:
+                        b.variable(vars.frame);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unexpected value: " + kind);
+                }
+            }
+
+            b.end(2);
         } else {
             b.startStatement();
-        }
+            b.startCall("this", executeMethod);
+            b.variable(vars.frame);
+            b.variable(vars.bci);
+            b.variable(vars.sp);
+            b.end(2);
 
-        int inputIndex = 0;
-        b.startCall("this", executeMethod);
-        b.variable(vars.bci);
-        for (ParameterKind kind : data.getMainProperties().parameters) {
-            switch (kind) {
-                case STACK_VALUE:
-                case VARIADIC:
-                    b.variable(vars.inputs[inputIndex++]);
-                    break;
-                case VIRTUAL_FRAME:
-                    b.variable(vars.frame);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + kind);
-            }
+            b.startAssign(vars.sp).variable(vars.sp).string(" - " + this.numPopStatic() + " + " + this.numPush()).end();
         }
-
-        b.end(2);
 
         return b.build();
     }

@@ -451,6 +451,18 @@ public abstract class Instruction {
         return stackPush;
     }
 
+    public int numPopStatic() {
+        int stackPop = 0;
+        for (InputType i : inputs) {
+            if (i == InputType.STACK_VALUE || i == InputType.STACK_VALUE_IGNORED) {
+                stackPop++;
+            } else if (i == InputType.VARARG_VALUE) {
+                throw new UnsupportedOperationException("number of pops not static");
+            }
+        }
+        return stackPop;
+    }
+
     public CodeTree numPop(BuilderVariables vars) {
         int stackPop = 0;
         for (InputType i : inputs) {
@@ -493,5 +505,9 @@ public abstract class Instruction {
         }
 
         return sb.toString();
+    }
+
+    public boolean standardPrologue() {
+        return true;
     }
 }

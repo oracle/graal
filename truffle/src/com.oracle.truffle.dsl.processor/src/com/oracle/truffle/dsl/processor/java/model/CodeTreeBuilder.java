@@ -556,6 +556,23 @@ public class CodeTreeBuilder {
         return string("// ").string(text).newLine();
     }
 
+    public CodeTreeBuilder startComment() {
+        string("/*");
+        startGroup();
+        registerCallBack(new EndCallback() {
+
+            public void beforeEnd() {
+                string("*/");
+
+            }
+
+            public void afterEnd() {
+            }
+        });
+
+        return this;
+    }
+
     public CodeTreeBuilder startNew(TypeMirror uninializedNodeClass) {
         return startGroup().string("new ").type(uninializedNodeClass).startParanthesesCommaGroup().endAfter();
     }

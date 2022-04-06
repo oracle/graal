@@ -76,15 +76,15 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
 
     private static final String LOCAL_VALUE = "value";
 
-    static CodeTree implicitCastFlat(TypeSystemData typeSystem, TypeMirror type, CodeTree value, CodeTree state) {
+    public static CodeTree implicitCastFlat(TypeSystemData typeSystem, TypeMirror type, CodeTree value, CodeTree state) {
         return callImplictMethodFlat(typeSystem, type, asImplicitTypeMethodName(typeSystem, type), value, state);
     }
 
-    static CodeTree implicitCheckFlat(TypeSystemData typeSystem, TypeMirror type, CodeTree value, CodeTree state) {
+    public static CodeTree implicitCheckFlat(TypeSystemData typeSystem, TypeMirror type, CodeTree value, CodeTree state) {
         return callImplictMethodFlat(typeSystem, type, isImplicitTypeMethodName(typeSystem, type), value, state);
     }
 
-    static CodeTree implicitSpecializeFlat(TypeSystemData typeSystem, TypeMirror type, CodeTree value) {
+    public static CodeTree implicitSpecializeFlat(TypeSystemData typeSystem, TypeMirror type, CodeTree value) {
         return callImplictMethodFlat(typeSystem, type, specializeImplicitTypeMethodName(typeSystem, type), value, null);
     }
 
@@ -117,7 +117,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
-    static CodeTree cast(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
+    public static CodeTree cast(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
         TypeCastData cast = typeSystem.getCast(type);
@@ -171,7 +171,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return check(typeSystem, type, CodeTreeBuilder.singleString(content));
     }
 
-    static CodeTree check(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
+    public static CodeTree check(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
         if (ElementUtils.isObject(type)) {
             return content;
         }

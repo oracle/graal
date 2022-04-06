@@ -13,6 +13,8 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.Resu
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationEnterInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationExitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationLeaveInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.SuperInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.TransferInstruction;
 
@@ -47,15 +49,15 @@ public class OperationsContext {
         add(new Operation.While(this, operationId++));
         add(new Operation.TryCatch(this, operationId++));
 
-        Instruction iConst;
-        Instruction iStloc;
+// Instruction iConst;
+// Instruction iStloc;
 
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
-        add(new Operation.Simple(this, "ConstObject", operationId++, 0, iConst = add(new TransferInstruction("load.constant", instructionId++, ResultType.STACK_VALUE, InputType.CONST_POOL))));
+        add(new Operation.Simple(this, "ConstObject", operationId++, 0, add(new TransferInstruction("load.constant", instructionId++, ResultType.STACK_VALUE, InputType.CONST_POOL))));
         add(new Operation.Simple(this, "LoadArgument", operationId++, 0, add(new TransferInstruction("load.argument", instructionId++, ResultType.STACK_VALUE, InputType.ARGUMENT))));
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new TransferInstruction("load.local", instructionId++, ResultType.STACK_VALUE, InputType.LOCAL))));
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, iStloc = add(new TransferInstruction("store.local", instructionId++, ResultType.SET_LOCAL, InputType.STACK_VALUE))));
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(instructionId++))));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(instructionId++))));
         add(new Operation.Simple(this, "Return", operationId++, 1, add(new TransferInstruction("return", instructionId++, ResultType.RETURN, InputType.STACK_VALUE))));
 
         add(new Operation.Instrumentation(this, operationId++,
@@ -64,7 +66,8 @@ public class OperationsContext {
                         add(new InstrumentationExitInstruction(instructionId++, true)),
                         add(new InstrumentationLeaveInstruction(instructionId++))));
 
-        Instruction iSuper = add(new SuperInstruction(instructionId++, new Instruction[]{iConst, iStloc}));
+// Instruction iSuper = add(new SuperInstruction(instructionId++, new Instruction[]{iConst,
+// iStloc}));
     }
 
     public Instruction add(Instruction elem) {

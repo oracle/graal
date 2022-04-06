@@ -44,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -269,7 +271,11 @@ public class TypeBoxingTest {
 
     @TypeSystem
     static class TypeBoxingTypeSystem {
-
+        @ImplicitCast
+        @TruffleBoundary
+        public static int castInt(byte b) {
+            return b;
+        }
     }
 
 }
