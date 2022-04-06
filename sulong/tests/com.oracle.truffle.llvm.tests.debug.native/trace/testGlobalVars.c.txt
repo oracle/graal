@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,7 +28,9 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 38 CONTINUE "start"
+BREAK 40 CONTINUE "start"
     TOP_SCOPE partial
         MEMBER any any "globalVar"
+        MEMBER any any "threadLocalGlobalVar"    
         MEMBER any any "globalFn"
+
