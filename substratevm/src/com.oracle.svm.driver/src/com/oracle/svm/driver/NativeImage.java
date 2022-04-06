@@ -261,6 +261,7 @@ public class NativeImage {
     protected static class BuildConfiguration {
 
         boolean modulePathBuild;
+        String imageBuilderModeEnforcer;
 
         protected final Path workDir;
         protected final Path rootDir;
@@ -268,6 +269,7 @@ public class NativeImage {
 
         BuildConfiguration(BuildConfiguration original) {
             modulePathBuild = original.modulePathBuild;
+            imageBuilderModeEnforcer = original.imageBuilderModeEnforcer;
             workDir = original.workDir;
             rootDir = original.rootDir;
             args = new ArrayList<>(original.args);
@@ -280,6 +282,7 @@ public class NativeImage {
         @SuppressWarnings("deprecation")
         BuildConfiguration(Path rootDir, Path workDir, List<String> args) {
             modulePathBuild = ModuleSupport.isModulePathBuild();
+            imageBuilderModeEnforcer = null;
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
@@ -1323,9 +1326,7 @@ public class NativeImage {
         try {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
-            if (config.modulePathBuild) {
-                pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(true));
-            }
+            pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
             p = pb.inheritIO().start();
             exitStatus = p.waitFor();
         } catch (IOException | InterruptedException e) {
@@ -1525,7 +1526,7 @@ public class NativeImage {
             return;
         }
 
-        config.modulePathBuild = true;
+        enableModulePathBuild();
         imageModulePath.add(mpEntry);
         processClasspathNativeImageMetaInf(mpEntry);
     }
@@ -1598,6 +1599,13 @@ public class NativeImage {
 
     void setModuleOptionMode(boolean val) {
         moduleOptionMode = val;
+        enableModulePathBuild();
+    }
+
+    private void enableModulePathBuild() {
+        if (config.modulePathBuild == false) {
+            NativeImage.showError("Native image module options not allowed in this image build. Reason: " + config.imageBuilderModeEnforcer);
+        }
         config.modulePathBuild = true;
     }
 
