@@ -1505,6 +1505,8 @@ public class NativeImage {
     }
 
     void addImageModulePath(Path modulePathEntry, boolean strict) {
+        enableModulePathBuild();
+
         Path mpEntry;
         try {
             mpEntry = canonicalize(modulePathEntry);
@@ -1526,7 +1528,6 @@ public class NativeImage {
             return;
         }
 
-        enableModulePathBuild();
         imageModulePath.add(mpEntry);
         processClasspathNativeImageMetaInf(mpEntry);
     }
@@ -1598,13 +1599,13 @@ public class NativeImage {
     }
 
     void setModuleOptionMode(boolean val) {
-        moduleOptionMode = val;
         enableModulePathBuild();
+        moduleOptionMode = val;
     }
 
     private void enableModulePathBuild() {
         if (config.modulePathBuild == false) {
-            NativeImage.showError("Native image module options not allowed in this image build. Reason: " + config.imageBuilderModeEnforcer);
+            NativeImage.showError("Module options not allowed in this image build. Reason: " + config.imageBuilderModeEnforcer);
         }
         config.modulePathBuild = true;
     }
