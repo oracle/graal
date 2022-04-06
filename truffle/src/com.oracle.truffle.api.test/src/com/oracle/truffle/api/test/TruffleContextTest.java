@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static com.oracle.truffle.api.TruffleLanguage.Registration;
 import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -77,13 +78,14 @@ public class TruffleContextTest {
     @ExportLibrary(InteropLibrary.class)
     static final class OtherContextDiedException extends AbstractTruffleException {
 
-        OtherContextDiedException(String name) {
+        OtherContextDiedException(TruffleContext outerCreatorContext, String name) {
             super(name);
-            TruffleContext ctx = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
+            TruffleContext currentContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             /*
-             * This is the outer context which should still be usable.
+             * The current context should be the outer context and it should still be usable.
              */
-            ctx.leave(null, ctx.enter(null));
+            assertSame(outerCreatorContext, currentContext);
+            currentContext.leave(null, currentContext.enter(null));
         }
 
         @ExportMessage
@@ -130,10 +132,11 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             try (TruffleContext innerContext = env.newContextBuilder().onCancelled(new Runnable() {
                 @Override
                 public void run() {
-                    throw new OtherContextDiedException("Inner context cancelled");
+                    throw new OtherContextDiedException(outerContext, "Inner context cancelled");
                 }
             }).build()) {
                 Object executable = innerContext.evalPublic(node, Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "BLOCK(DEFINE(cancel, CANCEL()), RETURN(cancel))", "").build());
@@ -199,10 +202,11 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             try (TruffleContext innerContext = env.newContextBuilder().onCancelled(new Runnable() {
                 @Override
                 public void run() {
-                    throw new OtherContextDiedException("Inner context cancelled");
+                    throw new OtherContextDiedException(outerContext, "Inner context cancelled");
                 }
             }).build()) {
                 Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "DEFINE(statememt, STATEMENT)", "").build();
@@ -268,10 +272,11 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             try (TruffleContext innerContext = env.newContextBuilder().onExited(new Consumer<Integer>() {
                 @Override
                 public void accept(Integer exitCode) {
-                    throw new OtherContextDiedException("Inner context exited with exit code " + exitCode);
+                    throw new OtherContextDiedException(outerContext, "Inner context exited with exit code " + exitCode);
                 }
             }).build()) {
                 Object executable = innerContext.evalPublic(node, Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "BLOCK(DEFINE(exit, EXIT(42)), RETURN(exit))", "").build());
@@ -343,10 +348,11 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             try (TruffleContext innerContext = env.newContextBuilder().onExited(new Consumer<Integer>() {
                 @Override
                 public void accept(Integer exitCode) {
-                    throw new OtherContextDiedException("Inner context exited with exit code " + exitCode);
+                    throw new OtherContextDiedException(outerContext, "Inner context exited with exit code " + exitCode);
                 }
             }).build()) {
                 Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "STATEMENT", "").build();
@@ -426,10 +432,11 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             try (TruffleContext innerContext = env.newContextBuilder().onClosed(new Runnable() {
                 @Override
                 public void run() {
-                    throw new OtherContextDiedException("Inner context closed");
+                    throw new OtherContextDiedException(outerContext, "Inner context closed");
                 }
             }).build()) {
                 Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "STATEMENT", "").build();
