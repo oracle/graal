@@ -29,9 +29,9 @@ import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationKind;
-import org.graalvm.bisect.parser.ExperimentFiles;
-import org.graalvm.bisect.parser.ExperimentParser;
-import org.graalvm.bisect.parser.ExperimentParserException;
+import org.graalvm.bisect.parser.experiment.ExperimentFiles;
+import org.graalvm.bisect.parser.experiment.ExperimentParser;
+import org.graalvm.bisect.parser.experiment.ExperimentParserException;
 import org.junit.Test;
 
 import java.io.IOException;

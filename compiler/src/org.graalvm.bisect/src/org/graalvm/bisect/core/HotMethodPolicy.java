@@ -34,34 +34,58 @@ public class HotMethodPolicy {
     /**
      * The minimum number of methods to mark as hot.
      */
-    public static final int HOT_METHOD_MIN_LIMIT = 1;
+    private int hotMethodMinLimit = 1;
     /**
      * The maximum number of methods to mark as hot.
      */
-    public static final int HOT_METHOD_MAX_LIMIT = 10;
+    private int hotMethodMaxLimit = 10;
     /**
      * The percentile of the execution period that is spent executing hot methods.
      */
-    public static final double HOT_METHOD_PERCENTILE = 0.9;
+    private double hotMethodPercentile = 0.9;
 
     /**
      * Marks the longest executing methods of an experiment as hot. The methods are sorted by decreasing periods
-     * of execution. The first {@link #HOT_METHOD_MIN_LIMIT} methods are always marked as hot. The methods which fit
-     * into the {@link #HOT_METHOD_PERCENTILE} of total graal execution are marked as hot. A maximum of
-     * {@link #HOT_METHOD_MAX_LIMIT} is marked as hot. The method calls {@link ExecutedMethod#setHot} for each method of
+     * of execution. The first {@link #hotMethodMinLimit} methods are always marked as hot. The methods which fit
+     * into the {@link #hotMethodPercentile} of total graal execution are marked as hot. A maximum of
+     * {@link #hotMethodMaxLimit} is marked as hot. The method calls {@link ExecutedMethod#setHot} for each method of
      * the experiment to avoid an inconsistent state.
      * @param experiment the experiment which is evaluated for hot methods
      */
     public void markHotMethods(Experiment experiment) {
-        double periodLimit = experiment.sumGraalPeriod() * HOT_METHOD_PERCENTILE;
+        double periodLimit = experiment.sumGraalPeriod() * hotMethodPercentile;
         List<ExecutedMethod> sortedMethods = experiment.getExecutedMethods().stream()
                 .sorted((ExecutedMethod a, ExecutedMethod b) -> Long.compare(b.getPeriod(), a.getPeriod()))
                 .collect(Collectors.toList());
         int index = 0;
         for (ExecutedMethod method : sortedMethods) {
             periodLimit -= method.getPeriod();
-            method.setHot(index < HOT_METHOD_MIN_LIMIT || (periodLimit >= 0 && index < HOT_METHOD_MAX_LIMIT));
+            method.setHot(index < hotMethodMinLimit || (periodLimit >= 0 && index < hotMethodMaxLimit));
             ++index;
         }
+    }
+
+    /**
+     * Sets the minimum number of methods to mark as hot.
+     * @param hotMethodMinLimit the minimum number of methods to mark as hot
+     */
+    public void setHotMethodMinLimit(int hotMethodMinLimit) {
+        this.hotMethodMinLimit = hotMethodMinLimit;
+    }
+
+    /**
+     * Sets maximum number of methods to mark as hot.
+     * @param hotMethodMaxLimit the maximum number of methods to mark as hot
+     */
+    public void setHotMethodMaxLimit(int hotMethodMaxLimit) {
+        this.hotMethodMaxLimit = hotMethodMaxLimit;
+    }
+
+    /**
+     * Sets the percentile of the execution period that is spent executing hot methods.
+     * @param hotMethodPercentile the percentile of the execution period that is spent executing hot methods
+     */
+    public void setHotMethodPercentile(double hotMethodPercentile) {
+        this.hotMethodPercentile = hotMethodPercentile;
     }
 }

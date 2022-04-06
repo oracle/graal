@@ -40,6 +40,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Collects info about optimizations performed in a single compilation and dumps them to a JSON file.
+ */
 public class OptimizationLog {
 
     public static class Options {
@@ -135,6 +138,9 @@ public class OptimizationLog {
         }
     }
 
+    /**
+     * Describes the kind and location of one performed optimization.
+     */
     static class OptimizationEntry {
         private final String description;
         private final ResolvedJavaMethod method;
@@ -177,6 +183,11 @@ public class OptimizationLog {
         optimizationEntries.add(new OptimizationEntry("Loop Partial Unroll", loopBegin.graph().method(), bci));
     }
 
+    /**
+     * Prints the optimization log of this compilation to {@code optimization_log/execution-id/compilation-id.json}.
+     * Directories are created if they do not exist.
+     * @throws IOException failed to create a directory or the file
+     */
     public void printToFile() throws IOException {
         String filename = compilationId + ".json";
         Path path = Path.of("optimization_log", GraalServices.getExecutionID(), filename);

@@ -50,11 +50,9 @@ public class HotMethodPolicyTest {
         HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();
         hotMethodPolicy.markHotMethods(experiment);
 
-        // the test must be adjusted when these parameters are changed
-        // TODO create a setter
-        assertEquals(1, HotMethodPolicy.HOT_METHOD_MIN_LIMIT);
-        assertEquals(10, HotMethodPolicy.HOT_METHOD_MAX_LIMIT);
-        assertEquals(0.9, HotMethodPolicy.HOT_METHOD_PERCENTILE, 0.01);
+        hotMethodPolicy.setHotMethodMinLimit(1);
+        hotMethodPolicy.setHotMethodMaxLimit(10);
+        hotMethodPolicy.setHotMethodPercentile(0.9);
 
         Set<String> hotMethods = Set.of("foo2", "foo3", "bar1");
         for (ExecutedMethod method : methods) {

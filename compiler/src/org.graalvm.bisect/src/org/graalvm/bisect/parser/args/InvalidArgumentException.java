@@ -22,16 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.parser;
-
-import org.graalvm.bisect.core.ExperimentId;
+package org.graalvm.bisect.parser.args;
 
 /**
- * Indicates that the experiment files had an incorrect format and could not be parsed.
+ * Indicates that a value of a program argument is invalid.
  */
 @SuppressWarnings("serial")
-public class ExperimentParserException extends Exception {
-    ExperimentParserException(String message, ExperimentId experimentId) {
-        super("Failed to parse experiment " + experimentId + ": " + message);
+public class InvalidArgumentException extends Exception {
+    InvalidArgumentException(String argumentName, String reason) {
+        super("The argument '" + argumentName + "' could not be parsed: " + reason);
     }
 }
