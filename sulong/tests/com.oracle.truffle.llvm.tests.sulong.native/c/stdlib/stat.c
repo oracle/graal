@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,11 +44,16 @@ int main(__attribute__((unused)) int argc, char **argv) {
     if (fileStat.st_size <= 0) {
         return 2;
     }
+
+#ifndef _WIN32
+    // lstat does not exist on Windows
     if (lstat(argv[0], &fileStat) < 0)
         return 3;
     if (fileStat.st_size <= 0) {
         return 4;
     }
+#endif
+
     if (fstat(file, &fileStat) < 0)
         return 5;
     if (fileStat.st_size <= 0) {
