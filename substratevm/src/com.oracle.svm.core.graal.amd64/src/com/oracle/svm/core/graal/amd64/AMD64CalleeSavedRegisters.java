@@ -365,7 +365,8 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         @Platforms(Platform.HOSTED_ONLY.class)
         private int fieldOffset(ResolvedJavaField f) {
             SharedField field = (SharedField) f;
-            return field.isAccessed() ? field.getLocation() : -1;
+            GraalError.guarantee(field.isAccessed(), "Field not accessed %s", f);
+            return field.getLocation();
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
