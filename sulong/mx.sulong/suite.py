@@ -148,6 +148,22 @@ suite = {
         },
       },
     },
+    # This is a dummy library for disabling tests that won't compile because of missing GNU make.
+    "UNIX_SUPPORT" : {
+      "os_arch" : {
+        "<others>" : {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+        },
+        "windows" : {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
   },
 
   "projects" : {
@@ -1039,6 +1055,9 @@ suite = {
         "CMAKE_C_FLAGS" : "-pthread",
         "CMAKE_C_LINK_FLAGS" : "-pthread",
       },
+      "buildDependencies" : [
+        "UNIX_SUPPORT",
+      ],
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -1159,6 +1178,9 @@ suite = {
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
+      "buildDependencies" : [
+        "UNIX_SUPPORT",
+      ],
       "results": [
         "dynLink",
         "linker",
@@ -1181,6 +1203,9 @@ suite = {
         "SULONG_TEST",
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "buildDependencies" : [
+        "UNIX_SUPPORT",
       ],
       "results": [
         "dlopenAbsolute",
@@ -1252,7 +1277,9 @@ suite = {
         "CLANG": "<toolchainGetToolPath:native,CC>",
         "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.va.native>",
       },
-      "buildDependencies" : [],
+      "buildDependencies" : [
+        "UNIX_SUPPORT",
+      ],
       "dependencies" : [
         "SULONG_TEST",
         "SULONG_TOOLCHAIN_LAUNCHERS",
@@ -1274,7 +1301,9 @@ suite = {
         "CLANG": "<toolchainGetToolPath:native,CC>",
         "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.sulongobjc.native>",
       },
-      "buildDependencies" : [],
+      "buildDependencies" : [
+        "UNIX_SUPPORT",
+      ],
       "dependencies" : [
         "SULONG_TEST",
         "SULONG_TOOLCHAIN_LAUNCHERS",
