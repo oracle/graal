@@ -58,7 +58,6 @@ import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
@@ -140,6 +139,7 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
+import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
@@ -243,7 +243,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
     }
 
-    private void initializeJavaLibrary(TruffleObject javaLibrary) {
+    private void initializeJavaLibrary(TruffleObject libJava) {
         // HotSpot calls libjava's JNI_OnLoad only on 8.
         if (getJavaVersion().java8OrEarlier()) {
             /*
@@ -252,7 +252,7 @@ public final class VM extends NativeEnv implements ContextAccess {
              * we have to check for JNI_OnLoad as well.
              */
             EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
-            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(javaLibrary, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
+            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
             if (jniOnLoad != null) {
                 try {
                     getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
@@ -263,9 +263,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
-    private JavaVersion findJavaVersion(TruffleObject javaLibrary) {
+    private JavaVersion findJavaVersion(TruffleObject libJava) {
         // void JDK_GetVersionInfo0(jdk_version_info* info, size_t info_size);
-        TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(javaLibrary, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
+        TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(libJava, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
         if (jdkGetVersionInfo != null) {
             JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
             try {
@@ -295,7 +295,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert javaLibrary == null : "java library already initialized";
         this.javaLibrary = loadJavaLibrary(searchPaths);
         JavaVersion javaVersion = findJavaVersion(this.javaLibrary);
-        getEspressoLanguage().initializeJavaVersion(javaVersion);
+        getEspressoLanguage().tryInitializeJavaVersion(javaVersion);
         initializeJavaLibrary(this.javaLibrary);
     }
 
