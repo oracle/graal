@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -65,14 +64,12 @@ final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality
         throw VMError.shouldNotReachHere("Unknown object constant: " + b);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     static boolean isolatedConstantHandleTargetsEqual(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> x, ClientHandle<?> y) {
         return IsolatedCompileClient.get().unhand(x) == IsolatedCompileClient.get().unhand(y);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static boolean isolatedHandleTargetEqualImageObject(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> x, ImageHeapRef<?> y) {
         return IsolatedCompileClient.get().unhand(x) == ImageHeapObjects.deref(y);
     }
