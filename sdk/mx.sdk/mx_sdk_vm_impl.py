@@ -113,6 +113,7 @@ _suite = mx.suite('sdk')
 """:type: mx.SourceSuite | mx.Suite"""
 
 _exe_suffix = mx.exe_suffix('')
+_cmd_suffix = mx.cmd_suffix('')
 """:type: str"""
 _lib_suffix = mx.add_lib_suffix("")
 _lib_prefix = mx.add_lib_prefix("")
@@ -1100,6 +1101,16 @@ def remove_exe_suffix(name, require_suffix=True):
         raise mx.abort("Missing exe suffix: " + name)
     return name
 
+def remove_cmd_or_exe_suffix(name, require_suffix=True):
+    if not _cmd_suffix and not _exe_suffix:
+        return name
+    elif name.endswith(_cmd_suffix):
+        return name[:-len(_cmd_suffix)]
+    elif name.endswith(_exe_suffix):
+        return name[:-len(_exe_suffix)]
+    elif require_suffix:
+        raise mx.abort("Missing cmd suffix: " + name)
+    return name
 
 def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
     result = libname
@@ -1187,7 +1198,7 @@ class GraalVmNativeProperties(GraalVmProject):
     def canonical_image_name(image_config):
         canonical_name = basename(image_config.destination)
         if isinstance(image_config, mx_sdk.LauncherConfig):
-            canonical_name = remove_exe_suffix(canonical_name)
+            canonical_name = remove_cmd_or_exe_suffix(canonical_name)
         elif isinstance(image_config, mx_sdk.LibraryConfig):
             canonical_name = remove_lib_prefix_suffix(canonical_name)
         return canonical_name
@@ -1196,7 +1207,7 @@ class GraalVmNativeProperties(GraalVmProject):
     def macro_name(image_config):
         macro_name = basename(image_config.destination)
         if isinstance(image_config, mx_sdk.LauncherConfig):
-            macro_name = remove_exe_suffix(macro_name) + '-launcher'
+            macro_name = remove_cmd_or_exe_suffix(macro_name) + '-launcher'
         elif isinstance(image_config, mx_sdk.LibraryConfig):
             macro_name = remove_lib_prefix_suffix(macro_name) + '-library'
         return macro_name
