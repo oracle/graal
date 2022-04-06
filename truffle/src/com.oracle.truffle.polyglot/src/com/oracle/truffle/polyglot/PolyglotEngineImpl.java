@@ -68,7 +68,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -92,7 +91,6 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -153,8 +151,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     ENGINE_ID, OPTION_GROUP_LOG, OPTION_GROUP_IMAGE_BUILD_TIME));
 
-    private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
-    private static volatile boolean shutdownHookInitialized = false;
     private static final boolean DEBUG_MISSING_CLOSE = Boolean.getBoolean("polyglotimpl.DebugMissingClose");
     static final LocalLocation[] EMPTY_LOCATIONS = new LocalLocation[0];
 
@@ -319,7 +315,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         if (!preInitialization) {
             createInstruments(instrumentsOptions, allowExperimentalOptions);
-            registerShutDownHook();
         }
     }
 
@@ -433,7 +428,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     void notifyCreated() {
-        ENGINES.put(this, null);
         RUNTIME.onEngineCreate(this, this.runtimeData);
     }
 
@@ -533,7 +527,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.api = getAPIAccess().newEngine(impl.engineDispatch, this);
 
         ensureInstrumentsCreated(instrumentsToCreate);
-        registerShutDownHook();
         notifyCreated();
     }
 
@@ -588,16 +581,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
-    static Collection<Object> findActiveEngines() {
-        synchronized (ENGINES) {
-            List<Object> engines = new ArrayList<>(ENGINES.size());
-            for (PolyglotEngineImpl engine : ENGINES.keySet()) {
-                engines.add(engine.api);
-            }
-            return engines;
-        }
-    }
-
     void patch(DispatchOutputStream newOut,
                     DispatchOutputStream newErr,
                     InputStream newIn,
@@ -640,7 +623,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             instrument.getEngineOptionValues().putAll(this, instrumentsOptions.get(instrument), newAllowExperimentalOptions);
         }
-        registerShutDownHook();
     }
 
     static Handler createLogHandler(LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
@@ -666,17 +648,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         for (PolyglotInstrument instrument : instruments) {
             // we got options for this instrument -> create it.
             instrument.ensureCreated();
-        }
-    }
-
-    private static void registerShutDownHook() {
-        if (!shutdownHookInitialized) {
-            synchronized (ENGINES) {
-                if (!shutdownHookInitialized) {
-                    shutdownHookInitialized = true;
-                    Runtime.getRuntime().addShutdownHook(new Thread(new PolyglotShutDownHook()));
-                }
-            }
         }
     }
 
@@ -1253,7 +1224,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     if (runtimeData != null) {
                         EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
                     }
-                    ENGINES.remove(this);
+                    getAPIAccess().engineClosed(api);
                 } else if (logHandler != null) {
                     // called from shutdown hook, at least flush the logging handler
                     logHandler.flush();
@@ -1387,14 +1358,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         INSTRUMENT.finalizeStoreInstrumentationHandler(instrumentationHandler);
     }
 
-    /**
-     * Clears the pre-initialized engines. The TruffleBaseFeature needs to clean emitted engines
-     * during Feature.cleanup.
-     */
-    static void resetPreInitializedEngine() {
-        ENGINES.clear();
-    }
-
     @TruffleBoundary
     int getAsynchronousStackDepth() {
         return asynchronousStackDepth;
@@ -1413,41 +1376,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         asynchronousStackDepth = newDepth;
-    }
-
-    private static final class PolyglotShutDownHook implements Runnable {
-
-        @SuppressWarnings("try")
-        public void run() {
-            PolyglotEngineImpl[] engines;
-            synchronized (ENGINES) {
-                engines = ENGINES.keySet().toArray(new PolyglotEngineImpl[0]);
-            }
-            for (PolyglotEngineImpl engine : engines) {
-                try (ThreadScope scope = engine.getImpl().getRootImpl().createThreadScope()) {
-                    if (DEBUG_MISSING_CLOSE) {
-                        PrintStream out = System.out;
-                        out.println("Missing close on vm shutdown: ");
-                        out.print(" InitializedLanguages:");
-                        synchronized (engine.lock) {
-                            for (PolyglotContextImpl context : engine.collectAliveContexts()) {
-                                for (PolyglotLanguageContext langContext : context.contexts) {
-                                    if (langContext.env != null) {
-                                        out.print(langContext.language.getId());
-                                        out.print(", ");
-                                    }
-                                }
-                            }
-                        }
-                        out.println();
-                        engine.createdLocation.printStackTrace();
-                    }
-                    if (engine != null) {
-                        engine.ensureClosed(false, true);
-                    }
-                }
-            }
-        }
     }
 
     static void cancelOrExit(PolyglotContextImpl context, List<Future<Void>> cancelationFutures) {
@@ -2167,6 +2095,27 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             context.resizeThreadLocals(newStableLocations);
         }
         return newLocations;
+    }
+
+    void onVMShutdown() {
+        if (DEBUG_MISSING_CLOSE) {
+            PrintStream log = System.out;
+            log.println("Missing close on vm shutdown: ");
+            log.print(" InitializedLanguages:");
+            synchronized (lock) {
+                for (PolyglotContextImpl context : collectAliveContexts()) {
+                    for (PolyglotLanguageContext langContext : context.contexts) {
+                        if (langContext.env != null) {
+                            log.print(langContext.language.getId());
+                            log.print(", ");
+                        }
+                    }
+                }
+            }
+            log.println();
+            createdLocation.printStackTrace();
+        }
+        ensureClosed(false, true);
     }
 
     static final class StableLocalLocations {

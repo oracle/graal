@@ -216,4 +216,11 @@ final class HostEntryPoint {
         return guestEntry.unmarshall(type, id);
     }
 
+    public void shutdown(long engineId) {
+        Engine engine = unmarshall(Engine.class, engineId);
+        Object receiver = api.getReceiver(engine);
+        AbstractEngineDispatch dispatch = api.getDispatch(engine);
+        dispatch.shutdown(receiver);
+    }
+
 }
