@@ -446,8 +446,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         if (target.getType() instanceof FunctionType) {
             FunctionType ft = (FunctionType) target.getType();
             if (ft.isVarargs()) {
-                // target.getType() is the signature of the target function. The signature constructed for the
-                // call-site contains the types of the actual arguments. For example, printf has this signature:
+                // target.getType() is the signature of the target function. The signature
+                // constructed for the call-site contains the types of the actual arguments.
+                // For example, printf has this signature:
                 // > (i8*, ...):i32
                 // a call-site
                 // > printf("%d %d %d", 1, 2, 3)
