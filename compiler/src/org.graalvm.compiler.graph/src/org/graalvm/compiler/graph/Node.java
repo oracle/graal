@@ -1490,7 +1490,13 @@ public abstract class Node implements Cloneable, Formattable {
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Fields properties = getNodeClass().getData();
         for (int i = 0; i < properties.getCount(); i++) {
-            map.put(properties.getName(i), properties.get(this, i));
+            Object value = properties.get(this, i);
+            if (properties.getType(i) == Character.TYPE) {
+                // Convert a char to an int as chars are not guaranteed to printable/viewable
+                char ch = (char) value;
+                value = Integer.valueOf(ch);
+            }
+            map.put(properties.getName(i), value);
         }
         NodeSourcePosition pos = getNodeSourcePosition();
         if (pos != null) {

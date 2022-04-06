@@ -95,17 +95,17 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * Logical number of local variables represented in this frame state. See {@link #values()} for
      * details on storage allocated for the local variables.
      */
-    private final short localsSize;
+    private final char localsSize;
 
     /**
      * Number of entries in {@link #values()} allocated for expression stack values.
      */
-    private final short stackSize;
+    private final char stackSize;
 
     /**
      * Number of entries in {@link #values()} allocated for locked object values.
      */
-    private final short locksSize;
+    private final char locksSize;
 
     /**
      * @see BytecodeFrame#rethrowException
@@ -142,12 +142,15 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     private final Bytecode code;
 
-    private static short ensureShort(int value) {
-        short svalue = (short) value;
-        if (svalue != value) {
-            throw new IllegalArgumentException(value + " is not a short");
+    /**
+     * Narrows {@code value} to a {@code char} while ensuring the value does not change.
+     */
+    private static char ensureChar(int value) {
+        char cvalue = (char) value;
+        if (cvalue != value) {
+            throw new IllegalArgumentException(value + " (0x" + Integer.toHexString(value) + ") is not a char");
         }
-        return svalue;
+        return cvalue;
     }
 
     public FrameState(FrameState outerFrameState,
@@ -177,9 +180,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         assert outerFrameState == null || outerFrameState.bci >= 0;
         this.code = code;
         this.bci = bci;
-        this.localsSize = ensureShort(localsSize);
-        this.locksSize = ensureShort(locksSize);
-        this.stackSize = ensureShort(stackSize);
+        this.localsSize = ensureChar(localsSize);
+        this.locksSize = ensureChar(locksSize);
+        this.stackSize = ensureChar(stackSize);
 
         if (monitorIds != null && monitorIds.size() > 0) {
             this.monitorIds = new NodeInputList<>(this, monitorIds);
@@ -844,7 +847,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         if (isPlaceholderBci(bci)) {
             properties.put("bci", getPlaceholderBciName(bci));
         }
-        properties.put("locksSize", locksSize);
         return properties;
     }
 
