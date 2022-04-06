@@ -50,6 +50,8 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.UnchangedNameTransformation;
 
+// Checkstyle: stop method name check
+
 @CHeader(PolyglotIsolateHeader.class)
 public final class PolyglotNativeAPIEntryPoints {
     private static final String UNINTERRUPTIBLE_REASON = "Unsafe state in case of failure";
