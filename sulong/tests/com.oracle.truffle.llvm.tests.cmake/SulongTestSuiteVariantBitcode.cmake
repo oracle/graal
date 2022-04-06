@@ -56,7 +56,8 @@ macro(setupOptions)
         check_c_compiler_flag("${CLANG_DISABLE_O0_OPTNONE}" HAVE_CLANG_DISABLE_O0_OPTNONE)
     endif()
 
-    set(OUTPUT "${SULONG_CURRENT_VARIANT}.bc")
+    set(OUTPUT "${SULONG_CURRENT_VARIANT}")
+    set(SUFFIX ".bc")
     string(APPEND CMAKE_C_FLAGS " -emit-llvm")
     string(APPEND CMAKE_CXX_FLAGS " -emit-llvm")
 
