@@ -93,6 +93,11 @@ set(DRAGONEGG_LLVMAS "" CACHE STRING "llvm-as compatible with the DRAGONEGG LLVM
 set(TOOLCHAIN_CLANG "" CACHE STRING "Toolchain Wrapper for clang used by the 'bitcode' variant")
 set(TOOLCHAIN_CLANGXX "" CACHE STRING "Toolchain Wrapper for clang++ used by the 'bitcode' variant")
 
+if(WIN32)
+    # On Windows this defaults to 260 and produces a lot of warnings
+    set(CMAKE_OBJECT_PATH_MAX 4096)
+endif()
+
 # Environment Variables
 # ---------------------
 # variables that can be overridden via the environment (select different LLVM versions in the CI config)
