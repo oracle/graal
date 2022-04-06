@@ -300,16 +300,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return javaVersion;
     }
 
-    public void initializeJavaVersion(JavaVersion javaVersion) {
+    public void tryInitializeJavaVersion(JavaVersion version) {
         JavaVersion ref = this.javaVersion;
         if (ref == null) {
             synchronized (this) {
                 ref = this.javaVersion;
                 if (ref == null) {
-                    this.javaVersion = ref = Objects.requireNonNull(javaVersion);
+                    this.javaVersion = ref = Objects.requireNonNull(version);
                 }
             }
         }
-        EspressoError.guarantee(javaVersion.equals(ref), "incompatible Java versions");
+        EspressoError.guarantee(version.equals(ref), "incompatible Java versions");
     }
 }
