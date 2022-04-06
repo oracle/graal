@@ -1175,13 +1175,13 @@ public class BasicNodeFactory implements NodeFactory {
             assemblyRoot = getLazyUnsupportedInlineRootNode(asmExpression, e);
         }
         LLVMIRFunction function = new LLVMIRFunction(assemblyRoot.getCallTarget(), null);
-        LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, false), IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX,
+        LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, FunctionType.NOT_VARARGS), IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX,
                         false, assemblyRoot.getName(), false);
         // The function descriptor for the inline assembly does not require a language.
         LLVMFunctionDescriptor asm = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
         LLVMManagedPointerLiteralNode asmFunction = LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.create(asm));
 
-        return LLVMCallNode.create(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, false);
+        return LLVMCallNode.create(new FunctionType(MetaType.UNKNOWN, argTypes, FunctionType.NOT_VARARGS), asmFunction, args, false);
     }
 
     @Override

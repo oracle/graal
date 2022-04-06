@@ -148,7 +148,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 buffer.skip();
                 int index = buffer.readInt();
                 int numArguments = buffer.remaining();
-                final FunctionType functionType = new FunctionType(null, numArguments, isVarargs);
+                final FunctionType functionType = new FunctionType(null, numArguments, isVarargs ? numArguments : FunctionType.NOT_VARARGS);
                 setTypes(buffer, numArguments, functionType::setArgumentType);
                 setType(index, functionType::setReturnType);
                 type = functionType;
@@ -217,7 +217,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 boolean isVarargs = buffer.readBoolean();
                 int index = buffer.readInt();
                 int numArguments = buffer.remaining();
-                FunctionType functionType = new FunctionType(null, numArguments, isVarargs);
+                FunctionType functionType = new FunctionType(null, numArguments, isVarargs ? numArguments : FunctionType.NOT_VARARGS);
                 setTypes(buffer, numArguments, functionType::setArgumentType);
                 setType(index, functionType::setReturnType);
                 type = functionType;

@@ -598,17 +598,24 @@ public final class NFIContextExtension extends NativeContextExtension {
     }
 
     private static String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
-        // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
         String nativeRet = getNativeType(type.getReturnType());
         String[] argTypes = getNativeArgumentTypes(type, skipArguments);
         StringBuilder sb = new StringBuilder();
+
         sb.append("(");
-        for (String a : argTypes) {
+        for (int pos = 0; pos < argTypes.length; pos++) {
+            String a = argTypes[pos];
+
+            if (pos == type.getFixedArgs()) {
+                sb.append("...");
+            }
             sb.append(a);
             sb.append(",");
         }
-        if (argTypes.length > 0) {
+        if ((type.getFixedArgs() == 0 && argTypes.length == 0) || type.getFixedArgs() == argTypes.length) {
+            sb.append("...)");
+        } else if (argTypes.length > 0) {
             sb.setCharAt(sb.length() - 1, ')');
         } else {
             sb.append(')');

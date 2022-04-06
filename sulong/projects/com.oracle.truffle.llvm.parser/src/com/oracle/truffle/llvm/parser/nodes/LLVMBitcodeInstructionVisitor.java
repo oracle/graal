@@ -426,7 +426,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType);
             } else {
                 LLVMExpressionNode function = symbols.resolve(target);
-                result = CommonNodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, false));
+                int fixedArgsPos = computeVaArgsPosition(target);
+                result = CommonNodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, fixedArgsPos));
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
                 // If it did not provide a source location, the debugger may not be able to show the
@@ -437,6 +438,26 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         // the SourceSection references the call, not the return value assignment
         createFrameWrite(result, call, intent);
+    }
+
+    private int computeVaArgsPosition(SymbolImpl target) {
+        int fixedArgs = FunctionType.NOT_VARARGS;
+
+        if (target.getType() instanceof FunctionType) {
+            FunctionType ft = (FunctionType) target.getType();
+            if (ft.isVarargs()) {
+                // target.getType() is the signature of the target function. The signature constructed for the
+                // call-site contains the types of the actual arguments. For example, printf has this signature:
+                // > (i8*, ...):i32
+                // a call-site
+                // > printf("%d %d %d", 1, 2, 3)
+                // has this signature
+                // > (i8*, ..., i32, i32, i32):i32
+                fixedArgs = ft.getArgumentTypes().size();
+                assert ft.getFixedArgs() == fixedArgs;
+            }
+        }
+        return fixedArgs;
     }
 
     @Override
@@ -619,7 +640,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 assignSourceLocation(result, call);
             } else {
                 final LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
-                final FunctionType functionType = new FunctionType(call.getType(), argTypes, false);
+                int fixedArgsPos = computeVaArgsPosition(target);
+                final FunctionType functionType = new FunctionType(call.getType(), argTypes, fixedArgsPos);
                 result = CommonNodeFactory.createFunctionCall(function, argNodes, functionType);
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
@@ -688,7 +710,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(CommonNodeFactory.createFrameWrite(targetType, null, symbols.findOrAddFrameSlot(call)), function, argNodes,
-                        new FunctionType(targetType, argTypes, false),
+                        new FunctionType(targetType, argTypes, FunctionType.NOT_VARARGS),
                         regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
@@ -744,7 +766,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, false),
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, FunctionType.NOT_VARARGS),
                         regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
