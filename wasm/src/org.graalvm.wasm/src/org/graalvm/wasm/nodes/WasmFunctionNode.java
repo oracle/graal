@@ -331,18 +331,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private final int functionStartOffset;
     private final int functionEndOffset;
     private final byte returnTypeId;
-    private final int functionReturnLength;
     @Children private Node[] callNodes;
 
     @CompilationFinal private Object osrMetadata;
 
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, byte returnTypeId, int functionReturnLength) {
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, byte returnTypeId) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.functionStartOffset = functionStartOffset;
         this.functionEndOffset = functionEndOffset;
         this.returnTypeId = returnTypeId;
-        this.functionReturnLength = functionReturnLength;
     }
 
     @SuppressWarnings("hiding")
@@ -437,6 +435,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final byte[] data = wasmCodeEntry.data();
         final int[] extraData = wasmCodeEntry.extraData();
 
+        // The back edge count is stored in an object, since else the MERGE_EXPLODE policy would
+        // interpret this as a constant value in every loop iteration. This would prevent the
+        // compiler form merging branches, since every change to the back edge count would generate
+        // a new unique state.
         final BackEdgeCounter backEdgeCounter = new BackEdgeCounter();
 
         int offset = startOffset;
@@ -596,7 +598,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     if (backEdgeCounter.count > 0) {
                         LoopNode.reportLoopCount(this, backEdgeCounter.count);
                     }
-                    unwindStack(frame, stackPointer, numLocals, functionReturnLength);
+                    unwindStack(frame, stackPointer, numLocals, returnTypeId != WasmType.VOID_TYPE ? 1 : 0);
                     return RETURN_VALUE;
                 }
                 case CALL: {

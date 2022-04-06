@@ -147,8 +147,7 @@ public class WasmInstantiator {
     }
 
     private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        int returnLength = entry.getReturnTypeId() == WasmType.VOID_TYPE ? 0 : 1;
-        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), entry.getReturnTypeId(), returnLength);
+        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), entry.getReturnTypeId());
         List<CallNode> childNodeList = entry.getCallNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
