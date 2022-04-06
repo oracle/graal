@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -70,7 +70,7 @@ include(SulongCommon)
 
 # Default flags for C/C++
 set(SULONG_C_FLAGS "-g" CACHE STRING "Default C flags  (use CMAKE_C_FLAGS for setting additional flags)")
-set(SULONG_CXX_FLAGS "-std=c++11 -stdlib=libc++ -g" CACHE STRING "Default C++ flags (use CMAKE_CXX_FLAGS for setting additional flags)")
+set(SULONG_CXX_FLAGS "-stdlib=libc++ -g" CACHE STRING "Default C++ flags (use CMAKE_CXX_FLAGS for setting additional flags)")
 
 # Tools
 # -----
