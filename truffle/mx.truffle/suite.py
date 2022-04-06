@@ -1104,6 +1104,7 @@ suite = {
           "linux-amd64",
           "linux-aarch64",
           "darwin-amd64",
+          "darwin-aarch64",
       ],
       "layout" : {
         "bin/" : "dependency:com.oracle.truffle.nfi.native",
