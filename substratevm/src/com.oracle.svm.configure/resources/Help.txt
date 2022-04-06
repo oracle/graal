@@ -84,22 +84,24 @@ generate                  generates configuration file(s) from all inputs.
                           This option disables builtin heuristics that identify
                           further internal JNI, reflection and resource usages.
 
-generat-conditional       generates conditional configuration from data
+generate-conditional      generates conditional configuration from data
                           collected by previous agent runs.
     --input-dir=<path>
-                          Directory populated by a run of the agent
-                          in the partial conditional configuration mode.
+                          reads configuration and metadata from a directory that
+                          was previously populated by a run with the agent in
+                          the partial configuration mode.
     --output-dir=<path>
-                          Directory that the conditional
-                          configuration will be written to.
+                          writes a set of conditional configuration files to
+                          the given path.
     --user-code-filter=<path>
-                          Filter file that specifies which classes originate
-                          from the user's application. Generated conditions
-                          will only reference these classes.
+                          specifies a filter file used to classify classes as
+                          user application classes. Generated conditions will
+                          only reference these classes.
     --class-name-filter=<path>
-                          Filter file for excluding classes from the generated
-                          configuration. This filter will be applied to both
-                          conditions and the underlying configuration.
+                          specifies a filter file used to exclude classes from
+                          the computed configuration. Both the configuration
+                          and the conditions in the configuration will be
+                          tested against this filter.
 
 generate-filters          builds a class filter according to the parameters.
                           Filter rules are created according to the order of
