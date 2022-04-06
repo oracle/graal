@@ -278,7 +278,8 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                ThrowNode throwNode = new ThrowNode((n) -> new TruffleExceptionImpl("test", n, type, new InjectException(failOn)));
+                InjectException injectException = new InjectException(failOn);
+                ThrowNode throwNode = new ThrowNode((n) -> new TruffleExceptionImpl("test", n, type, injectException));
                 return new TestRootNode(languageInstance, "test", "unnamed", throwNode).getCallTarget();
             }
         });

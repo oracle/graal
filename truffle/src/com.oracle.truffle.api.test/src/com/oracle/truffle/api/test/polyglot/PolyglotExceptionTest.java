@@ -427,6 +427,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         }
 
         @Override
+        @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
             return execute(node, env, contextArguments, frameArguments);
         }
