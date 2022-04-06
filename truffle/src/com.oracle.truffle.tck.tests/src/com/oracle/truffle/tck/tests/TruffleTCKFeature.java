@@ -131,8 +131,7 @@ public class TruffleTCKFeature implements Feature {
                 try (Stream<Path> siblingResources = Files.list(path.getParent())) {
                     String packageName = TruffleTCKFeature.class.getPackageName();
                     String suffix = ".class";
-                    return siblingResources
-                                    .map(Path::getFileName)
+                    return siblingResources.map(Path::getFileName)
                                     .map(Path::toString)
                                     .filter(name -> name.endsWith("Test" + suffix))
                                     .map(name -> packageName + '.' + name.substring(0, name.length() - suffix.length()))
