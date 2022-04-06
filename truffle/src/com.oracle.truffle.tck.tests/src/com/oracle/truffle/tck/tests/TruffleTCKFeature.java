@@ -40,24 +40,24 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.After;
@@ -122,65 +122,27 @@ public class TruffleTCKFeature implements Feature {
                         method.isAnnotationPresent(Parameters.class) || method.isAnnotationPresent(Test.class);
     }
 
+    @SuppressWarnings("try")
     private static Collection<String> findTCKTests() {
-        Set<File> todo = new HashSet<>();
-        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        if (!(contextClassLoader instanceof URLClassLoader)) {
-            throw new IllegalStateException("Context ClassLoader must be URLClassLoader");
-        }
-        for (URL url : ((URLClassLoader) contextClassLoader).getURLs()) {
-            try {
-                final File file = new File(url.toURI());
-                todo.add(file);
-            } catch (URISyntaxException | IllegalArgumentException e) {
-                throw new IllegalStateException(String.format("Unable to handle image class path element %s.", url));
-            }
-        }
-        Collection<String> result = new ArrayList<>();
-        for (File cpEntry : todo) {
-            if (cpEntry.isDirectory()) {
-                result.addAll(findTCKTestsInDirectory(cpEntry));
-            } else {
-                result.addAll(findTCKTestsInArchive(cpEntry));
-            }
-        }
-        return result;
-    }
-
-    private static Collection<String> findTCKTestsInDirectory(File root) {
-        String pkgFqn = TruffleTCKFeature.class.getPackage().getName();
-        String folderResourceName = pkgFqn.replace('.', File.separatorChar) + File.separatorChar;
-        File folder = new File(root, folderResourceName);
-        String[] names = folder.list();
-        if (names == null) {
-            return Collections.emptySet();
-        }
-        Collection<String> result = new ArrayList<>();
-        for (String name : names) {
-            if (name.endsWith("Test.class")) {
-                String className = pkgFqn + '.' + name.substring(0, name.length() - 6);
-                result.add(className);
-            }
-        }
-        return result;
-    }
-
-    private static Collection<String> findTCKTestsInArchive(File archive) {
-        String folderResourceName = TruffleTCKFeature.class.getPackage().getName().replace('.', '/') + '/';
-        Collection<String> result = new ArrayList<>();
-        try (JarFile jf = new JarFile(archive)) {
-            Enumeration<JarEntry> entries = jf.entries();
-            while (entries.hasMoreElements()) {
-                JarEntry entry = entries.nextElement();
-                String entryName = entry.getName();
-                if (entryName.startsWith(folderResourceName) && entryName.endsWith("Test.class")) {
-                    String className = entryName.substring(0, entryName.length() - 6).replace('/', '.');
-                    result.add(className);
+        try {
+            URL resource = TruffleTCKFeature.class.getResource("TruffleTCKFeature.class");
+            try (FileSystem fileSystem = FileSystems.newFileSystem(resource.toURI(), Map.of())) {
+                Path path = Path.of(resource.toURI());
+                try (Stream<Path> siblingResources = Files.list(path.getParent())) {
+                    String packageName = TruffleTCKFeature.class.getPackageName();
+                    String suffix = ".class";
+                    return siblingResources
+                                    .map(Path::getFileName)
+                                    .map(Path::toString)
+                                    .filter(name -> name.endsWith("Test" + suffix))
+                                    .map(name -> packageName + '.' + name.substring(0, name.length() - suffix.length()))
+                                    .collect(Collectors.toList());
                 }
             }
-        } catch (IOException ioe) {
-            // Ignore non existent image classpath entry
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException("Cannot access TruffleTCKFeature class as resource");
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot list TruffleTCKFeature class sibling resources");
         }
-        return result;
     }
 }
