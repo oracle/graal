@@ -165,7 +165,7 @@ For more information, continue reading to the [Class Initialization in Native Im
 
 ## Specifying Types Required to Be Defined at Build Time
 
-A well-structured library or application should handle linking when building a native executable by itself.
+A well-structured library or application should handle linking of Java types (ensuring all reachable Java types are fully defined at build time) when building a native executable by itself.
 The default behavior is to throw linking errors, if they occur, at run time. 
 However, you can prevent unwanted linking errors by specifing which classes are required to be fully linked at build time.
 For that, use the `--link-at-build-time` option. 
