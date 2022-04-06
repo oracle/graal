@@ -94,7 +94,7 @@ public final class BytecodeOSRMetadata {
         @CompilationFinal(dimensions = 1) private byte[] frameTags;
         @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
 
-        public OsrEntryDescription(OptimizedCallTarget compilationTarget) {
+        OsrEntryDescription(OptimizedCallTarget compilationTarget) {
             this.compilationTarget = compilationTarget;
         }
     }
@@ -108,7 +108,7 @@ public final class BytecodeOSRMetadata {
         @CompilationFinal(dimensions = 1) //
         private OsrEntryDescription[] entries;
 
-        public FinalCompilationListMap() {
+        FinalCompilationListMap() {
             this.targets = EMPTY_TARGETS;
             this.entries = EMPTY_ENTRIES;
         }
@@ -122,6 +122,7 @@ public final class BytecodeOSRMetadata {
             int[] targetsSnapshot = targets;
             OsrEntryDescription[] entriesSnapshot = entries;
             if (targetsSnapshot.length != entriesSnapshot.length) {
+                // Racy update from another thread, obtain the state synchronously.
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 synchronized (this) {
                     targetsSnapshot = targets;
@@ -138,16 +139,17 @@ public final class BytecodeOSRMetadata {
         }
 
         public void put(int key, OsrEntryDescription value) {
-            // must hold osr node atomic lock
             CompilerDirectives.transferToInterpreterAndInvalidate();
             assert get(key) == null;
             int oldLen = size();
-            int[] newTargets = Arrays.copyOf(targets, oldLen + 1);
-            OsrEntryDescription[] newEntries = Arrays.copyOf(entries, oldLen + 1);
-            newTargets[oldLen] = key;
-            newEntries[oldLen] = value;
-            this.targets = newTargets;
-            this.entries = newEntries;
+            synchronized (this) {
+                int[] newTargets = Arrays.copyOf(targets, oldLen + 1);
+                OsrEntryDescription[] newEntries = Arrays.copyOf(entries, oldLen + 1);
+                newTargets[oldLen] = key;
+                newEntries[oldLen] = value;
+                this.targets = newTargets;
+                this.entries = newEntries;
+            }
         }
 
         public void clear() {
@@ -159,10 +161,15 @@ public final class BytecodeOSRMetadata {
         }
 
         public Map<Integer, OptimizedCallTarget> asCallTargetMap() {
-            // must hold osr node atomic lock
+            int[] targetsSnapshot;
+            OsrEntryDescription[] entriesSnapshot;
+            synchronized (this) {
+                targetsSnapshot = targets;
+                entriesSnapshot = entries;
+            }
             Map<Integer, OptimizedCallTarget> map = new HashMap<>();
             for (int i = 0; i < size(); i++) {
-                map.put(targets[i], entries[i].compilationTarget);
+                map.put(targetsSnapshot[i], entriesSnapshot[i].compilationTarget);
             }
             return Collections.unmodifiableMap(map);
         }
@@ -338,12 +345,12 @@ public final class BytecodeOSRMetadata {
      * to not being able to speculate on the source tags: While entering bytecode OSR is done
      * through specific entry points (likely back edges), returning could be done from anywhere
      * within a method body (through regular returns, or exception thrown).
-     * 
+     *
      * While we could theoretically have the same mechanism as on entries (caching encountered
      * return state), we could not efficiently be able to retrieve from the cache (as we do not get
      * the equivalent of the {@code int osrBytecodeTarget} for returns), even ignoring the potential
      * memory cost of such a cache.
-     * 
+     *
      * Therefore, we are doing a best-effort of copying over source to target, reading from the
      * actual frames rather than a cache: If the tag cannot be constant-folded at this point, we get
      * a switch in compiled code. Since we are at a boundary back to interpreted code, this cost
@@ -394,7 +401,7 @@ public final class BytecodeOSRMetadata {
     /**
      * Common transfer loop for copying over legacy frame slot or indexed slots from a source frame
      * to a target frame.
-     * 
+     *
      * @param length Number of slots to transfer. Must be
      *            {@link CompilerDirectives#isCompilationConstant(Object) compilation constant}
      * @param source The frame to copy from
@@ -421,7 +428,7 @@ public final class BytecodeOSRMetadata {
                 // The tag for this slot may have changed; if so, deoptimize and update it.
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 expectedTags[i] = actualTag;
-                continue;
+                continue; // try again with updated tags.
             }
 
             transfer.transfer(source, target, i, expectedTag, frameSlotArray);
@@ -429,7 +436,7 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    private static abstract class FrameSlotTransfer {
+    private abstract static class FrameSlotTransfer {
         private static final FrameSlotTransfer indexedTransfer = new FrameSlotTransfer() {
             @Override
             public void transfer(FrameWithoutBoxing source, FrameWithoutBoxing target, int slot, byte expectedTag, com.oracle.truffle.api.frame.FrameSlot[] frameSlotArray) {
