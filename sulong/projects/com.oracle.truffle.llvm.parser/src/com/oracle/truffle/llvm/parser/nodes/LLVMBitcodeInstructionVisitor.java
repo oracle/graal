@@ -440,7 +440,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         createFrameWrite(result, call, intent);
     }
 
-    private int computeVaArgsPosition(SymbolImpl target) {
+    private static int computeVaArgsPosition(SymbolImpl target) {
         int fixedArgs = FunctionType.NOT_VARARGS;
 
         if (target.getType() instanceof FunctionType) {
