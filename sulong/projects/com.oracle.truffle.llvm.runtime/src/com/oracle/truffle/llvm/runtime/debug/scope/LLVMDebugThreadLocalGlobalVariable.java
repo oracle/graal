@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,16 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
+package com.oracle.truffle.llvm.runtime.debug.scope;
 
-int globalVar;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
-__thread int threadLocalGlobalVar;
+@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
+public final class LLVMDebugThreadLocalGlobalVariable extends LLVMInternalTruffleObject {
 
-void globalFn() {
-}
+    private final LLVMThreadLocalSymbol descriptor;
 
-__attribute__((constructor)) int start() {
-    __builtin_debugtrap();
-    return 0;
+    public LLVMDebugThreadLocalGlobalVariable(LLVMThreadLocalSymbol descriptor) {
+        this.descriptor = descriptor;
+    }
+
+    public LLVMThreadLocalSymbol getDescriptor() {
+        return descriptor;
+    }
+
+    @ExportMessage
+    public static boolean isForeign(@SuppressWarnings("unused") LLVMDebugThreadLocalGlobalVariable receiver) {
+        return false;
+    }
+
 }

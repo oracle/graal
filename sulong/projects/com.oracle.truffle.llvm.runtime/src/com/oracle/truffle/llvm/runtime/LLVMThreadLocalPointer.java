@@ -46,4 +46,9 @@ public class LLVMThreadLocalPointer {
     public long getOffset() {
         return offset;
     }
+
+    @Override
+    public String toString() {
+        return symbol.toString();
+    }
 }
