@@ -39,7 +39,7 @@ It is advisable to manually review the generated configuration files. Because th
 
 The generated configuration files can be supplied to the `native-image` tool by placing them in a `META-INF/native-image/` directory on the class path, for example, in a JAR file used in the image build. This directory (or any of its subdirectories) is searched for files with the names `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`, which are then automatically included in the build. Not all of those files must be present. When multiple files with the same name are found, all of them are included.
 
-## Building Native Image with Java Reflection Example
+## Build a Native Executable with Java Reflection Example
 
 For demonstration purposes, save the following code as _ReflectionExample.java_ file:
 
@@ -195,7 +195,7 @@ Using the `access-filter-file` option, a custom filter file that follows the fil
 The option can be specified more than once to add multiple filter files and can be combined with the other filter options.
 For example: `-agentlib:access-filter-file=/path/to/access-filter-file,caller-filter-file=/path/to/caller-filter-file,config-output-dir=...`
 
-### Specifying Configuration Files as Native Image Arguments
+### Specify Configuration Files as Native Image Arguments
 
 A directory containing configuration files that is not part of the class path can be specified to `native-image` via `-H:ConfigurationFileDirectories=/path/to/config-dir/`.
 This directory must directly contain all four files: `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`.
