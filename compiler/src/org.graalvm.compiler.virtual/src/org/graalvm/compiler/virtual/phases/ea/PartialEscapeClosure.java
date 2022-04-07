@@ -403,7 +403,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * materializing if necessary. Also takes care of frame states, adding the necessary
      * {@link VirtualObjectState}.
      */
-    private void processNodeInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
+    protected void processNodeInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
         VirtualUtil.trace(node.getOptions(), debug, "processing nodewithstate: %s", node);
         for (Node input : node.inputs()) {
             if (input instanceof ValueNode) {
@@ -421,7 +421,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {
+    protected void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {
         for (FrameState fs : nodeWithState.states()) {
             FrameState frameState = getUniqueFramestate(nodeWithState, fs);
             EconomicSet<VirtualObjectNode> virtual = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
