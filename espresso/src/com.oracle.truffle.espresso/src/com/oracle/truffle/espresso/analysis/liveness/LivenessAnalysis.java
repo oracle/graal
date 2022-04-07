@@ -260,19 +260,29 @@ public final class LivenessAnalysis {
             replayHistory(blockID);
         }
 
+        private boolean isUnreachable(int blockID) {
+            return helper.entryFor(blockID) == null;
+        }
+
+        private LocalVariableAction extractKills(BitSet entryState) {
+            ArrayList<Integer> kills = new ArrayList<>();
+            for (int dead : Util.bitSetUnsetIterator(entryState, method.getMaxLocals())) {
+                kills.add(dead);
+            }
+            if (!kills.isEmpty()) {
+                return toLocalAction(kills);
+            }
+            return null;
+        }
+
         private void processBackEdges() {
             Set<Integer> loopBlockIds = helper.getLoops().keySet();
             Map<Integer, LocalVariableAction> map = new HashMap<>();
             for (int id : loopBlockIds) {
-                List<Integer> kills = new ArrayList<>();
                 BitSet live = helper.entryFor(id);
-                for (int i = 0; i < method.getMaxLocals(); i++) {
-                    if (!live.get(i)) {
-                        kills.add(i);
-                    }
-                }
-                if (!kills.isEmpty()) {
-                    map.put(graph.get(id).start(), toLocalAction(kills));
+                LocalVariableAction action = extractKills(live);
+                if (action != null) {
+                    map.put(graph.get(id).start(), action);
                 }
             }
             if (!map.isEmpty()) {
@@ -280,21 +290,9 @@ public final class LivenessAnalysis {
             }
         }
 
-        private boolean isUnreachable(int blockID) {
-            return helper.entryFor(blockID) == null;
-        }
-
         private void processEntryBlock(int blockID) {
             BitSet entryState = helper.entryFor(blockID);
-            ArrayList<Integer> kills = new ArrayList<>();
-            for (int i = 0; i < method.getMaxLocals(); i++) {
-                if (!entryState.get(i)) {
-                    kills.add(i);
-                }
-            }
-            if (!kills.isEmpty()) {
-                onStart = toLocalAction(kills);
-            }
+            onStart = extractKills(entryState);
         }
 
         private BitSet mergePredecessors(LinkedBlock current) {
@@ -322,7 +320,7 @@ public final class LivenessAnalysis {
             int[] predecessors = current.predecessorsID();
             ArrayList<Integer>[] kills = new ArrayList[predecessors.length];
 
-            for (int local : Util.bitSetIterator(mergedEntryState)) {
+            for (int local : Util.bitSetSetIterator(mergedEntryState)) {
                 for (int j = 0; j < predecessors.length; j++) {
                     int pred = predecessors[j];
                     BitSet predEnd = helper.endFor(pred);

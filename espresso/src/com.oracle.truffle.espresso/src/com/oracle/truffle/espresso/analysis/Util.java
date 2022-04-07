@@ -69,8 +69,12 @@ public final class Util {
         return true;
     }
 
-    public static Iterable<Integer> bitSetIterator(BitSet bs) {
-        return new BitSetIterator(bs);
+    public static Iterable<Integer> bitSetSetIterator(BitSet bs) {
+        return new BitSetSetIterator(bs);
+    }
+
+    public static Iterable<Integer> bitSetUnsetIterator(BitSet bs, int maxLocal) {
+        return new BitSetUnsetIterator(bs, maxLocal);
     }
 
     public static boolean assertNoDupe(int[] array) {
@@ -84,7 +88,7 @@ public final class Util {
         return true;
     }
 
-    private static final class BitSetIterator implements Iterable<Integer>, Iterator<Integer> {
+    private abstract static class BitSetIterator implements Iterable<Integer>, Iterator<Integer> {
         private final BitSet bs;
         private int pos = -1;
         private int nextPos = -1;
@@ -95,28 +99,68 @@ public final class Util {
         }
 
         @Override
-        public Iterator<Integer> iterator() {
+        public final Iterator<Integer> iterator() {
             return this;
         }
 
         @Override
-        public boolean hasNext() {
+        public final boolean hasNext() {
             if (!nextAvailable) {
                 nextAvailable = true;
-                return (nextPos = bs.nextSetBit(pos + 1)) >= 0;
+                return nextIsValid(nextPos = nextBit(bs, pos));
             }
-            return nextPos >= 0;
+            return nextIsValid(nextPos);
         }
 
         @Override
-        public Integer next() {
+        public final Integer next() {
             if (!nextAvailable) {
-                nextPos = bs.nextSetBit(pos + 1);
-                assert nextPos >= 0 : "No hasNext() called.";
+                nextPos = nextBit(bs, pos);
+                assert nextIsValid(nextPos) : "No hasNext() called.";
             }
             pos = nextPos;
             nextAvailable = false;
             return pos;
+        }
+
+        protected abstract boolean nextIsValid(int next);
+
+        protected abstract Integer nextBit(BitSet set, int from);
+    }
+
+    private static final class BitSetSetIterator extends BitSetIterator {
+        BitSetSetIterator(BitSet bs) {
+            super(bs);
+
+        }
+
+        @Override
+        protected boolean nextIsValid(int next) {
+            return next >= 0;
+        }
+
+        @Override
+        protected Integer nextBit(BitSet set, int from) {
+            return set.nextSetBit(from + 1);
+        }
+    }
+
+    private static final class BitSetUnsetIterator extends BitSetIterator {
+        private final int maxLocal;
+
+        BitSetUnsetIterator(BitSet bs, int maxLocal) {
+            super(bs);
+            this.maxLocal = maxLocal;
+        }
+
+        @Override
+        protected boolean nextIsValid(int next) {
+            return next < maxLocal;
+        }
+
+        @Override
+        protected Integer nextBit(BitSet set, int from) {
+            return set.nextClearBit(from + 1);
         }
     }
 }
