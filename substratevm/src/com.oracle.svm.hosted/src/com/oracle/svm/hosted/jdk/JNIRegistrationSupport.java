@@ -33,6 +33,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
@@ -67,6 +68,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -153,6 +155,21 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
     private void addShimExports(String shimName, String... exports) {
         assert exports != null && exports.length > 0;
         shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(Arrays.asList(exports));
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (isWindows()) {
+            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+                /* Make sure the native image exports all the symbols necessary for shim DLLs. */
+                shimExports.values().stream()
+                                .flatMap(Collection::stream)
+                                .distinct()
+                                .map("/export:"::concat)
+                                .forEach(linkerInvocation::addNativeLinkerOption);
+                return linkerInvocation;
+            });
+        }
     }
 
     private AfterImageWriteAccessImpl accessImpl;
