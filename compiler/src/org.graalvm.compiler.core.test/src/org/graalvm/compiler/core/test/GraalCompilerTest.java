@@ -30,6 +30,8 @@ import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -38,6 +40,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -255,6 +259,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Suites createSuites(OptionValues opts) {
         Suites ret = backend.getSuites().getDefaultSuites(opts).copy();
+
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
         if (iter == null) {
             /*
@@ -315,6 +320,58 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
         });
         return ret;
+    }
+
+    protected void savePhasePlan(String fileName, Suites phasePlan) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append(saveTier(phasePlan.getHighTier())).append(System.lineSeparator());
+        stringBuilder.append(saveTier(phasePlan.getMidTier())).append(System.lineSeparator());
+        stringBuilder.append(saveTier(phasePlan.getLowTier())).append(System.lineSeparator());
+
+        String encodedPhasePlan = stringBuilder.toString();
+
+        try {
+            Files.writeString(new File(fileName).toPath(), encodedPhasePlan, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            GraalError.shouldNotReachHere(e,
+                            "Could not save the following phase plan in the file " + fileName + System.lineSeparator() + "Encoded phase plan: " + System.lineSeparator() + encodedPhasePlan);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <C> String saveTier(PhaseSuite<C> tier) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (BasePhase<? super C> phase : tier.getPhases()) {
+            if (phase instanceof PhaseSuite) {
+                stringBuilder.append(savePhaseSuite((PhaseSuite<C>) phase, 0)).append(',');
+            } else {
+                stringBuilder.append(phase.getClass().getName()).append(',');
+            }
+        }
+
+        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+
+        return stringBuilder.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private <C> String savePhaseSuite(PhaseSuite<C> phaseSuite, int level) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append(phaseSuite.getClass().getName());
+
+        for (BasePhase<? super C> phase : phaseSuite.getPhases()) {
+            stringBuilder.append("-level" + level + "-");
+            if (phase instanceof PhaseSuite) {
+                stringBuilder.append(savePhaseSuite((PhaseSuite<C>) phase, level + 1));
+            } else {
+                stringBuilder.append(phase.getClass().getName());
+            }
+        }
+
+        return stringBuilder.toString();
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {
