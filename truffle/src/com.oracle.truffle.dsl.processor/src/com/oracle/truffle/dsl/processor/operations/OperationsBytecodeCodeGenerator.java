@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -19,14 +18,9 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.generator.BitSet;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
-import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -37,10 +31,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.model.CacheExpression;
-import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
-import com.oracle.truffle.dsl.processor.model.SpecializationData;
-import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
@@ -57,13 +47,13 @@ public class OperationsBytecodeCodeGenerator {
     private final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
-    private final static Object MARKER_CHILD = new Object();
-    private final static Object MARKER_CONST = new Object();
+    final static Object MARKER_CHILD = new Object();
+    final static Object MARKER_CONST = new Object();
 
-    private static final boolean DO_STACK_LOGGING = false;
+    static final boolean DO_STACK_LOGGING = false;
 
-    private final ProcessorContext context = ProcessorContext.getInstance();
-    private final TruffleTypes types = context.getTypes();
+    final ProcessorContext context = ProcessorContext.getInstance();
+    final TruffleTypes types = context.getTypes();
 
     private static final String ConditionProfile_Name = "com.oracle.truffle.api.profiles.ConditionProfile";
     final DeclaredType ConditionProfile = context.getDeclaredType(ConditionProfile_Name);
@@ -163,398 +153,12 @@ public class OperationsBytecodeCodeGenerator {
 
                 int numStackValues = isVariadic ? 0 : cinstr.numPopStatic();
 
-                NodeGeneratorPlugs plugs = new NodeGeneratorPlugs() {
-                    @Override
-                    public String transformNodeMethodName(String name) {
-                        String result = soData.getName() + "_" + name + "_";
-                        methodNames.add(result);
-                        return result;
-                    }
-
-                    @Override
-                    public String transformNodeInnerTypeName(String name) {
-                        String result = soData.getName() + "_" + name;
-                        innerTypeNames.add(result);
-                        return result;
-                    }
-
-                    @Override
-                    public void addNodeCallParameters(CodeTreeBuilder builder, boolean isBoundary, boolean isRemoveThis) {
-                        if (!isBoundary) {
-                            builder.string("$frame");
-                        }
-                        builder.string("$bci");
-                        builder.string("$sp");
-                    }
-
-                    public boolean shouldIncludeValuesInCall() {
-                        return isVariadic;
-                    }
-
-                    @Override
-                    public int getMaxStateBits(int defaultValue) {
-                        return 8;
-                    }
-
-                    @Override
-                    public TypeMirror getBitSetType(TypeMirror defaultType) {
-                        return new CodeTypeMirror(TypeKind.BYTE);
-                    }
-
-                    @Override
-                    public CodeTree createBitSetReference(BitSet bits) {
-                        int index = additionalData.indexOf(bits);
-                        if (index == -1) {
-                            index = additionalData.size();
-                            additionalData.add(bits);
-
-                            additionalDataKinds.add(DataKind.BITS);
-                        }
-
-                        return CodeTreeBuilder.createBuilder().variable(fldBc).string("[$bci + " + cinstr.lengthWithoutState() + " + " + index + "]").build();
-                    }
-
-                    @Override
-                    public CodeTree transformValueBeforePersist(CodeTree tree) {
-                        return CodeTreeBuilder.createBuilder().cast(new CodeTypeMirror(TypeKind.BYTE)).startParantheses().tree(tree).end().build();
-                    }
-
-                    private CodeTree createArrayReference(Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild, String kind) {
-                        if (refObject == null) {
-                            throw new IllegalArgumentException("refObject is null");
-                        }
-
-                        List<Object> refList = isChild ? childIndices : constIndices;
-                        int index = refList.indexOf(refObject);
-                        int baseIndex = additionalData.indexOf(isChild ? MARKER_CHILD : MARKER_CONST);
-
-                        if (index == -1) {
-                            if (baseIndex == -1) {
-                                baseIndex = additionalData.size();
-                                additionalData.add(isChild ? MARKER_CHILD : MARKER_CONST);
-                                additionalData.add(null);
-
-                                additionalDataKinds.add(isChild ? DataKind.CHILD : DataKind.CONST);
-                                additionalDataKinds.add(DataKind.CONTINUATION);
-                            }
-
-                            index = refList.size();
-                            refList.add(refObject);
-                        }
-
-                        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-                        if (doCast) {
-                            b.startParantheses();
-                            b.cast(castTarget);
-                        }
-
-                        VariableElement targetField;
-                        if (isChild) {
-                            targetField = fldChildren;
-                        } else {
-                            targetField = fldConsts;
-                        }
-
-                        b.variable(targetField).string("[");
-                        b.startCall("LE_BYTES", "getShort");
-                        b.variable(fldBc);
-                        b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
-                        b.end();
-                        b.string(" + " + index + "]");
-
-                        if (doCast) {
-                            b.end();
-                        }
-
-                        return b.build();
-                    }
-
-                    @Override
-                    public CodeTree createSpecializationFieldReference(SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType) {
-                        Object refObject = useSpecializationClass ? s : fieldName;
-                        return createArrayReference(refObject, fieldType != null, fieldType, false, "spec-field");
-                    }
-
-                    @Override
-                    public CodeTree createNodeFieldReference(NodeExecutionData execution, String nodeFieldName, boolean forRead) {
-                        return createArrayReference(execution, forRead, execution.getNodeType(), true, "node-field");
-                    }
-
-                    @Override
-                    public CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead) {
-                        Object refObject = sharedName != null ? sharedName : cache;
-                        boolean isChild = ElementUtils.isAssignable(cache.getParameter().getType(), types.Node);
-                        return createArrayReference(refObject, forRead, cache.getParameter().getType(), isChild, "cache");
-                    }
-
-                    private void createPrepareFor(String typeName, TypeMirror valueType, int offset, FrameState frameState, LocalVariable value, CodeTreeBuilder prepareBuilder) {
-
-                        boolean isValue = typeName == null;
-                        String type = isValue ? "Value" : typeName;
-
-                        String isName = null;
-                        if (!isValue) {
-                            isName = value.getName() + "_is" + type + "_";
-                            LocalVariable isVar = frameState.get(isName);
-                            if (isVar == null) {
-                                isVar = new LocalVariable(context.getType(boolean.class), isName, null);
-                                frameState.set(isName, isVar);
-                                prepareBuilder.declaration(context.getType(boolean.class), isName, "$frame.is" + type + "($sp - " + offset + ")");
-                            } else {
-                                prepareBuilder.lineComment("already have is" + type);
-                            }
-                        }
-
-                        String asName = value.getName() + "_as" + type + "_";
-                        LocalVariable asVar = frameState.get(asName);
-                        if (asVar == null) {
-                            CodeTreeBuilder b = prepareBuilder.create();
-                            if (!isValue) {
-                                b.string(isName, " ? ");
-                            }
-                            b.string("$frame.get" + type + "($sp - " + offset + ")");
-                            if (!isValue) {
-                                b.string(" : ");
-                                b.defaultValue(valueType);
-                            }
-                            asVar = new LocalVariable(valueType, asName, null);
-                            frameState.set(asName, asVar);
-                            prepareBuilder.declaration(valueType, asName, b.build());
-                        } else {
-                            prepareBuilder.lineComment("already have as" + type + ": " + asVar);
-                        }
-                    }
-
-                    private void createUnboxedCheck(TypeSystemData typeSystem, String typeName, TypeMirror targetType, LocalVariable value, CodeTreeBuilder b) {
-                        b.startParantheses();
-                        b.string(value.getName() + "_is" + typeName + "_", " || ");
-                        b.startParantheses();
-                        b.string(value.getName() + "_isObject_", " && ");
-                        b.startParantheses();
-                        b.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, CodeTreeBuilder.singleString(value.getName() + "_asObject_")));
-                        b.end(3);
-                    }
-
-                    private void createUnboxedCast(TypeSystemData typeSystem, String typeName, TypeMirror targetType, LocalVariable value, CodeTreeBuilder b) {
-                        b.string(value.getName() + "_is" + typeName + "_");
-                        b.string(" ? ", value.getName() + "_as" + typeName + "_");
-                        b.string(" : ");
-                        b.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, CodeTreeBuilder.singleString(value.getName() + "_asObject_")));
-                        b.end(2);
-                    }
-
-                    public int getStackOffset(LocalVariable value) {
-                        if (value.getName().startsWith("arg") && value.getName().endsWith("Value")) {
-                            return cinstr.numPopStatic() - Integer.parseInt(value.getName().substring(3, value.getName().length() - 5));
-                        }
-                        throw new UnsupportedOperationException("" + value);
-                    }
-
-                    private String getFrameName(TypeKind kind) {
-                        switch (kind) {
-                            case INT:
-                            case SHORT:
-                            case CHAR:
-                                return "Int";
-                            case BYTE:
-                                return "Byte";
-                            case BOOLEAN:
-                                return "Boolean";
-                            case DOUBLE:
-                                return "Double";
-                            case FLOAT:
-                                return "Float";
-                            case LONG:
-                                return "Long";
-                            default:
-                                throw new IllegalArgumentException("Unknown primitive type: " + kind);
-                        }
-                    }
-
-                    @Override
-                    public boolean createCheckCast(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, CodeTreeBuilder prepareBuilder,
-                                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder) {
-                        if (isVariadic) {
-                            return false;
-                        }
-                        int offset = getStackOffset(value);
-                        createPrepareFor("Object", context.getType(Object.class), offset, frameState, value, prepareBuilder);
-                        switch (targetType.getKind()) {
-                            case BYTE:
-                                createPrepareFor("Byte", context.getType(byte.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Byte", targetType, value, checkBuilder);
-                                createUnboxedCast(typeSystem, "Byte", targetType, value, castBuilder);
-                                break;
-                            case LONG:
-                                createPrepareFor("Long", context.getType(long.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Long", targetType, value, checkBuilder);
-                                createUnboxedCast(typeSystem, "Long", targetType, value, castBuilder);
-                                break;
-                            case INT:
-                                createPrepareFor("Int", context.getType(int.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Int", targetType, value, checkBuilder);
-                                createUnboxedCast(typeSystem, "Int", targetType, value, castBuilder);
-                                break;
-                            case SHORT:
-                                createPrepareFor("Int", context.getType(short.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Int", targetType, value, checkBuilder);
-                                castBuilder.startParantheses().cast(context.getType(short.class));
-                                createUnboxedCast(typeSystem, "Int", targetType, value, castBuilder);
-                                castBuilder.end();
-                                break;
-                            case BOOLEAN:
-                                createPrepareFor("Boolean", context.getType(boolean.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Boolean", targetType, value, checkBuilder);
-                                createUnboxedCast(typeSystem, "Boolean", targetType, value, castBuilder);
-                                break;
-                            case FLOAT:
-                                createPrepareFor("Float", context.getType(float.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Float", targetType, value, checkBuilder);
-                                createUnboxedCast(typeSystem, "Float", targetType, value, castBuilder);
-                                break;
-                            case DOUBLE:
-                                createPrepareFor("Double", context.getType(double.class), offset, frameState, value, prepareBuilder);
-                                createUnboxedCheck(typeSystem, "Double", targetType, value, checkBuilder);
-                                createUnboxedCast(typeSystem, "Double", targetType, value, castBuilder);
-                                break;
-                            default:
-                                if (targetType.equals(context.getType(Object.class))) {
-                                    createPrepareFor(null, context.getType(Object.class), offset, frameState, value, prepareBuilder);
-                                    checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, CodeTreeBuilder.singleString(value.getName() + "_asValue_")));
-                                    castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, CodeTreeBuilder.singleString(value.getName() + "_asValue_")));
-                                } else {
-                                    checkBuilder.string(value.getName() + "_isObject_ && ");
-                                    checkBuilder.startParantheses();
-                                    checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, CodeTreeBuilder.singleString(value.getName() + "_asObject_")));
-                                    checkBuilder.end();
-
-                                    castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, CodeTreeBuilder.singleString(value.getName() + "_asObject_")));
-                                }
-                                break;
-                        }
-
-                        return true;
-                    }
-
-                    public boolean createImplicitCheckCast(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, CodeTree implicitState,
-                                    CodeTreeBuilder prepareBuilder, CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder) {
-                        return false;
-                    }
-
-                    public boolean createImplicitCheckCastSlowPath(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, String implicitStateName,
-                                    CodeTreeBuilder prepareBuilder, CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder) {
-                        return false;
-                    }
-
-                    public boolean createSameTypeCast(FrameState frameState, LocalVariable value, TypeMirror genericTargetType, CodeTreeBuilder prepareBuilder, CodeTreeBuilder castBuilder) {
-                        if (isVariadic)
-                            return false;
-
-                        int offset = getStackOffset(value);
-                        createPrepareFor(null, genericTargetType, offset, frameState, value, prepareBuilder);
-                        castBuilder.string(value.getName() + "_asValue_");
-                        return true;
-                    }
-
-                    public CodeTree[] createThrowUnsupportedValues(FrameState frameState, List<CodeTree> values, CodeTreeBuilder parent, CodeTreeBuilder builder) {
-                        return new CodeTree[0]; // TODO
-                    }
-
-                    public void initializeFrameState(FrameState frameState, CodeTreeBuilder builder) {
-                        frameState.set("frameValue", new LocalVariable(types.VirtualFrame, "$frame", null));
-                    }
-
-                    private void createPushResult(CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {
-                        if (cinstr.numPush() == 0) {
-                            b.statement(specializationCall);
-                            b.returnStatement();
-                            return;
-                        }
-
-                        assert cinstr.numPush() == 1;
-
-                        int destOffset = cinstr.numPopStatic();
-
-                        CodeTree value;
-                        String typeName;
-                        if (retType.getKind() == TypeKind.VOID) {
-                            // we need to push something, lets just push a `null`.
-                            // maybe this should be an error? DSL just returns default value
-
-                            b.statement(specializationCall);
-                            value = CodeTreeBuilder.singleString("null");
-                            typeName = "Object";
-                        } else if (retType.getKind().isPrimitive()) {
-                            value = specializationCall;
-                            typeName = getFrameName(retType.getKind());
-                        } else {
-                            value = specializationCall;
-                            typeName = "Object";
-                        }
-
-                        if (DO_STACK_LOGGING) {
-                            b.startBlock();
-                            b.declaration(retType, "__value__", value);
-                            b.statement("System.out.printf(\" pushing " + typeName + " at -" + destOffset + ": %s%n\", __value__)");
-                        }
-
-                        b.startStatement();
-                        b.startCall("$frame", "set" + typeName);
-                        b.string("$sp - " + destOffset);
-                        if (DO_STACK_LOGGING) {
-                            b.string("__value__");
-                        } else {
-                            b.tree(value);
-                        }
-                        b.end(2);
-
-                        b.returnStatement();
-
-                        if (DO_STACK_LOGGING) {
-                            b.end();
-                        }
-                    }
-
-                    public boolean createCallSpecialization(SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary) {
-                        if (isVariadic || inBoundary)
-                            return false;
-
-                        createPushResult(b, specializationCall, specialization.getMethod().getReturnType());
-                        return true;
-                    }
-
-                    public boolean createCallExecuteAndSpecialize(CodeTreeBuilder builder, CodeTree call) {
-                        if (isVariadic) {
-                            return false;
-                        }
-                        builder.statement(call);
-                        builder.returnStatement();
-                        return true;
-                    }
-
-                    public void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments) {
-                        if (isVariadic) {
-                            builder.startReturn().startCall("this", boundaryMethod);
-                            builder.string("$bci");
-                            builder.string("$sp");
-                            addArguments.accept(builder);
-                            builder.end(2);
-                            return;
-                        }
-
-                        CodeTreeBuilder callBuilder = builder.create();
-
-                        callBuilder.startCall("this", boundaryMethod);
-                        callBuilder.string("$bci");
-                        callBuilder.string("$sp");
-                        addArguments.accept(callBuilder);
-                        callBuilder.end();
-
-                        createPushResult(builder, callBuilder.build(), boundaryMethod.getReturnType());
-                    }
-
-                };
+                NodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(
+                                fldBc, fldChildren, constIndices,
+                                innerTypeNames, additionalData,
+                                methodNames, isVariadic, soData,
+                                additionalDataKinds,
+                                fldConsts, cinstr, childIndices);
                 NodeCodeGenerator generator = new NodeCodeGenerator();
                 generator.setPlugs(plugs);
 

@@ -7,6 +7,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -48,7 +49,7 @@ import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations
-// @TypeSystemReference(SLTypes.class)
+@TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)
 @OperationProxy(SLEqualNode.class)
@@ -161,15 +162,16 @@ public class SLOperations {
     }
 
     @Operation
-    // @TypeSystemReference(SLTypes.class)
+    @TypeSystemReference(SLTypes.class)
     public static class SLConvertToBoolean {
         @Specialization
-        public static boolean perform(Object obj, @Bind("this") Node node, @Bind("$bci") int bci) {
-            try {
-                return SLTypesGen.expectBoolean(obj);
-            } catch (UnexpectedResultException e) {
-                throw SLException.typeError(node, bci, e.getResult());
-            }
+        public static boolean doBoolean(boolean obj) {
+            return obj;
+        }
+
+        @Fallback
+        public static void fallback(Object obj, @Bind("this") Node node, @Bind("$bci") int bci) {
+            throw SLException.typeError(node, bci, obj);
         }
     }
 }

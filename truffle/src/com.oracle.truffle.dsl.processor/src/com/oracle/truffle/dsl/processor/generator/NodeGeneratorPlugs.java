@@ -39,15 +39,15 @@ public interface NodeGeneratorPlugs {
     CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead);
 
     boolean createCheckCast(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, CodeTreeBuilder prepareBuilder, CodeTreeBuilder checkBuilder,
-                    CodeTreeBuilder castBuilder);
+                    CodeTreeBuilder castBuilder, boolean castOnly);
 
     boolean createImplicitCheckCast(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, CodeTree implicitState, CodeTreeBuilder prepareBuilder,
-                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder);
+                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder, boolean castOnly);
 
     boolean createImplicitCheckCastSlowPath(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, String implicitStateName, CodeTreeBuilder prepareBuilder,
-                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder);
+                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder, boolean cast Only);
 
-    boolean createSameTypeCast(FrameState frameState, LocalVariable value, TypeMirror genericTargetType, CodeTreeBuilder prepareBuilder, CodeTreeBuilder castBuilder);
+    boolean createSameTypeCast(FrameState frameState, LocalVariable value, TypeMirror genericTargetType, CodeTreeBuilder prepareBuilder, CodeTreeBuilder castBuilder, boolean castOnly);
 
     CodeTree[] createThrowUnsupportedValues(FrameState frameState, List<CodeTree> values, CodeTreeBuilder parent, CodeTreeBuilder builder);
 

@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -136,5 +137,13 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
     public WrapperNode createWrapper(ProbeNode probe) {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    protected static <T> T interlog(T arg, String reason) {
+        if (CompilerDirectives.inInterpreter()) {
+            System.out.printf("  >> %s %s%n", reason, arg);
+        }
+
+        return arg;
     }
 }
