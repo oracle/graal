@@ -613,9 +613,11 @@ public final class NFIContextExtension extends NativeContextExtension {
             sb.append(a);
             sb.append(",");
         }
-        if ((type.getFixedArgs() == 0 && argTypes.length == 0) || type.getFixedArgs() == argTypes.length) {
-            sb.append("...)");
-        } else if (argTypes.length > 0) {
+        if (type.getFixedArgs() == argTypes.length) {
+            /* don't emit ellipsis in this case as this would produce an invalid NFI signature */
+            // sb.append("...)");
+        }
+        if (argTypes.length > 0) {
             sb.setCharAt(sb.length() - 1, ')');
         } else {
             sb.append(')');
