@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -107,6 +109,11 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
         printSerializationClasses(writer, "lambdaCapturingTypes", listOfCapturingClasses);
         writer.unindent().newline();
         writer.append('}');
+    }
+
+    @Override
+    public ConfigurationParser createParser() {
+        return new SerializationConfigurationParser(this, true);
     }
 
     private static void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {

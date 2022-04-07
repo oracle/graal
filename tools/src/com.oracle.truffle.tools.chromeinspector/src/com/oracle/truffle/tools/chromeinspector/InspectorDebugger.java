@@ -1083,7 +1083,10 @@ public final class InspectorDebugger extends DebuggerDomain {
                                         (se.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
                             // We're at the begining of a `RootTag` node, or
                             // we're at the end of `RootTag` node and have no return value.
-                            // Do not suspend in this case, not to cause distrations.
+                            // We use `RootTag` to intercept return values of functions during
+                            // stepping.
+                            // But if there's no return value, there's no point in suspending at the
+                            // end of a function. That would cause an unnecessary distraction.
                             se.prepareStepInto(STEP_CONFIG);
                             return;
                         }

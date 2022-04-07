@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
+import static com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl.getAnnotationEncodingType;
 import static com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl.getTypeAnnotations;
 
 import java.lang.annotation.Annotation;
@@ -35,6 +36,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -79,6 +81,7 @@ import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
@@ -96,6 +99,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Executable, ExecutableAccessibility> reflectionMethods = new ConcurrentHashMap<>();
     private final Map<Executable, Object> methodAccessors = new ConcurrentHashMap<>();
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<AnalysisField> hidingFields = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> hidingMethods = ConcurrentHashMap.newKeySet();
     private final Set<Executable> registeredMethods = ConcurrentHashMap.newKeySet();
     private final Set<Field> registeredFields = ConcurrentHashMap.newKeySet();
@@ -107,6 +111,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<Class<?>> processedClasses = new HashSet<>();
     private final Set<Type> processedTypes = new HashSet<>();
     private final Set<DynamicHub> processedDynamicHubs = new HashSet<>();
+    private final Map<AnalysisField, Set<AnalysisType>> processedHidingFields = new HashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisType>> processedHidingMethods = new HashMap<>();
     private final Set<AccessibleObject> processedHeapReflectionObjects = new HashSet<>();
 
@@ -266,6 +271,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (!registeredFields.contains(reflectField) && !SubstitutionReflectivityFilter.shouldExclude(reflectField, access.getMetaAccess(), access.getUniverse())) {
                 AnalysisField analysisField = access.getMetaAccess().lookupJavaField(reflectField);
                 registerTypesForField(access, analysisField, reflectField);
+                registerHidingSubTypeFields(access, analysisField, analysisField.getDeclaringClass());
                 registeredFields.add(reflectField);
             }
         }
@@ -291,13 +297,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (!processedHeapReflectionObjects.contains(object)) {
                 if (object instanceof Field) {
                     Field field = (Field) object;
-                    AnalysisField analysisField = access.getMetaAccess().lookupJavaField(field);
-                    registerTypesForField(access, analysisField, field);
+                    if (!SubstitutionReflectivityFilter.shouldExclude(field, access.getMetaAccess(), access.getUniverse())) {
+                        AnalysisField analysisField = access.getMetaAccess().lookupJavaField(field);
+                        registerTypesForField(access, analysisField, field);
+                        registerHidingSubTypeFields(access, analysisField, analysisField.getDeclaringClass());
+                    }
                 } else if (object instanceof Executable) {
                     Executable executable = (Executable) object;
-                    AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(executable);
-                    registerTypesForMethod(access, analysisMethod, executable);
-                    registerHidingSubTypeMethods(access, analysisMethod, analysisMethod.getDeclaringClass());
+                    if (!SubstitutionReflectivityFilter.shouldExclude(executable, access.getMetaAccess(), access.getUniverse())) {
+                        AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(executable);
+                        registerTypesForMethod(access, analysisMethod, executable);
+                        registerHidingSubTypeMethods(access, analysisMethod, analysisMethod.getDeclaringClass());
+                    }
                 }
                 processedHeapReflectionObjects.add(object);
             }
@@ -312,6 +323,38 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 if (method.isReachable() && !method.isIntrinsicMethod()) {
                     registerTypesForReachableMethod(access, method);
                 }
+            }
+        }
+    }
+
+    private void registerHidingSubTypeFields(DuringAnalysisAccess access, AnalysisField field, AnalysisType type) {
+        if (!type.equals(field.getDeclaringClass()) && type.isReachable()) {
+            if (!processedHidingFields.containsKey(field) || !processedHidingFields.get(field).contains(type)) {
+                processedHidingFields.computeIfAbsent(field, m -> ConcurrentHashMap.newKeySet()).add(type);
+                try {
+                    AnalysisField[] subClassFields = field.isStatic() ? type.getStaticFields() : type.getInstanceFields(false);
+                    for (AnalysisField subclassField : subClassFields) {
+                        if (subclassField.getName().equals(field.getName())) {
+                            hidingFields.add(subclassField);
+                        }
+                    }
+                    /*
+                     * Lookup can lead to the creation of new AnalysisField objects, so we need to
+                     * run another analysis iteration.
+                     */
+                    access.requireAnalysisIteration();
+
+                } catch (UnsupportedFeatureException | LinkageError e) {
+                    /*
+                     * A field that is not supposed to end up in the image is considered as being
+                     * absent for reflection purposes.
+                     */
+                }
+            }
+        }
+        for (AnalysisType subType : type.getSubTypes()) {
+            if (!subType.equals(type)) {
+                registerHidingSubTypeFields(access, field, subType);
             }
         }
     }
@@ -376,7 +419,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Executable enclosingMethod = enclosingMethodOrConstructor(clazz, errors);
         if (enclosingMethod != null) {
             makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(enclosingMethod.getDeclaringClass()));
-            RuntimeReflection.register(enclosingMethod);
+            RuntimeReflection.registerAsQueried(enclosingMethod);
         }
         reportLinkingErrors(clazz, errors);
 
@@ -459,6 +502,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             registerTypesForAnnotation(access, typeAnnotation.getAnnotation());
             // Checkstyle: disallow direct annotation access
         }
+        if (reflectMethod instanceof Method) {
+            Object defaultValue = ((Method) reflectMethod).getDefaultValue();
+            if (defaultValue != null) {
+                registerTypesForAnnotationValue(access, getAnnotationEncodingType(defaultValue), defaultValue);
+            }
+        }
     }
 
     private static void registerTypesForReachableField(DuringAnalysisAccessImpl access, AnalysisField analysisField) {
@@ -470,7 +519,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (JavaType paramType : analysisMethod.toParameterTypes()) {
             makeAnalysisTypeReachable(access, (AnalysisType) paramType);
         }
-        makeAnalysisTypeReachable(access, (AnalysisType) analysisMethod.getSignature().getReturnType(null));
     }
 
     private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
@@ -655,7 +703,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private static <T> T query(Callable<T> callable, List<Throwable> errors) {
         try {
             return callable.call();
-        } catch (TypeNotPresentException | LinkageError e) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
             errors.add(e);
         } catch (Exception e) {
             throw VMError.shouldNotReachHere(e);
@@ -710,7 +758,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return !modifiedClasses.isEmpty();
     }
 
-    private Executable enclosingMethodOrConstructor(Class<?> clazz, List<Throwable> errors) {
+    private static Executable enclosingMethodOrConstructor(Class<?> clazz, List<Throwable> errors) {
         Method enclosingMethod;
         Constructor<?> enclosingConstructor;
         try {
@@ -746,13 +794,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
         }
 
-        Executable enclosingMethodOrConstructor = enclosingMethod != null ? enclosingMethod : enclosingConstructor;
-
-        if (reflectionMethods.containsKey(enclosingMethodOrConstructor)) {
-            return enclosingMethodOrConstructor;
-        } else {
-            return null;
-        }
+        return enclosingMethod != null ? enclosingMethod : enclosingConstructor;
     }
 
     @Override
@@ -777,6 +819,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Object getAccessor(Executable method) {
         assert sealed;
         return methodAccessors.get(method);
+    }
+
+    @Override
+    public Set<ResolvedJavaField> getHidingReflectionFields() {
+        assert sealed;
+        return Collections.unmodifiableSet(hidingFields);
     }
 
     @Override

@@ -32,6 +32,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -137,6 +139,11 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
             prefix = ",";
         }
         writer.newline().append(']');
+    }
+
+    @Override
+    public ConfigurationParser createParser() {
+        return new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(this), true);
     }
 
     @Override

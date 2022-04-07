@@ -763,6 +763,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 main_component = _get_main_component(installable_components)
                 mx.logv("Adding gu metadata for{}installable '{}'".format(' disabled ' if _disable_installable(main_component) else ' ', main_component.installable_id))
                 _add(layout, components_dir + 'org.graalvm.' + main_component.installable_id + '.component', "string:" + manifest_str)
+            # Register Core
+            manifest_str = _format_properties({
+                "Bundle-Name": "GraalVM Core",
+                "Bundle-Symbolic-Name": "org.graalvm",
+                "Bundle-Version": _suite.release_version(),
+                "x-GraalVM-Stability-Level": _get_core_stability(),
+            })
+            _add(layout, components_dir + 'org.graalvm.component', "string:" + manifest_str)
 
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
@@ -1133,7 +1141,7 @@ class SvmSupport(object):
         return self._debug_supported
 
     def is_pgo_supported(self):
-        return self._debug_supported
+        return self._pgo_supported
 
 
 def _get_svm_support():
@@ -2205,6 +2213,22 @@ def _format_properties(data):
     ) + "\n"
 
 
+def _get_component_stability(component):
+    if _src_jdk_version not in (11, 17):
+        return "experimental"
+    if mx.is_darwin() and mx.get_arch() == 'aarch64':
+        return "experimental"
+    return component.stability
+
+
+def _get_core_stability():
+    if _src_jdk_version not in (11, 17):
+        return "experimental"
+    if mx.is_darwin() and mx.get_arch() == 'aarch64':
+        return "experimental"
+    return "supported"
+
+
 def _gen_gu_manifest(components, formatter, bundled=False):
     main_component = _get_main_component(components)
     version = _suite.release_version()
@@ -2221,9 +2245,7 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                               and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability is not None:
-        stability = main_component.stability
-        if _src_jdk_version > 11:
-            stability = "experimental"
+        stability = _get_component_stability(main_component)
         manifest["x-GraalVM-Stability-Level"] = stability
         if stability in ("experimental", "earlyadopter", "supported"):
             # set x-GraalVM-Stability for backward compatibility when possible
@@ -2680,6 +2702,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
         # path from langauge launcher to jars
         _cp = [relpath(x, start=_exe_dir) for x in _cp]
+        if mx.is_windows():
+            _cp = [x.replace('\\', '\\\\') for x in _cp]
         _dynamic_cflags += [
             '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
             '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
@@ -2689,7 +2713,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if mx.is_windows():
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
-            _cp = [x.replace('\\', '\\\\') for x in _cp]
         else:
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
@@ -3157,7 +3180,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     print("Config name: {}".format(graalvm_dist.vm_config_name))
     print("Components:")
     for component in graalvm_dist.components:
-        print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
+        print(" - {} ('{}', /{}, {})".format(component.name, component.short_name, component.dir_name, _get_component_stability(component)))
 
     if forced_graalvm_dist is None:
         # Custom GraalVM distributions with a forced component list do not yet support launchers and libraries.

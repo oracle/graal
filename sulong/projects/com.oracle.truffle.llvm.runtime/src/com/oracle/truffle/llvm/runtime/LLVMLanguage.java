@@ -82,9 +82,10 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+
+import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -271,15 +272,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeThread(LLVMContext context, Thread thread) {
         getCapability(PlatformCapability.class).initializeThread(context, thread);
-        synchronized (context.threadInitLock) {
+        try (TLSInitializerAccess access = context.getTLSInitializerAccess()) {
             // need to duplicate the thread local globals for this thread.
-            List<AggregateTLGlobalInPlaceNode> globalInitializers = context.getThreadLocalGlobalInitializer();
-            for (AggregateTLGlobalInPlaceNode globalInitializer : globalInitializers) {
+            for (AggregateTLGlobalInPlaceNode globalInitializer : access.getThreadLocalGlobalInitializer()) {
                 // TODO: use the call target of AggregateTLGlobalInPlaceNode, rather than the node
                 // itself (GR-37471).
                 globalInitializer.executeWithThread(null, thread);
             }
-            context.registerLiveThread(thread);
+            access.registerLiveThread(thread);
         }
     }
 
@@ -697,6 +697,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
         if (!threadLocalValue.isFinalized()) {
             freeThreadLocalGlobal(threadLocalValue);
+        }
+
+        try (TLSInitializerAccess access = context.getTLSInitializerAccess()) {
+            access.unregisterLiveThread(thread);
         }
     }
 

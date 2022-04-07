@@ -47,6 +47,11 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.configure.config.conditional.ConditionalConfigurationComputer;
+import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
+import com.oracle.svm.configure.config.conditional.MethodCallNode;
+import com.oracle.svm.configure.config.conditional.MethodInfoRepository;
+import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigins;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
@@ -96,6 +101,9 @@ public class ConfigurationTool {
                     break;
                 case "process-trace": // legacy
                     generate(argsIter, true);
+                    break;
+                case "generate-conditional":
+                    createConditionalConfig(argsIter);
                     break;
                 case "generate-filters":
                     generateFilterRules(argsIter);
@@ -166,12 +174,7 @@ public class ConfigurationTool {
                     inputCollection.addDirectory(requirePath(current, value));
                     break;
                 case "--output-dir":
-                    Path directory = requirePath(current, value);
-                    if (!Files.exists(directory)) {
-                        Files.createDirectory(directory);
-                    } else if (!Files.isDirectory(directory)) {
-                        throw new NoSuchFileException(value);
-                    }
+                    Path directory = getOrCreateDirectory(current, value);
                     outputCollection.addDirectory(directory);
                     break;
 
@@ -339,6 +342,89 @@ public class ConfigurationTool {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 configurationSet.getPredefinedClassesConfiguration().printJson(writer);
             }
+        }
+    }
+
+    private static Path getOrCreateDirectory(String current, String value) throws IOException {
+        Path directory = requirePath(current, value);
+        if (!Files.exists(directory)) {
+            Files.createDirectory(directory);
+        } else if (!Files.isDirectory(directory)) {
+            throw new NoSuchFileException(value);
+        }
+        return directory;
+    }
+
+    private static void createConditionalConfig(Iterator<String> argsIter) throws IOException {
+        Set<URI> configInputPaths = new HashSet<>();
+        Set<URI> configOutputPaths = new HashSet<>();
+        URI userCodeFilterUri = null;
+        Set<URI> classNameFiltersUri = new HashSet<>();
+        while (argsIter.hasNext()) {
+            String opt = argsIter.next();
+            String[] parts = opt.split("=");
+            if (parts.length != 2) {
+                throw new UsageException("Invalid option " + opt);
+            }
+            String option = parts[0];
+            String value = parts[1];
+            switch (option) {
+                case "--input-dir":
+                    Path dir = requirePath(option, value);
+                    if (!Files.isDirectory(dir)) {
+                        throw new UsageException("Path is not a directory: " + dir);
+                    }
+                    Path configPath = dir.resolve(ConfigurationFile.PARTIAL_CONFIGURATION_WITH_ORIGINS);
+                    if (!Files.isRegularFile(configPath)) {
+                        throw new UsageException("Cannot find partial configuration file at " + configPath);
+                    }
+                    configInputPaths.add(configPath.toUri());
+                    break;
+                case "--output-dir":
+                    Path outputDir = getOrCreateDirectory(option, value);
+                    configOutputPaths.add(outputDir.toUri());
+                    break;
+                case "--user-code-filter":
+                    Path userCodeFilter = requirePath(option, value);
+                    if (!Files.isRegularFile(userCodeFilter)) {
+                        throw new UsageException("Cannot find user code filter file at " + userCodeFilter);
+                    }
+                    userCodeFilterUri = userCodeFilter.toUri();
+                    break;
+                case "--class-name-filter":
+                    Path classNameFilter = requirePath(option, value);
+                    if (!Files.isRegularFile(classNameFilter)) {
+                        throw new UsageException("Cannot find user code filter file at " + classNameFilter);
+                    }
+                    classNameFiltersUri.add(classNameFilter.toUri());
+                    break;
+                default:
+                    throw new UsageException("Unknown option: " + option);
+            }
+        }
+
+        ComplexFilter userCodeFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+        new FilterConfigurationParser(userCodeFilter).parseAndRegister(userCodeFilterUri);
+
+        ComplexFilter classNameFilter;
+        if (classNameFiltersUri.isEmpty()) {
+            classNameFilter = new ComplexFilter(HierarchyFilterNode.createInclusiveRoot());
+        } else {
+            classNameFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+            for (URI classNameFilterUri : classNameFiltersUri) {
+                new FilterConfigurationParser(classNameFilter).parseAndRegister(classNameFilterUri);
+            }
+        }
+
+        MethodCallNode rootNode = MethodCallNode.createRoot();
+        MethodInfoRepository registry = new MethodInfoRepository();
+        for (URI inputUri : configInputPaths) {
+            new PartialConfigurationWithOrigins(rootNode, registry).parseAndRegister(inputUri);
+        }
+
+        ConfigurationSet configSet = new ConditionalConfigurationComputer(rootNode, userCodeFilter, new ConditionalConfigurationPredicate(classNameFilter)).computeConditionalConfiguration();
+        for (URI outputUri : configOutputPaths) {
+            configSet.writeConfiguration(file -> Path.of(outputUri).resolve(file.getFileName()));
         }
     }
 

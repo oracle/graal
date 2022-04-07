@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,16 +23,21 @@
  * questions.
  */
 
-package com.oracle.svm.hosted;
+package com.oracle.svm.configure.config.conditional;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * ServiceLoader interface to allow post-processing tasks that should be performed right after
- * {@link NativeImageClassLoaderSupport} is created. For example, this is used to apply the
- * native-image classloader options after hosted options are accessible but before
- * {@link com.oracle.svm.hosted.ImageClassLoader#initAllClasses()} gets called.
+ * A cache used to avoid creating multiple {@link MethodInfo} objects for the same method when
+ * parsing a call tree from multiple sources.
  */
-public interface NativeImageClassLoaderPostProcessing {
+public class MethodInfoRepository {
 
-    void apply(NativeImageClassLoaderSupport support);
+    private final Map<MethodInfo, MethodInfo> cache = new HashMap<>();
+
+    public MethodInfo getOrAdd(String className, String methodName, String signature) {
+        return cache.computeIfAbsent(new MethodInfo(methodName, signature, className), key -> key);
+    }
 
 }

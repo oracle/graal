@@ -24,13 +24,13 @@ local jdks = common_json.jdks;
     },
   },
 
-  vm_linux_amd64_java_11:: self.vm_java_11 + {
+  vm_java_11_llvm:: self.vm_java_11 + {
     downloads+: {
       LLVM_JAVA_HOME: jdks['labsjdk-ce-11-llvm'],
     },
   },
 
-  vm_linux_amd64_java_17:: self.vm_java_17 + {
+  vm_java_17_llvm:: self.vm_java_17 + {
     downloads+: {
       LLVM_JAVA_HOME: jdks['labsjdk-ce-17-llvm'],
     },
@@ -97,22 +97,22 @@ local jdks = common_json.jdks;
     requireArtifacts: [
       {name: 'post-merge-deploy-vm-java11-linux-amd64'},
       {name: 'post-merge-deploy-vm-java17-linux-amd64'},
-      {name: 'daily-deploy-vm-java11-linux-aarch64'},
-      {name: 'daily-deploy-vm-java17-linux-aarch64'},
-      {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java11-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java11-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java11-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java11-windows-amd64'},
-      {name: 'daily-deploy-vm-base-java17-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
-      {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-java11-linux-aarch64'},
+      {name: 'post-merge-deploy-vm-java17-linux-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java11-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java11-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-base-java17-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java17-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-base-java11-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-installable-java11-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java17-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-installable-java17-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java11-windows-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java11-windows-amd64'},
+      {name: 'post-merge-deploy-vm-base-java17-windows-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java17-windows-amd64'},
+      {name: 'post-merge-deploy-vm-ruby-java11-linux-amd64'},
+      {name: 'post-merge-deploy-vm-ruby-java11-darwin-amd64'},
     ],
     targets+: ['daily'],
   },
@@ -201,19 +201,19 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-maven-dry-run-darwin-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_11_17_only_native + {
+    vm_common.darwin_deploy + vm_common.deploy_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
-     name: 'daily-deploy-vm-maven-darwin-amd64',
+     name: 'post-merge-deploy-vm-maven-darwin-amd64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_11_17_only_native + {
+    vm_common.darwin_deploy + vm_common.deploy_vm_darwin_aarch64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
-     name: 'daily-deploy-vm-maven-darwin-aarch64',
+     name: 'post-merge-deploy-vm-maven-darwin-aarch64',
     },
     vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_11_17_only_native + {
      run: [
@@ -222,12 +222,12 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_11_17_only_native + {
+    vm_common.svm_common_windows_jdk11 + vm_common.deploy_vm_windows + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
-     name: 'daily-deploy-vm-maven-windows-amd64',
+     name: 'post-merge-deploy-vm-maven-windows-amd64',
     },
 
     #
@@ -239,32 +239,32 @@ local jdks = common_json.jdks;
     vm_common.deploy_vm_java17_linux_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-java17-linux-amd64', patterns: ['post-merge-deploy-vm-java17-linux-amd64']}]},
 
     # Linux/AARCH64
-    vm_common.deploy_vm_java11_linux_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-java11-linux-aarch64', patterns: ['daily-deploy-vm-java11-linux-aarch64']}]},
-    vm_common.deploy_vm_java17_linux_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-java17-linux-aarch64', patterns: ['daily-deploy-vm-java17-linux-aarch64']}]},
+    vm_common.deploy_vm_java11_linux_aarch64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-java11-linux-aarch64', patterns: ['post-merge-deploy-vm-java11-linux-aarch64']}]},
+    vm_common.deploy_vm_java17_linux_aarch64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-java17-linux-aarch64', patterns: ['post-merge-deploy-vm-java17-linux-aarch64']}]},
 
     # Darwin/AMD64
-    vm_common.deploy_vm_base_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-amd64', patterns: ['daily-deploy-vm-base-java11-darwin-amd64']}]},
-    vm_common.deploy_vm_installable_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-amd64', patterns: ['daily-deploy-vm-installable-java11-darwin-amd64']}]},
-    vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-amd64', patterns: ['daily-deploy-vm-base-java17-darwin-amd64']}]},
-    vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-amd64', patterns: ['daily-deploy-vm-installable-java17-darwin-amd64']}]},
+    vm_common.deploy_vm_base_java11_darwin_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-base-java11-darwin-amd64', patterns: ['post-merge-deploy-vm-base-java11-darwin-amd64']}]},
+    vm_common.deploy_vm_installable_java11_darwin_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-installable-java11-darwin-amd64', patterns: ['post-merge-deploy-vm-installable-java11-darwin-amd64']}]},
+    vm_common.deploy_vm_base_java17_darwin_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-base-java17-darwin-amd64', patterns: ['post-merge-deploy-vm-base-java17-darwin-amd64']}]},
+    vm_common.deploy_vm_installable_java17_darwin_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-installable-java17-darwin-amd64', patterns: ['post-merge-deploy-vm-installable-java17-darwin-amd64']}]},
 
     # Darwin/AARCH64
-    vm_common.deploy_vm_base_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-aarch64', patterns: ['daily-deploy-vm-base-java11-darwin-aarch64']}]},
-    vm_common.deploy_vm_installable_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java11-darwin-aarch64']}]},
-    vm_common.deploy_vm_base_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-aarch64', patterns: ['daily-deploy-vm-base-java17-darwin-aarch64']}]},
-    vm_common.deploy_vm_installable_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java17-darwin-aarch64']}]},
+    vm_common.deploy_vm_base_java11_darwin_aarch64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-base-java11-darwin-aarch64', patterns: ['post-merge-deploy-vm-base-java11-darwin-aarch64']}]},
+    vm_common.deploy_vm_installable_java11_darwin_aarch64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-installable-java11-darwin-aarch64', patterns: ['post-merge-deploy-vm-installable-java11-darwin-aarch64']}]},
+    vm_common.deploy_vm_base_java17_darwin_aarch64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-base-java17-darwin-aarch64', patterns: ['post-merge-deploy-vm-base-java17-darwin-aarch64']}]},
+    vm_common.deploy_vm_installable_java17_darwin_aarch64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-installable-java17-darwin-aarch64', patterns: ['post-merge-deploy-vm-installable-java17-darwin-aarch64']}]},
 
     # Windows/AMD64
-    vm_common.deploy_vm_base_java11_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-windows-amd64', patterns: ['daily-deploy-vm-base-java11-windows-amd64']}]},
-    vm_common.deploy_vm_installable_java11_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-windows-amd64', patterns: ['daily-deploy-vm-installable-java11-windows-amd64']}]},
-    vm_common.deploy_vm_base_java17_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-windows-amd64', patterns: ['daily-deploy-vm-base-java17-windows-amd64']}]},
-    vm_common.deploy_vm_installable_java17_windows_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-windows-amd64', patterns: ['daily-deploy-vm-installable-java17-windows-amd64']}]},
+    vm_common.deploy_vm_base_java11_windows_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-base-java11-windows-amd64', patterns: ['post-merge-deploy-vm-base-java11-windows-amd64']}]},
+    vm_common.deploy_vm_installable_java11_windows_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-installable-java11-windows-amd64', patterns: ['post-merge-deploy-vm-installable-java11-windows-amd64']}]},
+    vm_common.deploy_vm_base_java17_windows_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-base-java17-windows-amd64', patterns: ['post-merge-deploy-vm-base-java17-windows-amd64']}]},
+    vm_common.deploy_vm_installable_java17_windows_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-installable-java17-windows-amd64', patterns: ['post-merge-deploy-vm-installable-java17-windows-amd64']}]},
 
     #
     # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
     #
-    vm_common.deploy_vm_ruby_java11_linux_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-ruby-java11-linux-amd64', patterns: ['daily-deploy-vm-ruby-java11-linux-amd64']}]},
-    vm_common.deploy_vm_ruby_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-ruby-java11-darwin-amd64', patterns: ['daily-deploy-vm-ruby-java11-darwin-amd64']}]},
+    vm_common.deploy_vm_ruby_java11_linux_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-ruby-java11-linux-amd64', patterns: ['post-merge-deploy-vm-ruby-java11-linux-amd64']}]},
+    vm_common.deploy_vm_ruby_java11_darwin_amd64 + {publishArtifacts: [{name: 'post-merge-deploy-vm-ruby-java11-darwin-amd64', patterns: ['post-merge-deploy-vm-ruby-java11-darwin-amd64']}]},
 
     # Trigger the releaser service
     self.notify_releaser_build,

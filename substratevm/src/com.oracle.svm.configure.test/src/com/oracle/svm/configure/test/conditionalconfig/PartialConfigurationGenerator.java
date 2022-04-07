@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.configure.test.conditionalconfig;
 
-package com.oracle.svm.hosted;
+import org.junit.Test;
 
-/**
- * ServiceLoader interface to allow post-processing tasks that should be performed right after
- * {@link NativeImageClassLoaderSupport} is created. For example, this is used to apply the
- * native-image classloader options after hosted options are accessible but before
- * {@link com.oracle.svm.hosted.ImageClassLoader#initAllClasses()} gets called.
- */
-public interface NativeImageClassLoaderPostProcessing {
+public class PartialConfigurationGenerator {
 
-    void apply(NativeImageClassLoaderSupport support);
+    private static void runIfEnabled(Runnable runnable) {
+        if (!Boolean.getBoolean(PartialConfigurationGenerator.class.getName() + ".enabled")) {
+            return;
+        }
+        runnable.run();
+    }
 
+    @Test
+    public void createConfigPartOne() {
+        runIfEnabled(NoPropagationNecessary::runTest);
+    }
+
+    @Test
+    public void createConfigPartTwo() {
+        runIfEnabled(PropagateToParent::runTest);
+    }
+
+    @Test
+    public void createConfigPartThree() {
+        runIfEnabled(PropagateButLeaveCommonConfiguration::runTest);
+    }
 }

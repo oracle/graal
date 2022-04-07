@@ -161,7 +161,10 @@ final class EarlyClassInitializerAnalysis {
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
 
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug)
+                        .method(clinit)
+                        .recordInlinedMethods(false)
+                        .build();
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, graphBuilderConfig, context.getOptimisticOptimizations());
 

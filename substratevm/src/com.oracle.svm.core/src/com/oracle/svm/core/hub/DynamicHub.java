@@ -39,6 +39,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -49,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
@@ -899,8 +901,20 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native Constructor<?>[] getConstructors();
 
-    @KeepOriginal
-    private native Field getField(@SuppressWarnings("hiding") String name) throws NoSuchMethodException;
+    @Substitute
+    public Field getField(String fieldName) throws NoSuchFieldException, SecurityException {
+        Objects.requireNonNull(fieldName);
+        @SuppressWarnings("removal")
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            checkMemberAccess(sm, Member.PUBLIC, Reflection.getCallerClass(), true);
+        }
+        Field field = getField0(fieldName);
+        if (field == null || ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(field.getModifiers())) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        return getReflectionFactory().copyField(field);
+    }
 
     @KeepOriginal
     private native Method getMethod(@SuppressWarnings("hiding") String name, Class<?>... parameterTypes) throws NoSuchMethodException;
@@ -923,8 +937,23 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native Constructor<?>[] getDeclaredConstructors();
 
-    @KeepOriginal
-    private native Field getDeclaredField(@SuppressWarnings("hiding") String name);
+    /**
+     * @see #filterHidingFields(Field...)
+     */
+    @Substitute
+    public Field getDeclaredField(String fieldName) throws NoSuchFieldException, SecurityException {
+        Objects.requireNonNull(fieldName);
+        @SuppressWarnings("removal")
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            checkMemberAccess(sm, Member.DECLARED, Reflection.getCallerClass(), true);
+        }
+        Field field = searchFields(privateGetDeclaredFields(false), fieldName);
+        if (field == null || ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(field.getModifiers())) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        return getReflectionFactory().copyField(field);
+    }
 
     @KeepOriginal
     private native Method getDeclaredMethod(@SuppressWarnings("hiding") String name, Class<?>... parameterTypes);
@@ -1009,8 +1038,19 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private static native boolean arrayContentsEq(Object[] a1, Object[] a2);
 
-    @KeepOriginal
-    private static native Field[] copyFields(Field[] arg);
+    /**
+     * @see #filterHidingFields(Field...)
+     */
+    @Substitute
+    private static Field[] copyFields(Field[] original) {
+        Field[] arg = filterHidingFields(original);
+        Field[] out = new Field[arg.length];
+        ReflectionFactory fact = getReflectionFactory();
+        for (int i = 0; i < arg.length; i++) {
+            out[i] = fact.copyField(arg[i]);
+        }
+        return out;
+    }
 
     /**
      * @see #filterHidingMethods(Method...)
@@ -1463,14 +1503,24 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native boolean isDirectSubType(Class<?> c);
 
     /*
-     * We need to filter out hiding methods at the last moment. This ensures that the JDK internals
-     * see them as regular methods and ensure the visibility of methods is correct, but they should
-     * not be returned to application code.
+     * We need to filter out hiding elements at the last moment. This ensures that the JDK internals
+     * see them as regular methods and fields and ensure their visibility is correct, but they
+     * should not be returned to application code.
      */
+    private static Field[] filterHidingFields(Field... fields) {
+        List<Field> filtered = new ArrayList<>();
+        for (Field field : fields) {
+            if (!ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(field.getModifiers())) {
+                filtered.add(field);
+            }
+        }
+        return filtered.toArray(new Field[0]);
+    }
+
     private static Method[] filterHidingMethods(Method... methods) {
         List<Method> filtered = new ArrayList<>();
         for (Method method : methods) {
-            if (!ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHidingMethod(method.getModifiers())) {
+            if (!ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(method.getModifiers())) {
                 filtered.add(method);
             }
         }
@@ -1687,7 +1737,7 @@ final class Target_java_lang_PublicMethods_MethodList {
             }
         }
         /* Filter out hiding methods after the retursive lookup is done */
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHidingMethod(m.getModifiers()) ? null : m;
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(m.getModifiers()) ? null : m;
     }
 }
 

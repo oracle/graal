@@ -916,7 +916,7 @@ public class NativeImage {
         }
     }
 
-    void handleClassPathAttribute(Path jarFilePath, Attributes mainAttributes) {
+    void handleClassPathAttribute(LinkedHashSet<Path> destination, Path jarFilePath, Attributes mainAttributes) {
         String classPathValue = mainAttributes.getValue("Class-Path");
         /* Missing Class-Path Attribute is tolerable */
         if (classPathValue != null) {
@@ -927,7 +927,7 @@ public class NativeImage {
                     manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
                 }
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
-                addImageClasspathEntry(imageClasspath, manifestClassPath, false);
+                addImageClasspathEntry(destination, manifestClassPath, false);
             }
         }
     }
@@ -1109,16 +1109,22 @@ public class NativeImage {
     }
 
     protected static String getHostedOptionFinalArgumentValue(List<String> args, String argPrefix) {
+        List<String> values = getHostedOptionArgumentValues(args, argPrefix);
+        return values.isEmpty() ? null : values.get(values.size() - 1);
+    }
+
+    protected static List<String> getHostedOptionArgumentValues(List<String> args, String argPrefix) {
+        ArrayList<String> values = new ArrayList<>();
         String locationAgnosticArgPrefix = getLocationAgnosticArgPrefix(argPrefix);
         Pattern pattern = Pattern.compile(locationAgnosticArgPrefix);
-        String lastArg = null;
+
         for (String arg : args) {
             Matcher matcher = pattern.matcher(arg);
             if (matcher.find()) {
-                lastArg = arg.substring(matcher.group().length());
+                values.add(arg.substring(matcher.group().length()));
             }
         }
-        return lastArg;
+        return values;
     }
 
     private boolean shouldAddCWDToCP() {
@@ -1136,38 +1142,19 @@ public class NativeImage {
         return customImageClasspath.isEmpty() && imageModulePath.isEmpty();
     }
 
-    private static boolean isListArgumentSet(Collection<String> list, String argPrefix) {
-        return list.stream().anyMatch(arg -> arg.startsWith(argPrefix) && !arg.equals(argPrefix));
-    }
-
-    private boolean isListArgumentSet(String argPrefix) {
-        return isListArgumentSet(imageBuilderArgs, argPrefix);
-    }
-
-    private static String getListArgumentValue(Collection<String> list, String argPrefix) {
-        VMError.guarantee(isListArgumentSet(list, argPrefix));
-        return list.stream().filter(arg -> arg.startsWith(argPrefix)).map(arg -> arg.substring(argPrefix.length())).collect(Collectors.joining());
-    }
-
-    private String getListArgumentValue(String argPrefix) {
-        return getListArgumentValue(imageBuilderArgs, argPrefix);
-    }
-
     private List<String> getAgentArguments() {
         List<String> args = new ArrayList<>();
         String agentOptions = "";
-        boolean shouldTraceClassInitialization = isListArgumentSet(oHTraceClassInitialization);
-        boolean shouldTraceObjectInstantiation = isListArgumentSet(oHTraceObjectInstantiation);
-        if (shouldTraceClassInitialization) {
-            String classesToTrace = getListArgumentValue(oHTraceClassInitialization);
-            agentOptions = getAgentOptions(classesToTrace, "c");
+        List<String> traceClassInitializationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceClassInitialization);
+        List<String> traceObjectInstantiationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceObjectInstantiation);
+        if (!traceClassInitializationOpts.isEmpty()) {
+            agentOptions = getAgentOptions(traceClassInitializationOpts, "c");
         }
-        if (shouldTraceObjectInstantiation) {
-            String objectsToTrace = getListArgumentValue(oHTraceObjectInstantiation);
+        if (!traceObjectInstantiationOpts.isEmpty()) {
             if (!agentOptions.isEmpty()) {
                 agentOptions += ",";
             }
-            agentOptions += getAgentOptions(objectsToTrace, "o");
+            agentOptions += getAgentOptions(traceObjectInstantiationOpts, "o");
         }
 
         if (!agentOptions.isEmpty()) {
@@ -1177,8 +1164,8 @@ public class NativeImage {
         return args;
     }
 
-    private static String getAgentOptions(String options, String optionName) {
-        return Arrays.stream(options.split(",")).map(option -> optionName + "=" + option).collect(Collectors.joining(","));
+    private static String getAgentOptions(List<String> options, String optionName) {
+        return options.stream().flatMap(optValue -> Arrays.stream(optValue.split(","))).map(clazz -> optionName + "=" + clazz).collect(Collectors.joining(","));
     }
 
     private String targetPlatform = null;
@@ -1191,12 +1178,11 @@ public class NativeImage {
          * process (see comments for NativeImageGenerator.getTargetPlatform), we are parsing the
          * --target argument here, and generating required internal arguments.
          */
-
-        if (!isListArgumentSet(oHTargetPlatform)) {
+        targetPlatform = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHTargetPlatform);
+        if (targetPlatform == null) {
             return;
         }
-
-        targetPlatform = getListArgumentValue(oHTargetPlatform).toLowerCase();
+        targetPlatform = targetPlatform.toLowerCase();
 
         String[] parts = targetPlatform.split("-");
         if (parts.length != 2) {
@@ -1206,7 +1192,7 @@ public class NativeImage {
         targetOS = parts[0];
         targetArch = parts[1];
 
-        if (isListArgumentSet(customJavaArgs, "-D" + Platform.PLATFORM_PROPERTY_NAME)) {
+        if (customJavaArgs.stream().anyMatch(arg -> arg.startsWith("-D" + Platform.PLATFORM_PROPERTY_NAME + "="))) {
             NativeImage.showWarning("Usage of -D" + Platform.PLATFORM_PROPERTY_NAME + " might conflict with --target parameter.");
         }
 
@@ -1573,7 +1559,7 @@ public class NativeImage {
 
         if (!imageClasspath.contains(classpathEntry) && !customImageClasspath.contains(classpathEntry)) {
             destination.add(classpathEntry);
-            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
+            processManifestMainAttributes(classpathEntry, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
             processClasspathNativeImageMetaInf(classpathEntry);
         }
     }

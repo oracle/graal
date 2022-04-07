@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -120,6 +122,11 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         }
         writer.unindent().newline();
         writer.append(']');
+    }
+
+    @Override
+    public ConfigurationParser createParser() {
+        return new ProxyConfigurationParser(interfaceLists::add, true);
     }
 
     @Override

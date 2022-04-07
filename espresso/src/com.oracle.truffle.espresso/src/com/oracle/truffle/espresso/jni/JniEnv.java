@@ -257,8 +257,15 @@ public final class JniEnv extends NativeEnv {
         @Override
         public Object popObject() {
             try {
+                Object ret = getUncached().execute(popObject, nativePointer);
                 @Handle(StaticObject.class)
-                long handle = (long) getUncached().execute(popObject, nativePointer);
+                long handle = 0;
+                if (getUncached().isPointer(ret)) {
+                    /* due to GR-37169 it can be any pointer type, not just a long in nfi-llvm */
+                    handle = getUncached().asPointer(ret);
+                } else {
+                    handle = (long) ret;
+                }
                 TruffleObject result = getHandles().get(Math.toIntExact(handle));
                 if (result instanceof StaticObject) {
                     return result;
