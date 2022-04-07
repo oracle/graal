@@ -55,6 +55,12 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     protected abstract int getVectorLength();
 
+    @Specialization
+    protected Object doOp(boolean condition, Object trueValue, Object elseValue,
+                                @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+        return conditionProfile.profile(condition) ? trueValue : elseValue;
+    }
+
     public abstract static class LLVMI1VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
