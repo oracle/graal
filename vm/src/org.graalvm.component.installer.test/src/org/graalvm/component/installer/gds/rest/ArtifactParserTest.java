@@ -72,7 +72,6 @@ public class ArtifactParserTest extends TestBase {
     static final String JSON_META_VAL_VERSION = "18.1.3";
     static final String JSON_META_KEY_EDITION = "edition";
     static final String JSON_META_VAL_EDITION = "ee";
-    static final String JSON_META_KEY_BASE = "isBase";
     static final String JSON_META_KEY_STABILITY_LEVEL = "stabilityLevel";
     static final String JSON_META_KEY_STABILITY = "stability";
     static final String JSON_META_VAL_STAB_EXPERIMENTAL = StabilityLevel.Experimental.toString();
@@ -142,8 +141,9 @@ public class ArtifactParserTest extends TestBase {
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
             assertEquals("begin 0, end -1, length 15", ex.getMessage());
+            // expected
         }
-        setMeta(meta, JSON_META_KEY_BASE, Boolean.toString(true));
+        jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());
         try {
             ap = new ArtifactParser(jo);
             fail("JSONException expected.");
@@ -161,23 +161,7 @@ public class ArtifactParserTest extends TestBase {
         }
         jo.put(JSON_KEY_LIC_NAME, JSON_VAL_LIC_NAME);
         ap = new ArtifactParser(jo);
-        setMeta(meta, JSON_META_KEY_BASE, Boolean.toString(false));
-        try {
-            ap = new ArtifactParser(jo);
-            fail("StringIndexOutOfBoundsException expected.");
-        } catch (StringIndexOutOfBoundsException ex) {
-            assertEquals("begin 0, end -1, length 15", ex.getMessage());
-        }
-        jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());
-        try {
-            ap = new ArtifactParser(jo);
-            fail("JSONException expected.");
-        } catch (IllegalArgumentException ex) {
-            assertEquals("metadata.symbolicName: Cannot be null.", ex.getMessage());
-            // expected
-        }
-        setMeta(meta, JSON_META_KEY_SYMBOLIC_NAME, JSON_META_VAL_SYMBOLIC_NAME);
-        ap = new ArtifactParser(jo);
+        assertEquals(null, ap.getLabel());
         assertEquals(SystemUtils.ARCH.get().getName(), ap.getArch());
         assertEquals(SystemUtils.OS.get().getName(), ap.getOs());
         assertEquals(SystemUtils.getJavaMajorVersion() + "", ap.getJava());
@@ -193,6 +177,8 @@ public class ArtifactParserTest extends TestBase {
         assertEquals(JSON_META_VAL_VERSION, ap.getVersion());
         setMeta(meta, JSON_META_KEY_EDITION, JSON_META_VAL_EDITION);
         assertEquals(JSON_META_VAL_EDITION, ap.getEdition());
+        setMeta(meta, JSON_META_KEY_SYMBOLIC_NAME, JSON_META_VAL_SYMBOLIC_NAME);
+        assertEquals(JSON_META_VAL_SYMBOLIC_NAME, ap.getLabel());
     }
 
     @Test
