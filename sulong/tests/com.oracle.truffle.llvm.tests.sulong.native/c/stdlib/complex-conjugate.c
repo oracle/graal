@@ -67,11 +67,7 @@ void testFloat() {
 
 int main() {
     testDouble();
-
-    // This change does not support the float conjugate function yet since we do
-    // not support passing vectors to a native function which would be required
-    // for the float conjugate.
-    // testFloat();
+    testFloat();
 
     return 0;
 }
