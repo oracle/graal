@@ -676,6 +676,7 @@ suite = {
         "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
+        "GRAALVM_LLVM_LIBS_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs>/include",
         "GRAALVM_LLVM_LIB_DIR" : "<path:SULONG_NATIVE_HOME>/native/lib",
         "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
         "MX_OS" : "<os>",
@@ -698,7 +699,6 @@ suite = {
         "include/graalvm/llvm/internal/handles-impl.h",
         "include/graalvm/llvm/internal/polyglot-impl.h",
         "include/graalvm/llvm/internal/polyglot-time-impl.h",
-        "include/graalvm/llvm/internal/intrinsics.h",
         # for source compatibility
         "include/polyglot.h",
         "include/llvm/api/toolchain.h",

@@ -36,7 +36,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <graalvm/llvm/internal/intrinsics.h>
+#include <graalvm/llvm/intrinsics.h>
 #include "exit.h"
 
 struct entry {

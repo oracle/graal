@@ -36,6 +36,12 @@ if(NOT GRAALVM_LLVM_INCLUDE_DIR)
    message(FATAL_ERROR "GRAALVM_LLVM_INCLUDE_DIR needs to be set")
 endif()
 
+set(GRAALVM_LLVM_LIBS_INCLUDE_DIR)
+
+if(NOT GRAALVM_LLVM_LIBS_INCLUDE_DIR)
+  message(FATAL_ERROR "GRAALVM_LLVM_LIBS_INCLUDE_DIR needs to be set")
+endif()
+
 set(LIBCXX_SRC)
 
 if(NOT LIBCXX_SRC)
@@ -104,7 +110,7 @@ else()
     )
 endif()
 
-target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
+target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR} ${GRAALVM_LLVM_LIBS_INCLUDE_DIR})
 if(NOT MX_OS STREQUAL "darwin")
     target_link_options(sulong PRIVATE -nostdlib)
 endif()
