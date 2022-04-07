@@ -51,22 +51,14 @@ import org.junit.runner.RunWith;
 @RunWith(TruffleRunner.class)
 public class VarargsParseSignatureTest extends ParseSignatureTest {
 
-    private static void testVarargs(CallTarget parse, int expectedArgCount, int expectedFixedArgCount, boolean hasVarArgs) {
+    private static void testVarargs(CallTarget parse, int expectedArgCount, int expectedFixedArgCount) {
         TestSignature signature = getSignature(parse, expectedArgCount);
         Assert.assertEquals("argument count", expectedArgCount, signature.argTypes.size());
-        if (expectedArgCount == expectedFixedArgCount && !hasVarArgs) {
+        if (expectedArgCount == expectedFixedArgCount) {
             Assert.assertTrue("not varargs", signature.fixedArgCount == TestSignature.NOT_VARARGS);
         } else {
             Assert.assertEquals("fixed argument count", expectedFixedArgCount, signature.fixedArgCount);
         }
-    }
-
-    private static void testVarargsNoEllipsis(CallTarget parse, int expectedArgCount, int expectedFixedArgCount) {
-        testVarargs(parse, expectedArgCount, expectedFixedArgCount, false);
-    }
-
-    private static void testVarargsWithEllipsis(CallTarget parse, int expectedArgCount, int expectedFixedArgCount) {
-        testVarargs(parse, expectedArgCount, expectedFixedArgCount, true);
     }
 
     public class ParseFixedArgs extends ParseSignatureNode {
@@ -78,19 +70,7 @@ public class VarargsParseSignatureTest extends ParseSignatureTest {
 
     @Test
     public void testFixedArgs(@Inject(ParseFixedArgs.class) CallTarget parse) {
-        testVarargsNoEllipsis(parse, 2, 2);
-    }
-
-    public class ParseNoArgs extends ParseSignatureNode {
-
-        public ParseNoArgs() {
-            super("() : void");
-        }
-    }
-
-    @Test
-    public void testNoArgs(@Inject(ParseNoArgs.class) CallTarget parse) {
-        testVarargsNoEllipsis(parse, 0, 0);
+        testVarargs(parse, 2, 2);
     }
 
     public class ParseNoFixedArgs extends ParseSignatureNode {
@@ -102,7 +82,7 @@ public class VarargsParseSignatureTest extends ParseSignatureTest {
 
     @Test
     public void testNoFixedArgs(@Inject(ParseNoFixedArgs.class) CallTarget parse) {
-        testVarargsWithEllipsis(parse, 2, 0);
+        testVarargs(parse, 2, 0);
     }
 
     public class ParseTwoFixedArgs extends ParseSignatureNode {
@@ -114,7 +94,7 @@ public class VarargsParseSignatureTest extends ParseSignatureTest {
 
     @Test
     public void testTwoFixedArgs(@Inject(ParseTwoFixedArgs.class) CallTarget parse) {
-        testVarargsWithEllipsis(parse, 4, 2);
+        testVarargs(parse, 4, 2);
     }
 
     public class ParseOneVararg extends ParseSignatureNode {
@@ -126,7 +106,7 @@ public class VarargsParseSignatureTest extends ParseSignatureTest {
 
     @Test
     public void testOneVararg(@Inject(ParseOneVararg.class) CallTarget parse) {
-        testVarargsWithEllipsis(parse, 2, 1);
+        testVarargs(parse, 2, 1);
     }
 
     public class ParseTwoVarargs extends ParseSignatureNode {
@@ -138,30 +118,6 @@ public class VarargsParseSignatureTest extends ParseSignatureTest {
 
     @Test
     public void testTwoVarargs(@Inject(ParseTwoVarargs.class) CallTarget parse) {
-        testVarargsWithEllipsis(parse, 3, 1);
-    }
-
-    public class ParseJustVarargs extends ParseSignatureNode {
-
-        public ParseJustVarargs() {
-            super("(...) : void");
-        }
-    }
-
-    @Test
-    public void testJustVarargs(@Inject(ParseJustVarargs.class) CallTarget parse) {
-        testVarargsWithEllipsis(parse, 0, 0);
-    }
-
-    public class ParseZeroVarargs extends ParseSignatureNode {
-
-        public ParseZeroVarargs() {
-            super("(uint32, object, ...) : void");
-        }
-    }
-
-    @Test
-    public void testZeroVarargs(@Inject(ParseZeroVarargs.class) CallTarget parse) {
-        testVarargsWithEllipsis(parse, 2, 2);
+        testVarargs(parse, 3, 1);
     }
 }

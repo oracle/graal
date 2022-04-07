@@ -83,7 +83,7 @@ import java.util.Locale;
  *
  * LoadLibrary ::= 'load' [ '(' ident { '|' ident } ')' ] string
  *
- * Signature ::= '(' [ Type { ',' Type } ] [ '...' [Type { ',' Type } ] ] ')' ':' Type
+ * Signature ::= '(' [ Type { ',' Type } ] [ '...' Type { ',' Type } ] ')' ':' Type
  *
  * Type ::= Signature | SimpleType | ArrayType | EnvType
  *
@@ -258,15 +258,10 @@ final class Parser extends TypeFactory {
                 if (lexer.peek() == Token.ELLIPSIS) {
                     lexer.next();
                     args.add(MakeVarargsNodeGen.create());
-                    Token peeked = lexer.peek();
-                    if (peeked != Token.CLOSEPAREN && peeked != Token.COMMA) {
-                        GetTypeNode type = parseType();
-                        args.add(AddArgumentNodeGen.create(type));
-                    }
-                } else {
-                    GetTypeNode type = parseType();
-                    args.add(AddArgumentNodeGen.create(type));
                 }
+
+                GetTypeNode type = parseType();
+                args.add(AddArgumentNodeGen.create(type));
 
                 nextToken = lexer.next();
             } while (nextToken == Token.COMMA);
