@@ -711,7 +711,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(CommonNodeFactory.createFrameWrite(targetType, null, symbols.findOrAddFrameSlot(call)), function, argNodes,
-                        new FunctionType(targetType, argTypes, FunctionType.NOT_VARARGS),
+                        new FunctionType(targetType, argTypes, computeVaArgsPosition(target)),
                         regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
@@ -767,7 +767,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, FunctionType.NOT_VARARGS),
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, computeVaArgsPosition(target)),
                         regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
