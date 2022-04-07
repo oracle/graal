@@ -379,9 +379,9 @@ public final class BytecodeOSRMetadata {
             length = source.getTags().length;
         }
 
-        transferLoop(length, source, target, source.getTags(), state.frameSlots, FrameSlotTransfer.legacySlotTransfer);
+        transferLoop(length, source, target, null, state.frameSlots, FrameSlotTransfer.legacySlotTransfer);
         // transfer indexed frame slots
-        transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, source.getIndexedTags(), null, FrameSlotTransfer.indexedTransfer);
+        transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null, null, FrameSlotTransfer.indexedTransfer);
         // transfer auxiliary slots
         for (int auxSlot = 0; auxSlot < state.frameDescriptor.getNumberOfAuxiliarySlots(); auxSlot++) {
             target.setAuxiliarySlot(auxSlot, source.getAuxiliarySlot(auxSlot));
@@ -406,8 +406,9 @@ public final class BytecodeOSRMetadata {
      *            {@link CompilerDirectives#isCompilationConstant(Object) compilation constant}
      * @param source The frame to copy from
      * @param target The frame to copy to
-     * @param expectedTags The array of tags the source is expected to have. If compilation
-     *            constant, frame slot accesses may be simplified.
+     * @param expectedTags The array of tags the source is expected to have, or null if no previous
+     *            knowledge of tags was collected. If compilation constant, frame slot accesses may
+     *            be simplified.
      * @param frameSlotArray An array of legacy frame slots, if applicable, or null.
      * @param transfer Either {@link FrameSlotTransfer#legacySlotTransfer} or
      *            {@link FrameSlotTransfer#indexedTransfer}
@@ -420,8 +421,8 @@ public final class BytecodeOSRMetadata {
                     FrameSlot[] frameSlotArray, FrameSlotTransfer transfer) {
         int i = 0;
         while (i < length) {
-            byte expectedTag = expectedTags[i];
             byte actualTag = transfer.getTag(source, i, frameSlotArray);
+            byte expectedTag = expectedTags == null ? actualTag : expectedTags[i];
 
             boolean incompatibleTags = expectedTag != actualTag;
             if (incompatibleTags) {
