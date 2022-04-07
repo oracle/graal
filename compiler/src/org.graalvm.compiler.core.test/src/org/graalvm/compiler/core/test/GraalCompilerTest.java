@@ -260,6 +260,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected Suites createSuites(OptionValues opts) {
         Suites ret = backend.getSuites().getDefaultSuites(opts).copy();
 
+        String phasePlanFile = System.getProperty("test.graal.phaseplan.file");
+        if (phasePlanFile != null) {
+            ret = retrievePhasePlan(phasePlanFile, ret);
+        }
+
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
         if (iter == null) {
             /*
@@ -372,6 +377,96 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
 
         return stringBuilder.toString();
+    }
+
+    protected Suites retrievePhasePlan(String fileName, Suites originalSuites) {
+        String phasePlan = null;
+        try {
+            phasePlan = Files.readString(new File(fileName).toPath());
+        } catch (IOException e) {
+            GraalError.shouldNotReachHere(e, "Could not read the phase plan at " + fileName);
+        }
+
+        String[] tiers = phasePlan.split(System.lineSeparator());
+        PhaseSuite<HighTierContext> highTier = retrieveTier(tiers[0], originalSuites.getHighTier());
+        PhaseSuite<MidTierContext> midTier = retrieveTier(tiers[1], originalSuites.getMidTier());
+        PhaseSuite<LowTierContext> lowTier = retrieveTier(tiers[2], originalSuites.getLowTier());
+
+        return new Suites(highTier, midTier, lowTier);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <C> PhaseSuite<C> retrieveTier(String tierAsString, PhaseSuite<C> originalPhases) {
+        PhaseSuite<C> tier = new PhaseSuite<>();
+
+        String[] phasesAsString = tierAsString.split(",");
+        for (String phaseAsString : phasesAsString) {
+            // This is a way of handling PhaseSuite.
+            String[] subPhases = phaseAsString.split("-level0-");
+            String phaseName = subPhases[0];
+
+            Class<? extends BasePhase<? super C>> phaseClass = null;
+            try {
+                phaseClass = (Class<? extends BasePhase<? super C>>) Class.forName(phaseName);
+            } catch (ClassNotFoundException e) {
+                GraalError.shouldNotReachHere(e);
+            }
+
+            ListIterator<BasePhase<? super C>> it = originalPhases.findPhase(phaseClass);
+            BasePhase<? super C> phase = it.previous();
+            if (phase instanceof PhaseSuite) {
+                subPhases = Arrays.copyOfRange(subPhases, 1, subPhases.length);
+                it.next();
+
+                boolean hasFoundCorrectPhase = false;
+                do {
+
+                    phase = it.previous();
+                    hasFoundCorrectPhase = hasSamePhases(subPhases, ((PhaseSuite<C>) phase).getPhases(), 1);
+
+                    it.next();
+                } while (!hasFoundCorrectPhase && PhaseSuite.findNextPhase(it, phaseClass));
+
+                if (!hasFoundCorrectPhase) {
+                    GraalError.shouldNotReachHere("No phase could be found in the original suite to match " + phaseAsString);
+                }
+
+            }
+
+            tier.appendPhase(phase);
+
+        }
+
+        return tier;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> boolean hasSamePhases(String[] phasesAsString, List<BasePhase<? super C>> phases, int level) {
+        if (phasesAsString.length != phases.size()) {
+            return false;
+        }
+
+        int index = 0;
+        for (String phaseAsString : phasesAsString) {
+            BasePhase<? super C> phase = phases.get(index);
+            String[] subPhases = phaseAsString.split("-level" + level + "-");
+            String phaseName = subPhases[0];
+
+            if (!phaseName.equals(phase.getClass().getName())) {
+                return false;
+            }
+
+            if (phase instanceof PhaseSuite) {
+                boolean hasSameSubphases = hasSamePhases(Arrays.copyOfRange(subPhases, 1, subPhases.length), ((PhaseSuite<C>) phase).getPhases(), level + 1);
+                if (!hasSameSubphases) {
+                    return false;
+                }
+            }
+
+            index++;
+        }
+
+        return true;
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {
