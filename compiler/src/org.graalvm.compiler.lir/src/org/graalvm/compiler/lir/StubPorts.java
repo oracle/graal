@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,39 +25,12 @@
 package org.graalvm.compiler.lir;
 
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Repeatable;
 import java.lang.annotation.Target;
 
 /**
- * Denotes port of a HotSpot stub. This information will be parsed by
- * {@code org.graalvm.compiler.lir.processor.StubPortProcessor}.
+ * Containing type for {@link StubPort}.
  */
 @Target(ElementType.TYPE)
-@Repeatable(StubPorts.class)
-public @interface StubPort {
-    /**
-     * Relevant path of source code file containing the ported stub.
-     */
-    String path();
-
-    /**
-     * Starting line of the ported stub.
-     */
-    int lineStart();
-
-    /**
-     * Ending line of the ported stub.
-     */
-    int lineEnd();
-
-    /**
-     * Version of the original source code when the port was created or last updated.
-     */
-    String commit();
-
-    /**
-     * Digest of the source code that was ported.
-     */
-    String sha1();
-
+public @interface StubPorts {
+    StubPort[] value();
 }
