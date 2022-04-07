@@ -935,22 +935,33 @@ public abstract class Launcher {
     private String wrap(String s, String indent) {
         final int terminalWidth = Math.max(getTerminalWidth(), indent.length() + 10);
         final int width = terminalWidth - indent.length();
-        StringBuilder sb = new StringBuilder(s);
-        int cursor = 0;
-        while (sb.length() > cursor + width) {
-            int i = sb.lastIndexOf(" ", cursor + width);
-            if (i == -1 || i <= cursor) { // Can't find any space between cursor and cursor+width
+
+        String rest = s.strip();
+        if (rest.length() <= width) {
+            return rest;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        while (rest.length() > width) {
+            // NOTE: may return width, which is fine, we cut just before i
+            int i = rest.lastIndexOf(' ', width);
+
+            if (i == -1) { // Can't find any space in rest[0 < i <= width]
                 // take the next space (will exceed the width)
-                i = sb.indexOf(" ", cursor + width);
+                i = rest.indexOf(' ', width);
             }
+
             if (i != -1) {
-                sb.replace(i, i + 1, System.lineSeparator() + indent);
-                cursor = i + indent.length();
+                builder.append(rest, 0, i);
+                builder.append(System.lineSeparator());
+                builder.append(indent);
+                rest = rest.substring(i + 1).stripLeading(); // + 1 to skip the space
             } else {
-                break;
+                break; // No space left in rest
             }
         }
-        return sb.toString();
+        builder.append(rest);
+        return builder.toString();
     }
 
     private static final int FALLBACK_TERMINAL_WIDTH = 120;
@@ -958,15 +969,21 @@ public abstract class Launcher {
 
     int getTerminalWidth() {
         if (terminalWidth == -1) {
+            int width;
             if (System.console() != null) {
                 try (Terminal terminal = createSystemTerminal()) {
-                    terminalWidth = terminal.getWidth();
+                    width = terminal.getWidth();
                 } catch (IOException exception) {
-                    terminalWidth = FALLBACK_TERMINAL_WIDTH;
+                    width = FALLBACK_TERMINAL_WIDTH;
                 }
             } else {
-                terminalWidth = FALLBACK_TERMINAL_WIDTH;
+                width = FALLBACK_TERMINAL_WIDTH;
             }
+
+            if (width <= 0) { // Dumb terminal
+                width = FALLBACK_TERMINAL_WIDTH;
+            }
+            terminalWidth = width;
         }
         return terminalWidth;
     }
