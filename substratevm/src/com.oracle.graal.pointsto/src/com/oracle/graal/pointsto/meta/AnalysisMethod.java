@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
+public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
 
     public final ResolvedJavaMethod wrapped;
 
@@ -86,11 +86,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     private final AtomicBoolean isVirtualRootMethod = new AtomicBoolean();
     /** Direct (special or static) invoked method registered as root. */
     private final AtomicBoolean isDirectRootMethod = new AtomicBoolean();
-    private boolean isIntrinsicMethod;
     private Object entryPointData;
     private final AtomicBoolean isInvoked = new AtomicBoolean();
     private final AtomicBoolean isImplementationInvoked = new AtomicBoolean();
-    private boolean isInlined;
+    private final AtomicBoolean isIntrinsicMethod = new AtomicBoolean();
+    private final AtomicBoolean isInlined = new AtomicBoolean();
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
@@ -202,7 +202,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * resolution must be able to find the method (otherwise the intrinsification would not work).
      */
     public void registerAsIntrinsicMethod() {
-        isIntrinsicMethod = true;
+        AtomicUtils.atomicMarkAndRun(isIntrinsicMethod, this::onReachable);
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {
@@ -231,11 +231,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
          * return before the class gets marked as reachable.
          */
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMark(isImplementationInvoked);
+        return AtomicUtils.atomicMarkAndRun(isImplementationInvoked, this::onReachable);
     }
 
     public void registerAsInlined() {
-        isInlined = true;
+        AtomicUtils.atomicMarkAndRun(isInlined, this::onReachable);
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -255,7 +255,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public boolean isIntrinsicMethod() {
-        return isIntrinsicMethod;
+        return isIntrinsicMethod.get();
     }
 
     /**
@@ -311,7 +311,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * Returns true if this method is ever used as the target of a call site.
      */
     public boolean isInvoked() {
-        return isIntrinsicMethod || isVirtualRootMethod() || isDirectRootMethod() || isInvoked.get();
+        return isIntrinsicMethod.get() || isVirtualRootMethod() || isDirectRootMethod() || isInvoked.get();
     }
 
     /**
@@ -319,11 +319,88 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * registered as implementation invoked when they are linked.
      */
     public boolean isImplementationInvoked() {
-        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isImplementationInvoked.get());
+        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod.get() || isImplementationInvoked.get());
     }
 
+    @Override
     public boolean isReachable() {
-        return isImplementationInvoked() || isInlined;
+        return isImplementationInvoked() || isInlined.get();
+    }
+
+    @Override
+    public boolean isTriggered() {
+        if (isReachable()) {
+            return true;
+        }
+        return isClassInitializer() && getDeclaringClass().isInitialized();
+    }
+
+    @Override
+    public void onReachable() {
+        notifyReachabilityCallbacks(declaringClass.getUniverse());
+        processMethodOverrides();
+    }
+
+    private void processMethodOverrides() {
+        if (wrapped.canBeStaticallyBound() || isConstructor()) {
+            notifyMethodOverride(this);
+        } else if (declaringClass.isAnySubtypeInstantiated()) {
+            /*
+             * If neither the declaring class nor a subtype is instantiated then this method cannot
+             * be marked as invoked, so it cannot be an override.
+             */
+            declaringClass.forAllSuperTypes(superType -> {
+                /*
+                 * Iterate all the super types (including this type itself) looking for installed
+                 * override notifications. If this method resolves in a super type, and it has an
+                 * override handler installed in that type, pass this method to the callback. It
+                 * doesn't matter if the superMethod is actually reachable, only if it has any
+                 * override handlers installed.
+                 */
+                AnalysisMethod superMethod = resolveInType(superType);
+                if (superMethod != null) {
+                    superMethod.notifyMethodOverride(AnalysisMethod.this);
+                }
+            });
+        }
+    }
+
+    protected void notifyMethodOverride(AnalysisMethod override) {
+        declaringClass.getOverrideReachabilityNotifications(this).forEach(n -> n.notifyCallback(getUniverse(), override));
+    }
+
+    public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
+        declaringClass.registerOverrideReachabilityNotification(this, notification);
+    }
+
+    /**
+     * Resolves this method in the provided type, but only if the type or any of its subtypes is
+     * marked as instantiated.
+     */
+    protected AnalysisMethod resolveInType(AnalysisType holder) {
+        return resolveInType(holder, holder.isAnySubtypeInstantiated());
+    }
+
+    protected AnalysisMethod resolveInType(AnalysisType holder, boolean holderOrSubtypeInstantiated) {
+        /*
+         * If the holder and all subtypes are not instantiated, then we do not need to resolve the
+         * method. The method cannot be marked as invoked.
+         */
+        if (holderOrSubtypeInstantiated || isIntrinsicMethod()) {
+            AnalysisMethod resolved;
+            try {
+                resolved = holder.resolveConcreteMethod(this, null);
+            } catch (UnsupportedFeatureException e) {
+                /* An unsupported overriding method is not reachable. */
+                resolved = null;
+            }
+            /*
+             * resolved == null means that the method in the base class was called, but never with
+             * this holder.
+             */
+            return resolved;
+        }
+        return null;
     }
 
     @Override

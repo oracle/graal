@@ -29,7 +29,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -72,7 +74,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-public abstract class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
+public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
@@ -91,6 +93,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     private final AtomicBoolean isInHeap = new AtomicBoolean();
     private final AtomicBoolean isAllocated = new AtomicBoolean();
     private final AtomicBoolean isReachable = new AtomicBoolean();
+    private final AtomicBoolean isAnySubtypeInstantiated = new AtomicBoolean();
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
     private boolean unsafeAccessedFieldsRegistered;
@@ -160,6 +163,19 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
      * Additional information that is only available for types that are marked as reachable.
      */
     private AnalysisFuture<TypeData> typeData;
+
+    /**
+     * Contains reachability handlers that are notified when any of the subtypes are marked as
+     * reachable. Each handler is notified only once per subtype.
+     */
+    private final Set<SubtypeReachableNotification> subtypeReachableNotifications = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Contains reachability handlers that are notified when any of the method override becomes
+     * reachable *and* the declaring class of the override (or any subtype) is instantiated. Each
+     * handler is notified only once per method override.
+     */
+    private final Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrideReachableNotifications = new ConcurrentHashMap<>();
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -420,7 +436,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     public boolean registerAsInHeap() {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isInHeap)) {
-            universe.onTypeInstantiated(this, UsageKind.InHeap);
+            onInstantiated(UsageKind.InHeap);
             return true;
         }
         return false;
@@ -432,10 +448,45 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     public boolean registerAsAllocated(Node node) {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isAllocated)) {
-            universe.onTypeInstantiated(this, UsageKind.Allocated);
+            onInstantiated(UsageKind.Allocated);
             return true;
         }
         return false;
+    }
+
+    private void onInstantiated(UsageKind usage) {
+        universe.onTypeInstantiated(this, usage);
+        processMethodOverrides();
+    }
+
+    private void processMethodOverrides() {
+        /*
+         * Walk up the type hierarchy from this type keeping track of all processed types. For each
+         * superType iterate all the override notifications and resolve the methods in all the seen
+         * types, which are subtypes from the point of view of the superType itself. Thus, although
+         * only *this* type may be marked as instantiated, any *intermediate* types between this
+         * type and a super type that declares override notifications will be processed and any
+         * overrides, if reachable, will be passed to the callback. These intermediate types, i.e.,
+         * the seenSubtypes set, may not be instantiated but the overrides that they declare, if
+         * reachable, could be specially invoked, e.g., via super calls. Note that the baseMethod is
+         * not actually an override of itself, but the `registerMethodOverrideReachabilityHandler`
+         * API explicitly includes the base method too.
+         */
+        Set<AnalysisType> seenSubtypes = new HashSet<>();
+        forAllSuperTypes(superType -> {
+            AtomicUtils.atomicMark(superType.isAnySubtypeInstantiated);
+            seenSubtypes.add(superType);
+            for (var entry : superType.overrideReachableNotifications.entrySet()) {
+                AnalysisMethod baseMethod = entry.getKey();
+                Set<MethodOverrideReachableNotification> overrideNotifications = entry.getValue();
+                for (AnalysisType subType : seenSubtypes) {
+                    AnalysisMethod override = baseMethod.resolveInType(subType);
+                    if (override != null && override.isReachable()) {
+                        overrideNotifications.forEach(n -> n.notifyCallback(universe, override));
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -456,27 +507,42 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
 
     public boolean registerAsReachable() {
         if (!isReachable.get()) {
-            forAllSuperTypes(AnalysisType::markReachable);
+            /* Mark this type and all its super types as reachable. */
+            forAllSuperTypes(type -> AtomicUtils.atomicMarkAndRun(type.isReachable, type::onReachable));
             return true;
         }
         return false;
     }
 
-    private void markReachable() {
-        if (AtomicUtils.atomicMark(isReachable)) {
-            universe.notifyReachableType();
-            universe.hostVM.checkForbidden(this, UsageKind.Reachable);
-            if (isArray()) {
-                /*
-                 * For array types, distinguishing between "used" and "instantiated" does not
-                 * provide any benefits since array types do not implement new methods. Marking all
-                 * used array types as instantiated too allows more usages of Arrays.newInstance
-                 * without the need of explicit registration of types for reflection.
-                 */
-                registerAsAllocated(null);
-            }
-            ensureInitialized();
+    @Override
+    protected void onReachable() {
+        notifyReachabilityCallbacks(universe);
+        forAllSuperTypes(type -> type.subtypeReachableNotifications.forEach(n -> n.notifyCallback(universe, this)));
+        universe.notifyReachableType();
+        universe.hostVM.checkForbidden(this, UsageKind.Reachable);
+        if (isArray()) {
+            /*
+             * For array types, distinguishing between "used" and "instantiated" does not provide
+             * any benefits since array types do not implement new methods. Marking all used array
+             * types as instantiated too allows more usages of Arrays.newInstance without the need
+             * of explicit registration of types for reflection.
+             */
+            registerAsAllocated(null);
         }
+        ensureInitialized();
+    }
+
+    public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
+        subtypeReachableNotifications.add(notification);
+    }
+
+    public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
+        assert declaredMethod.getDeclaringClass() == this;
+        overrideReachableNotifications.computeIfAbsent(declaredMethod, m -> ConcurrentHashMap.newKeySet()).add(notification);
+    }
+
+    public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
+        return overrideReachableNotifications.getOrDefault(method, Collections.emptySet());
     }
 
     /**
@@ -538,6 +604,24 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     public void ensureInitialized() {
         /* Run the registration and wait for it to complete, if necessary. */
         initializationTask.ensureDone();
+    }
+
+    /**
+     * Called when the {@link AnalysisType} initialization task is processed. This doesn't mean that
+     * the underlying {@link Class} is actually initialized, i.e., it may be initialized at run
+     * time.
+     */
+    public void onInitialized() {
+        if (isInitialized()) {
+            /*
+             * This type is initialized at build time, so the class initializer, if any, cannot be
+             * reachable at run time. Notify the reachability callbacks for the class initializer.
+             */
+            AnalysisMethod clinit = this.getClassInitializer();
+            if (clinit != null) {
+                clinit.notifyReachabilityCallbacks(universe);
+            }
+        }
     }
 
     public boolean getReachabilityListenerNotified() {
@@ -651,6 +735,11 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
         return instantiated;
     }
 
+    /** Returns true if this type or any of its subtypes was marked as instantiated. */
+    public boolean isAnySubtypeInstantiated() {
+        return isAnySubtypeInstantiated.get();
+    }
+
     /**
      * Returns true if all instance fields which hold offsets to unsafe field accesses are already
      * recomputed with the correct values from the substrate object layout. Which means that those
@@ -660,6 +749,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
         return unsafeFieldsRecomputed;
     }
 
+    @Override
     public boolean isReachable() {
         return isReachable.get();
     }
@@ -812,6 +902,28 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
 
     private void addSubType(AnalysisType subType) {
         this.subTypes.add(subType);
+    }
+
+    /**
+     * Collects and returns *all* subtypes of this type, not only the immediate subtypes, including
+     * this type itself, regardless of reachability status. To access the immediate subtypes use
+     * {@link AnalysisType#getSubTypes()}.
+     *
+     * Since the subtypes are updated continuously as the universe is expanded this method may
+     * return different results on each call, until the analysis universe reaches a stable state.
+     */
+    public Set<AnalysisType> getAllSubtypes() {
+        HashSet<AnalysisType> result = new HashSet<>();
+        collectSubtypes(this, result);
+        return result;
+    }
+
+    private static void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
+        for (AnalysisType subType : baseType.getSubTypes()) {
+            if (result.add(subType)) {
+                collectSubtypes(subType, result);
+            }
+        }
     }
 
     @Override

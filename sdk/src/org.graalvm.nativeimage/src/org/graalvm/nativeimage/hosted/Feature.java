@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -232,11 +232,24 @@ public interface Feature {
         void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements);
 
         /**
-         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
-         * for each time a method that overrides the specified {param baseMethod} is determined to
-         * be reachable at run time. In addition the handler will also get invoked once when the
-         * {param baseMethod} itself becomes reachable. The specific method that becomes reachable
-         * is passed to the handler as the second parameter.
+         * Registers a callback that is invoked once during analysis for each time a method that
+         * overrides the specified {param baseMethod} is determined to be reachable at run time. In
+         * addition, the handler will also get invoked once when the {param baseMethod} itself
+         * becomes reachable. The specific method that becomes reachable is passed to the handler as
+         * the second parameter.
+         * <p/>
+         * A method is considered reachable at run time if it can be executed, as determined via
+         * static analysis.
+         * <p/>
+         * Therefore, if a method can be statically bound (usually, that means it is final or
+         * private or static, but not abstract, or the declaring class is final), or it is a
+         * constructors, and it is the target of a reachable invoke, or it is inlined, then it is
+         * considered run time reachable.
+         * <p/>
+         * A virtual methods is considered run time reachable if its declaring-class or any of its
+         * subtypes is instantiated and the method is the target of a reachable invoke, or it is
+         * inlined. Even if the declaring type itself is not marked as instantiated the method can
+         * still be reachable via special invokes, e.g., `super` calls.
          *
          * @since 19.3
          */

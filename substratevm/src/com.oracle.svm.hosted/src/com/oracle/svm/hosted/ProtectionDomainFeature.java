@@ -75,7 +75,9 @@ final class ProtectionDomainFeature implements Feature {
         ProtectionDomainSupport.enableCodeSource();
         if (access != null) {
             access.rescanField(ImageSingletons.lookup(ProtectionDomainSupport.class), executableURLSupplierField);
-            access.requireAnalysisIteration();
+            if (!access.concurrentReachabilityHandlers()) {
+                access.requireAnalysisIteration();
+            }
         }
     }
 }
