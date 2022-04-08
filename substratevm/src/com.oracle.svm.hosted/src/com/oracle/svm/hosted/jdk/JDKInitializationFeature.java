@@ -79,6 +79,8 @@ public class JDKInitializationFeature implements Feature {
 
         rci.rerunInitialization("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
 
+        rci.rerunInitialization("java.io.ObjectInputFilter$Config", "Field filter have to be initialized at runtime");
+
         rci.rerunInitialization("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
         rci.rerunInitialization("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
         rci.rerunInitialization("sun.nio.ch.EPollSelectorImpl", "Calls IOUtil.fdLimit()");
