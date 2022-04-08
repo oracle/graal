@@ -30,7 +30,11 @@ import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 
-import java.io.File;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -40,13 +44,14 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -262,7 +267,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         String phasePlanFile = System.getProperty("test.graal.phaseplan.file");
         if (phasePlanFile != null) {
-            ret = retrievePhasePlan(phasePlanFile, ret);
+            ret = loadPhasePlan(phasePlanFile, ret);
+        } else {
+            testPhasePlanSerialization(ret);
         }
 
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
@@ -327,146 +334,107 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    protected void savePhasePlan(String fileName, Suites phasePlan) {
-        StringBuilder stringBuilder = new StringBuilder();
-
-        stringBuilder.append(saveTier(phasePlan.getHighTier())).append(System.lineSeparator());
-        stringBuilder.append(saveTier(phasePlan.getMidTier())).append(System.lineSeparator());
-        stringBuilder.append(saveTier(phasePlan.getLowTier())).append(System.lineSeparator());
-
-        String encodedPhasePlan = stringBuilder.toString();
-
-        try {
-            Files.writeString(new File(fileName).toPath(), encodedPhasePlan, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            GraalError.shouldNotReachHere(e,
-                            "Could not save the following phase plan in the file " + fileName + System.lineSeparator() + "Encoded phase plan: " + System.lineSeparator() + encodedPhasePlan);
-        }
-    }
-
     @SuppressWarnings("unchecked")
-    private <C> String saveTier(PhaseSuite<C> tier) {
-        StringBuilder stringBuilder = new StringBuilder();
-
-        for (BasePhase<? super C> phase : tier.getPhases()) {
-            if (phase instanceof PhaseSuite) {
-                stringBuilder.append(savePhaseSuite((PhaseSuite<C>) phase, 0)).append(',');
-            } else {
-                stringBuilder.append(phase.getClass().getName()).append(',');
+    private static <C> String phaseToString(BasePhase<? super C> phase, int level) {
+        Formatter buf = new Formatter();
+        String indent = level == 0 ? "" : new String(new char[level]).replace('\0', ' ');
+        buf.format("%s%s", indent, phase.getClass().getName());
+        if (phase instanceof PhaseSuite) {
+            List<BasePhase<? super C>> subPhases = ((PhaseSuite<C>) phase).getPhases();
+            for (BasePhase<? super C> subPhase : subPhases) {
+                buf.format("%n%s", phaseToString(subPhase, level + 1));
             }
         }
-
-        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-
-        return stringBuilder.toString();
+        return buf.toString();
     }
 
     @SuppressWarnings("unchecked")
-    private <C> String savePhaseSuite(PhaseSuite<C> phaseSuite, int level) {
-        StringBuilder stringBuilder = new StringBuilder();
+    private static <C> void savePhaseSuite(PhaseSuite<C> phaseSuite, DataOutputStream out) throws IOException {
+        List<BasePhase<? super C>> phases = phaseSuite.getPhases();
+        out.writeInt(phases.size());
+        for (BasePhase<? super C> phase : phases) {
+            out.writeUTF(phaseToString(phase, 0));
+        }
+    }
 
-        stringBuilder.append(phaseSuite.getClass().getName());
+    @SuppressWarnings("unchecked")
+    private static <C> PhaseSuite<C> loadPhaseSuite(DataInputStream in, Map<String, BasePhase<? super C>> lookup) throws IOException {
+        PhaseSuite<C> phaseSuite = new PhaseSuite<>();
+        int size = in.readInt();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            BasePhase<? super C> phase = lookup.get(key);
+            if (phase == null) {
+                GraalError.shouldNotReachHere("No phase could be found matching " + key);
+            }
+            phaseSuite.appendPhase(phase);
+        }
+        return phaseSuite;
+    }
 
+    private static <C> void collect(Map<String, BasePhase<? super C>> lookup, PhaseSuite<C> phaseSuite) {
         for (BasePhase<? super C> phase : phaseSuite.getPhases()) {
-            stringBuilder.append("-level" + level + "-");
-            if (phase instanceof PhaseSuite) {
-                stringBuilder.append(savePhaseSuite((PhaseSuite<C>) phase, level + 1));
-            } else {
-                stringBuilder.append(phase.getClass().getName());
-            }
+            String key = phaseToString(phase, 0);
+            lookup.put(key, phase);
         }
-
-        return stringBuilder.toString();
     }
 
-    protected Suites retrievePhasePlan(String fileName, Suites originalSuites) {
-        String phasePlan = null;
+    protected void savePhasePlan(String fileName, Suites phasePlan) {
         try {
-            phasePlan = Files.readString(new File(fileName).toPath());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (DataOutputStream dos = new DataOutputStream(baos)) {
+                savePhasePlan(dos, phasePlan);
+            }
+            Files.write(Paths.get(fileName), baos.toByteArray());
         } catch (IOException e) {
-            GraalError.shouldNotReachHere(e, "Could not read the phase plan at " + fileName);
+            GraalError.shouldNotReachHere(e, "Error saving phase plan to " + fileName);
         }
+    }
 
-        String[] tiers = phasePlan.split(System.lineSeparator());
-        PhaseSuite<HighTierContext> highTier = retrieveTier(tiers[0], originalSuites.getHighTier());
-        PhaseSuite<MidTierContext> midTier = retrieveTier(tiers[1], originalSuites.getMidTier());
-        PhaseSuite<LowTierContext> lowTier = retrieveTier(tiers[2], originalSuites.getLowTier());
+    private static void savePhasePlan(DataOutputStream dos, Suites phasePlan) throws IOException {
+        savePhaseSuite(phasePlan.getHighTier(), dos);
+        savePhaseSuite(phasePlan.getMidTier(), dos);
+        savePhaseSuite(phasePlan.getLowTier(), dos);
+    }
 
+    @SuppressWarnings("unchecked")
+    protected <C> Suites loadPhasePlan(String fileName, Suites originalSuites) {
+        try (DataInputStream in = new DataInputStream(new FileInputStream(fileName))) {
+            return loadPhasePlan(in, originalSuites);
+        } catch (IOException e) {
+            throw new GraalError(e, "Error loading phase plan from %s", fileName);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> Suites loadPhasePlan(DataInputStream in, Suites originalSuites) throws IOException {
+        Map<String, BasePhase<? super C>> lookup = new HashMap<>();
+        collect(lookup, ((PhaseSuite<C>) originalSuites.getHighTier()));
+        collect(lookup, ((PhaseSuite<C>) originalSuites.getMidTier()));
+        collect(lookup, ((PhaseSuite<C>) originalSuites.getLowTier()));
+
+        PhaseSuite<HighTierContext> highTier = (PhaseSuite<HighTierContext>) loadPhaseSuite(in, lookup);
+        PhaseSuite<MidTierContext> midTier = (PhaseSuite<MidTierContext>) loadPhaseSuite(in, lookup);
+        PhaseSuite<LowTierContext> lowTier = (PhaseSuite<LowTierContext>) loadPhaseSuite(in, lookup);
         return new Suites(highTier, midTier, lowTier);
     }
 
-    @SuppressWarnings("unchecked")
-    private <C> PhaseSuite<C> retrieveTier(String tierAsString, PhaseSuite<C> originalPhases) {
-        PhaseSuite<C> tier = new PhaseSuite<>();
-
-        String[] phasesAsString = tierAsString.split(",");
-        for (String phaseAsString : phasesAsString) {
-            // This is a way of handling PhaseSuite.
-            String[] subPhases = phaseAsString.split("-level0-");
-            String phaseName = subPhases[0];
-
-            Class<? extends BasePhase<? super C>> phaseClass = null;
-            try {
-                phaseClass = (Class<? extends BasePhase<? super C>>) Class.forName(phaseName);
-            } catch (ClassNotFoundException e) {
-                GraalError.shouldNotReachHere(e);
+    private static void testPhasePlanSerialization(Suites originalSuites) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Suites newSuites;
+        try {
+            try (DataOutputStream dos = new DataOutputStream(baos)) {
+                savePhasePlan(dos, originalSuites);
             }
-
-            ListIterator<BasePhase<? super C>> it = originalPhases.findPhase(phaseClass);
-            BasePhase<? super C> phase = it.previous();
-            if (phase instanceof PhaseSuite) {
-                subPhases = Arrays.copyOfRange(subPhases, 1, subPhases.length);
-                it.next();
-
-                boolean hasFoundCorrectPhase = false;
-                do {
-
-                    phase = it.previous();
-                    hasFoundCorrectPhase = hasSamePhases(subPhases, ((PhaseSuite<C>) phase).getPhases(), 1);
-
-                    it.next();
-                } while (!hasFoundCorrectPhase && PhaseSuite.findNextPhase(it, phaseClass));
-
-                if (!hasFoundCorrectPhase) {
-                    GraalError.shouldNotReachHere("No phase could be found in the original suite to match " + phaseAsString);
-                }
-
+            try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+                newSuites = loadPhasePlan(in, originalSuites);
             }
-
-            tier.appendPhase(phase);
-
+        } catch (IOException e) {
+            throw new GraalError(e, "Error in phase plan serialization");
         }
-
-        return tier;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <C> boolean hasSamePhases(String[] phasesAsString, List<BasePhase<? super C>> phases, int level) {
-        if (phasesAsString.length != phases.size()) {
-            return false;
-        }
-
-        int index = 0;
-        for (String phaseAsString : phasesAsString) {
-            BasePhase<? super C> phase = phases.get(index);
-            String[] subPhases = phaseAsString.split("-level" + level + "-");
-            String phaseName = subPhases[0];
-
-            if (!phaseName.equals(phase.getClass().getName())) {
-                return false;
-            }
-
-            if (phase instanceof PhaseSuite) {
-                boolean hasSameSubphases = hasSamePhases(Arrays.copyOfRange(subPhases, 1, subPhases.length), ((PhaseSuite<C>) phase).getPhases(), level + 1);
-                if (!hasSameSubphases) {
-                    return false;
-                }
-            }
-
-            index++;
-        }
-
-        return true;
+        Assert.assertEquals(originalSuites.getHighTier().toString(), newSuites.getHighTier().toString());
+        Assert.assertEquals(originalSuites.getMidTier().toString(), newSuites.getMidTier().toString());
+        Assert.assertEquals(originalSuites.getLowTier().toString(), newSuites.getLowTier().toString());
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {
