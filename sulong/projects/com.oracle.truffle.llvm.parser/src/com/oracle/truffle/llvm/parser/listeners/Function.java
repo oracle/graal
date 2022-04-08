@@ -372,6 +372,7 @@ public final class Function implements ParserListener {
 
             case INSTRUCTION_ATOMICRMW_OLD:
                 createAtomicReadModifyWriteOld(buffer);
+                break;
             case INSTRUCTION_ATOMICRMW:
                 createAtomicReadModifyWrite(buffer);
                 break;
