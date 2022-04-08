@@ -153,7 +153,7 @@ public final class FunctionType extends Type {
             sb.append(argumentTypes[i]);
         }
 
-        if ((fixedArgs == 0 && argumentTypes.length == 0) || fixedArgs == argumentTypes.length) {
+        if (fixedArgs == argumentTypes.length) {
             sb.append("...");
         }
         sb.append(")");
