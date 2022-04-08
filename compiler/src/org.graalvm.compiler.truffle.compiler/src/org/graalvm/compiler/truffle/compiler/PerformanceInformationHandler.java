@@ -44,8 +44,8 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -209,17 +209,21 @@ public final class PerformanceInformationHandler implements Closeable {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             for (Loop<Block> loop : cfg.getLoops()) {
                 // check if any loop exit contains a trusted profile
+                boolean containsNaturalExit = false;
                 boolean containsTrustedProfile = false;
                 for (Block exit : loop.getLoopExits()) {
                     Block exitDom = exit.getDominator();
                     assert loop.getBlocks().contains(exitDom);
                     FixedNode endNode = exitDom.getEndNode();
-                    if (endNode instanceof ControlSplitNode && ProfileSource.isTrusted(((ControlSplitNode) endNode).getProfileData().getProfileSource())) {
-                        containsTrustedProfile = true;
-                        break;
+                    if (endNode instanceof IfNode) {
+                        containsNaturalExit = true;
+                        if (ProfileSource.isTrusted(((IfNode) endNode).getProfileData().getProfileSource())) {
+                            containsTrustedProfile = true;
+                            break;
+                        }
                     }
                 }
-                if (!containsTrustedProfile) {
+                if (containsNaturalExit && !containsTrustedProfile) {
                     logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
                                     String.format("Missing loop profile for %s.", loop),
                                     null);
