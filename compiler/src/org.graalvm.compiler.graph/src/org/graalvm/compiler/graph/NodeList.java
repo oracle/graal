@@ -47,8 +47,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
      */
     private static final int MAX_ENTRIES = 65536;
 
-    protected static final Node[] EMPTY_NODE_ARRAY = new Node[0];
-
     protected final Node self;
     /**
      * The array that stores the contents of this node list. We over-allocate when adding nodes, and
@@ -67,7 +65,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     protected NodeList(Node self) {
         this.self = self;
-        this.nodes = EMPTY_NODE_ARRAY;
+        this.nodes = Node.EMPTY_ARRAY;
         this.initialSize = 0;
     }
 
@@ -77,7 +75,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         this.size = initialSize;
         this.initialSize = initialSize;
         if (initialSize == 0) {
-            this.nodes = EMPTY_NODE_ARRAY;
+            this.nodes = Node.EMPTY_ARRAY;
         } else {
             this.nodes = new Node[initialSize];
         }
@@ -87,7 +85,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         this.self = self;
         if (elements == null || elements.length == 0) {
             this.size = 0;
-            this.nodes = EMPTY_NODE_ARRAY;
+            this.nodes = Node.EMPTY_ARRAY;
             this.initialSize = 0;
         } else {
             checkMaxSize(elements.length);
@@ -105,7 +103,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         this.self = self;
         if (elements == null || elements.isEmpty()) {
             this.size = 0;
-            this.nodes = EMPTY_NODE_ARRAY;
+            this.nodes = Node.EMPTY_ARRAY;
             this.initialSize = 0;
         } else {
             int newSize = elements.size();
@@ -238,7 +236,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         incModCount();
         Node[] newNodes;
         if (other.size == 0) {
-            newNodes = EMPTY_NODE_ARRAY;
+            newNodes = Node.EMPTY_ARRAY;
         } else {
             newNodes = new Node[other.size];
             System.arraycopy(other.nodes, 0, newNodes, 0, newNodes.length);
@@ -284,12 +282,12 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     void clearWithoutUpdate() {
-        nodes = EMPTY_NODE_ARRAY;
+        nodes = Node.EMPTY_ARRAY;
         size = 0;
     }
 
     void minimizeSize() {
-        nodes = Graph.trimArrayToNewSize(nodes, size, EMPTY_NODE_ARRAY);
+        nodes = Graph.trimArrayToNewSize(nodes, size, Node.EMPTY_ARRAY);
     }
 
     @Override

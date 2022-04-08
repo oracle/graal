@@ -1061,12 +1061,12 @@ public class Graph {
 
         if (minimizeSize) {
             /* Trim the array of all alive nodes itself. */
-            nodes = trimArrayToNewSize(nodes, nextId, NodeList.EMPTY_NODE_ARRAY);
+            nodes = trimArrayToNewSize(nodes, nextId, Node.EMPTY_ARRAY);
             /* Remove deleted nodes from the linked list of Node.typeCacheNext. */
             recomputeIterableNodeLists();
             /* Trim node arrays used within each node. */
             for (Node node : nodes) {
-                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount, NodeList.EMPTY_NODE_ARRAY);
+                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount, Node.EMPTY_ARRAY);
                 node.getNodeClass().getInputEdges().minimizeSize(node);
                 node.getNodeClass().getSuccessorEdges().minimizeSize(node);
             }

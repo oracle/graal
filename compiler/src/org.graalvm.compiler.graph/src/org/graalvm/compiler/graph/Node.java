@@ -255,7 +255,7 @@ public abstract class Node implements Cloneable, Formattable {
     Node typeCacheNext;
 
     static final int INLINE_USAGE_COUNT = 2;
-    private static final Node[] NO_NODES = {};
+    static final Node[] EMPTY_ARRAY = {};
 
     /**
      * Head of usage list (i.e. list of nodes that have {@code this} as an input). Note that each
@@ -315,7 +315,7 @@ public abstract class Node implements Cloneable, Formattable {
         assert c.getJavaClass() == this.getClass();
         this.nodeClass = c;
         id = INITIAL_ID;
-        extraUsages = NO_NODES;
+        extraUsages = EMPTY_ARRAY;
         if (TRACK_CREATION_POSITION) {
             setCreationPosition(new NodeCreationStackTrace());
         }
@@ -937,7 +937,7 @@ public abstract class Node implements Cloneable, Formattable {
             Node usage = extraUsages[i];
             replaceAtUsage(replacement, forDeletion, usage);
         }
-        this.extraUsages = NO_NODES;
+        this.extraUsages = EMPTY_ARRAY;
         this.extraUsagesCount = 0;
     }
 
@@ -1337,7 +1337,7 @@ public abstract class Node implements Cloneable, Formattable {
         if (into != null) {
             into.register(newNode);
         }
-        newNode.extraUsages = NO_NODES;
+        newNode.extraUsages = EMPTY_ARRAY;
 
         if (into != null && useIntoLeafNodeCache) {
             into.putNodeIntoCache(newNode);
@@ -1490,7 +1490,13 @@ public abstract class Node implements Cloneable, Formattable {
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Fields properties = getNodeClass().getData();
         for (int i = 0; i < properties.getCount(); i++) {
-            map.put(properties.getName(i), properties.get(this, i));
+            Object value = properties.get(this, i);
+            if (properties.getType(i) == Character.TYPE) {
+                // Convert a char to an int as chars are not guaranteed to printable/viewable
+                char ch = (char) value;
+                value = Integer.valueOf(ch);
+            }
+            map.put(properties.getName(i), value);
         }
         NodeSourcePosition pos = getNodeSourcePosition();
         if (pos != null) {
