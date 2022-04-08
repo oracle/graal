@@ -55,8 +55,8 @@ import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class HighTier extends BaseTier<HighTierContext> {
 
@@ -111,7 +111,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new BoxNodeIdentityPhase());
 
         if (PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(PartialEscapePhase.createFinalPEA(true, canonicalizer, null, options));
+            appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));
         }
 
         if (OptReadElimination.getValue(options)) {
