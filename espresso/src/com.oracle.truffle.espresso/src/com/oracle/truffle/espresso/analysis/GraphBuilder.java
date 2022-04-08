@@ -179,6 +179,10 @@ public final class GraphBuilder {
             }
             last = bci;
             bci = bs.nextBCI(bci);
+            if (bci >= status.length && successors == null) {
+                // abrupt end of bytecodes
+                successors = EMPTY_SUCCESSORS;
+            }
         }
         temp[id] = createTempBlock(id, start, successors, isRet, status.length, last, traps);
 
@@ -338,6 +342,10 @@ public final class GraphBuilder {
         }
         mark(defaultTarget, BLOCK_START);
         switchTable.add(Util.toIntArray(targets));
+        int next = bs.nextBCI(bci);
+        if (next < bs.endBCI()) {
+            mark(next, BLOCK_START);
+        }
     }
 
     private void markJsr(int bci) {
@@ -349,6 +357,10 @@ public final class GraphBuilder {
 
     private void markRet(int bci) {
         mark(bci, IS_RET);
+        int next = bs.nextBCI(bci);
+        if (next < bs.endBCI()) {
+            mark(next, BLOCK_START);
+        }
     }
 
     private void markGoto(int bci) {
