@@ -56,7 +56,6 @@ class ArtifactParser {
     private static final String JSON_HASH = "checksum";
 
     private static final String META_VERSION = "version";
-    private static final String META_BASE = "isBase";
     private static final String META_EDITION = "edition";
     private static final String META_JAVA = "java";
     private static final String META_ARCH = "arch";
@@ -87,9 +86,6 @@ class ArtifactParser {
         abreviatedDisplayName();
         getLicenseId();
         getLicenseName();
-        if (getLabel() == null) {
-            throw new IllegalArgumentException(JSON_META + "." + META_SYMBOLIC_NAME + ": Cannot be null.");
-        }
     }
 
     public String getVersion() {
@@ -124,12 +120,8 @@ class ArtifactParser {
         return json.getString(JSON_ID);
     }
 
-    private String getLabel() {
-        return isCore() ? CommonConstants.GRAALVM_CORE_PREFIX : getMetadata(META_SYMBOLIC_NAME);
-    }
-
-    private boolean isCore() {
-        return Boolean.parseBoolean(getMetadata(META_BASE));
+    public String getLabel() {
+        return getMetadata(META_SYMBOLIC_NAME);
     }
 
     private String getDisplayName() {
@@ -207,9 +199,6 @@ class ArtifactParser {
     }
 
     private String abreviatedDisplayName() {
-        if (isCore()) {
-            return "GraalVM Core";
-        }
         String dispName = getDisplayName();
         String osName = getOs();
         if (OS.fromName(osName) == OS.MAC) {
@@ -264,5 +253,10 @@ class ArtifactParser {
             }
         }
         return defValue.get();
+    }
+
+    @Override
+    public String toString() {
+        return json.toString();
     }
 }
