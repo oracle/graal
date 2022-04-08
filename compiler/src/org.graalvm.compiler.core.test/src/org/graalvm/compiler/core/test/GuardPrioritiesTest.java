@@ -43,10 +43,9 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.IntegerLowerThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Test;
@@ -90,7 +89,7 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
         HighTierContext highTierContext = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new ConvertDeoptimizeToGuardPhase().apply(graph, highTierContext);
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highTierContext);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, highTierContext);
         new FloatingReadPhase().apply(graph);
         return graph;
     }

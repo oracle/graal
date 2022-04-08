@@ -41,7 +41,10 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -114,7 +117,19 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
         }
         DebugContext debug = replacementGraph.getDebug();
         try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", replacementGraph)) {
-            new LoweringPhase(CanonicalizerPhase.create(), tool.getLoweringStage()).apply(replacementGraph, tool);
+            switch ((LoweringTool.StandardLoweringStage) tool.getLoweringStage()) {
+                case HIGH_TIER:
+                    new HighTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
+                    break;
+                case MID_TIER:
+                    new MidTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
+                    break;
+                case LOW_TIER:
+                    new LowTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
+                    break;
+                default:
+                    GraalError.shouldNotReachHere("Unexpected lowering stage.");
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }

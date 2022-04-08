@@ -47,10 +47,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -113,7 +113,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
         // lower unsafe load
         CoreProviders context = getProviders();
-        LoweringPhase lowering = new LoweringPhase(createCanonicalizerPhase(), StandardLoweringStage.HIGH_TIER);
+        LoweringPhase lowering = new HighTierLoweringPhase(createCanonicalizerPhase());
         lowering.apply(graph, context);
 
         unsafeNodes = graph.getNodes().filter(RawLoadNode.class);
