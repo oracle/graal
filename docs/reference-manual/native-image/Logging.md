@@ -10,9 +10,9 @@ Out of the box, Native Image supports logging using the `java.util.logging.*` AP
 
 ## Default Logging Configuration
 
-The logging configuration built in a native image by default is based on the `logging.properties` file found in the JDK.
-This configures a `java.util.logging.ConsoleHandler` which will only show messages at the `INFO` and above levels.
-Custom logging configuration can be loaded either at image build time or at run time as described below.
+The logging configuration built in a native executable by default is based on the `logging.properties` file found in the JDK.
+This configures a `java.util.logging.ConsoleHandler` which will only show messages at the `INFO` level and above.
+Custom logging configuration can be loaded either at executable build time or at runtime as described below.
 
 Note that if additional logging handlers are used, the corresponding classes need to be registered for reflection.
 For example, if `java.util.logging.FileHandler` is used then the following reflection configuration is necessary:
@@ -28,40 +28,78 @@ See the [Reflection Support](Reflection.md) page for more details.
 
 ## Build-Time Logger Initialization
 
-The logger can be initialized at image build time with a custom `logging.properties` config, as in the code below:
-```java
-public class BuildTimeLoggerInit {
-  private static final Logger LOGGER;
-  static {
-    LogManager.getLogManager().readConfiguration(BuildTimeLoggerInit.class.getResourceAsStream("logging.properties"));
-    LOGGER = Logger.getLogger(BuildTimeLoggerInit.class.getName());
-  }
+The logger can be initialized at image build time with a custom `logging.properties` config, as in following example.
 
-  public static void main(String[] args) throws IOException {
-    // Use the LOGGER here
-  }
-}
-```
+1. Save the following Java code into a file named _BuildTimeLoggerInit.java_, then compile it using `javac`:
+    ```java
+    import java.io.IOException;
+    import java.util.logging.Level;
+    import java.util.logging.LogManager;
+    import java.util.logging.Logger;
 
-The `logging.properties` file is processed at image build time.
-It does not need to be included in the native image, therefore reducing the image size.
+    public class BuildTimeLoggerInit {
+      private static final Logger LOGGER;
+      static {
+          try {
+              LogManager.getLogManager().readConfiguration(BuildTimeLoggerInit.class.getResourceAsStream("/logging.properties"));
+          } catch (IOException | SecurityException | ExceptionInInitializerError ex) {
+              Logger.getLogger(BuildTimeLoggerInit.class.getName()).log(Level.SEVERE, "Failed to read logging.properties file", ex);
+          }
+        LOGGER = Logger.getLogger(BuildTimeLoggerInit.class.getName());
+      }
 
-`LoggerHolder.LOGGER` is also initialized at image build time and is readily available at run time, therefore improving the startup.
-Unless the application needs to process a custom `logging.properties` configuration at run time, this approach is recommended.
+      public static void main(String[] args) throws IOException {
+        LOGGER.log(Level.WARNING, "Danger, Will Robinson!");
+      }
+    }
+    ```
+2. Download the [_logging.properties_](assets/logging.properties) resource file and save it in the same directory as _BuildTimeLoggerInit.java_.
+
+3. Build and run the native executable
+
+    ```shell
+    native-image BuildTimeLoggerInit --initialize-at-build-time=BuildTimeLoggerInit
+    ./buildtimeloggerinit
+    ```
+The `logging.properties` file is processed at build time.
+It does not need to be included in the native executable, therefore reducing the size of the executable file.
+
+`LoggerHolder.LOGGER` is also initialized at build time and is readily available at runtime, therefore improving the startup time. 
+Unless your application needs to process a custom `logging.properties` configuration at runtime, this approach is recommended.
 
 ## Runtime Logger Initialization
 
-The logger can also be initialized at run time, as in the code below:
-```java
-public class RuntimeLoggerInit {
-    public static void main(String[] args) throws IOException {
-        LogManager.getLogManager().readConfiguration(RuntimeLoggerInit.class.getResourceAsStream("logging.properties"));
-        Logger logger = Logger.getLogger(RuntimeLoggerInit.class.getName());
-        // Use the logger here
+The logger can also be initialized at runtime, as shown in the following example.
+
+1. Save the following Java code into a file named _RuntimeLoggerInit.java_, then compile it using `javac`:
+
+    ```java
+    import java.io.IOException;
+    import java.util.logging.Level;
+    import java.util.logging.LogManager;
+    import java.util.logging.Logger;
+
+    public class RuntimeLoggerInit {
+        public static void main(String[] args) throws IOException {
+            LogManager.getLogManager().readConfiguration(RuntimeLoggerInit.class.getResourceAsStream("/logging.properties"));
+            Logger logger = Logger.getLogger(RuntimeLoggerInit.class.getName());
+            logger.log(Level.WARNING, "Danger, Will Robinson!");
+        }
     }
-}
-```
+    ```
 
-In this case, the `logging.properties` file needs to be available for runtime processing and it must be included in the image via the `-H:IncludeResources=logging.properties` option.
+2. Download the [_logging.properties_](assets/logging.properties) resource file and save it in the same directory as _RuntimeLoggerInit.java_.
 
-See the information about [accessing resources at runtime](Resources.md) for more details on this option.
+3. Build and run the native executable
+
+    ```shell
+    native-image RuntimeLoggerInit -H:IncludeResources="logging.properties"
+    ./runtimeloggerinit
+    ```
+
+In this case, the `logging.properties` file needs to be available for runtime processing and it must be included in the executable via the `-H:IncludeResources=logging.properties` option. For more details on this option, see  [accessing resources at runtime](Resources.md).
+
+## Related Documentation
+* [Accessing Resources in Native Images](Resources.md)
+* [Class Initialization in Native Image](ClassInitialization.md)
+* [Native Image Build Configuration](BuildConfiguration.md)
