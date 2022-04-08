@@ -36,6 +36,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceAccess;
 
 /**
@@ -78,6 +79,10 @@ public class InteriorObjRefWalker {
                     return false;
                 }
                 pos = pos.add(referenceSize);
+            }
+        } else if (objHub.isPodInstanceClass()) {
+            if (!PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, layoutEncoding, visitor, obj)) {
+                return false;
             }
         }
 
