@@ -172,10 +172,18 @@ final class SubprocessTestUtils {
                         // Filter out the LogFile option to prevent overriding of the unit tests log
                         // file by a sub-process.
                         graalOption("LogFile"), // HotSpotTTYStreamProvider.Options#LogFile
+                        "-Dpolyglot.log.file",
+                        engineOption("CompilationFailureAction"),
+                        engineOption("TraceCompilation"),
+                        engineOption("TraceCompilationDetails")
         };
     }
 
     private static String graalOption(String optionName) {
         return "-Dgraal." + optionName;
+    }
+
+    private static String engineOption(String optionName) {
+        return "-Dpolyglot.engine." + optionName;
     }
 }

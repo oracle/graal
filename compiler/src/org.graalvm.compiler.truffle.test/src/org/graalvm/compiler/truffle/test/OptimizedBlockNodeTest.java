@@ -527,7 +527,8 @@ public class OptimizedBlockNodeTest {
     public void testBlockCompilationTrigger() {
         // the number 150 for the maximum compile limit is heavily dependent
         // on implementation details and might need to be updated the future.
-        setup(10, 150);
+        // expects graph too big permanent bailout
+        setup(10, 150, new String[]{"engine.CompilationFailureAction", "Silent"});
 
         // test not triggering the limit
         OptimizedBlockNode<?> block = createBlock(1, 1);
@@ -679,13 +680,22 @@ public class OptimizedBlockNodeTest {
     }
 
     private void setup(int blockCompilationSize, int maxGraalNodeCount) {
+        setup(blockCompilationSize, maxGraalNodeCount, new String[0]);
+    }
+
+    private void setup(int blockCompilationSize, int maxGraalNodeCount, String... additionalContextOptions) {
+        assert additionalContextOptions.length % 2 == 0 : "additionalContextOptions length must be even";
         clearContext();
-        context = Context.newBuilder().allowAllAccess(true)//
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true)//
                         .option("engine.BackgroundCompilation", "false") //
                         .option("engine.MultiTier", "false") //
                         .option("engine.PartialBlockCompilationSize", String.valueOf(blockCompilationSize))//
                         .option("engine.MaximumGraalGraphSize", String.valueOf(maxGraalNodeCount))//
-                        .option("engine.SingleTierCompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD)).build();
+                        .option("engine.SingleTierCompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD));
+        for (int i = 0; i < additionalContextOptions.length; i += 2) {
+            builder.option(additionalContextOptions[i], additionalContextOptions[i + 1]);
+        }
+        context = builder.build();
         context.enter();
     }
 
