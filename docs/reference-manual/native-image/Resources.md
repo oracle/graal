@@ -6,8 +6,8 @@ permalink: /reference-manual/native-image/Resources/
 ---
 # Accessing Resources in Native Images
 
-By default, the `native-image` tool will not integrate any of the resources which are on the classpath during the generation into the final image.
-To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at run time. 
+By default, the `native-image` tool will not integrate any of the resources that are on the classpath into the native executable.
+To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at runtime. 
 This can be achieved using a configuration file with the following content:
 
 ```json
@@ -27,13 +27,13 @@ This can be achieved using a configuration file with the following content:
 }
 ```
 
-The configuration file's path must be provided to `native-image` with `-H:ResourceConfigurationFiles=/path/to/resource-config.json`.
-Alternatively, individual resource paths can also be specified directly to `native-image`:
+Provide the configuration file's path to the `native-image` tool using the option `-H:ResourceConfigurationFiles=/path/to/resource-config.json`.
+Alternatively, you can specify individual resource paths directly to the `native-image` tool as follows:
 
 ```shell
-native-image -H:IncludeResources="<Java regexp that matches resources to be included in the image>" -H:ExcludeResources="<Java regexp that matches resources to be excluded from the image>" ...
+native-image -H:IncludeResources="<Java regexp that matches resources to be included in the executable>" -H:ExcludeResources="<Java regexp that matches resources to be excluded from the executable>" ...
 ```
-The `-H:IncludeResources` and `-H:ExcludeResources` options can be passed several times to define more than one regexp to match or exclude resources, respectively.
+You can pass the `-H:IncludeResources` and `-H:ExcludeResources` options several times to define more than one regexp to include or exclude resources, respectively.
 
 To see which resources are included in the native executable, use the option `-H:Log=registerResource:<log level>`. The `<log level>` must be in the range from `1` to `5`, from least detailed to most detailed.
 
@@ -61,7 +61,7 @@ Then:
 
 The following demo illustrates how to include a resource into a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix)).
 
-1. Save the following Java code into the _Fortune.java_ file:
+1. Save the following Java code into a file named _Fortune.java_:
 
     ```java
     import java.io.BufferedReader;
@@ -101,9 +101,9 @@ The following demo illustrates how to include a resource into a native executabl
     }
     ```
 
-2. Open the [_fortunes.u8_](assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
+2. Download the [_fortunes.u8_](assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
-3. Compile:
+3. Compile the Java source code:
 
     ```shell
     $JAVA_HOME/bin/javac Fortune.java
@@ -125,20 +125,20 @@ See also the [guide on assisted configuration of Java resources and other dynami
 
 ## Locales
 
-It is also possible to specify which locales should be included in the image and what should be the default one.
-For example, to switch the default locale to Swiss German and also include French and English, one can use the following hosted options.
+It is also possible to specify which locales should be included in the executable and which should be the default.
+For example, to switch the default locale to Swiss German and also include French and English, use the following  options:
 ```shell
 native-image -Duser.country=CH -Duser.language=de -H:IncludeLocales=fr,en
 ```
-The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). All
-locales can be included via ``-H:+IncludeAllLocales``, but please note that it increases the size of the resulting
-binary.
+The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). YOu can include all
+locales via ``-H:+IncludeAllLocales``, but note that it increases the size of the resulting
+executable.
 
 ## Resource Bundles in Native Image
 
-Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the right user messages suitable for actual runtime settings like time locale and format, etc.
+Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the user messages suitable for runtime settings such as time, locale, and format.
 
-Native Image needs ahead-of-time knowledge of the resource bundles your application needs so that it can load and store the appropriate bundles for usage in the generated binary.
+Native Image needs knowledge ahead-of-time of the resource bundles your application needs so that it can load and store the appropriate bundles for usage in the generated executable.
 The bundles can be specified in the resource configuration file (see above), in the `bundles` section:
 
 ```json
@@ -152,16 +152,16 @@ The bundles can be specified in the resource configuration file (see above), in 
 }
 ```
 
-Alternatively, bundles can be specified directly as options to `native-image` as follows:
+Alternatively, bundles can be specified directly as options to the `native-image` tool as follows:
 ```shell
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```
-By default, the requested bundles are included for all requested locales.
-In order to optimize this, it is possible to use `IncludeResourceBundles` with locale specific substring, for example `-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR` will include the bundle only in French.
+By default, requested bundles are included for all requested locales.
+To optimize this, it is possible to use `IncludeResourceBundles` with a locale-specific substring, for example `-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR` will include the bundle only in French.
 
 ### Resources in Java modules
 
-Wherever resources are specified with `<Java regexp that matches resources to be included in the image>` or resource bundles are specified via bundle name, it is possible to specify the exact modules these resources or bundles should be taken from. To do so, specify the module-name before the resource-regex or bundle name with `:` as separator. For example:
+Wherever resources are specified with `<Java regexp that matches resources to be included in the image>` or resource bundles are specified via bundle name, it is possible to specify the exact modules from which these resources or bundles should be taken. To do so, specify the module-name before the resource-regex or bundle name with `:` as separator. For example:
 
 ```json
 {
@@ -178,15 +178,18 @@ Wherever resources are specified with `<Java regexp that matches resources to be
 }
 ```
 
-This will make native-image include `resource-file.txt` only from Java module `library-module`. So even if other modules or the classpath contains resources that would match pattern `^resource-file.txt$` only the one in module `library-module` would be registered for image-inclusion. Similar if there would be other bundles accessible with the same bundle name `your.pkg.Bundle` only the one from `main-module` would be included. Native image will also ensure that the modules are guaranteed to be accessible at image-runtime. I.e. the following code pattern:
+This will cause the `native-image` tool to include `resource-file.txt` only from Java module `library-module`. If other modules or the classpath contains resources match the pattern `^resource-file.txt$` only the one in module `library-module` is registered for inclusion in the executable. Similarly, if other bundles are accessible with the same bundle name `your.pkg.Bundle` only the one from `main-module` is included. Native image will also ensure that the modules are guaranteed to be accessible at executable runtime. That is, the following code pattern:
 ```java
 InputStream resource = ModuleLayer.boot().findModule(moduleName).getResourceAsStream(resourcePath);
 ```
-will always work as expected for resources registered as described above (even if the module does not contain any code that is seen reachable by the static analysis).
+will always work as expected for resources registered as described above (even if the module does not contain any code that is considered reachable by static analysis).
 
-### JVM Mode of Localization
+### Java VM Mode of Localization
 
-Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM.
-As a result of that, it causes the size of the executable to increase for smaller applications such as `HelloWorld`.
-Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all bundles are known ahead of time.
-In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option.
+Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of Java VM infrastructure.
+As a result, it causes the size of the executable to increase for smaller applications such as `HelloWorld`.
+Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact that all bundles are known ahead of build time.
+For the original Java VM lookup, use the `-H:-LocalizationOptimizedMode` option.
+
+## Related Documentation
+* [Logging in Native Image](Logging.md)
