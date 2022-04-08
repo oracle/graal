@@ -308,6 +308,8 @@ public class GDSChannel extends GraalChannelBase {
                     LOG.log(Level.FINER, "Incorrect edition: {0}", k);
                 } else if (!acceptsVersion(v, Version.fromString(e.getVersion()))) {
                     LOG.log(Level.FINER, "Old version: {0} != {1}", new Object[]{v, Version.fromString(e.getVersion()), e.getVersion()});
+                } else if (e.getLabel() == null) {
+                    LOG.log(Level.FINER, "Isn't installable component: {0}", new Object[]{e});
                 } else {
                     result.add(e.asComponentInfo(getConnector(), fb));
                 }
