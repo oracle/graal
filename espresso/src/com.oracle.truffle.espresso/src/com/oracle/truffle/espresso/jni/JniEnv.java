@@ -1567,13 +1567,12 @@ public final class JniEnv extends NativeEnv {
     @TruffleBoundary
     public void GetStringUTFRegion(@JavaType(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
         Meta meta = getMeta();
-        int length = ModifiedUtf8.utfLength(meta.toHostString(str));
-        if (start < 0 || start + (long) len > length) {
+        String hostString = meta.toHostString(str);
+        if (start < 0 || len < 0 || start > hostString.length() - len) {
             throw meta.throwException(meta.java_lang_StringIndexOutOfBoundsException);
         }
-        byte[] bytes = ModifiedUtf8.fromJavaString(meta.toHostString(str), start, len, true); // always
-        // 0
-        // terminated.
+        // always 0-terminated.
+        byte[] bytes = ModifiedUtf8.fromJavaString(hostString, start, len, true);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
     }
