@@ -68,110 +68,17 @@ public final class BytecodeOSRMetadata {
 
     // Lazily initialized state. Most nodes with back-edges will not trigger compilation, so we
     // defer initialization of some fields until they're actually used.
-    static final class LazyState {
-        // Maps bytecode targets to their respective call targets and actual frame descriptions on
-        // entry
-        private final FinalCompilationListMap compilationMap;
+    static final class LazyState extends FinalCompilationListMap {
         @CompilationFinal private FrameDescriptor frameDescriptor;
         @CompilationFinal private Assumption frameVersion;
         @CompilationFinal(dimensions = 1) private com.oracle.truffle.api.frame.FrameSlot[] frameSlots;
 
-        LazyState(FinalCompilationListMap compilationMap) {
-            this.compilationMap = compilationMap;
+        LazyState() {
             // We set these fields in updateFrameSlots using a concrete frame just before
             // compilation, when the frame is (hopefully) stable.
             this.frameDescriptor = null;
             this.frameVersion = null;
             this.frameSlots = null;
-        }
-    }
-
-    /**
-     * Describes the observed state of the Frame on an OSR entry point.
-     */
-    static final class OsrEntryDescription {
-        final OptimizedCallTarget compilationTarget;
-        @CompilationFinal(dimensions = 1) private byte[] frameTags;
-        @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
-
-        OsrEntryDescription(OptimizedCallTarget compilationTarget) {
-            this.compilationTarget = compilationTarget;
-        }
-    }
-
-    static final class FinalCompilationListMap {
-        private static final int[] EMPTY_TARGETS = new int[0];
-        private static final OsrEntryDescription[] EMPTY_ENTRIES = new OsrEntryDescription[0];
-
-        @CompilationFinal(dimensions = 1) //
-        private int[] targets;
-        @CompilationFinal(dimensions = 1) //
-        private OsrEntryDescription[] entries;
-
-        FinalCompilationListMap() {
-            this.targets = EMPTY_TARGETS;
-            this.entries = EMPTY_ENTRIES;
-        }
-
-        public int size() {
-            return targets.length;
-        }
-
-        @ExplodeLoop
-        public OsrEntryDescription get(int key) {
-            int[] targetsSnapshot = targets;
-            OsrEntryDescription[] entriesSnapshot = entries;
-            if (targetsSnapshot.length != entriesSnapshot.length) {
-                // Racy update from another thread, obtain the state synchronously.
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                synchronized (this) {
-                    targetsSnapshot = targets;
-                    entriesSnapshot = entries;
-                }
-            }
-            int len = targetsSnapshot.length;
-            for (int i = 0; i < len; i++) {
-                if (targetsSnapshot[i] == key) {
-                    return entriesSnapshot[i];
-                }
-            }
-            return null;
-        }
-
-        public void put(int key, OsrEntryDescription value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert get(key) == null;
-            int oldLen = size();
-            synchronized (this) {
-                int[] newTargets = Arrays.copyOf(targets, oldLen + 1);
-                OsrEntryDescription[] newEntries = Arrays.copyOf(entries, oldLen + 1);
-                newTargets[oldLen] = key;
-                newEntries[oldLen] = value;
-                this.targets = newTargets;
-                this.entries = newEntries;
-            }
-        }
-
-        public void clear() {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                targets = EMPTY_TARGETS;
-                entries = EMPTY_ENTRIES;
-            }
-        }
-
-        public Map<Integer, OptimizedCallTarget> asCallTargetMap() {
-            int[] targetsSnapshot;
-            OsrEntryDescription[] entriesSnapshot;
-            synchronized (this) {
-                targetsSnapshot = targets;
-                entriesSnapshot = entries;
-            }
-            Map<Integer, OptimizedCallTarget> map = new HashMap<>();
-            for (int i = 0; i < size(); i++) {
-                map.put(targetsSnapshot[i], entriesSnapshot[i].compilationTarget);
-            }
-            return Collections.unmodifiableMap(map);
         }
     }
 
@@ -190,7 +97,7 @@ public final class BytecodeOSRMetadata {
         return ((Node) osrNode).atomic(() -> {
             LazyState lockedLazyState = lazyState;
             if (lockedLazyState == null) {
-                lockedLazyState = lazyState = new LazyState(new FinalCompilationListMap());
+                lockedLazyState = lazyState = new LazyState();
             }
             return lockedLazyState;
         });
@@ -237,14 +144,14 @@ public final class BytecodeOSRMetadata {
     Object tryOSR(int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         LazyState state = getLazyState();
         assert state.frameDescriptor == null || state.frameDescriptor == parentFrame.getFrameDescriptor();
-        OsrEntryDescription osrEntry = state.compilationMap.get(target);
+        OsrEntryDescription osrEntry = state.get(target);
         if (osrEntry == null) {
             osrEntry = ((Node) osrNode).atomic(() -> {
-                OsrEntryDescription lockedTarget = state.compilationMap.get(target);
+                OsrEntryDescription lockedTarget = state.get(target);
                 if (lockedTarget == null) {
                     OptimizedCallTarget callTarget = createOSRTarget(target, interpreterState, parentFrame.getFrameDescriptor());
                     lockedTarget = new OsrEntryDescription(callTarget);
-                    state.compilationMap.put(target, lockedTarget);
+                    state.put(target, lockedTarget);
                     requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
                 }
                 return lockedTarget;
@@ -315,7 +222,7 @@ public final class BytecodeOSRMetadata {
         // The frames should use the same descriptor.
         validateDescriptors(source, target, state);
 
-        OsrEntryDescription description = state.compilationMap.get(bytecodeTarget);
+        OsrEntryDescription description = state.get(bytecodeTarget);
         if (description == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Transferring frame for OSR from an uninitialized bytecode target.");
@@ -543,14 +450,11 @@ public final class BytecodeOSRMetadata {
         LazyState state = lazyState;
         if (state != null) {
             ((Node) osrNode).atomic(() -> {
-                for (OsrEntryDescription entry : state.compilationMap.entries) {
-                    if (entry != null) {
-                        OptimizedCallTarget callTarget = entry.compilationTarget;
-                        if (callTarget.isCompilationFailed()) {
-                            markCompilationFailed();
-                        }
-                        callTarget.nodeReplaced(oldNode, newNode, reason);
+                for (OptimizedCallTarget callTarget : state.asCallTargetMap().values()) {
+                    if (callTarget.isCompilationFailed()) {
+                        markCompilationFailed();
                     }
+                    callTarget.nodeReplaced(oldNode, newNode, reason);
                 }
             });
         }
@@ -561,17 +465,84 @@ public final class BytecodeOSRMetadata {
             osrNode.setOSRMetadata(DISABLED);
             LazyState state = lazyState;
             if (state != null) {
-                state.compilationMap.clear();
+                state.clear();
             }
         });
     }
 
     // for testing
     public Map<Integer, OptimizedCallTarget> getOSRCompilations() {
-        return ((Node) osrNode).atomic(() -> getLazyState().compilationMap.asCallTargetMap());
+        return ((Node) osrNode).atomic(() -> getLazyState().asCallTargetMap());
     }
 
     public int getBackEdgeCount() {
         return backEdgeCount;
+    }
+
+    /**
+     * Describes the observed state of the Frame on an OSR entry point.
+     */
+    static final class OsrEntryDescription {
+        final OptimizedCallTarget compilationTarget;
+        @CompilationFinal(dimensions = 1) private byte[] frameTags;
+        @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
+
+        OsrEntryDescription(OptimizedCallTarget compilationTarget) {
+            this.compilationTarget = compilationTarget;
+        }
+    }
+
+    private abstract static class FinalCompilationListMap {
+        private static final class Cell {
+            final Cell next;
+
+            final int target;
+            final OsrEntryDescription entry;
+
+            Cell(int target, OsrEntryDescription entry, Cell next) {
+                this.next = next;
+                this.target = target;
+                this.entry = entry;
+            }
+        }
+
+        @CompilationFinal //
+        volatile Cell head = null;
+
+        @ExplodeLoop
+        public final OsrEntryDescription get(int key) {
+            Cell cur = head;
+            while (cur != null) {
+                if (cur.target == key) {
+                    return cur.entry;
+                }
+                cur = cur.next;
+            }
+            return null;
+        }
+
+        public final void put(int key, OsrEntryDescription value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                assert get(key) == null;
+                head = new Cell(key, value, head);
+            }
+        }
+
+        public final void clear() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                head = null;
+            }
+        }
+
+        public final Map<Integer, OptimizedCallTarget> asCallTargetMap() {
+            Cell cur = head;
+            Map<Integer, OptimizedCallTarget> map = new HashMap<>();
+            while (cur != null) {
+                map.put(cur.target, cur.entry.compilationTarget);
+            }
+            return Collections.unmodifiableMap(map);
+        }
     }
 }
