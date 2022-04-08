@@ -34,6 +34,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
+import org.graalvm.compiler.phases.common.FinalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
@@ -73,7 +74,7 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new UseTrappingNullChecksPhase());
 
-        appendPhase(canonicalizerWithoutGVN.copyWithoutFurtherCanonicalizations());
+        appendPhase(FinalCanonicalizerPhase.createFromCanonicalizer(canonicalizerWithoutGVN));
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 
