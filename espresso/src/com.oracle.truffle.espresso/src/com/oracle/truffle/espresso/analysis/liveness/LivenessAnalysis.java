@@ -276,7 +276,7 @@ public final class LivenessAnalysis {
                 for (int j = 0; j < predecessors.length; j++) {
                     int pred = predecessors[j];
                     BitSet predEnd = helper.endFor(pred);
-                    if (predEnd.get(local)) {
+                    if (predEnd != null && predEnd.get(local)) {
                         ArrayList<Integer> kill = kills[j];
                         if (kill == null) {
                             kills[j] = kill = new ArrayList<>();
