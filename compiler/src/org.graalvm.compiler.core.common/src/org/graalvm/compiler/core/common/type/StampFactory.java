@@ -51,7 +51,6 @@ public class StampFactory {
     private static final Stamp positiveInt = forInteger(JavaKind.Int, 0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE);
     private static final Stamp nonZeroInt = IntegerStamp.create(32, JavaKind.Int.getMinValue(), JavaKind.Int.getMaxValue(), 0, CodeUtil.mask(JavaKind.Int.getStackKind().getBitCount()), false);
     private static final Stamp nonZeroLong = IntegerStamp.create(64, JavaKind.Long.getMinValue(), JavaKind.Long.getMaxValue(), 0, CodeUtil.mask(JavaKind.Long.getStackKind().getBitCount()), false);
-    private static final Stamp positiveLong = forInteger(JavaKind.Long, 0, Long.MAX_VALUE, 0, Long.MAX_VALUE);
     private static final Stamp booleanTrue = forInteger(JavaKind.Boolean, -1, -1, 1, 1);
     private static final Stamp booleanFalse = forInteger(JavaKind.Boolean, 0, 0, 0, 0);
     private static final Stamp rawPointer = new RawPointerStamp();
