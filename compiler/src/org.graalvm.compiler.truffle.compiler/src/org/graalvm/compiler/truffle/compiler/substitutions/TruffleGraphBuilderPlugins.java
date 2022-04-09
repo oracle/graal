@@ -147,6 +147,7 @@ public class TruffleGraphBuilderPlugins {
         registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types, primitiveBoxTypes);
         registerTruffleSafepointPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerNodePlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
+        registerDynamicObjectPlugins(plugins, metaAccess, canDelayIntrinsification);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
@@ -849,6 +850,13 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerDynamicObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+        ResolvedJavaType unsafeAccessType = rt.resolveType(metaAccess, "com.oracle.truffle.object.UnsafeAccess");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(unsafeAccessType));
+        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Long);
     }
 
     public static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification, EconomicSet<ResolvedJavaType> primitiveBoxTypes) {
