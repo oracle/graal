@@ -130,13 +130,15 @@ public interface FieldRefConstant extends MemberRefConstant {
 
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
-                // could be due to ongoing redefinition
-                holderKlass.getContext().getClassRedefinition().check();
-                field = lookupField(holderKlass, name, type);
+                ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
+                if (classRedefinition != null) {
+                    // could be due to ongoing redefinition
+                    classRedefinition.check();
+                    field = lookupField(holderKlass, name, type);
+                }
                 if (field == null) {
                     Meta meta = pool.getContext().getMeta();
                     EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
-                    ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
                     Assumption missingFieldAssumption;
                     if (classRedefinition != null) {
                         missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
