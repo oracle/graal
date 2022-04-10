@@ -501,8 +501,12 @@ public final class EspressoContext {
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
-                this.vm = VM.create(getJNI()); // Mokapot is loaded
+                this.jniEnv = JniEnv.create(this); // libnespresso
+                this.vm = VM.create(this.jniEnv); // libjvm
                 vm.attachThread(Thread.currentThread());
+                // The Java version is extracted from libjava and is available after this line.
+                vm.loadAndInitializeJavaLibrary(vmProperties.bootLibraryPath()); // libjava
+                EspressoError.guarantee(getJavaVersion() != null, "Java version");
             }
 
             if (getJavaVersion().modulesEnabled()) {
@@ -735,7 +739,7 @@ public final class EspressoContext {
     }
 
     public JavaVersion getJavaVersion() {
-        return vm.getJavaVersion();
+        return getLanguage().getJavaVersion();
     }
 
     public boolean advancedRedefinitionEnabled() {
