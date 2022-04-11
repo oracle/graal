@@ -2442,7 +2442,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
             localState = state;
             if (config.useSystemExit && (localState.isExiting() || localState == State.CLOSED_EXITED)) {
-                System.exit(exitCode);
+                engine.host.hostExit(exitCode);
             }
             /*
              * Poll will throw the correct exception. Either the ThreadDeath exit or the ThreadDeath

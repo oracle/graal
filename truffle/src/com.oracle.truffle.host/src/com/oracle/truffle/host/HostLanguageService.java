@@ -301,6 +301,11 @@ public class HostLanguageService extends AbstractHostService {
         HostMethodScope.pin(receiver);
     }
 
+    @Override
+    public void hostExit(int exitCode) {
+        System.exit(exitCode);
+    }
+
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
         assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
         assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");

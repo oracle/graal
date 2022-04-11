@@ -58,7 +58,7 @@ import java.util.stream.Collectors;
  * }
  * </pre>
  */
-final class SubprocessTestUtils {
+public final class SubprocessTestUtils {
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
@@ -75,7 +75,7 @@ final class SubprocessTestUtils {
      *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
      */
-    static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, String... additionalVmOptions) throws IOException, InterruptedException {
+    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, String... additionalVmOptions) throws IOException, InterruptedException {
         return executeInSubprocess(testClass, action, true, additionalVmOptions);
     }
 
@@ -91,7 +91,7 @@ final class SubprocessTestUtils {
      *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
      */
-    static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
+    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
         if (isSubprocess()) {
             action.run();
             return null;
@@ -103,7 +103,7 @@ final class SubprocessTestUtils {
     /**
      * Returns {@code true} if it's called by a test that is already executing in a sub-process.
      */
-    static boolean isSubprocess() {
+    public static boolean isSubprocess() {
         return Boolean.getBoolean(CONFIGURED_PROPERTY);
     }
 
