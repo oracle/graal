@@ -163,6 +163,11 @@ public interface ArithmeticLIRGeneratorTool {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    @SuppressWarnings("unused")
+    default Value emitRoundFloatToInteger(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     enum RoundingMode {
         NEAREST(0),
         DOWN(1),

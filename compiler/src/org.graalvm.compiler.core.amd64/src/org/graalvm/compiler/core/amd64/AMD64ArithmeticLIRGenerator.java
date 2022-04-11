@@ -127,6 +127,7 @@ import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathTanOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
+import org.graalvm.compiler.lir.amd64.AMD64RoundFloatToIntegerOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
 import org.graalvm.compiler.lir.amd64.AMD64Ternary;
@@ -1425,6 +1426,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         } else {
             getLIRGen().append(new AMD64Binary.RMIOp(AMD64RMIOp.ROUNDSD, OperandSize.PD, result, asAllocatable(value), mode.encoding));
         }
+        return result;
+    }
+
+    @Override
+    public Value emitRoundFloatToInteger(Value value) {
+        PlatformKind valuePlatformKind = value.getPlatformKind();
+        assert valuePlatformKind == AMD64Kind.SINGLE || valuePlatformKind == AMD64Kind.DOUBLE;
+        Variable result = getLIRGen().newVariable(LIRKind.value(value.getPlatformKind() == AMD64Kind.SINGLE ? AMD64Kind.DWORD : AMD64Kind.QWORD));
+        getLIRGen().append(new AMD64RoundFloatToIntegerOp(getLIRGen(), result, asAllocatable(value)));
         return result;
     }
 
