@@ -153,4 +153,10 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void shutdown(Object receiver) {
+        HostEngine engine = (HostEngine) receiver;
+        hostToGuest.shutdown(engine.remoteEngine);
+    }
 }

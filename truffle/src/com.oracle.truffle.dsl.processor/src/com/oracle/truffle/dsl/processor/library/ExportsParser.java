@@ -174,8 +174,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
                 if (!exportedMessageMirrors.isEmpty()) {
                     model.addError("Class declares @%s annotations but does not export any libraries. "//
-                                    + "Exported messages cannot be resoved without exported library. "//
-                                    + "Add @%s(MyLibrary.class) to the class ot resolve this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
+                                    + "Exported messages cannot be resolved without exported library. "//
+                                    + "Add @%s(MyLibrary.class) to the class to fix this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
                     return model;
                 }
             }

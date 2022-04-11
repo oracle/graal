@@ -29,19 +29,26 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public class LLVMThreadLocalSymbol extends LLVMSymbol {
 
     private final String name;
+    private final LLVMSourceSymbol sourceSymbol;
 
-    public LLVMThreadLocalSymbol(String name, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
+    public LLVMThreadLocalSymbol(String name, LLVMSourceSymbol sourceSymbol, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
         super(name, bitcodeID, symbolIndex, exported, externalWeak);
         this.name = name;
+        this.sourceSymbol = sourceSymbol;
     }
 
-    public static LLVMThreadLocalSymbol create(String symbolName, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
-        return new LLVMThreadLocalSymbol(symbolName, bitcodeID, symbolIndex, exported, externalWeak);
+    public static LLVMThreadLocalSymbol create(String symbolName, LLVMSourceSymbol sourceSymbol, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
+        return new LLVMThreadLocalSymbol(symbolName, sourceSymbol, bitcodeID, symbolIndex, exported, externalWeak);
+    }
+
+    public String getSourceName() {
+        return sourceSymbol != null ? sourceSymbol.getName() : name;
     }
 
     @Override
@@ -87,5 +94,10 @@ public class LLVMThreadLocalSymbol extends LLVMSymbol {
     @Override
     public LLVMThreadLocalSymbol asThreadLocalSymbol() {
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return "(" + sourceSymbol + ")" + name;
     }
 }

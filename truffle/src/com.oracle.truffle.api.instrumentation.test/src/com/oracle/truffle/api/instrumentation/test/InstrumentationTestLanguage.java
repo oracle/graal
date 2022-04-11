@@ -940,14 +940,22 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
-        @TruffleBoundary
         final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
+            return hasRootInstanceSlowPath();
+        }
+
+        @TruffleBoundary
+        private boolean hasRootInstanceSlowPath() {
             return InstrumentContext.get(null).callFunctions.callTargets.containsKey(getRootNode().getName());
         }
 
         @ExportMessage
-        @TruffleBoundary
         final Object getRootInstance(@SuppressWarnings("unused") Frame frame) throws UnsupportedMessageException {
+            return getRootInstanceSlowPath();
+        }
+
+        @TruffleBoundary
+        private Object getRootInstanceSlowPath() throws UnsupportedMessageException {
             Object function = InstrumentContext.get(null).callFunctions.findFunction(getRootNode().getName());
             if (function != null) {
                 return function;

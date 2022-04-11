@@ -118,7 +118,7 @@ public final class LLVMParser {
         assert !global.isExternal();
         LLVMSymbol symbol;
         if (global.isThreadLocal()) {
-            symbol = LLVMThreadLocalSymbol.create(global.getName(), runtime.getBitcodeID(), global.getIndex(), global.isExported(), global.isExternalWeak());
+            symbol = LLVMThreadLocalSymbol.create(global.getName(), global.getSourceSymbol(), runtime.getBitcodeID(), global.getIndex(), global.isExported(), global.isExternalWeak());
             threadLocalGlobals.add(global);
         } else {
             symbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),

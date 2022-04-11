@@ -52,11 +52,10 @@
   ]),
 
 
-  // JFR and async-profiler jobs
   local profiling_builds = std.flattenArrays([
     [
     c.weekly + hw.x52 + jdk + cc.libgraal + cc.enable_profiling + suite + { job_prefix:: "bench-profiling" },
-    c.weekly + hw.x52 + jdk + cc.jargraal + cc.enable_profiling + suite + { job_prefix:: "bench-profiling" }
+    c.weekly + hw.x52 + jdk + cc.libgraal + cc.footprint_tracking + suite + { job_prefix:: "bench-footprint" }
     ]
   for jdk in cc.bench_jdks
   for suite in bench.groups.profiled_suites

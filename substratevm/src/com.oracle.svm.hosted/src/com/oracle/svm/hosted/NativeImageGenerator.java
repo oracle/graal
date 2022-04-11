@@ -168,7 +168,6 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
@@ -1088,20 +1087,7 @@ public class NativeImageGenerator {
             }
 
             Class<? extends BooleanSupplier> cEntryPointIncludeClass = m.getAnnotation(CEntryPoint.class).include();
-            boolean include = ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean();
-            CEntryPointOptions options = m.getAnnotation(CEntryPointOptions.class);
-            if (options != null) {
-                Class<? extends BooleanSupplier> cEntryPointOptionsIncludeClass = options.include();
-                if (cEntryPointOptionsIncludeClass != CEntryPointOptions.AlwaysIncluded.class) {
-                    if (cEntryPointIncludeClass != CEntryPoint.AlwaysIncluded.class) {
-                        throw UserError.abort(
-                                        "The 'include' attribute for entry point method %s.%s is specified both in 'CEntryPoint' and 'CEntryPointOptions' annotations. Remove the deprecated 'CEntryPointOptions#include' attribute.",
-                                        m.getDeclaringClass().getName(), m.getName());
-                    }
-                    include = ReflectionUtil.newInstance(cEntryPointOptionsIncludeClass).getAsBoolean();
-                }
-            }
-            if (include) {
+            if (ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean()) {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
         }

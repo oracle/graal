@@ -55,6 +55,9 @@ If the time limit is exceeded then the polyglot context is cancelled and the exe
 As soon as the time limit is triggered, no further application code can be executed with this context.
 It will continuously throw a `PolyglotException` for any method of the polyglot context that will be invoked.
 
+The used CPU time of a context includes time spent in callbacks to host code.
+This is also the case when running with [Polyglot Isolates].
+
 The used CPU time of a context typically does not include time spent waiting for synchronization or IO.
 The CPU time of all threads will be added and checked against the CPU time limit.
 This can mean that if two threads execute the same context then the time limit will be exceeded twice as fast.
@@ -161,9 +164,11 @@ Resetting resource limits does not affect thread limits.
 
 The `sandbox.MaxHeapMemory` option allows you to specify the maximum heap memory the application is allowed to retain during its run.
 `sandbox.MaxHeapMemory` must be positive. This option is only supported on a HotSpot-based VM.
-Enabling this option in AOT mode will result in PolyglotException.
+Enabling this option in a native executable will result in a `PolyglotException`.
+The option is also not supported with [Polyglot Isolates], which have different means of controlling memory consumption.
 When exceeding of the limit is detected, the corresponding context is automatically cancelled and then closed.
 
+Only objects residing in the guest application count towards the limit - memory allocated during callbacks to host code does not.
 The efficacy of this option (also) depends on the garbage collector used.
 
 #### Example Usage

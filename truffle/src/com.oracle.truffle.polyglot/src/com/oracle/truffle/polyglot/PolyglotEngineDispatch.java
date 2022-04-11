@@ -291,4 +291,9 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         return polyglot.getManagement().newExecutionListener(polyglot.getExecutionListenerDispatch(), config);
     }
 
+    @Override
+    public void shutdown(Object engine) {
+        ((PolyglotEngineImpl) engine).onVMShutdown();
+    }
+
 }

@@ -116,7 +116,7 @@ public final class LLVMPThreadStart {
                                             nodeFactory.createGetStackFromFrame(),
                                             LLVMObjectReadNode.create(argSlot)
                             },
-                            FunctionType.create(PointerType.VOID, PointerType.VOID, false));
+                            FunctionType.create(PointerType.VOID, PointerType.VOID));
         }
 
         public static LLVMPThreadFunctionRootNode create(LLVMLanguage language, NodeFactory nodeFactory) {

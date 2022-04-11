@@ -164,6 +164,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return canEndsSafepoint;
     }
 
+    public boolean canEndsGuestSafepoint() {
+        return canEndsGuestSafepoint;
+    }
+
     public void setStripMinedInner(boolean stripMinedInner) {
         this.stripMinedInner = stripMinedInner;
     }

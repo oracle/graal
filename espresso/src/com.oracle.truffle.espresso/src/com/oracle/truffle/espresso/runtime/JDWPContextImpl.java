@@ -814,7 +814,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(invalidatedClasses, new SubClassHierarchyComparator());
         for (ObjectKlass invalidatedClass : invalidatedClasses) {
             if (!redefinedClasses.contains(invalidatedClass)) {
-                JDWP.LOGGER.fine(() -> "Updating invalidated class " + invalidatedClass.getName());
+                JDWP.LOGGER.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
                 invalidatedClass.swapKlassVersion(ids);
             }
         }

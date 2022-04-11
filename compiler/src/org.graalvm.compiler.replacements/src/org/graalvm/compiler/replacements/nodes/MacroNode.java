@@ -150,7 +150,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     }
 
     public ValueNode[] toArgumentArray() {
-        return arguments.toArray(new ValueNode[0]);
+        return arguments.toArray(ValueNode.EMPTY_ARRAY);
     }
 
     @Override
@@ -222,7 +222,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
      * because this would leave the graph in an inconsistent state.
      */
     protected InvokeNode createInvoke(boolean verifyStamp) {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[0]), returnStamp, null));
+        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(ValueNode.EMPTY_ARRAY), returnStamp, null));
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());

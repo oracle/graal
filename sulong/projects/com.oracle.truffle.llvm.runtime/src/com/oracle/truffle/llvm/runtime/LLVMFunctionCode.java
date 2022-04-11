@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -62,6 +59,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * {@link LLVMFunctionCode} represents the callable function of a {@link LLVMFunction}.
@@ -159,6 +159,11 @@ public final class LLVMFunctionCode {
             } else {
                 return generateTarget(type);
             }
+        }
+
+        @TruffleBoundary
+        public RootCallTarget cachedCallTargetSlowPath(FunctionType type) {
+            return cachedCallTarget(type);
         }
 
         public LLVMExpressionNode createIntrinsicNode(LLVMExpressionNode[] arguments, Type[] argTypes) {

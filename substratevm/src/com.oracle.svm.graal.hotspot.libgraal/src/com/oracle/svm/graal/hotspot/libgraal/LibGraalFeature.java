@@ -656,6 +656,12 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
     // Checkstyle: resume
 
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void startupLibGraal(HotSpotGraalRuntime runtime) {
+        VMRuntime.initialize();
+    }
+
     private static final class InjectedManagementComputer implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
         public RecomputeFieldValue.ValueAvailability valueAvailability() {

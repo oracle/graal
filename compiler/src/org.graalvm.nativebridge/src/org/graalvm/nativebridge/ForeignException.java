@@ -55,6 +55,10 @@ public final class ForeignException extends RuntimeException {
     private static final ThreadLocal<ForeignException> pendingException = new ThreadLocal<>();
     private static final JNIMethodResolver CreateForeignException = JNIMethodResolver.create("createForeignException", Throwable.class, byte[].class);
     private static final JNIMethodResolver ToByteArray = JNIMethodResolver.create("toByteArray", byte[].class, ForeignException.class);
+    /**
+     * Pre-allocated {@code ForeignException} for double failure.
+     */
+    private static final ForeignException MARSHALLING_FAILED = new ForeignException(null, UNDEFINED, false);
     private static volatile HotSpotCalls toHotSpot;
 
     private final byte kind;
@@ -85,6 +89,9 @@ public final class ForeignException extends RuntimeException {
      */
     public RuntimeException throwOriginalException(BinaryMarshaller<? extends Throwable> marshaller) {
         try {
+            if (rawData == null) {
+                throw new RuntimeException("Failed to marshall foreign throwable.");
+            }
             BinaryInput in = BinaryInput.create(rawData);
             Throwable t = marshaller.read(in);
             throw ForeignException.silenceException(RuntimeException.class, t);
@@ -154,9 +161,18 @@ public final class ForeignException extends RuntimeException {
      * @param marshaller the marshaller to marshall the exception
      */
     public static ForeignException forThrowable(Throwable exception, BinaryMarshaller<? super Throwable> marshaller) {
-        ByteArrayBinaryOutput out = ByteArrayBinaryOutput.create(marshaller.inferSize(exception));
-        marshaller.write(out, exception);
-        return new ForeignException(out.getArray(), UNDEFINED, false);
+        try {
+            ByteArrayBinaryOutput out = ByteArrayBinaryOutput.create(marshaller.inferSize(exception));
+            marshaller.write(out, exception);
+            return new ForeignException(out.getArray(), UNDEFINED, false);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable t) {
+            // Exception marshalling failed, prevent exception propagation from CEntryPoint that
+            // may cause process crash.
+            JNIUtil.trace(2, t);
+            return MARSHALLING_FAILED;
+        }
     }
 
     /**

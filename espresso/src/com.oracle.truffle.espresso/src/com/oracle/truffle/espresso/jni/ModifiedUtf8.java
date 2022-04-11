@@ -45,8 +45,17 @@ public final class ModifiedUtf8 {
         int utflen = 0;
 
         /* use charAt instead of copying String to char array */
-        for (int i = start; i < len; i++) {
-            int c = str.charAt(i);
+        int i;
+        for (i = 0; i < len; i++) {
+            int c = str.charAt(start + i);
+            if (!((c >= 0x0001) && (c <= 0x007F))) {
+                break;
+            }
+            utflen++;
+        }
+
+        for (; i < len; i++) {
+            int c = str.charAt(start + i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
                 utflen++;
             } else if (c > 0x07FF) {

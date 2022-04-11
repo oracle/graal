@@ -64,6 +64,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -110,6 +111,8 @@ import org.graalvm.polyglot.io.ProcessHandler;
 public final class Engine implements AutoCloseable {
 
     private static volatile Throwable initializationException;
+    private static volatile boolean shutdownHookInitialized;
+    private static final Map<Engine, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
 
     final AbstractEngineDispatch dispatch;
     final Object receiver;
@@ -384,7 +387,9 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     static Collection<Engine> findActiveEngines() {
-        return (Collection<Engine>) getImpl().findActiveEngines();
+        synchronized (ENGINES) {
+            return new ArrayList<>(ENGINES.keySet());
+        }
     }
 
     private static final Engine EMPTY = new Engine(null, null);
@@ -638,7 +643,22 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine newEngine(AbstractEngineDispatch dispatch, Object receiver) {
-            return new Engine(dispatch, receiver);
+            Engine engine = new Engine(dispatch, receiver);
+            if (!shutdownHookInitialized) {
+                synchronized (ENGINES) {
+                    if (!shutdownHookInitialized) {
+                        shutdownHookInitialized = true;
+                        Runtime.getRuntime().addShutdownHook(new Thread(new EngineShutDownHook()));
+                    }
+                }
+            }
+            ENGINES.put(engine, null);
+            return engine;
+        }
+
+        @Override
+        public void engineClosed(Engine engine) {
+            ENGINES.remove(engine);
         }
 
         @Override
@@ -975,11 +995,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Collection<Engine> findActiveEngines() {
-            return Collections.emptyList();
-        }
-
-        @Override
         public void preInitializeEngine(Object hostLanguage) {
         }
 
@@ -1050,4 +1065,16 @@ public final class Engine implements AutoCloseable {
 
     }
 
+    private static final class EngineShutDownHook implements Runnable {
+
+        public void run() {
+            Engine[] engines;
+            synchronized (ENGINES) {
+                engines = ENGINES.keySet().toArray(new Engine[0]);
+            }
+            for (Engine engine : engines) {
+                engine.dispatch.shutdown(engine.receiver);
+            }
+        }
+    }
 }

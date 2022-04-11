@@ -61,15 +61,15 @@ public class CVLineRecordBuilder {
         this.primaryEntry = entry;
         Range primaryRange = primaryEntry.getPrimary();
 
-        debug("DEBUG_S_LINES linerecord for 0x%05x file: %s:%d\n", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
+        debug("DEBUG_S_LINES linerecord for 0x%05x file: %s:%d", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
         this.lineRecord = new CVLineRecord(cvDebugInfo, primaryRange.getSymbolName());
-        debug("CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
+        debug("CVLineRecord.computeContents: processing primary range %s", primaryRange);
 
         processRange(primaryRange);
         Iterator<Range> iterator = primaryEntry.leafRangeIterator();
         while (iterator.hasNext()) {
             Range subRange = iterator.next();
-            debug("CVLineRecord.computeContents: processing range %s\n", subRange);
+            debug("CVLineRecord.computeContents: processing range %s", subRange);
             processRange(subRange);
         }
         return lineRecord;
@@ -85,26 +85,25 @@ public class CVLineRecordBuilder {
 
         FileEntry file = range.getFileEntry();
         if (file == null) {
-            debug("processRange: range has no file: %s\n", range);
+            debug("  processRange: range has no file: %s", range);
             return;
         }
 
-        if (range.getLine() == -1) {
-            debug("processRange: ignoring: bad line number\n");
+        if (range.getLine() < 0) {
+            debug("  processRange: ignoring: bad line number: %d", range.getLine());
             return;
         }
 
         int fileId = cvDebugInfo.getCVSymbolSection().getFileTableRecord().addFile(file);
         if (lineRecord.isEmpty() || lineRecord.getCurrentFileId() != fileId) {
-            debug("processRange: addNewFile: %s\n", file);
+            debug("  processRange: addNewFile: %s", file);
             lineRecord.addNewFile(fileId);
         }
 
         /* Add line record. */
-        /* An optimization would be to merge adjacent line records. */
         int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
         int line = Math.max(range.getLine(), 1);
-        debug("processRange:   addNewLine: 0x%05x %s\n", lineLoAddr, line);
+        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - primaryEntry.getPrimary().getLo(), line);
         lineRecord.addNewLine(lineLoAddr, line);
     }
 }

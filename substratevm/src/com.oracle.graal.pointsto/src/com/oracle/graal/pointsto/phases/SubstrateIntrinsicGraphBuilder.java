@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.phases;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -38,6 +37,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
+import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
@@ -61,19 +61,23 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
     }
 
     private FrameState getFrameState(ValueNode returnVal) {
-        List<ValueNode> values = new ArrayList<>(Arrays.asList(arguments));
-        int stackSize = 0;
+        ValueNode[] locals = arguments;
+        JavaKind[] pushedSlotKinds = null;
+        ValueNode[] pushedValues = null;
+        ValueNode[] locks = ValueNode.EMPTY_ARRAY;
+        ValueNode[] stack;
 
         if (returnVal != null) {
-            values.add(returnVal);
-            stackSize++;
             if (method.getSignature().getReturnKind().needsTwoSlots()) {
-                values.add(null);
-                stackSize++;
+                stack = new ValueNode[]{returnVal, null};
+            } else {
+                stack = new ValueNode[]{returnVal};
             }
+        } else {
+            stack = ValueNode.EMPTY_ARRAY;
         }
 
-        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, false, false, null, null));
+        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, stack.length, pushedSlotKinds, pushedValues, locks, null, false, false));
         bci++;
         return stateAfter;
     }
@@ -85,11 +89,13 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
 
     @Override
     protected void setExceptionState(StateSplit exceptionObject) {
-        List<ValueNode> values = new ArrayList<>(Arrays.asList(arguments));
-        values.add(exceptionObject.asNode());
-        int stackSize = 1;
-
-        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, true, false, null, null));
+        ValueNode[] locals = arguments;
+        ValueNode[] stack = {exceptionObject.asNode()};
+        JavaKind[] pushedSlotKinds = null;
+        ValueNode[] pushedValues = null;
+        ValueNode[] locks = ValueNode.EMPTY_ARRAY;
+        List<MonitorIdNode> monitorIds = null;
+        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, 1, pushedSlotKinds, pushedValues, locks, monitorIds, true, false));
         exceptionObject.setStateAfter(stateAfter);
         bci++;
     }
@@ -115,11 +121,14 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
             unwindMergeNode.setNext(unwindReplacement);
 
             /* Creating FrameState for new UnwindNode. */
-            List<ValueNode> values = new ArrayList<>(Arrays.asList(arguments));
-            values.add(exceptionValue);
-            int stackSize = 1;
+            ValueNode[] locals = arguments;
+            ValueNode[] stack = {exceptionValue};
+            JavaKind[] pushedSlotKinds = null;
+            ValueNode[] pushedValues = null;
+            ValueNode[] locks = ValueNode.EMPTY_ARRAY;
+            List<MonitorIdNode> monitorIds = null;
 
-            FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, true, false, null, null));
+            FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, 1, pushedSlotKinds, pushedValues, locks, monitorIds, true, false));
             unwindMergeNode.setStateAfter(stateAfter);
             bci++;
         }

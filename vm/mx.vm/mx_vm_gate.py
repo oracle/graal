@@ -102,7 +102,7 @@ def _test_libgraal_basic(extra_vm_arguments):
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
     """
-    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from JVMCI native library"
+    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from[ \w]* JVMCI native library"
     compiler_log_file = abspath('graal-compiler.log')
     args = ['-Dgraal.ShowConfiguration=info',
             '-Dgraal.LogFile=' + compiler_log_file,
@@ -240,6 +240,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.AllowExperimentalOptions=true",
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
+        "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Dpolyglot.engine.TraceCompilation=true",
         "-Dpolyglot.log.file={0}".format(compiler_log_file),
         "-Dgraalvm.locatorDisabled=true",

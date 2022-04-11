@@ -57,7 +57,7 @@ public class BeginNodeOptimizationTest extends PartialEvaluationTest {
     }
 
     private void compileAndCheck(Supplier<RootNode> rootNodeFactory, int totalNodeLimit, int beginNodeLimit) {
-        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(totalNodeLimit)).build());
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.MaximumGraalGraphSize", Integer.toString(totalNodeLimit)).build());
         RootNode rootNode = rootNodeFactory.get();
         RootCallTarget target = rootNode.getCallTarget();
 

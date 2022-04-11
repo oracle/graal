@@ -60,7 +60,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.runtime.OS;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -139,6 +138,7 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
+import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
@@ -183,8 +183,6 @@ public final class VM extends NativeEnv {
     private final long rtldDefaultValue;
     private final long processHandleValue;
 
-    private final JavaVersion javaVersion;
-
     private final Structs structs;
 
     private final JniEnv jniEnv;
@@ -192,9 +190,7 @@ public final class VM extends NativeEnv {
     private final JVMTI jvmti;
 
     private @Pointer TruffleObject mokapotEnvPtr;
-
-    // libjava must be loaded after mokapot.
-    private final @Pointer TruffleObject javaLibrary;
+    private @Pointer TruffleObject javaLibrary;
 
     private static String stringify(List<Path> paths) {
         StringJoiner joiner = new StringJoiner(File.pathSeparator);
@@ -224,21 +220,16 @@ public final class VM extends NativeEnv {
         return management;
     }
 
+    public @Pointer TruffleObject getJavaLibrary() {
+        return javaLibrary;
+    }
+
     public static final class GlobalFrameIDs {
         private static final AtomicLong id = new AtomicLong();
 
         public static long getID() {
             return id.incrementAndGet();
         }
-    }
-
-    @Override
-    public JavaVersion getJavaVersion() {
-        return javaVersion;
-    }
-
-    public @Pointer TruffleObject getJavaLibrary() {
-        return javaLibrary;
     }
 
     private @Pointer TruffleObject loadJavaLibrary(List<Path> bootLibraryPath) {
@@ -251,14 +242,15 @@ public final class VM extends NativeEnv {
         return getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
     }
 
-    private void libJavaOnLoad(TruffleObject libJava) {
+    private void initializeJavaLibrary(TruffleObject libJava) {
+        // HotSpot calls libjava's JNI_OnLoad only on 8.
         if (getJavaVersion().java8OrEarlier()) {
-            // The JNI_OnLoad handling is normally done by method load in
-            // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
-            // explicitly so we have to check for JNI_OnLoad as well
-            // libjava is initialized after libjvm (Espresso VM native context).
-
-            // TODO(peterssen): Use JVM_FindLibraryEntry.
+            /*
+             * The JNI_OnLoad handling is normally done by method load in
+             * java.lang.ClassLoader$NativeLibrary, but the VM loads the base library explicitly so
+             * we have to check for JNI_OnLoad as well.
+             */
+            EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
             TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
             if (jniOnLoad != null) {
                 try {
@@ -287,15 +279,23 @@ public final class VM extends NativeEnv {
             if (major == 1) {
                 // Version 1.X
                 int minor = (versionInfo & 0x00FF0000) >> 16;
-                return new JavaVersion(minor);
+                return JavaVersion.forVersion(minor);
             } else {
                 // Version X.Y
-                return new JavaVersion(major);
+                return JavaVersion.forVersion(major);
             }
         } else {
             // JDK 14+
-            return new JavaVersion(JavaVersion.LATEST_SUPPORTED);
+            return JavaVersion.latestSupported();
         }
+    }
+
+    public void loadAndInitializeJavaLibrary(List<Path> searchPaths) {
+        assert javaLibrary == null : "java library already initialized";
+        this.javaLibrary = loadJavaLibrary(searchPaths);
+        JavaVersion javaVersion = findJavaVersion(this.javaLibrary);
+        getEspressoLanguage().tryInitializeJavaVersion(javaVersion);
+        initializeJavaLibrary(this.javaLibrary);
     }
 
     private VM(JniEnv jniEnv) {
@@ -358,18 +358,8 @@ public final class VM extends NativeEnv {
             getLogger().finest(() -> String.format("Got RTLD_DEFAULT=0x%016x and ProcessHandle=0x%016x", rtldDefaultValue, processHandleValue));
             assert getUncached().isPointer(this.mokapotEnvPtr);
             assert !getUncached().isNull(this.mokapotEnvPtr);
-
-            javaLibrary = loadJavaLibrary(props.bootLibraryPath());
-            javaVersion = findJavaVersion(javaLibrary);
-            libJavaOnLoad(javaLibrary);
-
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
-        }
-        if (getJavaVersion().java9OrLater()) {
-            stackWalk = new StackWalk();
-        } else {
-            stackWalk = null;
         }
     }
 
@@ -2083,12 +2073,13 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     @TruffleBoundary
-    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr, @SuppressWarnings("unused") boolean throwException_) {
+    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
 
-        // don't trust the value coming from native code, it might be garbage if the used base lib
-        // doesn't have this signature.
+        // We don't pass `throwException` down due to GR-37925, but even if Sulong would
+        // be fixed, it might be garbage if the used base lib has a mismatching signature,
+        // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
 
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
@@ -3609,7 +3600,21 @@ public final class VM extends NativeEnv {
 
     // region stackwalk
 
-    private final StackWalk stackWalk;
+    private volatile StackWalk stackWalk;
+
+    private StackWalk getStackWalk() {
+        StackWalk ref = stackWalk;
+        if (ref == null) {
+            EspressoError.guarantee(getJavaVersion().java9OrLater(), "Stack-Walking API requires Java 9+");
+            synchronized (this) {
+                ref = stackWalk;
+                if (ref == null) {
+                    stackWalk = ref = new StackWalk();
+                }
+            }
+        }
+        return ref;
+    }
 
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
@@ -3714,7 +3719,7 @@ public final class VM extends NativeEnv {
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
         checkStackWalkArguments(language, batchSize, startIndex, frames);
-        return stackWalk.fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, meta);
+        return getStackWalk().fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, meta);
     }
 
     @VmImpl(isJni = true)
@@ -3726,7 +3731,7 @@ public final class VM extends NativeEnv {
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
         checkStackWalkArguments(language, batchSize, startIndex, frames);
-        return stackWalk.fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, meta);
+        return getStackWalk().fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, meta);
     }
 
     // endregion stackwalk

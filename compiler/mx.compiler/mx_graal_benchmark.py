@@ -55,20 +55,19 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def post_process_command_line_args(self, args):
         return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
 
-    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+    def get_jdk(self):
         tag = mx.get_jdk_option().tag
         if tag and tag != mx_compiler._JVMCI_JDK_TAG:
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
                 self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
-            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False, command_mapper_hooks=self.command_mapper_hooks)
+        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG)
+
+    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        return self.get_jdk().run_java(
+            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, command_mapper_hooks=self.command_mapper_hooks)
 
     def generate_java_command(self, args):
-        tag = mx.get_jdk_option().tag
-        if tag and tag != mx_compiler._JVMCI_JDK_TAG:
-            mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
-                self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).generate_java_command(self.post_process_command_line_args(args))
+        return self.get_jdk().generate_java_command(self.post_process_command_line_args(args))
 
 
     def rules(self, output, benchmarks, bmSuiteArgs):

@@ -22,9 +22,13 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -95,14 +99,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
     // This field should be final, but creating a shape requires a fully-initialized instance of
     // TruffleLanguage.
-    @CompilerDirectives.CompilationFinal //
+    @CompilationFinal //
     private StaticShape<StaticObjectFactory> arrayShape;
 
     private final StaticProperty foreignProperty = new DefaultStaticProperty("foreignObject");
     // This field should be final, but creating a shape requires a fully-initialized instance of
     // TruffleLanguage.
-    @CompilerDirectives.CompilationFinal //
+    @CompilationFinal //
     private StaticShape<StaticObjectFactory> foreignShape;
+
+    @CompilationFinal private JavaVersion javaVersion;
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -280,5 +286,22 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static EspressoLanguage get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public JavaVersion getJavaVersion() {
+        return javaVersion;
+    }
+
+    public void tryInitializeJavaVersion(JavaVersion version) {
+        JavaVersion ref = this.javaVersion;
+        if (ref == null) {
+            synchronized (this) {
+                ref = this.javaVersion;
+                if (ref == null) {
+                    this.javaVersion = ref = Objects.requireNonNull(version);
+                }
+            }
+        }
+        EspressoError.guarantee(version.equals(ref), "incompatible Java versions");
     }
 }

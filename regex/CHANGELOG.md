@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 22.2.0
+
+* Added support for atomic groups and possessive quantifiers in Ruby regular expressions by using the backtracking.
+
 ## Version 22.1.0
 
 * Added a `lastGroup` field to regex results. Its value is tracked when using the Python regex dialect and it indicates the last capture group to have been matched.
@@ -11,7 +15,6 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Limited support for \G anchors in Ruby regular expressions.
 * Dropped sticky flag from Python regular expressions.
 * Added support for non-recursive subexpression calls in Ruby regular expressions.
-* Added support for atomic groups and possessive quantifiers in Ruby regular expressions by using the backtracking.
 
 ## Version 22.0.0
 
