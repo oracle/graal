@@ -83,6 +83,14 @@ public final class LLVMThreadIntrinsics {
         }
     }
 
+    public abstract static class LLVMThreadYield extends LLVMBuiltin {
+        @Specialization
+        protected Object doYield() {
+            Thread.yield();
+            return null;
+        }
+    }
+
     @NodeChild(type = LLVMExpressionNode.class, value = "threadId")
     public abstract static class LLVMThreadJoin extends LLVMBuiltin {
 
