@@ -61,7 +61,7 @@ The list of all classes that are proven safe is output to a file via the `-H:+Pr
 
 ## Specifying Class Initialization Explicitly
 
-Two command line flags explicitly specify when a class should be initialized:  `--initialize-at-build-time` and `--initialize-at-run-time`.
+Two command line flags explicitly specify when a class should be initialized: `--initialize-at-build-time` and `--initialize-at-run-time`.
 The flags specify whole packages or individual classes.
 For example, if you have classes `p.C1`, `p.C2`, … ,`p.Cn`, you can specify that all the classes in the package `p` are initialized at build time by passing the following argument on the command line:
 ```shell

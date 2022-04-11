@@ -53,13 +53,13 @@ my-app-root
 ```
 Then:
 
-*  All resources can be loaded with `.*/Resource.*txt$`, specified as `{"pattern":".*/Resource.*txt$"}` in a configuration file, or `-H:IncludeResources='.*/Resource.*txt$'` on the command line.
-*  `Resource0.txt` can be loaded with `.*/Resource0.txt$`.
-*  `Resource0.txt` and `Resource1.txt` can be loaded with `.*/Resource0.txt$` and `.*/Resource1.txt$`
-   (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
-*  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it using `-H:IncludeResources=".*/Resource.*txt$"` followed by `-H:ExcludeResources=".*/Resource2.txt$"`.
+* All resources can be loaded with `".*/Resource.*txt$"`, specified as `{"pattern":".*/Resource.*txt$"}` in a configuration file, or `-H:IncludeResources=".*/Resource.*txt$"` on the command line.
+* _Resource0.txt_ can be loaded with `.*/Resource0.txt$`.
+* _Resource0.txt_ and _Resource1.txt_ can be loaded with `.*/Resource0.txt$` and `.*/Resource1.txt$`
+ (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
+* Also, if we want to include everything except the _Resource2.txt_ file, we can simply exclude it using `-H:IncludeResources=".*/Resource.*txt$"` followed by `-H:ExcludeResources=".*/Resource2.txt$"`.
 
-The following demo illustrates how to include a resource into a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix)).
+The following demo illustrates how to include a resource into a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
 
 1. Save the following Java code into a file named _Fortune.java_:
 
@@ -82,7 +82,7 @@ The following demo illustrates how to include a resource into a native executabl
             s.useDelimiter(SEPARATOR);
             while (s.hasNext()) {
                 fortunes.add(s.next());
-            }        
+            }
         }
         
         private void printRandomFortune() throws InterruptedException {
@@ -90,7 +90,7 @@ The following demo illustrates how to include a resource into a native executabl
             String f = fortunes.get(r);  //Use the random number to pick a random fortune
             for (char c: f.toCharArray()) {  // Print out the fortune
               System.out.print(c);
-                Thread.sleep(100);   
+                Thread.sleep(100); 
             }
         }
       

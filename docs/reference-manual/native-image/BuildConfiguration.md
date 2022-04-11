@@ -18,7 +18,7 @@ Native Image supports a wide range of options to configure the `native-image` to
 We recommend that you provide the configuration for the `native-image` tool by embedding a _native-image.properties_ file into a project JAR file.
 The Native Image builder will also automatically pick up all configuration options provided in the _META-INF/native-image/_ directory (or any of its subdirectories) and use it to construct `native-image` command line arguments.
 
-To avoid a situation when constituent parts of a project are built with overlapping configurations, we recommended you use subdirectories within _META-INF/native-image_:  a JAR file built from multiple maven projects cannot suffer from overlapping `native-image` configurations.
+To avoid a situation when constituent parts of a project are built with overlapping configurations, we recommended you use subdirectories within _META-INF/native-image_: a JAR file built from multiple maven projects cannot suffer from overlapping `native-image` configurations.
 For example:
 * _foo.jar_ has its configurations in _META-INF/native-image/foo_groupID/foo_artifactID_
 * _bar.jar_ has its configurations in _META-INF/native-image/bar_groupID/bar_artifactID_
