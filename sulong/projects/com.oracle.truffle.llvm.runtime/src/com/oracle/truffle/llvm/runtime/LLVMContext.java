@@ -184,7 +184,6 @@ public final class LLVMContext {
     @CompilationFinal Object freeGlobalsBlockFunction;
     @CompilationFinal Object allocateGlobalsBlockFunction;
     @CompilationFinal Object protectGlobalsBlockFunction;
-    @CompilationFinal SulongEngineOption.OSRMode osrMode = null;
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
@@ -613,14 +612,6 @@ public final class LLVMContext {
             freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
         }
         return freeGlobalsBlockFunction;
-    }
-
-    public SulongEngineOption.OSRMode getOSRMode() {
-        if (osrMode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.osrMode = env.getOptions().get(SulongEngineOption.OSR_MODE);
-        }
-        return osrMode;
     }
 
     public Object getProtectReadOnlyGlobalsBlockFunction() {
