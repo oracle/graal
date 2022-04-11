@@ -27,6 +27,7 @@ package org.graalvm.jniutils;
 import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
 import static org.graalvm.jniutils.JNIUtil.createString;
 import static org.graalvm.jniutils.JNIUtil.trace;
+import static org.graalvm.jniutils.JNIUtil.tracingAt;
 
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JObject;
@@ -258,6 +259,19 @@ public final class HotSpotCalls {
     }
 
     private static void traceCall(JNIEnv env, JClass clazz, JNIMethod method) {
+        if (tracingAt(1)) {
+            traceCallImpl(env, clazz, method);
+        }
+    }
+
+    private static void traceCall(JNIEnv env, JObject receiver, JNIMethod method) {
+        if (tracingAt(1)) {
+            // Intentionally does not use JNIUtil. The tracing JNI usage should not be traced.
+            traceCallImpl(env, env.getFunctions().getGetObjectClass().call(env, receiver), method);
+        }
+    }
+
+    private static void traceCallImpl(JNIEnv env, JClass clazz, JNIMethod method) {
         // The tracing performs JNI calls to obtain name of the HotSpot entry point class.
         // This call must not be traced to prevent endless recursion.
         if (!inTrace.get()) {
@@ -271,11 +285,6 @@ public final class HotSpotCalls {
                 inTrace.remove();
             }
         }
-    }
-
-    private static void traceCall(JNIEnv env, JObject receiver, JNIMethod method) {
-        // Intentionally does not use JNIUtil. The tracing JNI usage should not be traced.
-        traceCall(env, env.getFunctions().getGetObjectClass().call(env, receiver), method);
     }
 
     private static String toSimpleName(String fqn) {

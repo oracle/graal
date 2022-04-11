@@ -50,7 +50,6 @@ import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNI.JThrowable;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -204,22 +203,16 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 hsThrowable = updateStackTrace(env, hsThrowable, jniExceptionWrapper.getStackTrace());
             }
         } else {
-            hsThrowable = createExceptionOfSameType(env, original);
-            boolean hasSameExceptionType = hsThrowable.isNonNull();
-            if (!hasSameExceptionType) {
-                String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
-                JString hsMessage = createHSString(env, message);
-                hsThrowable = callCreateException(env, hsMessage);
-            }
+            String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
+            JString hsMessage = createHSString(env, message);
+            hsThrowable = callCreateException(env, hsMessage);
             StackTraceElement[] nativeStack = original.getStackTrace();
             if (nativeStack.length != 0) {
                 // Update stack trace only for exceptions which have stack trace.
                 // For exceptions which override fillInStackTrace merging stack traces only adds
                 // useless JNI calls.
                 StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
-                StackTraceElement[] mergedStack = mergeStackTraces(hsStack, nativeStack,
-                                hasSameExceptionType ? 0 : 1, // exception with same exception
-                                // type has no factory method
+                StackTraceElement[] mergedStack = mergeStackTraces(hsStack, nativeStack, 1,
                                 getIndexOfPropagateJNIExceptionFrame(nativeStack), false);
                 hsThrowable = updateStackTrace(env, hsThrowable, mergedStack);
             }
@@ -515,25 +508,6 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     private static boolean isStackFrame(StackTraceElement stackTraceElement, Class<?> clazz, String methodName) {
         return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
-    }
-
-    private static JThrowable createExceptionOfSameType(JNIEnv env, Throwable original) {
-        Class<? extends Throwable> originalType = original.getClass();
-        String className = originalType.getTypeName();
-        JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);
-        if (exceptionClass.isNonNull()) {
-            JNIMethod constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class, String.class));
-            if (constructor != null) {
-                JNI.JValue args = StackValue.get(1, JNI.JValue.class);
-                args.addressOf(0).setJObject(createHSString(env, original.getMessage()));
-                return HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
-            }
-            constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class));
-            if (constructor != null) {
-                return HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
-            }
-        }
-        return WordFactory.nullPointer();
     }
 
     // JNI calls
