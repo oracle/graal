@@ -214,6 +214,9 @@ public final class Target_java_lang_Thread {
     @Substitution
     @SuppressWarnings("try")
     public static void sleep(long millis, @Inject Meta meta, @Inject SubstitutionProfiler location) {
+        if (millis < 0) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "timeout value is negative");
+        }
         StaticObject thread = meta.getContext().getCurrentThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
             meta.getContext().getBlockingSupport().sleep(millis, location);
