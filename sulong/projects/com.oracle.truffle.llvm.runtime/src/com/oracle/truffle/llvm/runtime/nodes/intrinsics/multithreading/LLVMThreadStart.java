@@ -46,15 +46,15 @@ import com.oracle.truffle.llvm.runtime.pthread.PThreadExitException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
-public final class LLVMPThreadStart {
+public final class LLVMThreadStart {
 
-    static final class LLVMPThreadRunnable implements Runnable {
+    static final class LLVMThreadRunnable implements Runnable {
 
         private final Object startRoutine;
         private final Object arg;
         private final LLVMContext context;
 
-        LLVMPThreadRunnable(Object startRoutine, Object arg, LLVMContext context) {
+        LLVMThreadRunnable(Object startRoutine, Object arg, LLVMContext context) {
             this.startRoutine = startRoutine;
             this.arg = arg;
             this.context = context;
