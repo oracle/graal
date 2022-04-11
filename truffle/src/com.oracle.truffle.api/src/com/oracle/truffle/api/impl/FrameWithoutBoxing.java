@@ -849,7 +849,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setBooleanStatic(int slot, boolean value) {
         assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
-        indexedPrimitiveLocals[slot] = value ? 1 : 0;
+        indexedPrimitiveLocals[slot] = value ? 1L : 0L;
     }
 
     @Override
