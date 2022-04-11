@@ -32,7 +32,14 @@ import java.util.function.Function;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
@@ -397,18 +404,34 @@ class IgnoreSIGPIPEFeature implements Feature {
 
 final class IgnoreSIGPIPEStartupHook implements Runnable {
 
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
+    @Uninterruptible(reason = "empty signal handler, Isolate is not set up")
+    static void noopSignalHandler(@SuppressWarnings("unused") int sig) {
+    }
+
+    private static final CEntryPointLiteral<Signal.SignalDispatcher> NOOP_SIGNAL_HANDLER = //
+            CEntryPointLiteral.create(IgnoreSIGPIPEStartupHook.class, "noopSignalHandler", int.class);
+
     /**
      * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
      * default action is to terminate the process, will instead return an error code from the
      * specific write operation.
      *
-     * From pipe(7}: If all file descriptors referring to the read end of a pipe have been closed,
+     * From pipe(7): If all file descriptors referring to the read end of a pipe have been closed,
      * then a write(2) will cause a SIGPIPE signal to be generated for the calling process. If the
      * calling process is ignoring this signal, then write(2) fails with the error EPIPE.
+     *
+     * Note that the handler must be an empty function and not SIG_IGN. The problem is SIG_IGN is
+     * inherited to subprocess but we only want to affect the current process.
+     *
+     * From signal(7): A child created via fork(2) inherits a copy of its parent's signal
+     * dispositions. During an execve(2), the dispositions of handled signals are reset to the
+     * default; the dispositions of ignored signals are left unchanged.
      */
     @Override
     public void run() {
-        final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+        final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), NOOP_SIGNAL_HANDLER.getFunctionPointer());
         VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
     }
 }
