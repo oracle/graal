@@ -91,6 +91,22 @@ public final class LLVMThreadIntrinsics {
         }
     }
 
+    @NodeChild(type = LLVMExpressionNode.class, value = "millis")
+    @NodeChild(type = LLVMExpressionNode.class, value = "nanos")
+    public abstract static class LLVMThreadSleep extends LLVMBuiltin {
+        @Specialization
+        protected int doSleep(long millis, int nanos) {
+            try {
+                Thread.sleep(millis, nanos);
+            } catch (InterruptedException ex) {
+                return -1;
+            } catch (IllegalArgumentException ex) {
+                return 1;
+            }
+            return 0;
+        }
+    }
+
     @NodeChild(type = LLVMExpressionNode.class, value = "threadId")
     public abstract static class LLVMThreadJoin extends LLVMBuiltin {
 

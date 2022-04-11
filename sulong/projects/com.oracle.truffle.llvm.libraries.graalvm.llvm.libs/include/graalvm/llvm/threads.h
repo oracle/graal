@@ -31,6 +31,8 @@
 #ifndef SULONG_THREADS_H
 #define SULONG_THREADS_H
 
+#include <stdint.h>
+
 enum {
     sulong_thread_success = 0,
     sulong_thread_error = 1,
@@ -55,6 +57,7 @@ int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name);
 int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len);
 
 void __sulong_thread_yield();
+int __sulong_thread_sleep(int64_t millis, int32_t nanos);
 
 __sulong_key_t __sulong_thread_key_create(void (*destructor)(void *));
 void __sulong_thread_key_delete(__sulong_key_t key);
