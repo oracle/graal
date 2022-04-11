@@ -1485,7 +1485,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.1
          */
         public final TruffleString execute(int codepoint, Encoding encoding) {
-            return execute(codepoint, encoding, false);
+            return execute(codepoint, encoding, encoding == Encoding.UTF_16);
         }
 
         /**
