@@ -538,6 +538,10 @@ public class FeatureImpl {
             this.heap = heap;
         }
 
+        public NativeLibraries getNativeLibraries() {
+            return runtimeBuilder.getNativeLibraries();
+        }
+
         @Override
         public long objectFieldOffset(Field field) {
             return objectFieldOffset(getMetaAccess().lookupJavaField(field));

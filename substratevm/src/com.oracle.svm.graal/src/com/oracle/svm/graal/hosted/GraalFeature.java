@@ -678,9 +678,6 @@ public final class GraalFeature implements Feature {
             throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
         }
 
-        HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        runtimeConfigBuilder.updateLazyState(hMetaAccess);
-
         /*
          * Start fresh with a new GraphEncoder, since we are going to optimize all graphs now that
          * the static analysis results are available.
