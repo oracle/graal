@@ -31,6 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.Option;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -74,6 +76,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.word.UnsignedWord;
 
 class SubstrateTruffleOptions {
 
@@ -392,6 +395,13 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             default:
                 throw new IllegalStateException("Unsupported value " + res);
         }
+    }
+
+    @Override
+    public long getStackOverflowLimit() {
+        StackOverflowCheck.OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
+        UnsignedWord stackEnd = osSupport.lookupStackEnd();
+        return stackEnd.add(StackOverflowCheck.Options.StackYellowZoneSize.getValue() + StackOverflowCheck.Options.StackRedZoneSize.getValue()).rawValue();
     }
 
     /**
