@@ -54,17 +54,17 @@ public class EspressoNode extends Node implements ContextAccess {
 
     @Override
     public final Names getNames() {
-        return getContext().getNames();
+        return getLanguage().getNames();
     }
 
     @Override
     public final Types getTypes() {
-        return getContext().getTypes();
+        return getLanguage().getTypes();
     }
 
     @Override
     public final Signatures getSignatures() {
-        return getContext().getSignatures();
+        return getLanguage().getSignatures();
     }
 
     @Override
@@ -104,7 +104,7 @@ public class EspressoNode extends Node implements ContextAccess {
 
     @Override
     public final JavaVersion getJavaVersion() {
-        return getContext().getJavaVersion();
+        return getLanguage().getJavaVersion();
     }
 
     @Override
