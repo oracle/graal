@@ -1639,9 +1639,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (singleTrueEnd != null) {
             for (FixedNode node : GraphUtil.predecessorIterable(singleTrueEnd)) {
                 if (node instanceof IfNode) {
-                    foundIf = (IfNode) node;
+                    if (!ProfileSource.isTrusted(((IfNode) node).profileSource())) {
+                        foundIf = (IfNode) node;
+                    }
                     break;
-                } else if (node instanceof AbstractMergeNode) {
+                } else if (node instanceof AbstractMergeNode || node instanceof LoopExitNode) {
                     break;
                 }
                 prev = node;
@@ -1663,14 +1665,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         // found different if nodes, abort
                         return;
                     }
-                } else if (node instanceof AbstractMergeNode) {
+                } else if (node instanceof AbstractMergeNode || node instanceof LoopExitNode) {
                     break;
                 }
                 falsePrev = node;
             }
         }
 
-        if (foundIf != null && !ProfileSource.isTrusted(foundIf.getProfileData().getProfileSource())) {
+        if (foundIf != null && !ProfileSource.isTrusted(foundIf.profileSource())) {
             boolean negated;
             if (foundIf.trueSuccessor() == prev) {
                 negated = viaFalseEnd;

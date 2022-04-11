@@ -44,7 +44,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -211,16 +211,20 @@ public final class PerformanceInformationHandler implements Closeable {
                 // check if any loop exit contains a trusted profile
                 boolean containsNaturalExit = false;
                 boolean containsTrustedProfile = false;
-                for (Block exit : loop.getLoopExits()) {
+                List<Block> loopBlocks = loop.getBlocks();
+                outer: for (Block exit : loop.getLoopExits()) {
                     Block exitDom = exit.getDominator();
-                    assert loop.getBlocks().contains(exitDom);
-                    FixedNode endNode = exitDom.getEndNode();
-                    if (endNode instanceof IfNode) {
+                    if (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
+                        // potential computation before loop exit
+                        exitDom = exitDom.getDominator();
+                    }
+                    while (loop.getBlocks().contains(exitDom) && exitDom.getEndNode() instanceof IfNode) {
                         containsNaturalExit = true;
-                        if (ProfileSource.isTrusted(((IfNode) endNode).getProfileData().getProfileSource())) {
+                        if (ProfileSource.isTrusted(((IfNode) exitDom.getEndNode()).getProfileData().getProfileSource())) {
                             containsTrustedProfile = true;
-                            break;
+                            break outer;
                         }
+                        exitDom = exitDom.getDominator();
                     }
                 }
                 if (containsNaturalExit && !containsTrustedProfile) {
