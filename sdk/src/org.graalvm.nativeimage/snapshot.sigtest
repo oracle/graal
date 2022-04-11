@@ -823,6 +823,7 @@ meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHo
 meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder toCStrings(java.lang.CharSequence[])
 meth public static org.graalvm.word.UnsignedWord toCString(java.lang.CharSequence,java.nio.charset.Charset,org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 meth public static org.graalvm.word.UnsignedWord toCString(java.lang.CharSequence,org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
+meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder toCBytes(byte[])
 supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder

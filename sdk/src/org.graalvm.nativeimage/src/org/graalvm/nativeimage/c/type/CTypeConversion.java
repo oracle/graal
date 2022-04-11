@@ -275,4 +275,11 @@ public final class CTypeConversion {
     public static ByteBuffer asByteBuffer(PointerBase address, int size) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).asByteBuffer(address, size);
     }
+
+    /**
+     * Provides access to a C pointer for the provided Java byte array.
+     */
+    public static CCharPointerHolder toCBytes(byte[] bytes) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).toCBytes(bytes);
+    }
 }
