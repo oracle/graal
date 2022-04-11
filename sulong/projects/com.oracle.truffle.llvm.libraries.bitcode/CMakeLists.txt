@@ -93,6 +93,7 @@ else()
       src/abort.c
       src/assert.c
       src/builtin.c
+      src/c11threads.c
       src/clone.c
       src/complex.c
       src/crt0.c
