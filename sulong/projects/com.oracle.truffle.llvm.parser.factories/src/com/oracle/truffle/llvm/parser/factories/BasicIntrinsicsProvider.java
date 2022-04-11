@@ -372,6 +372,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     private static void registerThreadIntrinsics() {
         add("__sulong_thread_create", (args, nodeFactory) -> LLVMThreadIntrinsicsFactory.LLVMThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("pthread_exit", (args, nodeFactory) -> LLVMThreadIntrinsicsFactory.LLVMThreadExitNodeGen.create(args.get(1)));
+        add("thrd_exit", (args, nodeFactory) -> LLVMThreadIntrinsicsFactory.LLVMThreadExitNodeGen.create(args.get(1)));
         add("__sulong_thread_setname_np", (args, nodeFactory) -> LLVMThreadIntrinsicsFactory.LLVMThreadSetNameNodeGen.create(args.get(1), args.get(2)));
         add("__sulong_thread_getname_np", (args, nodeFactory) -> LLVMThreadIntrinsicsFactory.LLVMThreadGetNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("__sulong_thread_join", (args, nodeFactory) -> LLVMThreadIntrinsicsFactory.LLVMThreadJoinNodeGen.create(args.get(1)));

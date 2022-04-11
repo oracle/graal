@@ -50,7 +50,7 @@ thrd_t thrd_current(void) {
     return (thrd_t) __sulong_thread_self();
 }
 
-void timespec_diff(struct timespec *start, struct timespec *end, struct timespec *out) {
+void timespec_diff(const struct timespec *start, const struct timespec *end, struct timespec *out) {
     long tv_nsec = end->tv_nsec - start->tv_nsec;
     long tv_sec = end->tv_sec - start->tv_sec;
     if (tv_nsec < 0) {
@@ -65,29 +65,30 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
     struct timespec start;
 
     // if the remaining structure is set, record the starting time
-    if (remaining != null) {
+    if (remaining != NULL) {
         if (timespec_get(&start, TIME_UTC) != 0) {
             return 1;
         }
     }
 
-    int res = __sulong_thread_sleep(duration.tv_sec, duration.tv_nsec);
+    int res = __sulong_thread_sleep(duration->tv_sec, duration->tv_nsec);
 
     // if the remaining structure is set and the thread signalled before sleep could complete, compute the remaining time.
-    if (res == -1 && remaining != null) {
+    if (res == -1 && remaining != NULL) {
         struct timespec end;
         struct timespec diff;
         if (timespec_get(&end, TIME_UTC) != 0) {
             return 1;
         }
         timespec_diff(&start, &end, &diff);
-        timespec_diff(&duration, &diff, &diff);
+        timespec_diff(duration, &diff, &diff);
 
         if (diff.tv_sec > 0 && diff.tv_nsec > 0) {
             *remaining = diff;
         } else {
             // if the difference is somehow negative, just set it to zero
-            *remaining = { 0 };
+            remaining->tv_sec = 0;
+            remaining->tv_nsec = 0;
         }
 
         return -1;
@@ -97,7 +98,7 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 }
 
 void thrd_yield(void) {
-  __sulong_thread_yield();
+    __sulong_thread_yield();
 }
 
 int thrd_join(thrd_t thr, int *res) {
