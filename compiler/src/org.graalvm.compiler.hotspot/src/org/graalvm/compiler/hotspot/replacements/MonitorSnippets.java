@@ -34,6 +34,7 @@ import static org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode.beginLockSco
 import static org.graalvm.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
 import static org.graalvm.compiler.hotspot.nodes.VMErrorNode.vmError;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_CXQ_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
@@ -44,7 +45,10 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ageMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockPattern;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.epochMaskInPlace;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccIsValueBasedClass;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockDisplacedMarkOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
@@ -248,6 +252,13 @@ public class MonitorSnippets implements Snippets {
         trace(trace, "             mark: 0x%016lx\n", mark);
 
         incCounter();
+
+        if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
+            if (hub.readWord(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION).and(jvmAccIsValueBasedClass(INJECTED_VMCONFIG)).notEqual(0)) {
+                monitorenterStubC(MONITORENTER, object, lock);
+                return;
+            }
+        }
 
         if (useBiasedLocking(INJECTED_VMCONFIG)) {
             if (tryEnterBiased(object, hub, lock, mark, threadRegister, trace, counters)) {
