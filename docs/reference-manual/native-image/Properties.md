@@ -45,7 +45,7 @@ System Properties can be read at build time and incorporated into the resulting 
             instanceProperty = System.getProperty(INSTANCE_PROPERTY_KEY);
         }
         
-        public void print() {      
+        public void print() {
             System.out.println("Value of instance property: " + instanceProperty);
         } 
         
@@ -53,7 +53,7 @@ System Properties can be read at build time and incorporated into the resulting 
             System.out.println("Value of static property: " + STATIC_PROPERTY);
             ReadProperties rp = new ReadProperties();
             rp.print();
-        }   
+        } 
     }
     ```
 

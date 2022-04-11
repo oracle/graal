@@ -97,7 +97,7 @@ The logger can also be initialized at runtime, as shown in the following example
     ./runtimeloggerinit
     ```
 
-In this case, the _logging.properties_ file needs to be available for runtime processing and it must be included in the executable via the `-H:IncludeResources=logging.properties` option. For more details on this option, see  [accessing resources at runtime](Resources.md).
+In this case, the _logging.properties_ file needs to be available for runtime processing and it must be included in the executable via the `-H:IncludeResources=logging.properties` option. For more details on this option, see [accessing resources at runtime](Resources.md).
 
 ## Related Documentation
 * [Accessing Resources in Native Images](Resources.md)
