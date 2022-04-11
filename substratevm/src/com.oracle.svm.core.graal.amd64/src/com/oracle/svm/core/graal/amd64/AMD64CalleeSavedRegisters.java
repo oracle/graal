@@ -113,7 +113,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 calleeSavedXMMRegisters.add(register);
             }
             if (isXMM && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
-                // we might need to safe the full 512 bit vector register
+                // we might need to save the full 512 bit vector register
                 offset += AMD64Kind.V512_QWORD.getSizeInBytes();
             } else {
                 offset += target.arch.getLargestStorableKind(category).getSizeInBytes();
@@ -264,7 +264,8 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             if (SubstrateUtil.HOSTED) {
                 /*
                  * Only emit dynamic feature checks for compilations at image build time. For
-                 * run-time compilations, use the features available at run time.
+                 * run-time compilations, use the features available at run time. This is only used
+                 * for the stub calling convention which is hosted-only.
                  */
                 Label avxVersionNotAvailable = emitRuntimeFeatureTest(avxVersion);
                 // do we need vzeroupper?
