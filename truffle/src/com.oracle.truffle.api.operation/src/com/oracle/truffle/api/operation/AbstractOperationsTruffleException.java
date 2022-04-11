@@ -5,6 +5,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 public abstract class AbstractOperationsTruffleException extends AbstractTruffleException {
 
+    private static final long serialVersionUID = -534184847100559365L;
+
     public AbstractOperationsTruffleException() {
         super();
     }

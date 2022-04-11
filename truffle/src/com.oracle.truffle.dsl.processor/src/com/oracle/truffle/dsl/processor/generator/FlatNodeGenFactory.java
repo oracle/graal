@@ -121,7 +121,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
@@ -519,7 +518,13 @@ public class FlatNodeGenFactory {
         return specialization.getMaximumNumberOfInstances() > 1;
     }
 
-    private static boolean needsFrameToExecute(List<SpecializationData> specializations) {
+    private boolean needsFrameToExecute(List<SpecializationData> specializations) {
+        if (plugs != null) {
+            Boolean result = plugs.needsFrameToExecute(specializations);
+            if (result != null) {
+                return result;
+            }
+        }
         for (SpecializationData specialization : specializations) {
             if (specialization.getFrame() != null) {
                 return true;
@@ -589,6 +594,7 @@ public class FlatNodeGenFactory {
 
         List<ExecutableTypeData> executableTypes = filterExecutableTypes(node.getExecutableTypes(),
                         reachableSpecializations);
+
         List<ExecutableTypeData> genericExecutableTypes = new ArrayList<>();
         List<ExecutableTypeData> specializedExecutableTypes = new ArrayList<>();
         List<ExecutableTypeData> voidExecutableTypes = new ArrayList<>();
@@ -2367,7 +2373,9 @@ public class FlatNodeGenFactory {
         for (NodeExecutionData execution : node.getChildExecutions()) {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
-            if (child != null && !frameState.getMode().isUncached()) {
+            if (plugs != null) {
+                builder.tree(plugs.createThrowUnsupportedChild(execution));
+            } else if (child != null && !frameState.getMode().isUncached()) {
                 builder.tree(accessNodeField(execution));
             } else {
                 builder.string("null");
@@ -2471,6 +2479,9 @@ public class FlatNodeGenFactory {
         CodeExecutableElement parentMethod = (CodeExecutableElement) parent.findMethod();
         CodeTypeElement parentClass = (CodeTypeElement) parentMethod.getEnclosingElement();
         String name = parentMethod.getSimpleName().toString() + "_" + suffix + (boxingSplitIndex++);
+        if (plugs != null) {
+            name = plugs.transformNodeMethodName(name);
+        }
         CodeExecutableElement method = parentClass.add(new CodeExecutableElement(modifiers(Modifier.PRIVATE), parentMethod.getReturnType(), name));
         multiState.addParametersTo(frameState, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
@@ -2480,12 +2491,14 @@ public class FlatNodeGenFactory {
         addExplodeLoop(builder, group);
 
         CodeTreeBuilder parentBuilder = parent.create();
-        parentBuilder.startReturn();
-        parentBuilder.startCall(method.getSimpleName().toString());
-        multiState.addReferencesTo(frameState, parentBuilder);
-        frameState.addReferencesTo(parentBuilder, FRAME_VALUE);
-        parentBuilder.end();
-        parentBuilder.end();
+        if (plugs == null || !plugs.createCallWrapInAMethod(parentBuilder, method, () -> multiState.addReferencesTo(frameState, parentBuilder))) {
+            parentBuilder.startReturn();
+            parentBuilder.startCall(method.getSimpleName().toString());
+            multiState.addReferencesTo(frameState, parentBuilder);
+            frameState.addReferencesTo(parentBuilder, FRAME_VALUE);
+            parentBuilder.end();
+            parentBuilder.end();
+        }
         return parentBuilder.build();
     }
 
@@ -2707,6 +2720,14 @@ public class FlatNodeGenFactory {
 
     private CodeTree createAssignExecuteChild(FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
                     LocalVariable targetValue) {
+        if (plugs != null) {
+            CodeTree result = plugs.createAssignExecuteChild(
+                            node, originalFrameState, frameState, parent, execution, forType, targetValue,
+                            fs -> createCallExecuteAndSpecialize(forType, fs));
+            if (result != null) {
+                return result;
+            }
+        }
         CodeTreeBuilder builder = parent.create();
 
         ChildExecutionResult executeChild = createExecuteChild(builder, originalFrameState, frameState, execution, targetValue);
@@ -5327,18 +5348,6 @@ public class FlatNodeGenFactory {
             TypeMirror genericTargetType = node.getFallbackSpecialization().findParameterOrDie(node.getChildExecutions().get(signatureIndex)).getType();
             if (typeEquals(value.getTypeMirror(), genericTargetType)) {
                 // no implicit casts needed if it matches the generic type
-                if (plugs != null && plugs.createSameTypeCast(frameState, value, genericTargetType, prepareBuilder, checkBuilder, castOnly)) {
-                    CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-                    if (castOnly) {
-                        if (frameState.get(value.getName() + "_real_") == null) {
-                            frameState.set(value.getName() + "_real_", value);
-                            b.declaration(targetType, value.getName(), checkBuilder.build());
-                        }
-                    } else {
-                        b.tree(prepareBuilder.build());
-                    }
-                    return new IfTriple(b.build(), null, null);
-                }
                 return null;
             }
 
@@ -5363,10 +5372,8 @@ public class FlatNodeGenFactory {
         List<ImplicitCastData> sourceTypes = typeSystem.lookupByTargetType(targetType);
         CodeTree valueReference = value.createReference();
         if (sourceTypes.isEmpty()) {
-            if (plugs == null || !plugs.createCheckCast(typeSystem, frameState, targetType, value, prepareBuilder, checkBuilder, castBuilder, castOnly)) {
-                checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, valueReference));
-                castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, valueReference));
-            }
+            checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, valueReference));
+            castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, valueReference));
         } else {
             List<SpecializationData> specializations = group.collectSpecializations();
             List<Parameter> parameters = new ArrayList<>();
@@ -5381,24 +5388,20 @@ public class FlatNodeGenFactory {
                 } else {
                     implicitState = multiState.createExtractInteger(frameState, typeGuard);
                 }
-                if (plugs == null || !plugs.createImplicitCheckCast(typeSystem, frameState, targetType, value, implicitState, prepareBuilder, checkBuilder, castBuilder, castOnly)) {
-                    checkBuilder.tree(TypeSystemCodeGenerator.implicitCheckFlat(typeSystem, targetType, valueReference, implicitState));
-                    castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, implicitState));
-                }
+                checkBuilder.tree(TypeSystemCodeGenerator.implicitCheckFlat(typeSystem, targetType, valueReference, implicitState));
+                castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, implicitState));
             } else {
                 Parameter parameter = parameters.get(0);
                 String implicitStateName = createImplicitTypeStateLocalName(parameter);
                 CodeTree defaultValue = null;
                 prepareBuilder.declaration(context.getType(int.class), implicitStateName, defaultValue);
-                if (plugs == null || !plugs.createImplicitCheckCastSlowPath(typeSystem, frameState, targetType, value, implicitStateName, prepareBuilder, checkBuilder, castBuilder, castOnly)) {
-                    CodeTree specializeCall = TypeSystemCodeGenerator.implicitSpecializeFlat(typeSystem, targetType, valueReference);
-                    checkBuilder.startParantheses();
-                    checkBuilder.string(implicitStateName, " = ").tree(specializeCall);
-                    checkBuilder.end();
-                    checkBuilder.string(" != 0");
+                CodeTree specializeCall = TypeSystemCodeGenerator.implicitSpecializeFlat(typeSystem, targetType, valueReference);
+                checkBuilder.startParantheses();
+                checkBuilder.string(implicitStateName, " = ").tree(specializeCall);
+                checkBuilder.end();
+                checkBuilder.string(" != 0");
 
-                    castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, CodeTreeBuilder.singleString(implicitStateName)));
-                }
+                castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, CodeTreeBuilder.singleString(implicitStateName)));
             }
         }
 

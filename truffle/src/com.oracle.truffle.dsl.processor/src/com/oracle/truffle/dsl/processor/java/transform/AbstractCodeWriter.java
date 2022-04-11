@@ -190,7 +190,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
     }
 
-    private void writeClassImpl(CodeTypeElement e) {
+    protected void writeClassImpl(CodeTypeElement e) {
         if (e.getDocTree() != null) {
             visitTree(e.getDocTree(), null, e);
         }

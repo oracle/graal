@@ -2,6 +2,7 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -11,9 +12,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
+import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
-import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public interface NodeGeneratorPlugs {
     String transformNodeMethodName(String name);
@@ -38,17 +40,6 @@ public interface NodeGeneratorPlugs {
 
     CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead);
 
-    boolean createCheckCast(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, CodeTreeBuilder prepareBuilder, CodeTreeBuilder checkBuilder,
-                    CodeTreeBuilder castBuilder, boolean castOnly);
-
-    boolean createImplicitCheckCast(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, CodeTree implicitState, CodeTreeBuilder prepareBuilder,
-                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder, boolean castOnly);
-
-    boolean createImplicitCheckCastSlowPath(TypeSystemData typeSystem, FrameState frameState, TypeMirror targetType, LocalVariable value, String implicitStateName, CodeTreeBuilder prepareBuilder,
-                    CodeTreeBuilder checkBuilder, CodeTreeBuilder castBuilder, boolean cast Only);
-
-    boolean createSameTypeCast(FrameState frameState, LocalVariable value, TypeMirror genericTargetType, CodeTreeBuilder prepareBuilder, CodeTreeBuilder castBuilder, boolean castOnly);
-
     CodeTree[] createThrowUnsupportedValues(FrameState frameState, List<CodeTree> values, CodeTreeBuilder parent, CodeTreeBuilder builder);
 
     void initializeFrameState(FrameState frameState, CodeTreeBuilder builder);
@@ -58,5 +49,15 @@ public interface NodeGeneratorPlugs {
     boolean createCallExecuteAndSpecialize(CodeTreeBuilder builder, CodeTree call);
 
     void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments);
+
+    boolean createCallWrapInAMethod(CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters);
+
+    CodeTree createAssignExecuteChild(
+                    NodeData node, FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType, LocalVariable targetValue,
+                    Function<FrameState, CodeTree> createExecuteAndSpecialize);
+
+    CodeTree createThrowUnsupportedChild(NodeExecutionData execution);
+
+    Boolean needsFrameToExecute(List<SpecializationData> specializations);
 
 }

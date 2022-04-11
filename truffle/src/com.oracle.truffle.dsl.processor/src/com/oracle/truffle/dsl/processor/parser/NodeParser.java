@@ -137,6 +137,7 @@ import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.NodeFieldData;
@@ -1860,7 +1861,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
 
         // Declaration order is not required for child nodes.
-        List<? extends Element> members = processingEnv.getElementUtils().getAllMembers(templateType);
+        List<? extends Element> members;
+        if (templateType instanceof CodeTypeElement) {
+            members = ((CodeTypeElement) templateType).getEnclosedElements();
+        } else {
+            members = processingEnv.getElementUtils().getAllMembers(templateType);
+        }
         NodeData node = parseNodeData(templateType, lookupTypes);
         if (node.hasErrors()) {
             return node;

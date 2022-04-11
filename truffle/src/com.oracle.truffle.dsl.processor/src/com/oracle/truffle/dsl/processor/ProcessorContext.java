@@ -54,6 +54,7 @@ import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.Template;
 
@@ -151,6 +152,9 @@ public class ProcessorContext {
     }
 
     public TypeMirror reloadTypeElement(TypeElement type) {
+        if (type instanceof CodeTypeElement) {
+            return type.asType();
+        }
         return getType(type.getQualifiedName().toString());
     }
 

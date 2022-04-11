@@ -1,15 +1,18 @@
 package com.oracle.truffle.dsl.processor.operations;
 
-import java.util.List;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.Element;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
@@ -48,21 +51,20 @@ public class OperationGeneratorUtils {
         return createEmitLabel(vars, CodeTreeBuilder.singleVariable(label));
     }
 
-    public static CodeTree changeAllVariables(CodeTree tree, VariableElement from, VariableElement to) {
-        // EXTREME HACK
+    public static String printCode(Element el) {
+        StringWriter wr = new StringWriter();
+        new AbstractCodeWriter() {
+            {
+                writer = wr;
+            }
 
-        if (tree.getCodeKind() == CodeTreeKind.STRING && tree.getString().equals(from.getSimpleName().toString())) {
-            return CodeTreeBuilder.singleString(to.getSimpleName().toString());
-        } else {
-            List<CodeTree> enc = tree.getEnclosedElements();
-            if (enc == null) {
-                return tree;
+            @Override
+            protected Writer createWriter(CodeTypeElement clazz) throws IOException {
+                // TODO Auto-generated method stub
+                return wr;
             }
-            for (int i = 0; i < enc.size(); i++) {
-                CodeTree res = changeAllVariables(enc.get(i), from, to);
-                enc.set(i, res);
-            }
-            return tree;
-        }
+        }.visit(el);
+
+        return wr.toString();
     }
 }

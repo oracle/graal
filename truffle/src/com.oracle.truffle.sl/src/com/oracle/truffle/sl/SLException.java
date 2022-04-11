@@ -77,12 +77,15 @@ public class SLException extends AbstractOperationsTruffleException {
      * are no automatic type conversions of values.
      */
     @TruffleBoundary
+    @SuppressWarnings("deprecation")
     public static SLException typeError(Node operation, int bci, Object... values) {
         StringBuilder result = new StringBuilder();
         result.append("Type error");
 
+        SLException ex = new SLException("", operation, bci);
+
         if (operation != null) {
-            SourceSection ss = operation.getEncapsulatingSourceSection();
+            SourceSection ss = ex.getLocation().getSourceSection();
             if (ss != null && ss.isAvailable()) {
                 result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }

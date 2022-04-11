@@ -1,5 +1,8 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -9,18 +12,29 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.CodeWriter;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
+import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
@@ -37,6 +51,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     private Set<DeclaredType> OPERATION_PROXY_IGNORED_ANNOTATIONS = Set.of(
                     types.GenerateOperations,
                     types.OperationProxy,
+                    context.getDeclaredType("com.oracle.truffle.api.operation.OperationProxies"),
                     types.Operation);
 
     public SingleOperationParser(OperationsData parentData) {
@@ -72,7 +87,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
             name += "Operation";
             CodeTypeElement tgt = new CodeTypeElement(MOD_PUBLIC_STATIC, ElementKind.CLASS, null, name);
-            tgt.setEnclosingElement(parentData.getMessageElement());
+            tgt.setEnclosingElement(proxyType.getEnclosingElement());
 
             for (AnnotationMirror mir : parentData.getMessageElement().getAnnotationMirrors()) {
                 if (!OPERATION_PROXY_IGNORED_ANNOTATIONS.contains(mir.getAnnotationType())) {
@@ -107,10 +122,12 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             te = teClone;
 
             for (Element el : CompilerFactory.getCompiler(proxyType).getEnclosedElementsInDeclarationOrder(proxyType)) {
-                if (el instanceof ExecutableElement && isStaticAccessible(el)) {
-                    teClone.add(el);
-                    if (isOperationFunction((ExecutableElement) el)) {
-                        operationFunctions.add((ExecutableElement) el);
+                if (el.getKind() == ElementKind.METHOD && isStaticAccessible(el)) {
+                    CodeExecutableElement cel = CodeExecutableElement.clone((ExecutableElement) el);
+                    cel.setEnclosingElement(el.getEnclosingElement());
+                    teClone.add(cel);
+                    if (isOperationFunction(cel)) {
+                        operationFunctions.add(cel);
                     }
                 }
             }
@@ -122,6 +139,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         MethodProperties props = processMethod(data, operationFunctions.get(0));
+        boolean isVariadic = props.isVariadic;
 
         for (ExecutableElement fun : operationFunctions) {
             MethodProperties props2 = processMethod(data, fun);
@@ -135,22 +153,70 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         data.setMainProperties(props);
 
-        CodeTypeElement clonedType = te instanceof CodeTypeElement ? (CodeTypeElement) te : CodeTypeElement.cloneShallow(te);
-        clonedType.setEnclosingElement(te.getEnclosingElement());
-        clonedType.setSuperClass(types.Node);
+        CodeTypeElement clonedType;
+        if (te instanceof CodeTypeElement) {
+            clonedType = (CodeTypeElement) te;
+        } else {
+            clonedType = CodeTypeElement.cloneShallow(te);
 
-        if (proxyType != null) {
-            clonedType.addOptional(ElementUtils.findExecutableElement(proxyType, "execute"));
+            clonedType.getEnclosedElements().clear();
+            for (Element e : CompilerFactory.getCompiler(te).getEnclosedElementsInDeclarationOrder(te)) {
+                if (e.getModifiers().contains(Modifier.PRIVATE) || !e.getModifiers().contains(Modifier.STATIC)) {
+                    continue;
+                }
+
+                CodeElement<? extends Element> ce;
+                if (e.getKind() == ElementKind.METHOD) {
+                    ce = CodeExecutableElement.clone((ExecutableElement) e);
+                } else if (e.getKind() == ElementKind.FIELD) {
+                    ce = CodeVariableElement.clone((VariableElement) e);
+                } else {
+                    throw new UnsupportedOperationException("unknown enclosed kind: " + e.getKind());
+                }
+
+                ce.setEnclosingElement(e.getEnclosingElement());
+                clonedType.add(ce);
+            }
+        }
+
+        clonedType.setEnclosingElement(te.getEnclosingElement());
+        // clonedType.setSuperClass(new DeclaredCodeTypeMirror(createRegularNodeChild()));
+        clonedType.setSuperClass(types.Node);
+        // clonedType.setSuperClass(new DeclaredCodeTypeMirror(childType));
+
+        if (!isVariadic) {
+            int i = 0;
+            CodeTypeElement childType = createRegularNodeChild();
+            CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
+            List<CodeAnnotationValue> anns = new ArrayList<>();
+            for (ParameterKind param : props.parameters) {
+                if (param == ParameterKind.STACK_VALUE) {
+                    CodeAnnotationMirror ann = new CodeAnnotationMirror(types.NodeChild);
+                    // CodeTypeElement childType = createRegularNodeChild();
+                    ann.setElementValue("value", new CodeAnnotationValue("$child" + i));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(childType)));
+                    anns.add(new CodeAnnotationValue(ann));
+                    i++;
+                }
+            }
+            repAnnotation.setElementValue("value", new CodeAnnotationValue(anns));
+            clonedType.addAnnotationMirror(repAnnotation);
         }
 
         CodeExecutableElement metExecute = new CodeExecutableElement(
                         Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
                         context.getType(props.returnsValue ? Object.class : void.class), "execute");
 
-        {
+        metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+
+        if (isVariadic) {
             int i = 0;
             for (ParameterKind param : props.parameters) {
-                metExecute.addParameter(new CodeVariableElement(param.getParameterType(context), "arg" + i));
+                if (param == ParameterKind.STACK_VALUE) {
+                    metExecute.addParameter(new CodeVariableElement(context.getType(Object.class), "arg" + i));
+                } else if (param == ParameterKind.VARIADIC) {
+                    metExecute.addParameter(new CodeVariableElement(context.getType(Object[].class), "arg" + i));
+                }
                 i++;
             }
         }
@@ -168,7 +234,14 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     clonedType.add(el);
                 }
             }
+
+            clonedType.setSimpleName(proxyType.getSimpleName());
+            clonedType.setEnclosingElement(proxyType.getEnclosingElement());
         }
+
+        // if (data.getName().equals("SLEvalRootOperation")) {
+        // throw new AssertionError(OperationGeneratorUtils.printCode(clonedType));
+        // }
 
         NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
 
@@ -177,7 +250,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return data;
         }
 
-        nodeData.redirectMessages(data);
+        nodeData.redirectMessagesOnGeneratedElements(data);
         data.setNodeData(nodeData);
 
         return data;
@@ -189,8 +262,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     }
 
     private MethodProperties processMethod(SingleOperationData data, ExecutableElement method) {
-        List<DeclaredType> arguments = List.of(); // TODO
-
         boolean isVariadic = false;
         List<ParameterKind> parameters = new ArrayList<>();
 
@@ -234,6 +305,33 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         return false;
+    }
+
+    private CodeTypeElement createRegularNodeChild() {
+
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        result.setSuperClass(types.Node);
+
+        result.add(createExecuteMethod("Generic", context.getType(Object.class)));
+        result.add(createExecuteMethod("Long", context.getType(long.class)));
+        result.add(createExecuteMethod("Integer", context.getType(int.class)));
+        result.add(createExecuteMethod("Byte", context.getType(byte.class)));
+        result.add(createExecuteMethod("Boolean", context.getType(boolean.class)));
+        result.add(createExecuteMethod("Float", context.getType(float.class)));
+        result.add(createExecuteMethod("Double", context.getType(double.class)));
+        result.add(createExecuteMethod("Void", context.getType(void.class)));
+
+        return result;
+    }
+
+    private CodeExecutableElement createExecuteMethod(String name, TypeMirror retType) {
+        CodeExecutableElement result = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), retType, "execute" + name);
+        // result.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+
+        if (!ElementUtils.isObject(retType) && !ElementUtils.isVoid(retType)) {
+            result.addThrownType(types.UnexpectedResultException);
+        }
+        return result;
     }
 
     private boolean isVariadicParameter(VariableElement param) {

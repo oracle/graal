@@ -79,9 +79,9 @@ public class SLOperations {
 
     @Operation
     public static class SLEvalRootOperation {
-        @SuppressWarnings("unchecked")
+
         @Specialization
-        public static Object perform(
+        public static Object doExecute(
                         VirtualFrame frame,
                         Map<TruffleString, RootCallTarget> functions,
                         @Bind("this") Node node) {
@@ -94,6 +94,11 @@ public class SLOperations {
             } else {
                 return SLNull.SINGLETON;
             }
+        }
+
+        @Fallback
+        public static Object fallback(Object ignored) {
+            throw new RuntimeException("");
         }
     }
 

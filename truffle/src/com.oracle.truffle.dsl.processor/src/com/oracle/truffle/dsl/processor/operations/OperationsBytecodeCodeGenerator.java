@@ -159,10 +159,15 @@ public class OperationsBytecodeCodeGenerator {
                                 methodNames, isVariadic, soData,
                                 additionalDataKinds,
                                 fldConsts, cinstr, childIndices);
+
                 NodeCodeGenerator generator = new NodeCodeGenerator();
                 generator.setPlugs(plugs);
 
-                CodeTypeElement result = generator.create(context, null, soData.getNodeData()).get(0);
+                List<CodeTypeElement> resultList = generator.create(context, null, soData.getNodeData());
+                if (resultList.size() != 1) {
+                    throw new AssertionError("Node generator did not return exactly one class");
+                }
+                CodeTypeElement result = resultList.get(0);
 
                 CodeExecutableElement uncExec = null;
                 List<CodeExecutableElement> execs = new ArrayList<>();
@@ -174,7 +179,12 @@ public class OperationsBytecodeCodeGenerator {
                     if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName("execute"))) {
                         uncExec = (CodeExecutableElement) ex;
                     }
+
                     execs.add((CodeExecutableElement) ex);
+                }
+
+                if (uncExec == null) {
+                    throw new AssertionError(String.format("execute method not found in: %s", result.getSimpleName()));
                 }
 
                 for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
@@ -205,23 +215,22 @@ public class OperationsBytecodeCodeGenerator {
                 for (CodeExecutableElement exToCopy : execs) {
                     boolean isBoundary = exToCopy.getAnnotationMirrors().stream().anyMatch(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
 
-                    boolean isExecute = exToCopy.getSimpleName().toString().endsWith("_execute_");
+                    boolean isExecute = exToCopy.getSimpleName().toString().contains("_execute_");
                     boolean isExecuteAndSpecialize = exToCopy.getSimpleName().toString().endsWith("_executeAndSpecialize_");
                     boolean isFallbackGuard = exToCopy.getSimpleName().toString().endsWith("_fallbackGuard__");
 
-                    if (!isVariadic) {
-                        if (isExecute || isExecuteAndSpecialize || isFallbackGuard) {
-                            List<VariableElement> params = exToCopy.getParameters();
-                            int toRemove = cinstr.numPopStatic();
-                            for (int i = 0; i < toRemove; i++) {
-                                params.remove(params.size() - 1);
-                            }
+                    if (isExecute || isExecuteAndSpecialize || isFallbackGuard) {
+                        List<VariableElement> params = exToCopy.getParameters();
 
-                            if (!params.isEmpty() && params.get(params.size() - 1).asType().equals(types.VirtualFrame)) {
-                                params.remove(params.size() - 1);
+                        for (int i = 0; i < params.size(); i++) {
+                            if (params.get(i).asType().equals(types.VirtualFrame)) {
+                                params.remove(i);
+                                i--;
                             }
                         }
+                    }
 
+                    if (!isVariadic) {
                         if (isExecute || isExecuteAndSpecialize) {
                             exToCopy.setReturnType(context.getType(void.class));
                         }

@@ -201,6 +201,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             foundMessages.addAll(getMessages());
         }
         for (MessageContainer sink : findChildContainers()) {
+            sink.redirectMessagesOnGeneratedElements(this);
             foundMessages.addAll(sink.collectMessagesWithElementChildren(visitedSinks, e));
         }
         return foundMessages;
