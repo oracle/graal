@@ -321,6 +321,12 @@ public final class EspressoOptions {
                     usageSyntax = "[0, 65535]") //
     public static final OptionKey<Integer> LivenessAnalysisMinimumLocals = new OptionKey<>(8);
 
+    @Option(help = "Enable Class Hierarchy Analysis, which optimizes instanceof checks and virtual method calls by keeping track of descendants of a given class or interface.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> CHA = new OptionKey<>(true);
+
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions", new Function<String, JDWPOptions>() {
 
         private boolean yesOrNo(String key, String value) {
