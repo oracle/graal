@@ -65,22 +65,27 @@ public abstract class Operation {
 
     public abstract List<TypeMirror> getBuilderArgumentTypes();
 
+    @SuppressWarnings("unused")
     public CodeTree createBeginCode(BuilderVariables vars) {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public CodeTree createAfterChildCode(BuilderVariables vars) {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public CodeTree createBeforeChildCode(BuilderVariables vars) {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public CodeTree createEndCode(BuilderVariables vars) {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public CodeTree createLeaveCode(BuilderVariables vars) {
         return null;
     }
@@ -108,7 +113,6 @@ public abstract class Operation {
         public CodeTree createEndCode(BuilderVariables vars) {
             CodeTree[] arguments = new CodeTree[instruction.inputs.length + instruction.results.length];
 
-            List<TypeMirror> mirs = getBuilderArgumentTypes();
             for (int i = 0; i < arguments.length; i++) {
                 arguments[i] = CodeTreeBuilder.createBuilder().string("operationData.arguments[" + i + "]").build();
             }

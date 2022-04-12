@@ -1,12 +1,7 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import javax.lang.model.type.TypeMirror;
-
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
@@ -14,7 +9,6 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.DiscardInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationEnterInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationExitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationLeaveInstruction;
@@ -71,9 +65,7 @@ public class OperationsContext {
         createLoadConstant();
 
         createLoadArgument();
-
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(instructionId++))));
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(instructionId++))));
+        createLoadStoreLocal();
         createReturn();
 
         add(new Operation.Instrumentation(this, operationId++,
@@ -84,6 +76,14 @@ public class OperationsContext {
 
 // Instruction iSuper = add(new SuperInstruction(instructionId++, new Instruction[]{iConst,
 // iStloc}));
+    }
+
+    private void createLoadStoreLocal() {
+        StoreLocalInstruction slInit = add(new StoreLocalInstruction(instructionId++));
+        StoreLocalInstruction slUninit = add(new StoreLocalInstruction(instructionId++, slInit));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, slUninit));
+
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(instructionId++))));
     }
 
     private void createLoadArgument() {

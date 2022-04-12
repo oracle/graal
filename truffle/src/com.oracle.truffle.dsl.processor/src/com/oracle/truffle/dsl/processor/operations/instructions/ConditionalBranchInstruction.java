@@ -24,7 +24,7 @@ public class ConditionalBranchInstruction extends Instruction {
     }
 
     @Override
-    public TypeMirror[] expectedInputTypes(ProcessorContext context) {
+    public TypeMirror[] expectedInputTypes(ProcessorContext c) {
         return new TypeMirror[]{
                         context.getType(short.class),
                         context.getType(boolean.class),

@@ -1,7 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,7 +19,6 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
-import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -29,7 +27,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
@@ -39,12 +36,8 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.Inpu
 
 public class OperationsBytecodeCodeGenerator {
 
-    private final Set<Modifier> MOD_PUBLIC = Set.of(Modifier.PUBLIC);
-    private final Set<Modifier> MOD_PUBLIC_ABSTRACT = Set.of(Modifier.PUBLIC, Modifier.ABSTRACT);
-    private final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE = Set.of(Modifier.PRIVATE);
     private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
-    private final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
     final static Object MARKER_CHILD = new Object();
@@ -154,8 +147,6 @@ public class OperationsBytecodeCodeGenerator {
 
                 final List<Object> childIndices = new ArrayList<>();
                 final List<Object> constIndices = new ArrayList<>();
-
-                int numStackValues = isVariadic ? 0 : cinstr.numPopStatic();
 
                 OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(
                                 fldBc, fldChildren, constIndices,
@@ -831,7 +822,7 @@ public class OperationsBytecodeCodeGenerator {
 
             CodeTreeBuilder b = mGetSourceSection.createBuilder();
 
-            b.tree(createReparseCheck(typBuilderImpl));
+            b.tree(createReparseCheck());
 
             b.startReturn();
             b.startCall("this", "getSourceSectionImpl");
@@ -845,7 +836,7 @@ public class OperationsBytecodeCodeGenerator {
 
             CodeTreeBuilder b = mGetSourceSectionAtBci.createBuilder();
 
-            b.tree(createReparseCheck(typBuilderImpl));
+            b.tree(createReparseCheck());
 
             b.startReturn();
             b.startCall("this", "getSourceSectionAtBciImpl");
@@ -908,7 +899,7 @@ public class OperationsBytecodeCodeGenerator {
         }
     }
 
-    private CodeTree createReparseCheck(CodeTypeElement typBuilderImpl) {
+    private CodeTree createReparseCheck() {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startIf().string("sourceInfo == null").end();
         b.startBlock();
@@ -926,10 +917,6 @@ public class OperationsBytecodeCodeGenerator {
         b.end();
 
         return b.build();
-    }
-
-    private static TypeMirror generic(TypeElement el, TypeMirror... params) {
-        return new DeclaredCodeTypeMirror(el, Arrays.asList(params));
     }
 
     private static TypeMirror arrayOf(TypeMirror el) {

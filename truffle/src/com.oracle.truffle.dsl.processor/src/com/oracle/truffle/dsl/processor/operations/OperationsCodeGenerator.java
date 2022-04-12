@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.Stack;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.Modifier;

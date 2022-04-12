@@ -35,7 +35,6 @@ import com.oracle.truffle.dsl.processor.parser.NodeParser;
 public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private static final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
-    private static final Set<Modifier> MOD_STATIC_FINAL = Set.of(Modifier.STATIC, Modifier.FINAL);
     private final OperationsData parentData;
     private TypeElement proxyType;
 
