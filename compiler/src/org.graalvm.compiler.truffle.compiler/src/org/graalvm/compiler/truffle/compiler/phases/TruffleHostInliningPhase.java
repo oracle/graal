@@ -1,0 +1,1151 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package org.graalvm.compiler.truffle.compiler.phases;
+
+import static org.graalvm.compiler.core.common.GraalOptions.Intrinsify;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.AbstractInliningPhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
+
+/**
+ * Domain specific inlining phase for Truffle interpreters during host compilation.
+ *
+ * For more details on this phase see the <a href=
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/HostOptimization.md">documentation</a>
+ */
+public class TruffleHostInliningPhase extends AbstractInliningPhase {
+
+    public static class Options {
+        @Option(help = "Whether Truffle host inlinign is enabled")//
+        public static final OptionKey<Boolean> TruffleHostInlining = new OptionKey<>(true);
+
+        @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods.")//
+        public static final OptionKey<Integer> TruffleHostInliningBaseBudget = new OptionKey<>(5_000);
+
+        @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods with a BytecodeInterpreterSwitch annotation.")//
+        public static final OptionKey<Integer> TruffleHostInliningByteCodeInterpreterBudget = new OptionKey<>(100_000);
+
+        @Option(help = "When logging is activated for this phase enables printing of only explored, but ultimately not inlined call trees.")//
+        public static final OptionKey<Boolean> TruffleHostInliningPrintExplored = new OptionKey<>(false);
+    }
+
+    /**
+     * Max exploration limit to avoid stack overflow errors in notorious cases.
+     */
+    static final int MAX_EXPLORATION_DEPTH = 1000;
+
+    protected final CanonicalizerPhase canonicalizer;
+
+    public TruffleHostInliningPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
+    }
+
+    protected InliningGraphCache createGraphCache() {
+        return new DefaultGraphCache();
+    }
+
+    protected boolean isEnabledFor(ResolvedJavaMethod method) {
+        return isBytecodeInterpreterSwitch(method);
+    }
+
+    private boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
+        return TruffleCompilerRuntime.getRuntimeIfAvailable().isTransferToInterpreterMethod(translateMethod(method));
+    }
+
+    private boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
+        return TruffleCompilerRuntime.getRuntimeIfAvailable().isInInterpreter(translateMethod(targetMethod));
+    }
+
+    protected boolean isTruffleBoundary(ResolvedJavaMethod targetMethod) {
+        return TruffleCompilerRuntime.getRuntimeIfAvailable().isTruffleBoundary(translateMethod(targetMethod));
+    }
+
+    private boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod targetMethod) {
+        return TruffleCompilerRuntime.getRuntimeIfAvailable().isBytecodeInterpreterSwitch(translateMethod(targetMethod));
+    }
+
+    protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
+        return method;
+    }
+
+    @Override
+    protected final void run(StructuredGraph graph, HighTierContext highTierContext) {
+        ResolvedJavaMethod method = graph.method();
+        if (!isEnabledFor(method)) {
+            /*
+             * Make sure this method only applies to interpreter methods. We check this early as we
+             * assume that there are much more non-interpreter methods than interpreter methods in a
+             * typical Truffle interpreter.
+             */
+            return;
+        }
+
+        runImpl(new InliningContext(highTierContext, graph, createGraphCache(), TruffleCompilerRuntime.getRuntimeIfAvailable()));
+    }
+
+    private void runImpl(InliningContext context) {
+        int sizeLimit;
+        final ResolvedJavaMethod rootMethod = context.graph.method();
+
+        if (isBytecodeInterpreterSwitch(rootMethod)) {
+            /*
+             * We use a significantly higher limit for method with @BytecodeInterpreterSwitch
+             * annotation. In the future, we may even consider disabling the limit for such methods
+             * all together and fail if the graph becomes too big.
+             */
+            sizeLimit = Options.TruffleHostInliningByteCodeInterpreterBudget.getValue(context.graph.getOptions());
+        } else {
+            sizeLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
+        }
+
+        final DebugContext debug = context.graph.getDebug();
+        debug.dump(DebugContext.VERBOSE_LEVEL, context.graph, "Before Truffle host inlining");
+
+        CallTree root = new CallTree(rootMethod);
+
+        int round = 0;
+        int inlineIndex = 0;
+        int previousInlineIndex = -1;
+        boolean budgetLimitReached = false;
+        List<CallTree> toProcess = null;
+        EconomicSet<Node> canonicalizableNodes = EconomicSet.create();
+
+        int graphSize = 0;
+        int beforeGraphSize = 0;
+        try {
+            /*
+             * We perform inlining until we reach a fixed point, no further calls were inlined in
+             * the previous round.
+             */
+            while (previousInlineIndex < inlineIndex) {
+                previousInlineIndex = inlineIndex;
+
+                if (!canonicalizableNodes.isEmpty()) {
+                    /*
+                     * We canonicalize potentially showing more inlining opportunities.
+                     */
+                    canonicalizer.applyIncremental(context.graph, context.highTierContext, canonicalizableNodes);
+                    canonicalizableNodes.clear();
+                }
+
+                graphSize = NodeCostUtil.computeNodesSize(context.graph.getNodes());
+
+                if (round == 0) {
+                    beforeGraphSize = graphSize;
+                    root.children = exploreGraph(context, null, root, context.graph, round, sizeLimit, 0);
+                    toProcess = new ArrayList<>(root.children.size());
+                    toProcess.addAll(root.children);
+                } else {
+                    budgetLimitReached = false;
+                    toProcess.clear();
+                    exploreAndQueueInlinableCalls(context, root, toProcess, round, sizeLimit);
+                }
+
+                // ORDER BY call.subTreeInvokes ASC, call.subTreeSize ASC
+                Collections.sort(toProcess);
+
+                /*
+                 * We use a priority queue to prioritize work on the most promising methods first in
+                 * case the budget gets tight.
+                 */
+                for (CallTree call : toProcess) {
+                    if (!shouldInline(context, call)) {
+                        /*
+                         * This may happen if certain invokes became dead code due to inlining of
+                         * other invokes. A bit surprisingly this may happen even if no
+                         * canonicalization is happening in between inlines.
+                         */
+                        continue;
+                    }
+
+                    if (!isInBudget(call, graphSize, sizeLimit)) {
+                        continue;
+                    }
+
+                    graphSize += call.subTreeSize;
+                    inlineSubTree(context, canonicalizableNodes, call, inlineIndex++);
+
+                    if (debug.isDumpEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
+                        debug.dump(DebugContext.VERY_DETAILED_LEVEL, context.graph, "After Truffle host inlining %s", call.getTargetMethod().format("%H.%n(%P)"));
+                    }
+                }
+
+                debug.dump(DebugContext.DETAILED_LEVEL, context.graph, "After Truffle host inlining round %s", round);
+                round++;
+            }
+
+        } finally {
+            if (debug.isLogEnabled()) {
+                if (budgetLimitReached) {
+                    debug.log("Warning method host inlining limit exceeded limit %s with graph size %s.", sizeLimit, graphSize);
+                }
+
+                /*
+                 * The call tree is very convenient to debug host inlining decisions in addition to
+                 * IGV. To use pass
+                 * -H:Log=TruffleHostInliningPhase,~TruffleHostInliningPhase.CanonicalizerPhase to
+                 * filter noise by canonicalization.
+                 */
+                debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining: %n%s", round, beforeGraphSize, graphSize, printCallTree(context, root));
+            }
+        }
+
+    }
+
+    private static boolean isInBudget(CallTree call, int graphSize, int sizeLimit) {
+        int newSize = graphSize + call.subTreeSize;
+        if (newSize <= sizeLimit) {
+            call.reason = "within budget";
+            return true;
+        }
+
+        boolean trivial = call.subTreeInvokes == 0 && call.subTreeSize < 30;
+        if (trivial) {
+            call.reason = "out of budget but simple enough";
+            return true;
+        }
+
+        call.reason = "Out of budget";
+        return false;
+    }
+
+    /**
+     * Explores the specified graph and returns the list of callees that are potentially inlineable.
+     * Recursive exploration will only be triggered for calls that are already inlinable.
+     * <p>
+     * This method follows the same rules as the {@link PartialEvaluator} for recursive exploration.
+     * For example, methods dominated by a call to
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate()} are not inlined or explored.
+     * The same applies to calls protected by {@link CompilerDirectives#inInterpreter()} or methods
+     * annotated by {@link TruffleBoundary}.
+     */
+    private List<CallTree> exploreGraph(InliningContext context, CallTree root, CallTree caller, StructuredGraph graph,
+                    int exploreRound, int exploreBudget, int depth) {
+
+        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, false);
+        EconomicSet<AbstractBeginNode> deoptimizedBlocks = EconomicSet.create();
+        EconomicSet<AbstractBeginNode> inInterpreterBlocks = EconomicSet.create();
+        List<CallTree> children = new ArrayList<>();
+
+        /*
+         * We traverse the graph in reverse post order to detect all deoptimized blocks before the
+         * actual invoke. This allows us to not inline calls that were preceded by a transfer to
+         * interpreter.
+         */
+        for (Block block : cfg.reversePostOrder()) {
+            if (block.getEndNode() instanceof IfNode) {
+                /*
+                 * Calls protected by inInterpreter within if conditions must mark all false
+                 * successors blocks including blocks dominated by the block as protected
+                 * inIntepreter.
+                 */
+                IfNode ifNode = (IfNode) block.getEndNode();
+                LogicNode condition = ifNode.condition();
+                for (Node input : condition.inputs()) {
+                    if (input instanceof Invoke) {
+                        ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
+                        if (targetMethod != null && isInInterpreter(targetMethod)) {
+                            inInterpreterBlocks.add(ifNode.falseSuccessor());
+                            break;
+                        }
+                    }
+                }
+            }
+
+            boolean guardedByInInterpreter = false;
+
+            for (FixedNode node : block.getNodes()) {
+                if (root != null && root.explorationIncomplete) {
+                    /*
+                     * Stop exploration as soon as the root gets marked incomplete, meaning too big
+                     * to explore.
+                     */
+                    return children;
+                }
+
+                if (node instanceof FixedGuardNode) {
+                    /*
+                     * Some if conditions may have already been converted to guards at this point.
+                     * For guards that are protected inInterpreter blocks we need to mark all
+                     * following blocks as inInterpreter blocks. We also mark all following fixed
+                     * nodes as inInterpeter by setting a local variable guardedByInInterpreter to
+                     * true.
+                     */
+                    FixedGuardNode guard = (FixedGuardNode) node;
+                    if (guard.isNegated()) {
+                        LogicNode condition = guard.condition();
+                        for (Node input : condition.inputs()) {
+                            if (input instanceof Invoke) {
+                                ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
+                                if (targetMethod != null && isInInterpreter(targetMethod)) {
+
+                                    Block dominatedSilbling = block.getFirstDominated();
+                                    while (dominatedSilbling != null) {
+                                        inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
+                                        dominatedSilbling = dominatedSilbling.getDominatedSibling();
+                                    }
+                                    guardedByInInterpreter = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!(node instanceof Invoke)) {
+                    continue;
+                }
+
+                Invoke newInvoke = (Invoke) node;
+                ResolvedJavaMethod newTargetMethod = newInvoke.getTargetMethod();
+                if (newTargetMethod == null) {
+                    continue;
+                }
+
+                if (isTransferToInterpreterMethod(newTargetMethod)) {
+                    /*
+                     * If we detect a deopt we mark the entire block as a deoptimized block. It is
+                     * probably rare that a deopt is found in the middle of a block, but that deopt
+                     * would propagate to the entire block anyway.
+                     */
+                    deoptimizedBlocks.add(block.getBeginNode());
+
+                    /*
+                     * The deoptimization should propagate to the block of the caller if the first
+                     * block of a method is a deopt. Maybe this could be better?
+                     */
+                    if (block.getBeginNode() == graph.start()) {
+                        caller.propagatesDeopt = true;
+                    }
+                }
+
+                boolean deoptimized = caller.deoptimized || isBlockOrDominatorContainedIn(block, deoptimizedBlocks);
+                boolean inInterpreter = guardedByInInterpreter || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
+
+                CallTree callee = new CallTree(caller, newInvoke, deoptimized, inInterpreter);
+                children.add(callee);
+
+                /*
+                 * The explore root determines where the statistics for the subtree are collected.
+                 */
+                CallTree exploreRoot;
+                if (root == null) {
+                    exploreRoot = callee;
+                } else {
+                    exploreRoot = root;
+                }
+
+                if (shouldInline(context, callee)) {
+                    callee.children = exploreInlinableCall(context, exploreRoot, callee, exploreRound, exploreBudget, depth);
+
+                    if (callee.propagatesDeopt) {
+                        deoptimizedBlocks.add(block.getBeginNode());
+
+                        /*
+                         * Propagate even further up if the invoke is again in the first block.
+                         */
+                        if (block.getBeginNode() == graph.start()) {
+                            caller.propagatesDeopt = true;
+                        }
+                    }
+                } else {
+                    /*
+                     * We do not count deoptimized invokes as actual invokes. We do not want that
+                     * slow-path code influences inline prioritization. Note that invokes are still
+                     * accounted for in the node cost.
+                     */
+                    if (!deoptimized && !inInterpreter) {
+
+                        /*
+                         * We propagate the subTreeSize to all callers until we reach the
+                         * exploreRoot.
+                         */
+                        CallTree current = callee;
+                        while (current != null) {
+                            current.subTreeInvokes++;
+                            if (current == exploreRoot) {
+                                break;
+                            }
+                            current = current.parent;
+                        }
+                    }
+                }
+            }
+        }
+        return children;
+    }
+
+    private static boolean isBlockOrDominatorContainedIn(Block currentBlock, EconomicSet<AbstractBeginNode> blocks) {
+        if (blocks.isEmpty()) {
+            return false;
+        }
+        Block dominator = currentBlock;
+        while (dominator != null) {
+            if (blocks.contains(dominator.getBeginNode())) {
+                return true;
+            }
+            dominator = dominator.getDominator();
+        }
+        return false;
+    }
+
+    private List<CallTree> exploreInlinableCall(InliningContext context, CallTree exploreRoot, CallTree callee, int exploreRound, int exploreBudget, int depth) {
+        StructuredGraph calleeGraph;
+        ResolvedJavaMethod targetMethod;
+        if (callee.invoke.getInvokeKind().isDirect()) {
+            targetMethod = callee.getTargetMethod();
+        } else {
+            assert callee.monomorphicTargetMethod != null;
+            targetMethod = callee.monomorphicTargetMethod;
+        }
+
+        calleeGraph = context.lookupGraph(targetMethod);
+        assert calleeGraph != null : "There must be a graph available for an inlinable call.";
+
+        int graphSize = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
+
+        if (exploreRoot.subTreeSize + graphSize > exploreBudget || depth > MAX_EXPLORATION_DEPTH) {
+            /*
+             * We reached the limits of what we want to explore. This means this call is unlikely to
+             * ever get inlined. From now on we should finish the recursive exploration as soon as
+             * possible to avoid unnecessary overhead.
+             */
+            exploreRoot.explorationIncomplete = true;
+            return Collections.emptyList();
+        }
+
+        /*
+         * We propagate the subTreeSize to all callers until we reach the exploreRoot.
+         */
+        CallTree current = callee;
+        while (current != null) {
+            current.subTreeSize += graphSize;
+            if (current == exploreRoot) {
+                break;
+            }
+            current = current.parent;
+        }
+        try {
+            return exploreGraph(context, exploreRoot, callee, calleeGraph, exploreRound, exploreBudget, depth + 1);
+        } finally {
+            callee.exploredIndex = exploreRound;
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if a call tree should get inlined, otherwise <code>false</code>.
+     * This method does not yet make determine wheter the call site is in budget. See
+     * {@link #isInBudget(CallTree, int, int)} for that.
+     */
+    private boolean shouldInline(InliningContext context, CallTree call) {
+        if (call.parent == null) {
+            // root always inlinable
+            return true;
+        }
+
+        Invoke invoke = call.invoke;
+
+        if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
+            call.reason = "not a method call target";
+            return false;
+        }
+
+        ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
+        if (!shouldInlineTarget(context, call, targetMethod)) {
+            return false;
+        }
+
+        String failureMessage = InliningUtil.checkInvokeConditions(call.invoke);
+        if (failureMessage != null) {
+            call.reason = failureMessage;
+            return false;
+        }
+
+        if (!invoke.getInvokeKind().isDirect() && !shouldInlineMonomorphic(context, call, targetMethod)) {
+            return false;
+        }
+
+        if (isTransferToInterpreterMethod(targetMethod)) {
+            /*
+             * Always inline the transfer to interpreter method.
+             */
+            return true;
+        }
+
+        if (isInInterpreter(targetMethod)) {
+            /*
+             * Always inline inInterpreter method.
+             */
+            return true;
+        }
+
+        if (call.deoptimized) {
+            /*
+             * The block of the call was deoptimized or the deoptimization propagated through a call
+             * to another method that was always deoptimizing.
+             */
+            call.reason = "dominated by transferToInterpreter()";
+            return false;
+        }
+
+        if (call.inInterpreter) {
+            /*
+             * The block of the call was deoptimized or the deoptimization propagated through a call
+             * to another method that was always deoptimizing.
+             */
+            call.reason = "protected by inInterpreter()";
+            return false;
+        }
+
+        /*
+         * If a method always is deoptimized, we can exclude it from inlining as it is likely not a
+         * common path. For example CompilerDirectives.shouldNotReachHere.
+         */
+        if (call.propagatesDeopt) {
+            call.reason = "propagates transferToInterpreter";
+            return false;
+        }
+
+        if (call.explorationIncomplete) {
+            /*
+             * We have given up exploring the method as it was too big. We cannot really make a
+             * confident inlining decision in such cases, so it is better to remain conservative
+             * here.
+             */
+            call.reason = "exploration incomplete";
+            return false;
+        }
+
+        if (call.parent.isRecursive(targetMethod)) {
+            /*
+             * Recursions are not bound to happen for runtime compiled methods, so they are unlikely
+             * to actually be used within runtime compiled methods. There are still some corner
+             * cases where this could happen, e.g. recursive nodes. Hence we still need to ignore
+             * recursions for host Truffle inlining as there recursive nodes typically don't become
+             * constants in host compilations.
+             */
+            call.reason = "recursive";
+            return false;
+        }
+
+        if (context.highTierContext.getReplacements().hasSubstitution(targetMethod, context.graph.getOptions())) {
+            call.reason = "has substituion";
+            return false;
+        }
+
+        if (isTruffleBoundary(targetMethod)) {
+            /*
+             * Similar to runtime compilations, truffle boundary calls indicate the slow path
+             * execution of a mode. We shouldn't force any additional inlining heuristics for such
+             * methods as we do not know
+             */
+            call.reason = "truffle boundary";
+            return false;
+        }
+
+        if (isBytecodeInterpreterSwitch(targetMethod)) {
+            call.reason = "bytecode interpreter switch must not be inlined";
+            return false;
+        }
+
+        // seems to be quite expensive so do this last
+        ProfilingInfo info = context.graph.getProfilingInfo(targetMethod);
+        if (info != null && new OptimisticOptimizations(context.graph.getProfilingInfo(targetMethod), context.options).lessOptimisticThan(context.highTierContext.getOptimisticOptimizations())) {
+            call.reason = "the callee uses less optimistic optimizations than caller";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static boolean shouldInlineTarget(InliningContext context, CallTree call, ResolvedJavaMethod targetMethod) {
+        if (targetMethod == null) {
+            call.reason = "target method is not resolved";
+            return false;
+        }
+
+        if (!targetMethod.canBeInlined()) {
+            /*
+             * Respect user guided never inline annotations.
+             */
+            call.reason = "target method not inlinable";
+            return false;
+        }
+
+        if (targetMethod.isNative() && !(Intrinsify.getValue(context.options) &&
+                        context.highTierContext.getReplacements().getInlineSubstitution(targetMethod, call.invoke.bci(), call.invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
+                                        context.graph.allowAssumptions(),
+                                        context.options) != null)) {
+            call.reason = "target method is a non-intrinsic native method";
+            return false;
+        }
+
+        if (!targetMethod.getDeclaringClass().isInitialized()) {
+            call.reason = "target method's class is not initialized";
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Invoked for each round after the first round to explore and decide inlining decisions for
+     * inlinable subtrees which are not yet inlined.
+     */
+    private void exploreAndQueueInlinableCalls(InliningContext context, CallTree call, Collection<CallTree> toProcess, int round, int exploreBudget) {
+        if (call.isInlined()) {
+            for (CallTree callee : call.children) {
+                exploreAndQueueInlinableCalls(context, callee, toProcess, round, exploreBudget);
+            }
+        } else {
+            if (shouldInline(context, call)) {
+                if (call.exploredIndex == -1) {
+                    call.subTreeInvokes = 0;
+                    call.subTreeSize = 0;
+                    call.children = exploreInlinableCall(context, call, call, round, exploreBudget, 1);
+                }
+                toProcess.add(call);
+            }
+        }
+    }
+
+    private static boolean shouldInlineMonomorphic(InliningContext context, CallTree call, ResolvedJavaMethod targetMethod) {
+        Invoke invoke = call.invoke;
+        JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getTypeProfile();
+        if (typeProfile == null) {
+            call.reason = "not direct call: no type profile";
+            return false;
+        }
+
+        if (typeProfile.getNotRecordedProbability() != 0.0D) {
+            call.reason = "not direct call: type might be imprecise";
+            return false;
+        }
+
+        JavaTypeProfile.ProfiledType[] ptypes = typeProfile.getTypes();
+        if (ptypes == null || ptypes.length <= 0) {
+            call.reason = "not direct call: no parameter types in profile";
+            return false;
+        }
+
+        if (ptypes.length != 1) {
+            call.reason = "not direct call: polymorphic inlining not supported";
+            return false;
+        }
+
+        SpeculationLog speculationLog = context.graph.getSpeculationLog();
+        if (speculationLog == null) {
+            call.reason = "not direct call: no speculation log";
+            return false;
+        }
+
+        final OptimisticOptimizations optimisticOpts = context.highTierContext.getOptimisticOptimizations();
+        if (!optimisticOpts.inlineMonomorphicCalls(context.options)) {
+            call.reason = "not direct call: inlining monomorphic calls is disabled";
+            return false;
+        }
+
+        SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
+        if (!speculationLog.maySpeculate(speculationReason)) {
+            call.reason = "not direct call: speculation disabled";
+            return false;
+        }
+
+        ResolvedJavaType type = ptypes[0].getType();
+        ResolvedJavaMethod concrete = type.resolveConcreteMethod(targetMethod, invoke.getContextType());
+        if (!shouldInlineTarget(context, call, concrete)) {
+            return false;
+        }
+        call.monomorphicTargetMethod = concrete;
+
+        return true;
+    }
+
+    private void inlineSubTree(InliningContext context, EconomicSet<Node> canonicalizableNodes, CallTree call, int inlineIndex) {
+        assert call.invoke.asFixedNode().graph() == context.graph : "invalid graph";
+        assert call.children != null : "Call not yet explored or marked incomplete.";
+        assert shouldInline(context, call) : "Call should be inlined.";
+
+        call.reason = null;
+        call.inlinedIndex = inlineIndex;
+        UnmodifiableEconomicMap<Node, Node> oldToNew = inline(context, canonicalizableNodes, call);
+
+        for (CallTree child : call.children) {
+            child.invoke = (Invoke) oldToNew.get(child.invoke.asFixedNode());
+            assert child.invoke != null : "new invoke not found";
+
+            /*
+             * We need to recheck whether the call is still inlinable. We cannot reuse a previous
+             * decision as the call may have become dead in the meantime.
+             */
+            if (shouldInline(context, child)) {
+                inlineSubTree(context, canonicalizableNodes, child, inlineIndex);
+            }
+        }
+    }
+
+    private static UnmodifiableEconomicMap<Node, Node> inline(InliningContext context, EconomicSet<Node> canonicalizableNodes, CallTree call) {
+        Invoke invoke = call.invoke;
+        ResolvedJavaMethod targetMethod;
+        if (invoke.getInvokeKind().isDirect()) {
+            targetMethod = invoke.getTargetMethod();
+        } else {
+            targetMethod = call.monomorphicTargetMethod;
+            assert targetMethod != null;
+            JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getTypeProfile();
+            SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
+            SpeculationLog speculationLog = context.graph.getSpeculationLog();
+            ResolvedJavaType resolvedType = typeProfile.getTypes()[0].getType();
+            insertTypeGuard(context, invoke, resolvedType, speculationLog.speculate(speculationReason));
+            devirtualizeInvoke(context, invoke, targetMethod);
+        }
+        StructuredGraph inlineGraph = context.lookupGraph(targetMethod);
+        AtomicReference<UnmodifiableEconomicMap<Node, Node>> duplicates = new AtomicReference<>();
+        canonicalizableNodes.addAll(InliningUtil.inlineForCanonicalization(invoke, inlineGraph, true, targetMethod,
+                        (d) -> duplicates.set(d),
+                        "Truffle Host Inlining",
+                        "Truffle Host Inlining"));
+        return duplicates.get();
+    }
+
+    private static void devirtualizeInvoke(InliningContext context, Invoke invoke, ResolvedJavaMethod newTarget) {
+        MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
+        MethodCallTargetNode newCallTarget = context.graph.add(new MethodCallTargetNode(InvokeKind.Special, newTarget, oldCallTarget.arguments().toArray(ValueNode.EMPTY_ARRAY),
+                        oldCallTarget.returnStamp(), oldCallTarget.getTypeProfile()));
+        invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
+    }
+
+    @SuppressWarnings("try")
+    private static void insertTypeGuard(InliningContext context, Invoke invoke, ResolvedJavaType type, Speculation speculation) {
+        try (DebugCloseable debug = invoke.asNode().withNodeSourcePosition()) {
+            StructuredGraph graph = context.graph;
+            ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
+            LoadHubNode receiverHub = graph.unique(new LoadHubNode(context.highTierContext.getStampProvider(), nonNullReceiver));
+            ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(NodeView.DEFAULT),
+                            context.highTierContext.getConstantReflection().asObjectHub(type), context.highTierContext.getMetaAccess(), graph);
+
+            LogicNode typeCheck = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, receiverHub, typeHub, context.highTierContext.getConstantReflection(), NodeView.DEFAULT);
+            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
+            assert invoke.predecessor() != null;
+
+            ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);
+            invoke.callTarget().replaceFirstInput(nonNullReceiver, anchoredReceiver);
+
+            graph.addBeforeFixed(invoke.asFixedNode(), guard);
+        }
+    }
+
+    private String printCallTree(InliningContext context, CallTree root) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream writer = new PrintStream(out, true);
+        printTree(context, writer, INDENT, root, maxLabelWidth(context, root, 0, 1));
+        return new String(out.toByteArray());
+    }
+
+    static final String INDENT = "  ";
+
+    private int maxLabelWidth(InliningContext context, CallTree tree, int maxLabelWidth, int depth) {
+        int maxLabel = 0;
+        if (tree.parent == null) {
+            // we do not care about the root label length, it does not print any properties
+            maxLabel = 0;
+        } else {
+            maxLabel = Math.max(tree.buildLabel().length() + (depth * INDENT.length()), maxLabelWidth);
+        }
+        if (tree.children != null) {
+            if (Options.TruffleHostInliningPrintExplored.getValue(context.options) || tree.inlinedIndex != -1 || tree.parent == null) {
+                for (CallTree child : tree.children) {
+                    maxLabel = maxLabelWidth(context, child, maxLabel, depth + 1);
+                }
+            }
+        }
+        return maxLabel;
+    }
+
+    private void printTree(InliningContext context, PrintStream out, String indent, CallTree tree, int maxLabelWidth) {
+        out.printf("%s%n", tree.toString(indent, maxLabelWidth));
+        if (tree.children != null) {
+            if (Options.TruffleHostInliningPrintExplored.getValue(context.options) || tree.inlinedIndex != -1 || tree.parent == null) {
+                for (CallTree child : tree.children) {
+                    printTree(context, out, indent + INDENT, child, maxLabelWidth);
+                }
+            }
+        }
+    }
+
+    public static void install(HighTier highTier, OptionValues options) {
+        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        if (rt == null) {
+            return;
+        }
+        if (!Options.TruffleHostInlining.getValue(options)) {
+            return;
+        }
+        TruffleHostInliningPhase phase = new TruffleHostInliningPhase(highTier.createCanonicalizerPhase());
+        ListIterator<BasePhase<? super HighTierContext>> insertionPoint = highTier.findPhase(AbstractInliningPhase.class);
+        if (insertionPoint == null) {
+            highTier.prependPhase(phase);
+            return;
+        }
+        insertionPoint.previous();
+        insertionPoint.add(phase);
+    }
+
+    public static void installInlineInvokePlugin(Plugins plugins, OptionValues options) {
+        if (Options.TruffleHostInlining.getValue(options)) {
+            plugins.prependInlineInvokePlugin(new BytecodeParserInlineInvokePlugin());
+        }
+    }
+
+    public static boolean shouldDenyTrivialInlining(@SuppressWarnings("unused") ResolvedJavaMethod caller, ResolvedJavaMethod callee) {
+        TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        assert r != null;
+        return (r.isBytecodeInterpreterSwitch(callee) || r.isTruffleBoundary(callee) || r.isInInterpreter(callee) || r.isTransferToInterpreterMethod(callee));
+    }
+
+    static final class BytecodeParserInlineInvokePlugin implements InlineInvokePlugin {
+
+        @Override
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntimeIfAvailable();
+            if (rt != null && shouldDenyTrivialInlining(b.getMethod(), targetMethod)) {
+                /*
+                 * We deny bytecode parser inlining for any method that is relevant for Truffle host
+                 * inlining. This is important otherwise we might miss some PE boundaries during
+                 * application.
+                 */
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
+            return null;
+        }
+
+    }
+
+    public interface InliningGraphCache {
+
+        StructuredGraph lookup(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method);
+
+    }
+
+    static final class InliningContext {
+
+        final HighTierContext highTierContext;
+        final StructuredGraph graph;
+        private final InliningGraphCache graphCache;
+        final OptionValues options;
+        final TruffleCompilerRuntime truffle;
+
+        InliningContext(HighTierContext context, StructuredGraph graph, InliningGraphCache graphCache, TruffleCompilerRuntime truffle) {
+            this.highTierContext = context;
+            this.graph = graph;
+            this.options = graph.getOptions();
+            this.graphCache = graphCache;
+            this.truffle = truffle;
+        }
+
+        StructuredGraph lookupGraph(ResolvedJavaMethod method) {
+            return graphCache.lookup(highTierContext, graph, method);
+        }
+
+    }
+
+    static final class CallTree implements Comparable<CallTree> {
+
+        /**
+         * The invoke node in the parent graph.
+         */
+        Invoke invoke;
+
+        /**
+         * The parent caller. Note that since trivial inlining in SVM is already run this might not
+         * reflect a real caller in the Java bytecodes.
+         */
+        final CallTree parent;
+        List<CallTree> children;
+
+        /**
+         * True if this method is deoptimized, this means that it is dominated by a call to
+         * transferToInterpreter.
+         */
+        final boolean deoptimized;
+
+        /**
+         * True if invoke is contained in a block protected by a call to if (inInterpreter()). Code
+         * protected by such conditions are potentially not designed for PE and therefore
+         * assumptions taken by this inlining heuristic do not apply.
+         */
+        final boolean inInterpreter;
+
+        /**
+         * True if this method contains a deopt in its first block.
+         */
+        boolean propagatesDeopt;
+
+        /**
+         * The reason why inlining failed or succeeded.
+         */
+        String reason;
+
+        /**
+         * Gets set if the invoke gets inlined.
+         */
+        int inlinedIndex = -1;
+
+        /**
+         * We remember the previous target method to make debug printing work even after the invoke
+         * was inlined.
+         */
+        ResolvedJavaMethod cachedTargetMethod;
+
+        /**
+         * Set if a monomorphic call site was resolved. We remember the decision from shouldInline
+         * to speed up later exploration.
+         */
+        ResolvedJavaMethod monomorphicTargetMethod;
+
+        /**
+         * Number of non-inlinable invokes in the subtree that are not dominated by a transfer to
+         * interpreter call.
+         */
+        int subTreeInvokes;
+
+        /**
+         * Sum of all Graal nodes of the entire subtree of all methods that were determend to be
+         * inlined during subtree exploration.
+         */
+        int subTreeSize;
+
+        /**
+         * True if the subtree could not fully be explored.
+         */
+        boolean explorationIncomplete;
+
+        int exploredIndex = -1;
+
+        CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean inInterpreter) {
+            this.invoke = invoke;
+            this.deoptimized = deoptimized;
+            this.inInterpreter = inInterpreter;
+            this.parent = parent;
+            this.cachedTargetMethod = invoke.getTargetMethod();
+            Objects.requireNonNull(cachedTargetMethod);
+        }
+
+        CallTree(ResolvedJavaMethod root) {
+            this.invoke = null;
+            this.deoptimized = false;
+            this.inInterpreter = false;
+            this.cachedTargetMethod = root;
+            this.parent = null;
+        }
+
+        ResolvedJavaMethod getTargetMethod() {
+            if (invoke == null) {
+                return cachedTargetMethod;
+            }
+            ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
+            if (targetMethod != null) {
+                this.cachedTargetMethod = targetMethod;
+            } else {
+                targetMethod = cachedTargetMethod;
+            }
+            return targetMethod;
+        }
+
+        boolean isInlined() {
+            return inlinedIndex != -1 || parent == null;
+        }
+
+        @Override
+        public int compareTo(CallTree o) {
+            int compare = Integer.compare(subTreeInvokes, o.subTreeInvokes);
+            if (compare == 0) {
+                return Integer.compare(subTreeSize, o.subTreeSize);
+            }
+            return compare;
+        }
+
+        private boolean isRecursive(ResolvedJavaMethod other) {
+            if (getTargetMethod().equals(other)) {
+                return true;
+            }
+            if (parent != null) {
+                return parent.isRecursive(other);
+            }
+            return false;
+        }
+
+        public String toString(String indent, int maxIndent) {
+            ResolvedJavaMethod targetMethod = getTargetMethod();
+            if (invoke == null) {
+                return "Root[" + targetMethod.format("%H.%n") + "]";
+            } else {
+                return String.format(
+                                "%-" + maxIndent +
+                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, inInterpreter %5s, propDeopt %5s, subTreeInvokes %4s, subTreeCost %4s, incomplete %5s,  reason %s]",
+                                indent + buildLabel(), inlinedIndex, exploredIndex, monomorphicTargetMethod != null, deoptimized, inInterpreter, propagatesDeopt, subTreeInvokes, subTreeSize,
+                                explorationIncomplete,
+                                reason);
+            }
+        }
+
+        private String buildLabel() {
+            String label;
+            if (reason == null && inlinedIndex == -1) {
+                label = "NEW";
+            } else if (inlinedIndex != -1) {
+                label = "INLINE";
+            } else {
+                if (invoke.isAlive()) {
+                    label = "CUTOFF";
+                } else {
+                    label = "DEAD";
+                }
+            }
+            StringBuilder b = new StringBuilder(label);
+            b.append(" ");
+            String name = getTargetMethod().format("%H.%n(%p)");
+            if (name.length() > 140) {
+                name = getTargetMethod().format("%H.%n(...)");
+            }
+            b.append(name);
+            return b.toString();
+        }
+
+        @Override
+        public String toString() {
+            return toString("", 1);
+        }
+
+    }
+
+    /*
+     * This cache only lives for a single run of this phase. While caching longer term would be
+     * possible it would be quite complicated to do because Graal graphs age rather quickly on
+     * HotSpot.
+     */
+    private final class DefaultGraphCache implements InliningGraphCache {
+
+        private final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphs = EconomicMap.create(Equivalence.DEFAULT);
+
+        @Override
+        public StructuredGraph lookup(HighTierContext context, StructuredGraph parentGraph, ResolvedJavaMethod method) {
+            StructuredGraph graph = graphs.get(method);
+            if (graph == null) {
+                graph = parseBytecodes(context, parentGraph, method);
+                graphs.put(method, graph);
+            }
+            return graph;
+        }
+
+        @SuppressWarnings("try")
+        private StructuredGraph parseBytecodes(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
+            DebugContext debug = graph.getDebug();
+            StructuredGraph newGraph = new StructuredGraph.Builder(graph.getOptions(), debug, graph.allowAssumptions())//
+                            .method(method).trackNodeSourcePosition(graph.trackNodeSourcePosition()) //
+                            .profileProvider(graph.getProfileProvider()) //
+                            .speculationLog(graph.getSpeculationLog()).build();
+
+            try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
+                if (!graph.isUnsafeAccessTrackingEnabled()) {
+                    newGraph.disableUnsafeAccessTracking();
+                }
+                if (context.getGraphBuilderSuite() != null) {
+                    context.getGraphBuilderSuite().apply(newGraph, context);
+                }
+                assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
+
+                new DeadCodeEliminationPhase(Optional).apply(newGraph);
+                canonicalizer.apply(newGraph, context);
+                return newGraph;
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
+        }
+
+    }
+
+}

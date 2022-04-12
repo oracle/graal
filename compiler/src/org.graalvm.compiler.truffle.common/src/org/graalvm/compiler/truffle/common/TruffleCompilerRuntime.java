@@ -469,4 +469,15 @@ public interface TruffleCompilerRuntime {
      */
     boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
 
+    /**
+     * Determines if {@code method} is the inInterpeter method from CompilerDirectives.
+     */
+    boolean isInInterpreter(ResolvedJavaMethod targetMethod);
+
+    /**
+     * Determines if {@code method} is a method is a transferToInterpreter method from
+     * CompilerDirectives.
+     */
+    boolean isTransferToInterpreterMethod(ResolvedJavaMethod method);
+
 }

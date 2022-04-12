@@ -335,6 +335,10 @@ public final class GraalFeature implements Feature {
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
+    public Map<AnalysisMethod, CallTreeNode> getRuntimeCompiledMethods() {
+        return methods;
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
         DebugContext debug = DebugContext.forCurrentThread();

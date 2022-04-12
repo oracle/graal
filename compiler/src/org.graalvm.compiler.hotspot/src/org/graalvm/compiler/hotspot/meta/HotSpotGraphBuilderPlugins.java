@@ -199,6 +199,7 @@ public class HotSpotGraphBuilderPlugins {
         if (config.instanceKlassInitThreadOffset != -1) {
             plugins.setClassInitializationPlugin(new HotSpotJITClassInitializationPlugin());
         }
+        compilerConfiguration.registerGraphBuilderPlugins(plugins, options);
 
         invocationPlugins.defer(new Runnable() {
 

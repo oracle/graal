@@ -283,7 +283,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                     InvocationPlugins plugins) {
         TruffleTierConfiguration tier = config.lastTier();
         Suites newSuites = tier.suites().copy();
-        removeInliningPhase(newSuites);
+        removeInliningPhases(newSuites);
 
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.NO)//
                         .profileProvider(null)//
@@ -330,10 +330,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return graphBuilderSuite;
     }
 
-    private static void removeInliningPhase(Suites suites) {
+    private static void removeInliningPhases(Suites suites) {
         ListIterator<BasePhase<? super HighTierContext>> inliningPhase = suites.getHighTier().findPhase(AbstractInliningPhase.class);
-        if (inliningPhase != null) {
+        while (inliningPhase != null) {
             inliningPhase.remove();
+            inliningPhase = suites.getHighTier().findPhase(AbstractInliningPhase.class);
         }
     }
 
