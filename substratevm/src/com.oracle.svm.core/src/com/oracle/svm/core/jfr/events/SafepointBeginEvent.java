@@ -57,15 +57,14 @@ public class SafepointBeginEvent {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.SafepointBegin.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.SafepointBegin);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, safepointId.rawValue());
             JfrNativeEventWriter.putInt(data, numJavaThreads);
             JfrNativeEventWriter.putInt(data, 0); // jniCriticalThreadCount
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }

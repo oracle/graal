@@ -25,8 +25,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.jfr.JfrGCName;
-import com.oracle.svm.core.jfr.JfrGCNames;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -38,6 +36,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrGCName;
+import com.oracle.svm.core.jfr.JfrGCNames;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
@@ -72,8 +72,7 @@ class JfrGCEventSupport {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.GarbageCollection.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GarbageCollection);
             JfrNativeEventWriter.putLong(data, start);
             JfrNativeEventWriter.putLong(data, pauseTime);
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue());
@@ -81,7 +80,7 @@ class JfrGCEventSupport {
             JfrNativeEventWriter.putLong(data, cause.getId());
             JfrNativeEventWriter.putLong(data, pauseTime);  // sum of pause
             JfrNativeEventWriter.putLong(data, pauseTime);  // longest pause
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 
@@ -93,14 +92,13 @@ class JfrGCEventSupport {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, event.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, event);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, end - startTicks);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue());
             JfrNativeEventWriter.putString(data, name);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 

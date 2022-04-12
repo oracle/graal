@@ -50,8 +50,8 @@ public class ExecuteVMOperationEvent {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ExecuteVMOperation)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.ExecuteVMOperation.getId());
+
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ExecuteVMOperation);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
@@ -60,7 +60,7 @@ public class ExecuteVMOperationEvent {
             JfrNativeEventWriter.putBoolean(data, vmOperation.isBlocking());
             JfrNativeEventWriter.putThread(data, requestingThread);
             JfrNativeEventWriter.putLong(data, vmOperation.getCausesSafepoint() ? Safepoint.Master.singleton().getSafepointId().rawValue() : 0);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }
