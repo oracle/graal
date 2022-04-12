@@ -770,12 +770,22 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
     @property
     def patches(self):
         """A list of patches that will be applied during a build."""
-        os_arch_dir = mx.join(self.source_dirs()[0], '{}-{}'.format(mx.get_os(), mx.get_arch()))
-        if mx.exists(os_arch_dir):
-            return [mx.join(os_arch_dir, patch) for patch in os.listdir(os_arch_dir)]
+        def patch_dir(d):
+            return mx.join(self.source_dirs()[0], d)
 
-        others_dir = mx.join(self.source_dirs()[0], 'others')
-        return [mx.join(others_dir, patch) for patch in os.listdir(others_dir)]
+        def get_patches(patchdir):
+            for patch in os.listdir(patchdir):
+                yield mx.join(patchdir, patch)
+
+        for p in get_patches(patch_dir('common')):
+            yield p
+        os_arch_dir = patch_dir('{}-{}'.format(mx.get_os(), mx.get_arch()))
+        if mx.exists(os_arch_dir):
+            for p in get_patches(os_arch_dir):
+                yield p
+        else:
+            for p in get_patches(patch_dir('others')):
+                yield p
 
     def getBuildTask(self, args):
         return LibffiBuildTask(args, self)
