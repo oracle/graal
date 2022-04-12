@@ -12,7 +12,7 @@
     "watch": "tsc -watch -p ./"
   },
   "dependencies": {
-    "minimist": "^1.2.5",
+    "minimist": "^1.2.6",
     "seedrandom": "3.0.5",
     "typescript": "^3.7.5"
   },
