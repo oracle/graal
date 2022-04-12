@@ -372,23 +372,34 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    private void vzeroupperBeforeCall(LIRGeneratorTool gen, Value[] arguments, LIRFrameState callState) {
-        if (!SubstrateUtil.HOSTED) {
-            // TODO we might want to avoid vzeroupper if the callee does not use SSE (cf.
-            // hsLinkage.mayContainFP())
-            boolean mayContainFP = true;
-            if (runtimeToAOTIsAvxSseTransition(gen.target()) && mayContainFP && !isRuntimeToRuntimeCall(callState)) {
-                /*
-                 * If the callee may contain SSE ops, and it AOT compiled, we may have an AVX-SSE
-                 * transition.
-                 *
-                 * We exclude the argument registers from the zeroing LIR instruction since it
-                 * violates the LIR semantics of @Temp that values must not be live. Note that the
-                 * emitted machine instruction actually zeros _all_ XMM registers which is fine
-                 * since we know that their upper half is not used.
-                 */
-                gen.append(new AMD64VZeroUpper(arguments, gen.getRegisterConfig()));
-            }
+    /**
+     * Inserts a {@linkplain AMD64VZeroUpper vzeroupper} instruction before calls that are an
+     * AVX-SSE transition.
+     *
+     * The following cases are distinguished:
+     *
+     * First, check whether a run-time compiled method calling an AOT compiled method is an AVX-SSE
+     * transition, i.e., AVX was not enabled for AOT but is enabled for JIT compilation.
+     *
+     * Only emit vzeroupper if the call uses a
+     * {@linkplain SubstrateAMD64LIRGenerator#getDestroysCallerSavedRegisters caller-saved} calling
+     * convention. For {@link com.oracle.svm.core.annotate.StubCallingConvention stub calling
+     * convention} calls, which are {@linkplain SharedMethod#hasCalleeSavedRegisters()
+     * callee-saved}, all handling is done on the callee side.
+     *
+     * No vzeroupper is emitted for {@linkplain #isRuntimeToRuntimeCall runtime-to-runtime calls},
+     * because both, the caller and the callee, have been compiled using the CPU features.
+     */
+    private void vzeroupperBeforeCall(SubstrateAMD64LIRGenerator gen, Value[] arguments, LIRFrameState callState, SharedMethod targetMethod) {
+        // TODO maybe avoid vzeroupper if the callee does not use SSE (cf. hsLinkage.mayContainFP())
+        if (runtimeToAOTIsAvxSseTransition(gen.target()) && gen.getDestroysCallerSavedRegisters(targetMethod) && !isRuntimeToRuntimeCall(callState)) {
+            /*
+             * We exclude the argument registers from the zeroing LIR instruction since it violates
+             * the LIR semantics of @Temp that values must not be live. Note that the emitted
+             * machine instruction actually zeros _all_ XMM registers which is fine since we know
+             * that their upper half is not used.
+             */
+            gen.append(new AMD64VZeroUpper(arguments, gen.getRegisterConfig()));
         }
     }
 
@@ -464,9 +475,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
-            if (!targetMethod.hasCalleeSavedRegisters()) {
-                vzeroupperBeforeCall(this, arguments, info);
-            }
+            vzeroupperBeforeCall(this, arguments, info, targetMethod);
 
             if (shouldEmitOnlyIndirectCalls()) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
@@ -745,7 +754,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            vzeroupperBeforeCall(getLIRGeneratorTool(), parameters, callState);
+            vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
             append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
@@ -762,7 +771,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             AllocatableValue targetAddress = targetRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            vzeroupperBeforeCall(getLIRGeneratorTool(), parameters, callState);
+            vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
             append(new SubstrateAMD64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
