@@ -93,7 +93,6 @@ else()
       src/abort.c
       src/assert.c
       src/builtin.c
-      src/c11threads.c
       src/clone.c
       src/complex.c
       src/crt0.c
@@ -109,6 +108,14 @@ else()
       src/string.c
       src/sulong_dispose_context.c
     )
+endif()
+
+include(CheckIncludeFile)
+CHECK_INCLUDE_FILE(threads.h SUPPORTS_C11_THREADS)
+if(SUPPORTS_C11_THREADS)
+  target_sources(sulong PRIVATE src/c11threads.c)
+else()
+  message(NOTICE "Compiling without C11 threads because threads.h is not available.")
 endif()
 
 target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR} ${GRAALVM_LLVM_LIBS_INCLUDE_DIR})
