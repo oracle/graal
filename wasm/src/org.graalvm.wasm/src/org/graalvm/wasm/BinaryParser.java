@@ -435,10 +435,11 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.IF: {
+                    final int ifOffset = offset;
                     state.popChecked(I32_TYPE); // condition
                     final byte ifReturnType = readBlockType();
 
-                    state.enterIf(ifReturnType);
+                    state.enterIf(ifReturnType, ifOffset);
                     break;
                 }
                 case Instructions.END: {
@@ -450,21 +451,24 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.BR: {
+                    final int brOffset = offset;
                     final int branchLabel = readTargetOffset();
-                    state.addUnconditionalBranch(branchLabel);
+                    state.addUnconditionalBranch(branchLabel, brOffset);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
                     break;
                 }
                 case Instructions.BR_IF: {
+                    final int brIfOffset = offset;
                     final int branchLabel = readTargetOffset();
                     state.popChecked(I32_TYPE); // condition
-                    state.addConditionalBranch(branchLabel);
+                    state.addConditionalBranch(branchLabel, brIfOffset);
 
                     break;
                 }
                 case Instructions.BR_TABLE: {
+                    final int brTableOffset = offset;
                     state.popChecked(I32_TYPE); // index
                     final int length = readLength();
 
@@ -473,7 +477,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final int branchLabel = readTargetOffset();
                         branchTable[i] = branchLabel;
                     }
-                    state.addBranchTable(branchTable);
+                    state.addBranchTable(branchTable, brTableOffset);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();

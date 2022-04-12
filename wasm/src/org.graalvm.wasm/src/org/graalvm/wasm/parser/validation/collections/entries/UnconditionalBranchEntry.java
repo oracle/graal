@@ -39,53 +39,54 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.validation;
+package org.graalvm.wasm.parser.validation.collections.entries;
 
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
- * Representation of a wasm if and else block during module validation.
+ * Represents a br entry in the extra data list.
+ * 
+ * Compact format:
+ * 
+ * <code>
+ *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | returnLength (unsigned 8-bit) | stackSize (unsigned 8-bit) | unused (16-bit) |
+ * </code>
+ * 
+ * Extended format:
+ * 
+ * <code>
+ *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | returnLength (signed 32-bit) | stackSize (signed 32-bit) |
+ * </code>
  */
-class IfFrame extends ControlFrame {
-    private BranchTarget falseJump;
-    private boolean elseBranch;
-
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, BranchTarget falseJump) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.falseJump = falseJump;
-        this.elseBranch = false;
+public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
+    public UnconditionalBranchEntry(int byteCodeOffset, int extraDataOffset, ExtraDataFormatHelper formatHelper) {
+        super(byteCodeOffset, extraDataOffset, formatHelper);
     }
 
     @Override
-    byte[] labelTypes() {
-        return resultTypes();
+    protected int generateCompactData(int[] extraData, int entryOffset) {
+        int offset = entryOffset;
+        offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
+        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, returnLength(), stackSize());
+        return offset;
     }
 
     @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
-        BranchTarget endJump = extraData.addElse(offset);
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        falseJump = endJump;
-        elseBranch = true;
-        state.checkStackAfterFrameExit(this, resultTypes());
-        // Since else is a separate block the unreachable state has to be reset.
-        resetUnreachable();
+    protected int generateExtendedData(int[] extraData, int entryOffset) {
+        int offset = entryOffset;
+        offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
+        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, returnLength(), stackSize());
+        return offset;
     }
 
     @Override
-    void exit(ExtraDataList extraData, int offset) {
-        if (!elseBranch && labelTypeLength() > 0) {
-            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
-        }
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
-            branchTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
-        }
+    public int compactLength() {
+        return ExtraDataUtil.COMPACT_JUMP_TARGET_SIZE + ExtraDataUtil.COMPACT_STACK_CHANGE_SIZE;
     }
 
+    @Override
+    public int extendedLength() {
+        return ExtraDataUtil.EXTENDED_JUMP_TARGET_SIZE + ExtraDataUtil.EXTENDED_STACK_CHANGE_SIZE;
+    }
 }

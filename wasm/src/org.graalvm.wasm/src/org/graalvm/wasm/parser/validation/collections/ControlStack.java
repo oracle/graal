@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,44 +39,81 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.validation;
+package org.graalvm.wasm.parser.validation.collections;
 
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.parser.validation.ControlFrame;
 
 /**
- * Representation of a wasm loop during module validation.
+ * Represents a stack of control frames that are used for validation of modules.
  */
-class LoopFrame extends ControlFrame {
-    private final int byteCodeTarget;
-    private final int extraDataTarget;
+public class ControlStack {
+    private ControlFrame[] stack;
 
-    private final int extraDataTargetIndex;
+    private int size;
 
-    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int byteCodeTarget, int extraDataTarget, int extraDataTargetIndex) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.byteCodeTarget = byteCodeTarget;
-        this.extraDataTarget = extraDataTarget;
-        this.extraDataTargetIndex = extraDataTargetIndex;
+    public ControlStack() {
+        stack = new ControlFrame[4];
+        size = 0;
     }
 
-    @Override
-    byte[] labelTypes() {
-        return paramTypes();
-    }
-
-    @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
-        throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
-    }
-
-    @Override
-    void exit(ExtraDataList extraData, int offset) {
-        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
-            branchTarget.setTargetInfo(byteCodeTarget, extraDataTarget, extraDataTargetIndex);
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
+    private void ensureSize() {
+        if (size == stack.length) {
+            ControlFrame[] nStack = new ControlFrame[stack.length * 2];
+            System.arraycopy(stack, 0, nStack, 0, size);
+            stack = nStack;
         }
+    }
+
+    /**
+     * Pushes the given control frame onto the stack.
+     * 
+     * @param frame A control frame.
+     */
+    public void push(ControlFrame frame) {
+        ensureSize();
+        stack[size] = frame;
+        size++;
+    }
+
+    /**
+     * Pops the topmost control frame from the stack.
+     */
+    public void pop() {
+        assert size > 0 : "cannot pop from empty stack";
+        size--;
+    }
+
+    /**
+     * Returns the topmost stack value without removing it.
+     * 
+     * @return The topmost control frame.
+     */
+    public ControlFrame peek() {
+        assert size > 0 : "cannot peek empty stack";
+        return stack[size - 1];
+    }
+
+    /**
+     * @param index Index from top of the stack
+     * @return The value at (size - index - 1)
+     */
+    public ControlFrame get(int index) {
+        assert (size - index - 1) >= 0 && (size - index - 1) < size : "invalid element index";
+        return stack[size - index - 1];
+    }
+
+    /**
+     * @return The control frame on the bottom of the stack.
+     */
+    public ControlFrame getFirst() {
+        return stack[0];
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public int size() {
+        return size;
     }
 }

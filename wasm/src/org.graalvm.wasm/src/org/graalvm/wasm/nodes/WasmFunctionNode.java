@@ -42,35 +42,6 @@ package org.graalvm.wasm.nodes;
 
 import static org.graalvm.wasm.BinaryStreamParser.length;
 import static org.graalvm.wasm.BinaryStreamParser.value;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_EXTRA_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_EXTRA_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_LENGTH;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_PROFILE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_STACK_INFO;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_STACK_INFO;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_COUNT;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_EXTRA_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_LENGTH;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_OFFSET;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_PROFILE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_STACK_INFO;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_SIZE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_NODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_PROFILE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_LENGTH;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_EXTRA_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_EXTRA_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_LENGTH;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_PROFILE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_RETURN_LENGTH_SHIFT;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_STACK_SIZE_MASK;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -267,6 +238,29 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
+import static org.graalvm.wasm.util.ExtraDataAccessor.CALL_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_TABLE_HEADER_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_TABLE_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_TABLE_HEADER_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_TABLE_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
+import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.forthValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.isCompactFormat;
+import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
@@ -486,84 +480,96 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case IF: {
                     stackPointer--;
-                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + IF_PROFILE, popBoolean(frame, stackPointer))) {
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    CompilerAsserts.partialEvaluationConstant(compact);
+                    final int profileOffset = extraOffset + (compact ? COMPACT_IF_PROFILE_OFFSET : EXTENDED_IF_PROFILE_OFFSET);
+                    if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
                         // Skip return type.
                         offset++;
                         // Jump to first extra data entry in the then branch.
-                        extraOffset += IF_LENGTH;
+                        extraOffset += compact ? COMPACT_IF_LENGTH : EXTENDED_IF_LENGTH;
                     } else {
                         // Jump to the else branch.
-                        offset = extraData[extraOffset + IF_BYTECODE_INDEX];
-                        extraOffset = extraData[extraOffset + IF_EXTRA_INDEX];
+                        offset += secondValueSigned(extraData, extraOffset, compact);
+                        extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     }
                     break;
                 }
-                case ELSE:
+                case ELSE: {
                     // The then branch was executed at this point. Jump to end of the if statement.
-                    offset = extraData[extraOffset + ELSE_BYTECODE_INDEX];
-                    extraOffset = extraData[extraOffset + ELSE_EXTRA_INDEX];
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    CompilerAsserts.partialEvaluationConstant(compact);
+                    offset += secondValueSigned(extraData, extraOffset, compact);
+                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     break;
+                }
                 case END:
                     break;
                 case BR: {
-                    final int targetStackInfo = extraData[extraOffset + BR_STACK_INFO];
-                    final int targetStackPointer = numLocals + (targetStackInfo & STACK_INFO_STACK_SIZE_MASK);
-                    final int targetReturnLength = (targetStackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    CompilerAsserts.partialEvaluationConstant(compact);
+                    final int targetStackPointer = numLocals + forthValueUnsigned(extraData, extraOffset, compact);
+                    final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
 
                     unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
 
                     // Jump to the target block.
-                    offset = extraData[extraOffset + BR_BYTECODE_INDEX];
-                    extraOffset = extraData[extraOffset + BR_EXTRA_INDEX];
+                    offset += secondValueSigned(extraData, extraOffset, compact);
+                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     stackPointer = targetStackPointer + targetReturnLength;
                     break;
                 }
                 case BR_IF: {
                     stackPointer--;
-                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + BR_IF_PROFILE, popBoolean(frame, stackPointer))) {
-                        final int stackInfo = extraData[extraOffset + BR_IF_STACK_INFO];
-                        final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
-                        final int targetReturnValueCount = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    CompilerAsserts.partialEvaluationConstant(compact);
+                    final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
+                    if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
+                        final int targetStackPointer = numLocals + forthValueUnsigned(extraData, extraOffset, compact);
+                        final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
 
-                        unwindStack(frame, stackPointer, targetStackPointer, targetReturnValueCount);
+                        unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
 
                         // Jump to the target block.
-                        offset = extraData[extraOffset + BR_IF_BYTECODE_INDEX];
-                        extraOffset = extraData[extraOffset + BR_IF_EXTRA_INDEX];
-                        stackPointer = targetStackPointer + targetReturnValueCount;
+                        offset += secondValueSigned(extraData, extraOffset, compact);
+                        extraOffset += firstValueSigned(extraData, extraOffset, compact);
+                        stackPointer = targetStackPointer + targetReturnLength;
                     } else {
                         // Skip condition.
                         offset++;
                         // Jump to next extra data entry after the branch.
-                        extraOffset += BR_IF_LENGTH;
+                        extraOffset += compact ? COMPACT_BR_IF_LENGTH : EXTENDED_BR_IF_LENGTH;
                     }
                     break;
                 }
                 case BR_TABLE: {
                     stackPointer--;
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    CompilerAsserts.partialEvaluationConstant(compact);
                     int index = popInt(frame, stackPointer);
-                    final int size = extraData[extraOffset + BR_TABLE_SIZE];
+                    final int size = firstValueUnsigned(extraData, extraOffset, compact);
                     if (index < 0 || index >= size) {
                         // If unsigned index is larger or equal to the table size use the
                         // default (last) index.
                         index = size - 1;
                     }
 
-                    // TODO: Find benchmark that heavily uses branch tables.
+                    final int profileOffset = extraOffset + (compact ? COMPACT_BR_TABLE_PROFILE_OFFSET : EXTENDED_BR_TABLE_PROFILE_OFFSET);
                     if (CompilerDirectives.inInterpreter()) {
-                        final int indexLocation = extraOffset + BR_TABLE_ENTRY_OFFSET + (index * BR_TABLE_ENTRY_LENGTH);
+                        final int indexOffset = extraOffset +
+                                        (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + index * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + index * EXTENDED_BR_IF_LENGTH);
+                        final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
 
-                        WasmCodeEntry.updateTableConditionProfile(extraData, extraOffset + BR_TABLE_COUNT, indexLocation + BR_TABLE_ENTRY_PROFILE);
+                        updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
-                        final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
-                        final int targetReturnLength = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+                        final int targetStackPointer = numLocals + forthValueUnsigned(extraData, indexOffset, compact);
+                        final int targetReturnLength = thirdValueUnsigned(extraData, indexOffset, compact);
 
                         unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
 
                         // Jump to the branch target.
-                        offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
-                        extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
+                        offset += secondValueSigned(extraData, indexOffset, compact);
+                        extraOffset += firstValueSigned(extraData, indexOffset, compact);
                         stackPointer = targetStackPointer + targetReturnLength;
                         break;
                     } else {
@@ -571,17 +577,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         // guarantees that all values inside the if statement are treated as compile
                         // time constants, since the loop is unrolled.
                         for (int i = 0; i < size; i++) {
-                            final int indexLocation = extraOffset + BR_TABLE_ENTRY_OFFSET + (i * BR_TABLE_ENTRY_LENGTH);
-                            if (WasmCodeEntry.injectTableConditionProfile(extraData, extraOffset + BR_TABLE_COUNT, indexLocation + BR_TABLE_ENTRY_PROFILE, i == index)) {
-                                final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
-                                final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
-                                final int targetReturnLength = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+                            final int indexOffset = extraOffset +
+                                            (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
+                            final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
+                            if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
+                                final int targetStackPointer = numLocals + forthValueUnsigned(extraData, indexOffset, compact);
+                                final int targetReturnLength = thirdValueUnsigned(extraData, indexOffset, compact);
 
                                 unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
 
                                 // Jump to the branch target.
-                                offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
-                                extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
+                                offset += secondValueSigned(extraData, indexOffset, compact);
+                                extraOffset += firstValueSigned(extraData, indexOffset, compact);
                                 stackPointer = targetStackPointer + targetReturnLength;
                                 continue loop;
                             }
@@ -616,7 +623,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), numArgs, stackPointer);
                     stackPointer -= args.length;
 
-                    int callNodeIndex = extraData[extraOffset + CALL_NODE_INDEX];
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
                     extraOffset += CALL_LENGTH;
 
                     Object result = executeDirectCall(callNodeIndex, function, args);
@@ -703,8 +711,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(extraData, extraOffset + CALL_INDIRECT_PROFILE, functionInstanceContext == context);
-                    if (functionFromCurrentContext) {
+                    final boolean functionFromCurrentContext = functionInstanceContext == context;
+
+                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final int profileOffset = extraOffset + (compact ? COMPACT_CALL_INDIRECT_PROFILE_OFFSET : EXTENDED_CALL_INDIRECT_PROFILE_OFFSET);
+                    if (profileCondition(extraData, profileOffset, functionFromCurrentContext)) {
                         // We can do a quick equivalence-class check.
                         if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                             enterErrorBranch();
@@ -738,8 +749,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         prev = null;
                     }
 
-                    int callNodeIndex = extraData[extraOffset + CALL_INDIRECT_NODE_INDEX];
-                    extraOffset += CALL_INDIRECT_LENGTH;
+                    final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
+                    extraOffset += compact ? COMPACT_CALL_INDIRECT_LENGTH : EXTENDED_CALL_INDIRECT_LENGTH;
 
                     final Object result;
                     try {
@@ -2806,5 +2817,80 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static int offsetDelta(byte[] data, int offset) {
         return BinaryStreamParser.peekLeb128Length(data, offset);
+    }
+
+    private static final int MAX_PROFILE_VALUE = 0x0000_00ff;
+    private static final int MAX_TABLE_PROFILE_VALUE = 0x0000_ffff;
+
+    private static boolean profileCondition(int[] extraData, int profileOffset, boolean condition) {
+        int t = (extraData[profileOffset] & 0x0000_ff00) >> 8;
+        int f = extraData[profileOffset] & 0x0000_00ff;
+        boolean val = condition;
+        if (val) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (f == 0) {
+                // Make this branch fold during PE
+                val = true;
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                if (t < MAX_PROFILE_VALUE) {
+                    extraData[profileOffset] += 0x0100;
+                }
+            }
+        } else {
+            if (f == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == 0) {
+                // Make this branch fold during PE
+                val = false;
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                if (f < MAX_PROFILE_VALUE) {
+                    extraData[profileOffset] += 0x0001;
+                }
+            }
+        }
+        if (CompilerDirectives.inInterpreter()) {
+            return val;
+        } else {
+            int sum = t + f;
+            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+        }
+    }
+
+    private static void updateBranchTableProfile(int[] extraData, int counterOffset, int profileOffset) {
+        assert CompilerDirectives.inInterpreter();
+        if ((extraData[counterOffset] & 0x0000_ffff) < MAX_TABLE_PROFILE_VALUE) {
+            extraData[counterOffset]++;
+            extraData[profileOffset]++;
+        }
+    }
+
+    private static boolean profileBranchTable(int[] extraData, int counterOffset, int profileOffset, boolean condition) {
+        assert !CompilerDirectives.inInterpreter();
+        int t = extraData[profileOffset] & 0x0000_ffff;
+        int sum = extraData[counterOffset] & 0x0000_ffff;
+        boolean val = condition;
+        if (val) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == sum) {
+                // Make this branch fold during PE
+                val = true;
+            }
+        } else {
+            if (t == sum) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == 0) {
+                // Make this branch fold during PE
+                val = false;
+            }
+        }
+        return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
     }
 }

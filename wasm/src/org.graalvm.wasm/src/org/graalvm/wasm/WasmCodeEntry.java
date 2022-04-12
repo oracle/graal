@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
@@ -89,98 +88,6 @@ public final class WasmCodeEntry {
 
     public int[] extraData() {
         return extraData;
-    }
-
-    /**
-     * A constant holding the maximum value an {@code int} can have, 2<sup>15</sup>-1. The sum of
-     * the true and false count must not overflow. This constant is used to check whether one of the
-     * counts does not exceed the required maximum value.
-     */
-    public static final int CONDITION_COUNT_MAX_VALUE = 0x3fff;
-
-    /**
-     * Same logic as in {@link com.oracle.truffle.api.profiles.ConditionProfile#profile}.
-     *
-     * @param index Condition index
-     * @param condition Condition value
-     * @return {@code condition}
-     */
-    public static boolean profileCondition(int[] counters, int index, boolean condition) {
-        // locals required to guarantee no overflow in multi-threaded environments
-        int tf = counters[index];
-        int t = tf >>> 16;
-        int f = tf & 0xffff;
-        boolean val = condition;
-        if (val) {
-            if (!CompilerDirectives.inInterpreter()) {
-                if (t == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                if (f == 0) {
-                    // Make this branch fold during PE
-                    val = true;
-                }
-            } else {
-                if (t < CONDITION_COUNT_MAX_VALUE) {
-                    counters[index] = ((t + 1) << 16) | f;
-                }
-            }
-        } else {
-            if (!CompilerDirectives.inInterpreter()) {
-                if (f == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                if (t == 0) {
-                    // Make this branch fold during PE
-                    val = false;
-                }
-            } else {
-                if (f < CONDITION_COUNT_MAX_VALUE) {
-                    counters[index] = (t << 16) | (f + 1);
-                }
-            }
-        }
-
-        if (CompilerDirectives.inInterpreter()) {
-            // no branch probability calculation in the interpreter
-            return val;
-        } else {
-            int sum = t + f;
-            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
-        }
-    }
-
-    public static void updateTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex) {
-        if (profileArray[counterIndex] < Integer.MAX_VALUE) {
-            profileArray[counterIndex]++;
-            profileArray[profileIndex]++;
-        }
-    }
-
-    public static boolean injectTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex, boolean condition) {
-        int sum = profileArray[counterIndex];
-        int t = profileArray[profileIndex];
-        // Clamp probability to 1.0
-        if (t > sum) {
-            t = sum;
-        }
-        boolean val = condition;
-        if (val) {
-            if (t == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (t == sum) {
-                val = true;
-            }
-        } else {
-            if (t == sum) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (t == 0) {
-                val = false;
-            }
-        }
-        return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
     }
 
     public void errorBranch() {

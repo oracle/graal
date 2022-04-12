@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,79 +39,44 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.validation;
+package org.graalvm.wasm.parser.validation.collections.entries;
+
+import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
- * Represents a stack of control frames that are used for validation of modules.
+ * Represents and entry that changes the number of values on the values stack and potentially
+ * returns a value.
  */
-class ControlStack {
-    private ControlFrame[] stack;
+public abstract class BranchTargetWithStackChange extends BranchTarget {
+    private int returnLength;
+    private int stackSize;
 
-    private int size;
-
-    ControlStack() {
-        stack = new ControlFrame[4];
-        size = 0;
+    protected BranchTargetWithStackChange(int byteCodeOffset, int extraDataOffset, ExtraDataFormatHelper formatHelper) {
+        super(byteCodeOffset, extraDataOffset, formatHelper);
     }
 
-    private void ensureSize() {
-        if (size == stack.length) {
-            ControlFrame[] nStack = new ControlFrame[stack.length * 2];
-            System.arraycopy(stack, 0, nStack, 0, size);
-            stack = nStack;
+    /**
+     * Sets the information about the stack change.
+     * 
+     * @param returnLength The number of return values
+     * @param stackSize The stack size after the jump
+     */
+    public void setStackInfo(int returnLength, int stackSize) {
+        this.returnLength = returnLength;
+        this.stackSize = stackSize;
+        if (!ExtraDataUtil.areCompactUnsignedBytes(returnLength, stackSize)) {
+            extendFormat();
+            ExtraDataUtil.checkRepresentableValue(returnLength);
+            ExtraDataUtil.checkRepresentableValue(stackSize);
         }
     }
 
-    /**
-     * Pushes the given control frame onto the stack.
-     * 
-     * @param frame A control frame.
-     */
-    void push(ControlFrame frame) {
-        ensureSize();
-        stack[size] = frame;
-        size++;
+    protected int returnLength() {
+        return returnLength;
     }
 
-    /**
-     * Pops the topmost control frame from the stack.
-     */
-    void pop() {
-        assert size > 0 : "cannot pop from empty stack";
-        size--;
-    }
-
-    /**
-     * Returns the topmost stack value without removing it.
-     * 
-     * @return The topmost control frame.
-     */
-    ControlFrame peek() {
-        assert size > 0 : "cannot peek empty stack";
-        return stack[size - 1];
-    }
-
-    /**
-     * @param index Index from top of the stack
-     * @return The value at (size - index - 1)
-     */
-    ControlFrame get(int index) {
-        assert (size - index - 1) >= 0 && (size - index - 1) < size : "invalid element index";
-        return stack[size - index - 1];
-    }
-
-    /**
-     * @return The control frame on the bottom of the stack.
-     */
-    ControlFrame getFirst() {
-        return stack[0];
-    }
-
-    boolean isEmpty() {
-        return size == 0;
-    }
-
-    int size() {
-        return size;
+    protected int stackSize() {
+        return stackSize;
     }
 }
