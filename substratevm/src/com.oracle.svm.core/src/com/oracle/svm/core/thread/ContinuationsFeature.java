@@ -71,11 +71,9 @@ public class ContinuationsFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        // Must currently exist as HostedField for HybridLayout to work
-        access.registerAsAccessed(ReflectionUtil.lookupField(StoredContinuation.class, "payload"));
-
         if (Continuation.isSupported()) {
-            access.registerAsInHeap(StoredContinuation.class);
+            access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
+                            ReflectionUtil.lookupMethod(StoredContinuationImpl.class, "allocate", int.class));
 
             if (LoomSupport.isEnabled()) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));

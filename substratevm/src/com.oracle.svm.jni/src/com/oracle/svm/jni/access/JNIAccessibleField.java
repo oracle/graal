@@ -111,8 +111,9 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
             int offset;
             if (HybridLayout.isHybridField(field)) {
                 assert !field.hasLocation();
-                HybridLayout<?> hybridLayout = new HybridLayout<>((HostedInstanceClass) field.getDeclaringClass(), ImageSingletons.lookup(ObjectLayout.class));
-                assert field.equals(hybridLayout.getArrayField()) : "JNI access to hybrid bitset field is not implemented";
+                HybridLayout<?> hybridLayout = new HybridLayout<>((HostedInstanceClass) field.getDeclaringClass(),
+                                ImageSingletons.lookup(ObjectLayout.class), access.getMetaAccess());
+                assert field.equals(hybridLayout.getArrayField()) : "JNI access to hybrid objects is implemented only for the array field";
                 offset = hybridLayout.getArrayBaseOffset();
             } else {
                 assert field.hasLocation();

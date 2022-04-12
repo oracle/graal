@@ -68,29 +68,32 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 public @interface Hybrid {
 
     /**
-     * If {@code true}, we allow the data in the hybrid fields to be duplicated between the hybrid
-     * object and a separate object for the array. For most objects, a duplication could occur if
-     * inlining and constant folding result in the internal reference to a hybrid field being
-     * constant folded to a constant value, which must be written into the image heap separately
-     * from the hybrid object.
+     * The type of the array part of the hybrid class. Must be specified if no field annotated
+     * with @{@link Hybrid.Array} is declared, otherwise that field's type determines the type of
+     * the array part.
+     */
+    Class<?> arrayType() default Array.class;
+
+    /**
+     * If {@code true}, allow the data in the hybrid fields to be duplicated between the hybrid
+     * object and a separate object for the array. For image heap objects, a duplication can occur
+     * if inlining and constant folding result in the internal reference to a hybrid field being
+     * folded to a constant value, which must be written into the image heap separately from the
+     * hybrid object.
      *
      * If {@code false}, a duplication of the hybrid fields must never happen.
      */
     boolean canHybridFieldsBeDuplicated() default false;
 
-    /**
-     * Specifies a single member array as the hybrid array.
-     */
+    /** Designates at most one field that refers to the array part of the hybrid object. */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public @interface Array {
+    @interface Array {
     }
 
-    /**
-     * Specifies a single member type slots.
-     */
+    /** Designates at most one field that refers to the type ID slots of the hybrid object. */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public @interface TypeIDSlots {
+    @interface TypeIDSlots {
     }
 }

@@ -392,7 +392,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (HybridLayout.isHybrid(clazz)) {
                 HybridLayout<?> hybridLayout = hybridLayouts.get(clazz);
                 if (hybridLayout == null) {
-                    hybridLayout = new HybridLayout<>(clazz, objectLayout);
+                    hybridLayout = new HybridLayout<>(clazz, objectLayout, metaAccess);
                     hybridLayouts.put(clazz, hybridLayout);
                 }
 

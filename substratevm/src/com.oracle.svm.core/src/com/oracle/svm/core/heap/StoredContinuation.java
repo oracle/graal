@@ -31,10 +31,8 @@ import com.oracle.svm.core.annotate.Hybrid;
  *
  * For object layout and other implementation details, see {@link StoredContinuationImpl}.
  */
-@Hybrid
+@Hybrid(arrayType = byte[].class)
 public final class StoredContinuation {
-    @Hybrid.Array byte[] payload;
-
     /** Must be allocated via {@link StoredContinuationImpl}. */
     private StoredContinuation() {
     }

@@ -51,9 +51,6 @@ import jdk.vm.ci.meta.JavaKind;
 final class PodFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        // needed for HybridLayout
-        access.registerAsAccessed(ReflectionUtil.lookupField(Pod.Instance.class, "fields"));
-
         access.registerReachabilityHandler(a -> a.registerAsInHeap(Pod.Instance.class),
                         ReflectionUtil.lookupMethod(Pod.class, "newInstance"));
     }
@@ -66,10 +63,8 @@ final class PodFeature implements Feature {
  * type information, apart from having a Java superclass.
  */
 public final class Pod<T> {
-    @Hybrid
+    @Hybrid(arrayType = byte[].class)
     public static final class Instance {
-        @Hybrid.Array byte[] fields;
-
         private Instance() {
         }
     }
