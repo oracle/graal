@@ -85,14 +85,16 @@ public class ConditionalBranchInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
         if (boxed) {
             return null;
         }
-        // TODO should be locked
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startAssert().tree(index).string(" == 0 : \"invalid input index\"").end();
-        b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.commonBranchFalseBoxed.opcodeIdField));
-        return b.build();
+
+        return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.commonBranchFalseBoxed.opcodeIdField);
+    }
+
+    @Override
+    public boolean isInputAlwaysBoxed(int index) {
+        return boxed;
     }
 }

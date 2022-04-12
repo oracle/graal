@@ -53,6 +53,7 @@ public class TestOperationsParserTest {
 
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
         OperationsNode operationsNode = TestOperationsBuilder.parse(null, builder)[0];
+        System.out.println(operationsNode.dump());
         return operationsNode.createRootNode(null, "TestFunction").getCallTarget();
     }
 

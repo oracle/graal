@@ -159,7 +159,7 @@ public class SuperInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
         return null;
     }
 }

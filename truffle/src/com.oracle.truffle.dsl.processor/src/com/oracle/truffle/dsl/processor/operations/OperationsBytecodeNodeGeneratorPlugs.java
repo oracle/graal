@@ -33,7 +33,7 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 
-final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
+public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final CodeVariableElement fldBc;
     private final CodeVariableElement fldChildren;
     private final List<Object> constIndices;

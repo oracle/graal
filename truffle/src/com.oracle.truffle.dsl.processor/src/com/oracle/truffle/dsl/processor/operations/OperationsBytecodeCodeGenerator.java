@@ -154,6 +154,7 @@ public class OperationsBytecodeCodeGenerator {
                                 methodNames, isVariadic, soData,
                                 additionalDataKinds,
                                 fldConsts, cinstr, childIndices);
+                cinstr.setPlugs(plugs);
 
                 NodeCodeGenerator generator = new NodeCodeGenerator();
                 generator.setPlugs(plugs);

@@ -410,6 +410,10 @@ public abstract class Instruction {
         return result;
     }
 
+    protected boolean resultIsAlwaysBoxed() {
+        return false;
+    }
+
     public CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
@@ -419,11 +423,50 @@ public abstract class Instruction {
 
         assert numPush == 1 || numPush == 0;
 
-        b.startStatement().startCall("doBeforeEmitInstruction");
+        if (isVariadic()) {
+            // variadic instructions always box everything
+            b.startFor().string("int inputIndex = 0; inputIndex < ").tree(numPop).string("; inputIndex++").end().startBlock();
+            b.startStatement().startCall("doMarkAlwaysBoxedInput");
+            b.tree(numPop);
+            b.string("inputIndex");
+            b.end(2);
+            b.end();
+        } else {
+            int numPopStatic = numPopStatic();
+            for (int i = 0; i < numPopStatic; i++) {
+                if (isInputAlwaysBoxed(i)) {
+                    b.startStatement().startCall("doMarkAlwaysBoxedInput");
+                    b.tree(numPop);
+                    b.string("" + i);
+                    b.end(2);
+                }
+            }
+        }
+
+        if (isVariadic() || numPopStatic() == 0) {
+            b.startStatement();
+        } else {
+            b.startAssign("boolean[] inputsAlwaysBoxed");
+        }
+
+        b.startCall("doBeforeEmitInstruction");
         b.variable(vars.bci);
         b.tree(numPop);
         b.string(numPush == 0 ? "false" : "true");
+        b.string("" + resultIsAlwaysBoxed());
         b.end(2);
+
+        if (!isVariadic() && numPopStatic() > 0) {
+            b.startIf().string("inputsAlwaysBoxed != null").end().startBlock();
+            {
+                for (int i = 0; i < numPopStatic(); i++) {
+                    b.startIf().string("inputsAlwaysBoxed[" + i + "]").end().startBlock();
+                    b.tree(createSetInputBoxed(vars.asExecution(), i));
+                    b.end();
+                }
+            }
+            b.end();
+        }
 
         // emit opcode
         b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, opcodeIdField));
@@ -452,6 +495,16 @@ public abstract class Instruction {
             }
         }
         return stackPush;
+    }
+
+    public boolean isVariadic() {
+        for (InputType i : inputs) {
+            if (i == InputType.VARARG_VALUE) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public int numPopStatic() {
@@ -525,6 +578,42 @@ public abstract class Instruction {
 
     public abstract CodeTree createSetResultBoxed(ExecutionVariables vars);
 
-    public abstract CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index);
+    public abstract CodeTree createSetInputBoxed(ExecutionVariables vars, int index);
+
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        if (numPopStatic() == 0) {
+            b.startAssert().string("false : \"invalid index\"").end();
+            return b.build();
+        }
+
+        if (numPopStatic() == 1) {
+            b.startAssert().tree(index).string(" == 0 : \"invalid index\"").end();
+            b.tree(createSetInputBoxed(vars, 0));
+            return b.build();
+        }
+
+        b.startSwitch().tree(index).end().startBlock();
+        for (int i = 0; i < numPopStatic(); i++) {
+            b.startCase().string("" + i).startCaseBlock();
+            b.tree(createSetInputBoxed(vars, index));
+            b.statement("break");
+            b.end();
+        }
+        b.caseDefault().startCaseBlock();
+        b.startAssert().string("false : \"invalid index\"").end();
+        b.end();
+        b.end();
+
+        return b.build();
+    }
+
+    public boolean isInputAlwaysBoxed(int index) {
+        return false;
+    }
+
+    public boolean isResultAlwaysBoxed() {
+        return false;
+    }
 
 }

@@ -156,16 +156,45 @@ public abstract class OperationsBuilder {
     private int instructionIndex;
 
     private int[] stackSourceIndices = new int[1024];
+    private int[] stackSourceBci = new int[1024];
+    private boolean[] stackAlwaysBoxed = new boolean[1024];
     private int curStack;
     private int maxStack;
 
-    private short[] predecessorIndices = new short[65535];
+    private short[] successorIndices = new short[65535];
 
-    protected void doBeforeEmitInstruction(int bci, int numPops, boolean pushValue) {
+    protected void doMarkAlwaysBoxedInput(int numPops, int inputIndex) {
+        int offset = curStack - numPops + inputIndex;
+        if (stackAlwaysBoxed[offset]) {
+            // clear it, so that if two 'always boxed' operations are connected
+            // we don't do anything
+            stackAlwaysBoxed[offset] = false;
+        } else {
+            int bci = stackSourceBci[offset];
+            markAlwaysBoxedResult(bci);
+        }
+    }
+
+    protected abstract void markAlwaysBoxedResult(int bci);
+
+    protected abstract void markAlwaysBoxedInput(int bci, int index);
+
+    protected boolean[] doBeforeEmitInstruction(int bci, int numPops, boolean pushValue, boolean resultAlwaysBoxed) {
+        boolean[] result = null;
+
         for (int i = numPops - 1; i >= 0; i--) {
-            int predIndex = stackSourceIndices[--curStack];
-            predecessorIndices[predIndex] = (short) bci;
-            predecessorIndices[predIndex + 1] = (short) i;
+            curStack--;
+
+            int predIndex = stackSourceIndices[curStack];
+
+            if (stackAlwaysBoxed[curStack]) {
+                if (result == null) {
+                    result = new boolean[numPops];
+                }
+                result[i] = true;
+            }
+            successorIndices[predIndex] = (short) bci;
+            successorIndices[predIndex + 1] = (short) i;
         }
 
         // TODO: we could only record instrs that produce values
@@ -174,16 +203,22 @@ public abstract class OperationsBuilder {
             int index = instructionIndex;
             instructionIndex += 2;
 
-            stackSourceIndices[curStack++] = index;
+            stackSourceBci[curStack] = bci;
+            stackAlwaysBoxed[curStack] = resultAlwaysBoxed;
+            stackSourceIndices[curStack] = index;
+
+            curStack++;
 
             if (curStack > maxStack) {
                 maxStack = curStack;
             }
         }
+
+        return result;
     }
 
     protected short[] createPredecessorIndices() {
-        return Arrays.copyOf(predecessorIndices, instructionIndex);
+        return Arrays.copyOf(successorIndices, instructionIndex);
     }
 
     protected int createMaxStack() {

@@ -21,7 +21,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstru
 
 public class OperationsContext {
 
-    private int instructionId = 257;
+    private int instructionId = 1;
     private int operationId = 1;
 
     public Instruction commonPop;
@@ -79,16 +79,14 @@ public class OperationsContext {
 
     private void createLoadStoreLocal() {
         StoreLocalInstruction slInit = add(new StoreLocalInstruction(instructionId++));
-        StoreLocalInstruction slUninit = add(new StoreLocalInstruction(instructionId++, slInit));
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, slUninit));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, slInit));
 
         add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(instructionId++))));
     }
 
     private void createLoadArgument() {
         LoadArgumentInstruction ldargInit = add(new LoadArgumentInstruction(instructionId++));
-        LoadArgumentInstruction ldargUninit = add(new LoadArgumentInstruction(instructionId++, ldargInit));
-        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, ldargUninit));
+        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, ldargInit));
     }
 
     private void createLoadConstant() {
@@ -118,8 +116,7 @@ public class OperationsContext {
 
     private void createReturn() {
         ReturnInstruction retInit = add(new ReturnInstruction(instructionId++));
-        ReturnInstruction retUninit = add(new ReturnInstruction(instructionId++, retInit));
-        add(new Operation.Simple(this, "Return", operationId++, 1, retUninit));
+        add(new Operation.Simple(this, "Return", operationId++, 1, retInit));
     }
 
     public <T extends Instruction> T add(T elem) {

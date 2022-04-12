@@ -7,16 +7,8 @@ import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 
 public class LoadLocalInstruction extends Instruction {
 
-    private final LoadLocalInstruction init;
-
     public LoadLocalInstruction(int id) {
         super("load.local", id, ResultType.STACK_VALUE, InputType.LOCAL);
-        this.init = this;
-    }
-
-    public LoadLocalInstruction(int id, LoadLocalInstruction init) {
-        super("load.local.uninit", id, ResultType.STACK_VALUE, InputType.LOCAL);
-        this.init = init;
     }
 
     @Override
@@ -27,18 +19,6 @@ public class LoadLocalInstruction extends Instruction {
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        if (this != init) {
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-            // TODO lock
-
-            b.startStatement().startCall("doSetInputBoxed");
-            b.variable(vars.bci);
-            b.end(2);
-
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, init.opcodeIdField));
-        }
 
         b.startStatement().startCall(vars.frame, "copy");
 
@@ -59,15 +39,16 @@ public class LoadLocalInstruction extends Instruction {
 
     @Override
     public CodeTree createSetResultBoxed(ExecutionVariables vars) {
-        if (this == init) {
-            return null;
-        } else {
-            return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, init.opcodeIdField);
-        }
+        return null;
     }
 
     @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
         return null;
+    }
+
+    @Override
+    public boolean isResultAlwaysBoxed() {
+        return true;
     }
 }

@@ -10,6 +10,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
@@ -29,6 +30,7 @@ public class CustomInstruction extends Instruction {
     private int numConsts;
     private CodeExecutableElement setResultUnboxedMethod;
     private CodeExecutableElement setInputUnboxedMethod;
+    private OperationsBytecodeNodeGeneratorPlugs plugs;
 
     public SingleOperationData getData() {
         return data;
@@ -235,6 +237,19 @@ public class CustomInstruction extends Instruction {
                         .tree(index) //
                         .end(2).build();
 
+    }
+
+    @Override
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
+        return createSetInputBoxed(vars, CodeTreeBuilder.singleString("" + index));
+    }
+
+    public OperationsBytecodeNodeGeneratorPlugs getPlugs() {
+        return plugs;
+    }
+
+    public void setPlugs(OperationsBytecodeNodeGeneratorPlugs plugs) {
+        this.plugs = plugs;
     }
 
 }

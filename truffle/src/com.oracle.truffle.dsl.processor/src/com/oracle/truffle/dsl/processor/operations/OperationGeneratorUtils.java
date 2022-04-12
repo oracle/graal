@@ -3,6 +3,7 @@ package com.oracle.truffle.dsl.processor.operations;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.function.Function;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeKind;
@@ -17,6 +18,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 
 public class OperationGeneratorUtils {
 
@@ -96,6 +98,33 @@ public class OperationGeneratorUtils {
         }.visit(el);
 
         return wr.toString();
+    }
+
+    public static CodeTree createInstructionSwitch(OperationsData data, ExecutionVariables vars, Function<Instruction, CodeTree> body) {
+        return createInstructionSwitch(data, vars, true, body);
+    }
+
+    public static CodeTree createInstructionSwitch(OperationsData data, ExecutionVariables vars, boolean instrumentation, Function<Instruction, CodeTree> body) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).end().startBlock();
+        for (Instruction instr : data.getInstructions()) {
+            if (instr.isInstrumentationOnly() && !instrumentation) {
+                continue;
+            }
+
+            CodeTree result = body.apply(instr);
+            if (result != null) {
+                b.startCase().variable(instr.opcodeIdField).end().startBlock();
+                b.tree(result);
+                b.statement("break");
+                b.end();
+            }
+
+        }
+        b.end();
+
+        return b.build();
     }
 
 }

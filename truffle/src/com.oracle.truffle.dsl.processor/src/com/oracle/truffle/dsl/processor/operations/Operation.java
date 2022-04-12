@@ -16,6 +16,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction.ConstantKind;
@@ -56,6 +57,13 @@ public abstract class Operation {
         public CodeVariableElement numChildren;
         public CodeVariableElement keepingInstrumentation;
         public CodeVariableElement numChildNodes;
+
+        public ExecutionVariables asExecution() {
+            ExecutionVariables result = new ExecutionVariables();
+            result.bc = this.bc;
+            result.bci = this.bci;
+            return result;
+        }
     }
 
     public int minimumChildren() {
