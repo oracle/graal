@@ -294,7 +294,7 @@ public final class VM extends NativeEnv {
         assert javaLibrary == null : "java library already initialized";
         this.javaLibrary = loadJavaLibrary(searchPaths);
         JavaVersion javaVersion = findJavaVersion(this.javaLibrary);
-        getEspressoLanguage().tryInitializeJavaVersion(javaVersion);
+        getLanguage().tryInitializeJavaVersion(javaVersion);
         initializeJavaLibrary(this.javaLibrary);
     }
 
