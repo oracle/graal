@@ -561,6 +561,7 @@ suite = {
       "dependencies" : [
         "JVMCI_HOTSPOT",
         "org.graalvm.compiler.api.runtime",
+        "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
       ],
@@ -1358,6 +1359,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.lir.aarch64",
+        "org.graalvm.compiler.java",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1384,6 +1386,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.lir.amd64",
         "org.graalvm.compiler.core",
       ],
@@ -1464,6 +1467,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
+        "org.graalvm.compiler.java",
       ],
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
@@ -1574,6 +1578,7 @@ suite = {
         "org.graalvm.compiler.truffle.common",
         "org.graalvm.compiler.truffle.options",
         "org.graalvm.compiler.core",
+        "org.graalvm.compiler.replacements",
       ],
       "uses" : [
         "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
