@@ -124,6 +124,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 
 /**
  * <p>
@@ -217,7 +218,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
                     "VARIABLE", "ARGUMENT", "READ_VAR", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION",
                     "MATERIALIZE_CHILD_STMT_AND_EXPR", "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT"};
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN"};
 
     public InstrumentationTestLanguage() {
     }
@@ -383,7 +384,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
             int numberOfIdents = 0;
             if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("READ_VAR") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") ||
-                            tag.equals("SLEEP") || tag.equals("SPAWN") || tag.equals("CATCH") || tag.equals("EXIT")) {
+                            tag.equals("SLEEP") || tag.equals("SPAWN") || tag.equals("CATCH") || tag.equals("EXIT") || tag.equals("RETURN")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("CALL_WITH") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
@@ -554,6 +555,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new MultipleNode(childArray, multipleTags);
                 case "EXIT":
                     return new ExitNode(idents[0]);
+                case "CANCEL":
+                    return new CancelNode();
+                case "RETURN":
+                    return new ReturnNode(idents[0]);
                 default:
                     throw new AssertionError();
             }
@@ -1770,6 +1775,31 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    private static class ReturnNode extends InstrumentedNode {
+
+        private final String identifier;
+
+        ReturnNode(String identifier) {
+            this.identifier = identifier;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            InstrumentContext ctx = InstrumentContext.get(this);
+            return returnFunction(ctx);
+        }
+
+        @TruffleBoundary
+        private Object returnFunction(InstrumentContext ctx) {
+            return ctx.callFunctions.findFunction(identifier);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ReturnNode(identifier);
+        }
+    }
+
     static class ExitNode extends InstrumentedNode {
         private final int exitCode;
 
@@ -1792,6 +1822,28 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new ExitNode(String.valueOf(exitCode));
+        }
+    }
+
+    static class CancelNode extends InstrumentedNode {
+
+        CancelNode() {
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throwCancelException();
+            return null;
+        }
+
+        @TruffleBoundary
+        private void throwCancelException() {
+            TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext().closeCancelled(this, null);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new CancelNode();
         }
     }
 
