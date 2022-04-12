@@ -91,6 +91,7 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
@@ -413,9 +414,9 @@ public class UniverseBuilder {
             startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
-        if (HybridLayout.isHybrid(clazz)) {
-            /* Set start after array length field */
-            assert startSize == layout.getArrayLengthOffset();
+        if (HybridLayout.isHybrid(clazz) || PodSupport.singleton().isPodSuperclass(clazz.getJavaClass())) {
+            // Reserve space for the array length field
+            VMError.guarantee(startSize == layout.getArrayLengthOffset());
             int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 

@@ -31,30 +31,23 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewHybridInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
-
-@AutomaticFeature
-final class PodFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(a -> a.registerAsInHeap(Pod.Instance.class),
-                        ReflectionUtil.lookupMethod(Pod.class, "newInstance"));
-    }
-}
 
 /**
  * A structure of fields, including object references, that is {@linkplain Builder modeled} at image
@@ -63,27 +56,21 @@ final class PodFeature implements Feature {
  * type information, apart from having a Java superclass.
  */
 public final class Pod<T> {
-    @Hybrid(arrayType = byte[].class)
-    public static final class Instance {
-        private Instance() {
-        }
-    }
-
-    private final Class<T> superClass;
+    private final Class<? extends T> podClass;
     private final int fieldsSizeWithoutRefMap;
     private final byte[] referenceMap;
 
-    private Pod(Class<T> superClass, int fieldsSize, byte[] referenceMap) {
-        this.superClass = superClass;
+    private Pod(Class<? extends T> podClass, int fieldsSize, byte[] referenceMap) {
+        this.podClass = podClass;
         this.fieldsSizeWithoutRefMap = fieldsSize;
         this.referenceMap = referenceMap;
     }
 
     public T newInstance() {
         @SuppressWarnings("unchecked")
-        T instance = (T) SubstrateDynamicNewHybridInstanceNode.allocate(superClass, byte.class, fieldsSizeWithoutRefMap + referenceMap.length);
+        T instance = (T) SubstrateDynamicNewHybridInstanceNode.allocate(podClass, byte.class, fieldsSizeWithoutRefMap + referenceMap.length);
 
-        UnsignedWord podRefMapBase = getArrayBaseOffset(superClass).add(fieldsSizeWithoutRefMap);
+        UnsignedWord podRefMapBase = getArrayBaseOffset(podClass).add(fieldsSizeWithoutRefMap);
         JavaMemoryUtil.copy(referenceMap, getArrayBaseOffset(byte[].class), instance, podRefMapBase, WordFactory.unsigned(referenceMap.length));
 
         return instance;
@@ -94,17 +81,37 @@ public final class Pod<T> {
         return LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
     }
 
-    public static final class Builder {
-        private final Pod<?> superPod;
-        private final Class<Instance> superClass = Instance.class;
+    public static final class Builder<T> {
+        public static Builder<Object> create() {
+            return new Builder<>(Object.class, null);
+        }
+
+        public static <T> Builder<T> createExtending(Pod<T> superPod) {
+            return new Builder<>(null, superPod);
+        }
+
+        public static <T> Builder<T> createExtending(Class<T> superClass) {
+            return new Builder<>(superClass, null);
+        }
+
+        private final Pod<T> superPod;
+        private final Class<? extends T> podClass;
         private final List<Field> fields = new ArrayList<>();
         private boolean built = false;
 
-        public Builder() {
-            this(null);
-        }
-
-        public Builder(Pod<?> superPod) {
+        private Builder(Class<T> superClass, Pod<T> superPod) {
+            if (superClass == null && superPod == null) {
+                throw new NullPointerException();
+            }
+            if (superPod != null) {
+                this.podClass = superPod.podClass;
+            } else {
+                this.podClass = ImageSingletons.lookup(RuntimeSupport.class).get(superClass);
+                if (this.podClass == null) {
+                    throw new IllegalArgumentException("Pod superclass was not registered during image build: " + superClass);
+                }
+            }
+            assert DynamicHub.fromClass(this.podClass).isPodInstanceClass();
             this.superPod = superPod;
         }
 
@@ -128,13 +135,13 @@ public final class Pod<T> {
             return f;
         }
 
-        public Pod<Instance> build() {
+        public Pod<T> build() {
             guaranteeUnbuilt();
             built = true;
 
             Collections.sort(fields);
 
-            UnsignedWord baseOffset = getArrayBaseOffset(superClass);
+            UnsignedWord baseOffset = getArrayBaseOffset(podClass);
 
             byte[] superRefMap = null;
             UnsignedWord nextOffset = baseOffset;
@@ -167,7 +174,7 @@ public final class Pod<T> {
             }
 
             byte[] referenceMap = refMapEncoder.encode();
-            return new Pod<>(superClass, UnsignedUtils.safeToInt(nextOffset), referenceMap);
+            return new Pod<>(podClass, UnsignedUtils.safeToInt(nextOffset), referenceMap);
         }
     }
 
@@ -209,6 +216,25 @@ public final class Pod<T> {
                 return Boolean.compare(f.isReference, isReference);
             }
             return f.size - size; // larger fields first
+        }
+    }
+
+    public static final class RuntimeSupport {
+        private final EconomicMap<Class<?>, Class<?>> superClasses = ImageHeapMap.create();
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public RuntimeSupport() {
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public boolean registerClass(Class<?> superClass, Class<?> podClass) {
+            VMError.guarantee(podClass.getSuperclass() == superClass);
+            return superClasses.putIfAbsent(superClass, podClass) == null;
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> Class<? extends T> get(Class<T> clazz) {
+            return (Class<? extends T>) superClasses.get(clazz);
         }
     }
 
