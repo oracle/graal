@@ -1329,7 +1329,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.virtual",
+        "org.graalvm.compiler.loop.phases",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
