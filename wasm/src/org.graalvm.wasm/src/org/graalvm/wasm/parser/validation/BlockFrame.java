@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,36 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.ir;
+package org.graalvm.wasm.parser.validation;
 
-public interface ParserNode {
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+/**
+ * Representation of a wasm block during module validation.
+ */
+class BlockFrame extends ControlFrame {
+    BlockFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
+        super(paramTypes, resultTypes, initialStackSize, unreachable);
+    }
+
+    @Override
+    byte[] getLabelTypes() {
+        return getResultTypes();
+    }
+
+    @Override
+    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+        throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
+    }
+
+    @Override
+    void exit(ExtraDataList extraData, int offset) {
+        for (int location : conditionalBranches()) {
+            extraData.setConditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
+        }
+        for (int location : unconditionalBranches()) {
+            extraData.setUnconditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
+        }
+    }
 }

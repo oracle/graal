@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.profiles.BranchProfile;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
+package org.graalvm.wasm.parser.validation;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+/**
+ * Representation of a wasm if and else block during module validation.
+ */
+class IfFrame extends ControlFrame {
+    private int falseJumpLocation;
+    private boolean elseBranch;
 
-public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
-    private final Object executable;
-    private final BranchProfile errorBranch = BranchProfile.create();
-
-    public ExecuteInParentContextNode(WasmLanguage language, WasmInstance instance, Object executable) {
-        super(language, instance);
-        this.executable = executable;
+    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
+        super(paramTypes, resultTypes, initialStackSize, unreachable);
+        this.falseJumpLocation = falseJumpLocation;
+        this.elseBranch = false;
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        // Imported executables come from the parent context
-        TruffleContext truffleContext = context.environment().getContext().getParent();
-        Object prev = truffleContext.enter(this);
-        try {
-            return InteropLibrary.getUncached().execute(executable, frame.getArguments());
-        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            errorBranch.enter();
-            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Call failed: %s", getMessage(e));
-        } finally {
-            truffleContext.leave(this, prev);
+    byte[] getLabelTypes() {
+        return getResultTypes();
+    }
+
+    @Override
+    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+        int endJumpLocation = extraData.addElseLocation();
+        extraData.setIfTarget(falseJumpLocation, offset, extraData.getLocation());
+        falseJumpLocation = endJumpLocation;
+        elseBranch = true;
+        state.checkStackAfterFrameExit(this, getResultTypes());
+        // Since else is a separate block the unreachable state has to be reset.
+        resetUnreachable();
+    }
+
+    @Override
+    void exit(ExtraDataList extraData, int offset) {
+        if (!elseBranch && getLabelTypeLength() > 0) {
+            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
+        }
+        if (elseBranch) {
+            extraData.setElseTarget(falseJumpLocation, offset, extraData.getLocation());
+        } else {
+            extraData.setIfTarget(falseJumpLocation, offset, extraData.getLocation());
+        }
+        for (int location : conditionalBranches()) {
+            extraData.setConditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
+        }
+        for (int location : unconditionalBranches()) {
+            extraData.setUnconditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
         }
     }
 
-    @TruffleBoundary
-    private static String getMessage(InteropException e) {
-        return e.getMessage();
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "execute";
-    }
 }

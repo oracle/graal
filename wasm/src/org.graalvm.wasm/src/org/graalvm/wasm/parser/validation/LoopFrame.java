@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,19 +39,41 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.ir;
+package org.graalvm.wasm.parser.validation;
+
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 /**
- * Represents information about a wasm loop structure.
+ * Representation of a wasm loop during module validation.
  */
-public class LoopNode implements ParserNode {
-    private final BlockNode bodyNode;
+class LoopFrame extends ControlFrame {
+    private final int target;
+    private final int extraTarget;
 
-    public LoopNode(BlockNode bodyNode) {
-        this.bodyNode = bodyNode;
+    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int target, int extraTarget) {
+        super(paramTypes, resultTypes, initialStackSize, unreachable);
+        this.target = target;
+        this.extraTarget = extraTarget;
     }
 
-    public BlockNode getBodyNode() {
-        return bodyNode;
+    @Override
+    byte[] getLabelTypes() {
+        return getParamTypes();
+    }
+
+    @Override
+    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+        throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
+    }
+
+    @Override
+    void exit(ExtraDataList extraData, int offset) {
+        for (int location : conditionalBranches()) {
+            extraData.setConditionalBranchTarget(location, target, extraTarget, getInitialStackSize(), getLabelTypeLength());
+        }
+        for (int location : unconditionalBranches()) {
+            extraData.setUnconditionalBranchTarget(location, target, extraTarget, getInitialStackSize(), getLabelTypeLength());
+        }
     }
 }

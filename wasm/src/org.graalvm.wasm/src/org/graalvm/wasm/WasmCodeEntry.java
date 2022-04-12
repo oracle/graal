@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import org.graalvm.wasm.collection.IntArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -51,19 +49,18 @@ public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private final byte[] localTypes;
-    @CompilationFinal(dimensions = 1) private int[] intConstants;
-    @CompilationFinal(dimensions = 2) private int[][] branchTables;
-    @CompilationFinal(dimensions = 1) private int[] profileCounters;
     private final int maxStackSize;
     private final BranchProfile errorBranch = BranchProfile.create();
+    @CompilationFinal(dimensions = 1) private final int[] extraData;
+    private final int numLocals;
 
-    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, int maxStackSize) {
+    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, int maxStackSize, int[] extraData) {
         this.function = function;
         this.data = data;
         this.localTypes = localTypes;
         this.maxStackSize = maxStackSize;
-        this.intConstants = null;
-        this.profileCounters = null;
+        this.extraData = extraData;
+        this.numLocals = localTypes.length;
     }
 
     public WasmFunction function() {
@@ -82,45 +79,16 @@ public final class WasmCodeEntry {
         return localTypes[index];
     }
 
-    @SuppressWarnings("unused")
-    public int intConstant(int index) {
-        return intConstants[index];
-    }
-
-    public void setIntConstants(int[] intConstants) {
-        this.intConstants = intConstants;
-    }
-
-    public int[] intConstants() {
-        return intConstants;
-    }
-
-    public int[] branchTable(int index) {
-        return branchTables[index];
-    }
-
-    public void setBranchTables(int[][] branchTables) {
-        this.branchTables = branchTables;
-    }
-
-    public void setProfileCount(int size) {
-        if (size > 0) {
-            this.profileCounters = new int[size];
-        } else {
-            this.profileCounters = IntArrayList.EMPTY_INT_ARRAY;
-        }
-    }
-
-    public int[] profileCounters() {
-        return profileCounters;
-    }
-
     public int numLocals() {
-        return localTypes.length;
+        return numLocals;
     }
 
     public int functionIndex() {
         return function.index();
+    }
+
+    public int[] extraData() {
+        return extraData;
     }
 
     /**
@@ -180,6 +148,39 @@ public final class WasmCodeEntry {
             int sum = t + f;
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
         }
+    }
+
+    public static void updateTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex) {
+        if (profileArray[counterIndex] < Integer.MAX_VALUE) {
+            profileArray[counterIndex]++;
+            profileArray[profileIndex]++;
+        }
+    }
+
+    public static boolean injectTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex, boolean condition) {
+        int sum = profileArray[counterIndex];
+        int t = profileArray[profileIndex];
+        // Clamp probability to 1.0
+        if (t > sum) {
+            t = sum;
+        }
+        boolean val = condition;
+        if (val) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == sum) {
+                val = true;
+            }
+        } else {
+            if (t == sum) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == 0) {
+                val = false;
+            }
+        }
+        return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
     }
 
     public void errorBranch() {
