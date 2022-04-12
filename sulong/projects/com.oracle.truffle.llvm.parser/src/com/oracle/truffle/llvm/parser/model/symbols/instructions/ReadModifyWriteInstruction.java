@@ -70,6 +70,10 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         return value;
     }
 
+    public Type getValueType() {
+        return valueType;
+    }
+
     public ReadModifyWriteOperator getOperator() {
         return operator;
     }
@@ -96,7 +100,8 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         }
     }
 
-    public static ReadModifyWriteInstruction fromSymbols(SymbolTable symbols, Type type, int ptr, Type valueType, int value, int opcode, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+    public static ReadModifyWriteInstruction fromSymbols(SymbolTable symbols, Type type, int ptr, Type valueType, int value, int opcode, boolean isVolatile, long atomicOrdering,
+                    long synchronizationScope) {
         final ReadModifyWriteOperator operator = ReadModifyWriteOperator.decode(opcode);
         final ReadModifyWriteInstruction inst = new ReadModifyWriteInstruction(type, operator, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
         inst.ptr = symbols.getForwardReferenced(ptr, inst);

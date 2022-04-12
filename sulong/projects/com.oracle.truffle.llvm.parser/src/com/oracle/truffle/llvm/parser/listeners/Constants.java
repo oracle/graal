@@ -81,11 +81,10 @@ public final class Constants implements ParserListener {
     private static final int CONSTANT_CE_GEP_WITH_INRANGE_INDEX = 24;
     private static final int CONSTANT_CE_UNOP = 25;
     private static final int CONSTANT_POISON = 26;
-    private static final int CONSTANT_DSO_LOCAL_EQUIVALENT = 27;
+    // private static final int CONSTANT_DSO_LOCAL_EQUIVALENT = 27;
     // private static final int CONSTANT_INLINEASM_OLD3 = 28;
-    private static final int CONSTANT_NO_CFI_VALUE = 29;
+    // private static final int CONSTANT_NO_CFI_VALUE = 29;
     private static final int CONSTANT_INLINEASM = 30;
-
 
     private static final BigInteger WIDE_INTEGER_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
 
