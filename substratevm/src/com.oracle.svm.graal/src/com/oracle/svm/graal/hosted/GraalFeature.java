@@ -531,7 +531,6 @@ public final class GraalFeature implements Feature {
                 parse = true;
                 graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
                                 .method(method)
-                                .recordInlinedMethods(false)
                                 .build();
             }
 
