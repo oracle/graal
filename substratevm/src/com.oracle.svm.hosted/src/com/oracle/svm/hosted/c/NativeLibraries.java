@@ -165,12 +165,12 @@ public final class NativeLibraries {
         public void add(String library, Collection<String> dependencies) {
             UserError.guarantee(library != null, "The library name must be not null and not empty");
 
-            Dependency libraryDependency = putWhenAbsent(library, new Dependency(library, new HashSet<>()));
+            Dependency libraryDependency = putWhenAbsent(library, new Dependency(library, ConcurrentHashMap.newKeySet()));
             Set<Dependency> collectedDependencies = libraryDependency.getDependencies();
 
             for (String dependency : dependencies) {
                 collectedDependencies.add(putWhenAbsent(
-                                dependency, new Dependency(dependency, new HashSet<>())));
+                                dependency, new Dependency(dependency, ConcurrentHashMap.newKeySet())));
             }
         }
 

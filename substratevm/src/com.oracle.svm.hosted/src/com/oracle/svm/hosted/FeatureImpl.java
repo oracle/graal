@@ -64,6 +64,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -71,6 +72,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -239,9 +241,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-            Set<AnalysisType> result = AnalysisUniverse.getAllSubtypes(baseType);
-            result.removeIf(t -> !isReachable(t));
-            return result;
+            return AnalysisUniverse.reachableSubtypes(baseType);
         }
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
@@ -250,7 +250,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod, true);
+            return AnalysisUniverse.reachableMethodOverrides(baseMethod);
         }
 
         public void rescanObject(Object obj) {
@@ -326,10 +326,14 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
+        private final boolean concurrentReachabilityHandlers;
+        private final ReachabilityHandler reachabilityHandler;
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
+            this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
+            this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -445,22 +449,26 @@ public class FeatureImpl {
 
         @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
-            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
+            reachabilityHandler.registerReachabilityHandler(this, callback, elements);
         }
 
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-            ReachabilityHandlerFeature.singleton().registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+            reachabilityHandler.registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
         }
 
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-            ReachabilityHandlerFeature.singleton().registerSubtypeReachabilityHandler(this, callback, baseClass);
+            reachabilityHandler.registerSubtypeReachabilityHandler(this, callback, baseClass);
         }
 
         @Override
         public void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-            ReachabilityHandlerFeature.singleton().registerClassInitializerReachabilityHandler(this, callback, clazz);
+            reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
+        }
+
+        public boolean concurrentReachabilityHandlers() {
+            return concurrentReachabilityHandlers;
         }
     }
 
@@ -482,6 +490,25 @@ public class FeatureImpl {
             requireAnalysisIteration = false;
             return result;
         }
+
+    }
+
+    public static class ConcurrentAnalysisAccessImpl extends DuringAnalysisAccessImpl {
+
+        private static final String concurrentReachabilityOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.RunReachabilityHandlersConcurrently, "-");
+
+        public ConcurrentAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
+        }
+
+        @Override
+        public void requireAnalysisIteration() {
+            String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
+                            "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
+                            " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
+            throw VMError.shouldNotReachHere(msg);
+        }
+
     }
 
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
